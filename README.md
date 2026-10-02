@@ -20,6 +20,9 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 |---|---|
 | `kit/` | Official kit: `bazaar_sdk.py`, `RULES.md`, starter agent and starter broker |
 | `agent/abuela.py` | Abuela Carmen negotiator (L1 dealer): low anchor, 1 P steps, takes her final offer; numbers in code, kind words around them |
+| `agent/chato.py` | El Chato negotiator (L2 dealer): copied from Abuela, no welcome deal, terse lines with a new price each message, uncommons and rares only; `--reserve`, `--cap` (can only lower our limit), `--resume`, `--max-rounds` |
+| `agent/duel.py` | Duel negotiator draft (`watch` / `run`): our own message counts as one round of decay, max 3 messages per duel |
+| `agent/rastro_seller.py` | El Rastro seller for our spares (floors in `agent/rastro_floors.json`): anchors high, steps down 2 P per 20 ticks, haggles in team threads, renews before expiry; `--take-bids` off by default; `selftest` |
 | `agent/runlog.py` | Shared logger for every agent: `logs/<agent>/<date>.jsonl`, keys redacted |
 | `tools/snapshot.py` | Saves the server's view of our team into `logs/`: every conversation, duel, offer, holdings, and a score line |
 | `tools/feed_recorder.py` | Records the **public** feed, leaderboard and El Rastro board into `logs/feed/`. Keyless and read-only, so it never touches our per-tick limits; one copy running is enough |
