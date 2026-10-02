@@ -222,7 +222,7 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -> list[dict]:
     """Buys: uncommons and rares Chato sells that we do not hold, ranked by our value.
-    Sells: our duplicate uncommons/rares (a spare is worth much less to us). --cap replaces our value as the
+    Sells: our duplicate uncommons/rares (a spare is worth much less to us). --cap lowers (never raises) our value as the
     most we pay (the ladder scores his price range, not our value)."""
     catalog = b.catalog()
     released = {s["id"] for s in catalog["sets"] if s["released"]}
@@ -241,7 +241,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
                 continue
             v = b.value(c["id"])["your_value"]
             buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
-                         "value": cap if cap else v, "private": v})
+                         "value": min(v, cap) if cap else v, "private": v})
     buys.sort(key=lambda x: -x["private"])
     sells = []
     for ref, copies in held.items():
