@@ -24,7 +24,10 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `tools/snapshot.py` | Saves the server's view of our team into `logs/`: every conversation, duel, offer, holdings, and a score line |
 | `tools/feed_recorder.py` | Records the **public** feed, leaderboard and El Rastro board into `logs/feed/`. Keyless and read-only, so it never touches our per-tick limits; one copy running is enough |
 | `tools/feed_report.py` | Reads `logs/feed/` offline: `board` (every team's score next to its deals at each refresh), `haggles` (every dealer conversation as a price sequence), `trades`, `prices` |
-| `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo |
+| `tools/value_inference.py` | Infers every team's secret set multipliers from the public feed (Bayes over the 720 shuffles): `teams`, `team t10`, `check` (validation against our own values and a time split), `targets`. Keyless |
+| `tools/market_plan.py` | Team 3's market plan, recomputed on every run from the inference, the live El Rastro board, the catalog, the dealers and the schedule: what to sell, buy and hold, and when (Friday counts half, pages, the Sunday close). Plans only, never sends. `--json`, `--watch` (writes `logs/plan/latest.json` every tick) |
+| `tests/` | `python3 -m unittest discover tests`: the plan's pure rules (fee, copy values, ask and bid prices) |
+| `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo. `logs/public/` caches keyless reads (catalog, clock, schedule, dealers); `logs/plan/` is the live plan, not committed |
 
 ## Team rules while the game runs
 
