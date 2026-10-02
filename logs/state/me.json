@@ -255,7 +255,7 @@
   "filled": 15,
   "slots": 40
  },
- "tick": 46,
+ "tick": 48,
  "tick_seconds": 60.0,
  "score": {
   "team": "t03",
@@ -291,5 +291,7 @@
   "rank": 14
  },
  "venue": null,
- "open_threads": []
+ "open_threads": [
+  80
+ ]
 }
