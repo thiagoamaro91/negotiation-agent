@@ -1,0 +1,107 @@
+{
+ "duel": 94,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "El Tren Fantasma",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 142,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 144,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 1167,
+  "price": 86,
+  "tick": 143,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 132,
+   "from": "Rival Rojo",
+   "text": "Thank you for meeting me. I can offer 123 P.",
+   "price": 123,
+   "days": null
+  },
+  {
+   "tick": 133,
+   "from": "Rival Rojo",
+   "text": "I appreciate your move. 122 P is where I can be.",
+   "price": 122,
+   "days": null
+  },
+  {
+   "tick": 134,
+   "from": "Rival Rojo",
+   "text": "Let us close quickly: 120 P.",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 135,
+   "from": "Rival Rojo",
+   "text": "A step towards you: 118 P.",
+   "price": 118,
+   "days": null
+  },
+  {
+   "tick": 136,
+   "from": "Rival Rojo",
+   "text": "I think 115 P is fair for both of us.",
+   "price": 115,
+   "days": null
+  },
+  {
+   "tick": 137,
+   "from": "Rival Rojo",
+   "text": "Thank you for meeting me. I can offer 112 P.",
+   "price": 112,
+   "days": null
+  },
+  {
+   "tick": 138,
+   "from": "Rival Rojo",
+   "text": "I appreciate your move. 108 P is where I can be.",
+   "price": 108,
+   "days": null
+  },
+  {
+   "tick": 139,
+   "from": "Rival Rojo",
+   "text": "Let us close quickly: 103 P.",
+   "price": 103,
+   "days": null
+  },
+  {
+   "tick": 140,
+   "from": "Rival Rojo",
+   "text": "A step towards you: 98 P.",
+   "price": 98,
+   "days": null
+  },
+  {
+   "tick": 141,
+   "from": "Rival Rojo",
+   "text": "I think 92 P is fair for both of us.",
+   "price": 92,
+   "days": null
+  },
+  {
+   "tick": 143,
+   "from": "Rival Rojo",
+   "text": "Thank you for meeting me. I can do 86 P.",
+   "price": 86,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

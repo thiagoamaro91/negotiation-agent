@@ -1,0 +1,126 @@
+{
+ "duel": 37,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "El Rastro al Amanecer",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 73,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 144,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 1074,
+  "price": 125,
+  "tick": 140,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 1169,
+  "price": 102,
+  "tick": 143,
+  "days": 5
+ },
+ "messages": [
+  {
+   "tick": 132,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 133,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 134,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 135,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 136,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 137,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 138,
+   "from": "Rival Oro",
+   "text": "I can do 82. Let's close it quickly.",
+   "price": 82,
+   "days": null
+  },
+  {
+   "tick": 139,
+   "from": "Rival Oro",
+   "text": "I can do 92. Let's close it quickly.",
+   "price": 92,
+   "days": null
+  },
+  {
+   "tick": 140,
+   "from": "Rival Oro",
+   "text": "I can do 73. Let's close it quickly.",
+   "price": 73,
+   "days": null
+  },
+  {
+   "tick": 140,
+   "from": "you",
+   "text": "Practice round: 125 for El Rastro al Amanecer.",
+   "price": 125,
+   "days": null
+  },
+  {
+   "tick": 141,
+   "from": "Rival Oro",
+   "text": "82 with delivery on day 5. That day suits you too, I think.",
+   "price": 82,
+   "days": 5
+  },
+  {
+   "tick": 142,
+   "from": "Rival Oro",
+   "text": "92 with delivery on day 5. That day suits you too, I think.",
+   "price": 92,
+   "days": 5
+  },
+  {
+   "tick": 143,
+   "from": "Rival Oro",
+   "text": "102 with delivery on day 5. That day suits you too, I think.",
+   "price": 102,
+   "days": 5
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

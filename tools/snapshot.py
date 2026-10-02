@@ -40,7 +40,7 @@ def main() -> None:
 
     duels = b.duels(done=True).get("duels", []) + b.duels().get("duels", [])
     for d in duels:
-        write_json(LOGS / "duels" / f"duel-{int(d['id']):05d}.json", d)
+        write_json(LOGS / "duels" / f"duel-{int(d.get('duel') or d.get('id')):05d}.json", d)
 
     write_json(LOGS / "state" / "offers.json", b.my_offers())
     write_json(LOGS / "state" / "me.json", me)

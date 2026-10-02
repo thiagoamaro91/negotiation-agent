@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.thiago.bazaar-dashboard</string>
+  <!-- Team 3 Bazaar dashboard on 127.0.0.1:8765 (token-gated). Local copy in ~/bazaar-dashboard,
+       never an iCloud path. KeepAlive restarts it if it dies or after a reboot. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/python3</string>
+    <string>-u</string>
+    <string>/Users/thiago/bazaar-dashboard/tools/dashboard.py</string>
+    <string>--port</string>
+    <string>8765</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>5</integer>
+  <key>WorkingDirectory</key><string>/Users/thiago/bazaar-dashboard</string>
+  <key>StandardOutPath</key><string>/Users/thiago/bazaar-dashboard/dashboard.log</string>
+  <key>StandardErrorPath</key><string>/Users/thiago/bazaar-dashboard/dashboard.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key><string>/Users/thiago</string>
+  </dict>
+</dict>
+</plist>

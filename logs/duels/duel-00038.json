@@ -1,0 +1,114 @@
+{
+ "duel": 38,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "El Rastro al Amanecer",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 164,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 144,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 1171,
+  "price": 106,
+  "tick": 143,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 132,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 133,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 134,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 135,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 136,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 137,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 138,
+   "from": "Rival Noche",
+   "text": "I can do 121. Let's close it quickly.",
+   "price": 121,
+   "days": null
+  },
+  {
+   "tick": 139,
+   "from": "Rival Noche",
+   "text": "I can do 113. Let's close it quickly.",
+   "price": 113,
+   "days": null
+  },
+  {
+   "tick": 140,
+   "from": "Rival Noche",
+   "text": "I can do 128. Let's close it quickly.",
+   "price": 128,
+   "days": null
+  },
+  {
+   "tick": 141,
+   "from": "Rival Noche",
+   "text": "I can do 121. Let's close it quickly.",
+   "price": 121,
+   "days": null
+  },
+  {
+   "tick": 142,
+   "from": "Rival Noche",
+   "text": "I can do 113. Let's close it quickly.",
+   "price": 113,
+   "days": null
+  },
+  {
+   "tick": 143,
+   "from": "Rival Noche",
+   "text": "I can do 106. Let's close it quickly.",
+   "price": 106,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}
