@@ -1,27 +1,3 @@
 {
- "offers": [
-  {
-   "id": 558,
-   "maker": "abuela",
-   "to": "t03",
-   "venue": null,
-   "thread": 80,
-   "status": "open",
-   "give": {
-    "cash": 0,
-    "assets": [],
-    "types": [
-     "card:LAV-08"
-    ]
-   },
-   "want": {
-    "cash": 29,
-    "assets": [],
-    "types": []
-   },
-   "expires_tick": 50,
-   "created_tick": 48,
-   "final": false
-  }
- ]
+ "offers": []
 }

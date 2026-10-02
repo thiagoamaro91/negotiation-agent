@@ -255,13 +255,13 @@
   "filled": 15,
   "slots": 40
  },
- "tick": 48,
+ "tick": 51,
  "tick_seconds": 60.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 4.59,
-  "negotiating": 4.59,
+  "score": 8.55,
+  "negotiating": 8.55,
   "market": 0.0,
   "neg_points": 0.0,
   "mm_points": 0.0,
@@ -288,10 +288,8 @@
   "frozen": false,
   "venue": null,
   "luck_private": 0.0,
-  "rank": 14
+  "rank": 10
  },
  "venue": null,
- "open_threads": [
-  80
- ]
+ "open_threads": []
 }

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team 3 Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* Control-room board for a laptop or the big screen: KPIs on top, live conversations as the hero, market + album + board below. Dark by design. */
+:root {
+  --bg: #0b1020; --panel: #121a2e; --panel2: #18223a; --line: #263252; --ink: #e9edf6; --muted: #8f9bb8;
+  --gold: #ffc44d; --her: #ff7a5c; --ours: #6ea0ff; --good: #3ddc97; --bad: #ff5d6c;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif; --body: "Public Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; }
+body { padding: 16px 20px 32px; }
+h1, h2 { font-family: var(--display); font-stretch: 75%; margin: 0; line-height: 1; }
+h1 { font-size: 30px; font-weight: 900; letter-spacing: 0.01em; }
+h2 { font-size: 15px; font-weight: 800; font-stretch: 90%; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-bottom: 14px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--good); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); }
+.dot.stale { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+.pill { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.pill b { color: var(--ink); font-weight: 600; }
+.err { color: var(--bad); font-family: var(--mono); font-size: 12px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.kpi .v { font-family: var(--display); font-stretch: 80%; font-size: 32px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.kpi .s { font-size: 12px; color: var(--muted); }
+.bar { height: 6px; background: var(--panel2); border-radius: 3px; overflow: hidden; position: relative; }
+.bar i { display: block; height: 100%; background: var(--gold); }
+.bar .mark { position: absolute; top: -2px; width: 2px; height: 10px; background: var(--bad); }
+
+.grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 1000px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.stack { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+.convs { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.conv { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 6px; min-width: 0; }
+.conv.open { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(255,196,77,0.25); }
+.conv .hd { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.conv .t { font-family: var(--display); font-stretch: 85%; font-weight: 800; font-size: 16px; }
+.st { font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
+.st.open { color: var(--gold); border-color: var(--gold); }
+.st.deal { color: var(--good); border-color: var(--good); }
+.st.walked, .st.closed, .st.cooloff { color: var(--muted); }
+.quote { font-size: 12.5px; color: var(--muted); line-height: 1.35; max-height: 3.9em; overflow: hidden; }
+.quote b { color: var(--her); font-weight: 600; }
+.quote b.us { color: var(--ours); }
+svg.pc { width: 100%; height: 110px; display: block; }
+svg text { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+td, th { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+tr.us td { color: var(--gold); font-weight: 600; }
+.lbbar { height: 5px; background: var(--gold); border-radius: 3px; opacity: 0.8; }
+.tablewrap { overflow-x: auto; }
+.chip { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+.chip.good { background: rgba(61,220,151,0.15); color: var(--good); }
+.chip.bad { background: rgba(255,93,108,0.12); color: var(--bad); }
+
+.album { display: grid; gap: 7px; }
+.set { display: grid; grid-template-columns: 92px auto minmax(0, 1fr); gap: 8px; align-items: center; }
+.set .nm { font-family: var(--display); font-stretch: 85%; font-weight: 800; font-size: 14px; }
+.aff { font-family: var(--mono); font-size: 11px; color: var(--gold); }
+.slots { display: flex; flex-wrap: wrap; gap: 3px; }
+.slot { width: 17px; height: 22px; border-radius: 3px; border: 1px solid var(--line); background: transparent; position: relative; }
+.slot.c { border-color: #9aa4b8; } .slot.u { border-color: #3ddc97; } .slot.r { border-color: #4c8dff; } .slot.e { border-color: #b061ff; } .slot.l { border-color: #ffc44d; }
+.slot.have.c { background: #9aa4b8; } .slot.have.u { background: #3ddc97; } .slot.have.r { background: #4c8dff; } .slot.have.e { background: #b061ff; } .slot.have.l { background: #ffc44d; }
+.slot .x { position: absolute; right: -3px; top: -6px; font-family: var(--mono); font-size: 9px; color: var(--ink); }
+.slot.gap { margin-left: 5px; }
+.set.off { opacity: 0.4; }
+
+.feed { display: grid; gap: 4px; max-height: 330px; overflow-y: auto; font-size: 12.5px; }
+.feed div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px; }
+.feed .ours { color: var(--gold); }
+.next { display: grid; gap: 5px; font-size: 13px; }
+.next div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; }
+svg.spark { width: 100%; height: 70px; display: block; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>TEAM 3 · LIVE</h1>
+  <span class="live"><span class="dot" id="dot"></span><span id="age">connecting</span></span>
+  <span class="pill" id="round"></span>
+  <span class="pill" id="tick"></span>
+  <span class="pill" id="closes"></span>
+  <span class="err" id="err"></span>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="grid">
+  <div class="stack">
+    <div class="panel"><h2>Conversations · her price vs ours</h2><div class="convs" id="convs"></div></div>
+    <div class="panel"><h2>Album · our private multipliers</h2><div class="album" id="album"></div></div>
+    <div class="panel"><h2>El Rastro board · worth it to us?</h2><div class="tablewrap"><table id="board"></table></div></div>
+  </div>
+  <div class="stack">
+    <div class="panel"><h2>Score over time</h2><svg class="spark" id="spark" viewBox="0 0 300 70" preserveAspectRatio="none"></svg><div class="muted mono" id="sparklbl" style="font-size:11px"></div></div>
+    <div class="panel"><h2>Coming up</h2><div class="next" id="next"></div></div>
+    <div class="panel"><h2>Leaderboard</h2><div class="tablewrap"><table id="lb"></table></div></div>
+    <div class="panel"><h2>Feed</h2><div class="feed" id="feed"></div></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (n, d = 1) => (n === null || n === undefined || Number.isNaN(n)) ? "-" : Number(n).toFixed(d);
+const qs = location.search;
+let last = null;
+
+function kpi(label, value, sub, extra = "") {
+  return `<div class="kpi"><span class="l">${label}</span><span class="v">${value}</span>${extra}<span class="s">${sub}</span></div>`;
+}
+
+function renderKpis(d) {
+  const s = d.me.score || {};
+  const cash = d.me.cash ?? 0, reserve = d.reserve || 280, maxCash = Math.max(400, cash);
+  const cashBar = `<div class="bar"><i style="width:${Math.min(100, cash / maxCash * 100)}%"></i><span class="mark" style="left:${reserve / maxCash * 100}%"></span></div>`;
+  $("kpis").innerHTML = [
+    kpi("Score / 60", fmt(s.score, 2), `rank <b>#${s.rank ?? "-"}</b> of ${d.leaderboard.length}`),
+    kpi("Negotiating / 30", fmt(s.negotiating, 2), `ladder ${fmt(s.ladder_points, 3)} · duels ${fmt(s.duel_points, 2)}`),
+    kpi("Market / 30", fmt(s.market, 2), s.bench_points == null ? "no Market Test yet" : `bench ${fmt(s.bench_points, 2)}`),
+    kpi("Cash", `${cash} P`, `red mark = ${reserve} P reserve for our market`, cashBar),
+    kpi("Level", d.me.level, (d.me.unlocked || []).join(", ")),
+    kpi("Deals", s.deals ?? 0, `album ${d.me.album_filled}/${d.me.album_slots} · ${s.pages_complete ?? 0} pages`),
+    kpi("Collection", `${fmt(d.me.collection_value, 0)} P`, "worth to us, private values"),
+  ].join("");
+}
+
+function priceChart(msgs) {
+  const pts = msgs.filter((m) => m.price != null);
+  if (!pts.length) return `<svg class="pc" viewBox="0 0 300 110"><text x="8" y="60">no prices yet: talk only</text></svg>`;
+  const ps = pts.map((m) => m.price), lo = Math.min(...ps) - 2, hi = Math.max(...ps) + 2;
+  const W = 300, H = 110, L = 26, R = 8, T = 8, B = 16;
+  const n = Math.max(2, pts.length);
+  const x = (i) => L + (W - L - R) * (i / (n - 1));
+  const y = (p) => T + (H - T - B) * (1 - (p - lo) / Math.max(1, hi - lo));
+  const line = (who, color) => {
+    const seq = pts.map((m, i) => [m, i]).filter(([m]) => m.who === who);
+    if (!seq.length) return "";
+    const path = seq.map(([m, i], k) => `${k ? "L" : "M"}${x(i).toFixed(1)},${y(m.price).toFixed(1)}`).join(" ");
+    const dots = seq.map(([m, i]) => `<circle cx="${x(i).toFixed(1)}" cy="${y(m.price).toFixed(1)}" r="${m.final ? 6 : 3}" fill="${m.final ? "none" : color}" stroke="${m.final ? "var(--gold)" : color}" stroke-width="${m.final ? 2.5 : 1}"/>`).join("");
+    const lastp = seq[seq.length - 1][0].price;
+    return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.2"/>${dots}<text x="${(x(seq[seq.length - 1][1]) + 4).toFixed(1)}" y="${(y(lastp) - 4).toFixed(1)}" style="fill:${color};font-weight:600">${lastp}</text>`;
+  };
+  const ticks = [lo + 2, Math.round((lo + hi) / 2), hi - 2].map((p) => `<text x="2" y="${(y(p) + 3).toFixed(1)}">${Math.round(p)}</text><line x1="${L}" x2="${W - R}" y1="${y(p).toFixed(1)}" y2="${y(p).toFixed(1)}" stroke="var(--line)"/>`).join("");
+  return `<svg class="pc" viewBox="0 0 ${W} ${H}">${ticks}${line("them", "var(--her)")}${line("us", "var(--ours)")}</svg>`;
+}
+
+function topicText(t) {
+  if (!t) return "";
+  if (t.buy) return "buy " + (t.buy.card || t.buy.pack || ((t.buy.rarity || "") + " " + (t.buy.set || "")));
+  if (t.sell) return "sell " + (t.sell.assets || []).length + " card(s)";
+  return JSON.stringify(t);
+}
+
+function renderConvs(d) {
+  $("convs").innerHTML = d.conversations.map((c) => {
+    const msgs = c.messages || [];
+    const lastThem = [...msgs].reverse().find((m) => m.who === "them");
+    const lastUs = [...msgs].reverse().find((m) => m.who === "us");
+    const outcome = c.status === "deal" ? (msgs.filter((m) => m.price != null).slice(-1)[0]?.price ?? "") + " P" : (c.reason || "");
+    return `<div class="conv ${c.status === "open" ? "open" : ""}">
+      <div class="hd"><span class="t">#${c.id} ${esc(c.with)} · ${esc(topicText(c.topic))}</span><span class="st ${esc(c.status)}">${esc(c.status)} ${esc(outcome)}</span></div>
+      ${priceChart(msgs)}
+      <div class="quote">${lastThem ? `<b>${esc(c.with)}:</b> ${esc(lastThem.text)}` : ""}${lastUs ? `<br><b class="us">us:</b> ${esc(lastUs.text)}` : ""}</div>
+    </div>`;
+  }).join("") || `<span class="muted">No conversations yet.</span>`;
+}
+
+function renderAlbum(d) {
+  const rk = { common: "c", uncommon: "u", rare: "r", epic: "e", legendary: "l" };
+  $("album").innerHTML = d.album.map((s) => {
+    const slots = s.cards.map((c, i) => `<span class="slot ${rk[c.rarity]} ${c.n ? "have" : ""} ${i === 10 ? "gap" : ""}" title="${esc(c.id)} ${esc(c.name)}${c.n ? " · held x" + c.n : ""}">${c.n > 1 ? `<span class="x">x${c.n}</span>` : ""}</span>`).join("");
+    const have = s.cards.slice(0, 10).filter((c) => c.n).length;
+    return `<div class="set ${s.released ? "" : "off"}"><span class="nm">${esc(s.name)}</span><span class="aff">x${s.aff ?? "?"} · ${have}/10</span><span class="slots">${slots}</span></div>`;
+  }).join("");
+}
+
+function renderBoard(d) {
+  const rows = d.listings.map((o) => {
+    if (o.kind === "sell") {
+      const g = o.gain;
+      return `<tr><td>${esc(o.card)}</td><td class="muted">sells</td><td class="n">${o.want_cash} P</td><td class="n">${fmt(o.cost, 0)}</td><td class="n">${fmt(o.value)}</td><td>${g == null ? "" : `<span class="chip ${g > 0 ? "good" : "bad"}">${g > 0 ? "BUY +" + fmt(g) : "skip " + fmt(g)}</span>`}</td></tr>`;
+    }
+    if (o.kind === "buy") {
+      const g = o.gain;
+      return `<tr><td>${esc(o.card)}</td><td class="muted">wants</td><td class="n">${o.give_cash} P</td><td class="n">-</td><td class="n">${o.have ? "we hold x" + o.have : "-"}</td><td>${g == null ? "" : `<span class="chip ${g > 0 ? "good" : "bad"}">${g > 0 ? "SELL +" + fmt(g) : "keep"}</span>`}</td></tr>`;
+    }
+    return `<tr><td colspan="6" class="muted">#${o.id}: ${esc((o.give || []).join(","))} ${o.give_cash || ""} for ${esc((o.want || []).join(","))} ${o.want_cash || ""}</td></tr>`;
+  }).join("");
+  $("board").innerHTML = `<tr><th>Card</th><th></th><th class="n">Price</th><th class="n">Cost+fee</th><th class="n">Worth to us</th><th>Call</th></tr>${rows || `<tr><td colspan="6" class="muted">Nothing listed.</td></tr>`}`;
+}
+
+function renderLb(d) {
+  const max = Math.max(1, ...d.leaderboard.map((t) => t.score || 0));
+  $("lb").innerHTML = `<tr><th>#</th><th>Team</th><th class="n">Score</th><th></th><th class="n">Deals</th></tr>` + d.leaderboard.map((t) =>
+    `<tr class="${t.team === "t03" ? "us" : ""}"><td class="n">${t.rank}</td><td>${esc(t.name)}</td><td class="n">${fmt(t.score, 2)}</td><td style="width:35%"><div class="lbbar" style="width:${(t.score || 0) / max * 100}%"></div></td><td class="n">${t.deals}</td></tr>`).join("");
+}
+
+function renderSpark(d) {
+  const h = (d.history || []).filter((p) => p.score != null);
+  if (h.length < 2) { $("spark").innerHTML = ""; $("sparklbl").textContent = "waiting for more points"; return; }
+  const ys = h.map((p) => p.score), lo = Math.min(...ys), hi = Math.max(...ys, lo + 1);
+  const x = (i) => 4 + 292 * i / (h.length - 1), y = (v) => 64 - 58 * (v - lo) / (hi - lo);
+  const path = h.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.score).toFixed(1)}`).join(" ");
+  $("spark").innerHTML = `<path d="${path} L${x(h.length - 1).toFixed(1)},70 L4,70 Z" fill="rgba(255,196,77,0.12)"/><path d="${path}" fill="none" stroke="var(--gold)" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${x(h.length - 1)}" cy="${y(ys[ys.length - 1])}" r="3" fill="var(--gold)"/>`;
+  const a = h[h.length - 1];
+  $("sparklbl").textContent = `now ${fmt(a.score, 2)} · rank #${a.rank} · range ${fmt(lo, 2)} to ${fmt(hi, 2)} · ${h.length} points since ${h[0].t}`;
+}
+
+function renderNext(d) {
+  $("next").innerHTML = (d.upcoming || []).map((u) => {
+    const m = u.in_min, when = m <= 0 ? "now" : m < 60 ? `in ${m}m` : `in ${Math.floor(m / 60)}h ${m % 60}m`;
+    return `<div><span class="mono" style="color:var(--gold)">${when}</span><span>${esc(u.note)}</span></div>`;
+  }).join("") || `<span class="muted">Nothing scheduled.</span>`;
+}
+
+function renderFeed(d) {
+  $("feed").innerHTML = d.feed.map((e) => `<div class="${e.ours ? "ours" : ""}"><span class="mono muted">t${e.tick}</span><span>${esc(e.text)}</span></div>`).join("");
+}
+
+function render(d) {
+  const c = d.clock || {};
+  $("round").innerHTML = `<b>${esc(c.round_name || "")}</b>`;
+  $("tick").innerHTML = `tick <b>${c.tick}</b> · every ${c.tick_seconds}s · next in <b id="nt">${Math.round(c.next_tick_in || 0)}</b>s${c.paused ? " · PAUSED" : ""}`;
+  $("closes").innerHTML = c.closes ? `closes <b>${new Date(c.closes).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b>` : "";
+  renderKpis(d); renderConvs(d); renderAlbum(d); renderBoard(d); renderLb(d); renderSpark(d); renderNext(d); renderFeed(d);
+}
+
+async function tick() {
+  try {
+    const r = await fetch("/data" + qs, { cache: "no-store" });
+    const d = await r.json();
+    $("err").textContent = d.error ? "server: " + d.error : "";
+    if (d.me) { last = d; render(d); }
+    const stale = d.age == null || d.age > 15;
+    $("dot").className = "dot" + (stale ? " stale" : "");
+    $("age").textContent = d.age == null ? "waiting for first poll" : `updated ${fmt(d.age, 0)}s ago`;
+  } catch (e) {
+    $("dot").className = "dot stale"; $("age").textContent = "dashboard server unreachable";
+  }
+}
+tick();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
