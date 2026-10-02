@@ -15,7 +15,7 @@ Every tick, one pass:
      Accept their structured offer when it pays at least our current number (gross) and at least the floor after
      the fee we pay as the accepting side (net). The structure must be: they give cash only, we give exactly the
      configured copy. Anything else is logged as `mismatch` and never accepted.
-  4. Offers addressed to us without a conversation are treated the same way, accepted at our first counter price.
+  4. Offers addressed to us without a conversation: accepted at our first counter price, only with --take-bids.
   5. "want card:X" bids on the board: accepted only with --take-bids, only at net >= floor.
   6. Listings: renewed RENEW_AHEAD ticks before they expire; after STEP_TICKS ticks with no sale and no live haggle,
      cancelled and re-listed STEP_P lower, never below the floor.
@@ -750,6 +750,11 @@ class Seller:
                 fee = fee_for(gross, self.fee(o.get("venue")))
                 target = max(st["floor"], st["ask"] - concession(st["ask"], st["floor"], 0))
                 if gross >= target and gross - fee >= st["floor"]:
+                    if not self.take_bids:  # unsolicited, like a board bid: the owner opts in with --take-bids
+                        self.say_once(("dseen", o.get("id")), "directed_seen", tick=self.now, offer=o.get("id"),
+                                      card=st["card"], gross=gross, net=gross - fee, target=target,
+                                      note="would accept with --take-bids")
+                        continue
                     self.accept(o, chk, st, f"direct:{o.get('id')}", gross, fee)
                 else:
                     self.say_once(("dlow", o.get("id")), "directed_low", tick=self.now, offer=o.get("id"),
