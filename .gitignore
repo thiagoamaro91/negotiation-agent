@@ -11,3 +11,5 @@ logs/plan/
 logs/public/clock.json
 logs/brain/
 logs/state/me_live.json
+logs/public/schedule.json
+logs/public/dealers.json
