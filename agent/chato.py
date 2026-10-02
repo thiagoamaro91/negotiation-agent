@@ -18,6 +18,7 @@ scores the share of his price range we capture, so ending at his limit is the go
 Usage (from the repo root):
     python3 agent/chato.py plan
     python3 agent/chato.py run --only SAL-08 --max-deals 1 --reserve 200 --cap 30
+    python3 agent/chato.py run --only LAV-09,LAV-10 --max-deals 2 --reserve 150 --cap 88 --max-rounds 16
 Only ONE process per team may talk to El Chato at a time (one open conversation per dealer).
 """
 from __future__ import annotations
@@ -41,6 +42,14 @@ ANCHOR_FRAC = 0.40          # first counter, as a share of her opening price (bu
 SELL_ANCHOR_MULT = 1.6      # first ask, as a multiple of his opening bid (selling); he holds his bid, so stay short
 STEP = 1                    # primas per round when buying: he mirrors our step, his final comes at his limit
 SELL_STEP = 2               # primas per round when selling (time is short and his bid barely moves)
+# Rares, from the 26 public buy conversations with him up to Friday's close (tools/feed_report.py haggles):
+# stepping 1 P made him lose patience after 5-6 rounds and name a final at 90-93 P (t12, t14); steady steps of 2-4
+# were mirrored and kept him talking, ending at 82-87 P (t04 bought LAV-10 at 82, t07 had LAT-10 down to 82);
+# jumps of 12+ gave the margin away (t12 paid 89-90). Uncommons stay on STEP: our 1 P steps got 28-29 P,
+# teams stepping 2-3 paid 31-32. --rare-step 0 restores the old behaviour.
+RARE_ANCHOR_FRAC = 0.60     # first counter for a rare, as a share of his opening (97 -> 58)
+RARE_STEP = 4               # steady step while the gap to his ask is wide
+RARE_NEAR_GAP = 10          # then 2 P steps, and 1 P in the last 3, so we never jump past his limit
 MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low
 
 
@@ -114,6 +123,16 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
 
 # ---------------------------------------------------------------- one negotiation
 
+def next_buy_price(ours: int | None, her: int, rare: bool) -> int:
+    """Our next bid: a low anchor, then STEP per round (rares: steady 4, then 2 near his ask, then 1)."""
+    if rare and RARE_STEP > 0:
+        if ours is None:
+            return int(her * RARE_ANCHOR_FRAC)
+        gap = her - ours
+        return ours + (RARE_STEP if gap > RARE_NEAR_GAP else 2 if gap > 3 else 1)
+    return int(her * ANCHOR_FRAC) if ours is None else ours + STEP
+
+
 def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
@@ -183,10 +202,10 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             b.wait_tick()
             continue
         # 4) our next number: low anchor, then STEP per round toward her
-        if ours is None:
-            nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
+        if side == "buy":
+            nxt = next_buy_price(ours, her, target.get("rarity") == "rare")
         else:
-            nxt = ours + STEP if side == "buy" else ours - SELL_STEP
+            nxt = int(round(her * SELL_ANCHOR_MULT)) if ours is None else ours - SELL_STEP
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
         # 5) she is already at (or past) our next number: take her price
         crossed = her <= nxt if side == "buy" else her >= nxt
@@ -240,7 +259,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
             if only and c["id"] not in only:
                 continue
             v = b.value(c["id"])["your_value"]
-            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
+            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"], "rarity": c["rarity"],
                          "value": cap if cap else v, "private": v})
     buys.sort(key=lambda x: -x["private"])
     sells = []
@@ -257,7 +276,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
 
 
 def main() -> None:
-    global CASH_RESERVE, MAX_ROUNDS
+    global CASH_RESERVE, MAX_ROUNDS, RARE_STEP
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
@@ -267,6 +286,7 @@ def main() -> None:
     ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (default: our value)")
+    ap.add_argument("--rare-step", type=int, default=RARE_STEP, help="steady step for rares (0 = the old 1 P steps)")
     args = ap.parse_args()
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
@@ -274,6 +294,7 @@ def main() -> None:
     plan = build_plan(b, me, only, args.cap)
     CASH_RESERVE = args.reserve
     MAX_ROUNDS = args.max_rounds
+    RARE_STEP = args.rare_step
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
         print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}")
