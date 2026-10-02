@@ -1,52 +1,85 @@
 {
- "pack": {
-  "n": 3,
-  "n_deals": 2,
-  "n_negotiated": 2,
-  "welcome": 17,
-  "opening": 30,
-  "final": 22,
-  "bids_to_final": 7,
-  "accept_low": 19,
-  "refused_high": 20,
-  "deal_prices": [
-   21,
-   23
-  ]
+ "buy": {
+  "pack": {
+   "n": 5,
+   "n_deals": 4,
+   "n_negotiated": 3,
+   "welcome": 17,
+   "opening": 30,
+   "final": 23,
+   "bids_to_final": 7,
+   "accept_low": 19,
+   "refused_high": 20,
+   "deal_prices": [
+    21,
+    23,
+    23
+   ]
+  },
+  "unc": {
+   "n": 8,
+   "n_deals": 7,
+   "n_negotiated": 5,
+   "welcome": 17,
+   "opening": 29,
+   "final": 23,
+   "bids_to_final": 5,
+   "accept_low": 22,
+   "refused_high": 21,
+   "deal_prices": [
+    22,
+    22,
+    23,
+    24,
+    25
+   ]
+  },
+  "com": {
+   "n": 6,
+   "n_deals": 6,
+   "n_negotiated": 5,
+   "welcome": 7,
+   "opening": 12,
+   "final": 9,
+   "bids_to_final": 6,
+   "accept_low": 9,
+   "refused_high": 9,
+   "deal_prices": [
+    9,
+    9,
+    10,
+    10,
+    10
+   ]
+  }
  },
- "unc": {
-  "n": 6,
-  "n_deals": 5,
-  "n_negotiated": 4,
-  "welcome": 17,
-  "opening": 29,
-  "final": 22,
-  "bids_to_final": 6,
-  "accept_low": 22,
-  "refused_high": 21,
-  "deal_prices": [
-   22,
-   22,
-   23,
-   24
-  ]
+ "sell": {
+  "com": {
+   "n": 4,
+   "n_deals": 4,
+   "opening_bid": 5,
+   "her_limit": 6,
+   "best_price": 16,
+   "deal_prices": [
+    5,
+    5,
+    6,
+    16
+   ]
+  },
+  "unc": {
+   "n": 0,
+   "n_deals": 0,
+   "opening_bid": null,
+   "her_limit": null,
+   "best_price": null,
+   "deal_prices": []
+  }
  },
- "com": {
-  "n": 6,
-  "n_deals": 6,
-  "n_negotiated": 5,
-  "welcome": 7,
-  "opening": 12,
-  "final": 9,
-  "bids_to_final": 6,
-  "accept_low": 9,
-  "refused_high": 9,
-  "deal_prices": [
-   9,
-   9,
-   10,
-   10,
-   10
-  ]
+ "unlock": {
+  "negotiated": 3,
+  "good": 1,
+  "needed": 3,
+  "assumed": true
  }
 }

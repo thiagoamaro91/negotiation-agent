@@ -174,6 +174,9 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
         # 4) our next number: low anchor, then STEP per round toward her
         if ours is None:
             nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
+            sell_adv = MEM.advice_sell(kind_of(item)) if (MEM and side == "sell" and kind_of(item)) else None
+            if sell_adv:  # memory: never open far above the best price anyone has got from her (saves rounds; her limit does not move)
+                nxt = min(nxt, sell_adv["start_cap"])
         else:
             step = STEP
             if side == "buy" and MEM and FAST_STEPS and kind_of(item):  # opt-in (--fast-steps): +3 while far from the learned probe, then +1

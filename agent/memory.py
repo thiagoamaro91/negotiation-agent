@@ -45,23 +45,48 @@ def _cash(o: dict) -> int:
     return int((o.get("want") or {}).get("cash") or (o.get("give") or {}).get("cash") or 0)
 
 
+def _asset_ref(t: dict) -> str | None:
+    """The card ref in a sell conversation: it is carried by the asset dicts inside the offers."""
+    for m in t.get("messages", []):
+        o = m.get("offer") or {}
+        for a in (o.get("give") or {}).get("assets", []) + (o.get("want") or {}).get("assets", []):
+            if isinstance(a, dict) and a.get("ref"):
+                return a["ref"]
+    return None
+
+
 def _topic_ref(topic: dict | None) -> str | None:
     buy = (topic or {}).get("buy") or {}
     return buy.get("card") or buy.get("pack")
 
 
+LIST = {"pack": 26, "unc": 25, "com": 10}      # her list prices (GET /api/dealers); the welcome price is ~0.65-0.7 x list, her opening ~1.15 x list
+WELCOME_MAX_FRAC = 0.75
+
+
+def took_first_ask(s: dict) -> bool:
+    return s.get("side", "buy") == "buy" and s["outcome"] == "deal" and bool(s["asks"]) and s["price"] == s["asks"][0]
+
+
 def is_welcome(s: dict) -> bool:
-    """Her fixed first-deal price: the ask never moved and we paid exactly that ask (any bid of ours in the thread was just noise)."""
-    return s["outcome"] == "deal" and bool(s["asks"]) and len(set(s["asks"])) == 1 and s["price"] == s["asks"][0]
+    """Her fixed first-deal price: we paid exactly her first ask and it was far under list (any bid of ours was just noise)."""
+    return took_first_ask(s) and s["price"] <= WELCOME_MAX_FRAC * LIST[s["kind"]]
+
+
+def is_opening(s: dict) -> bool:
+    """We paid her OPENING ask without negotiating it down. The rules: a deal at the dealer's opening price does not count."""
+    return took_first_ask(s) and not is_welcome(s)
 
 
 # ------------------------------------------------------------------------------------------ parsing
 
 def sample_from_transcript(t: dict, me_team: str | None, source: str = "own") -> dict | None:
-    """One thread (as GET /api/threads/{id} returns it) -> a sample. Returns None if it is not a buy from Abuela."""
+    """One thread (as GET /api/threads/{id} returns it) -> a sample, for a buy from her or a sell to her. None for anything else.
+    For a sell, `asks` are HER bids (what she offers to pay) and `bids` are OUR asks (what we want for the card)."""
     if t.get("with") != "abuela":
         return None
-    ref = _topic_ref(t.get("topic"))
+    side = "sell" if "sell" in (t.get("topic") or {}) else "buy"
+    ref = _topic_ref(t.get("topic")) if side == "buy" else _asset_ref(t)
     if not ref or kind_of(ref) is None:
         return None
     asks, bids, final_ask, price, gift = [], [], None, None, False
@@ -79,7 +104,7 @@ def sample_from_transcript(t: dict, me_team: str | None, source: str = "own") ->
             if o.get("status") == "settled":
                 price = _cash(o)
     deal = t.get("status") == "deal"
-    return {"source": source, "thread": t["id"], "team": t.get("team") or me_team, "item": ref, "kind": kind_of(ref), "asks": asks,
+    return {"source": source, "side": side, "thread": t["id"], "team": t.get("team") or me_team, "item": ref, "kind": kind_of(ref), "asks": asks,
             "bids": bids, "final_ask": final_ask, "outcome": "deal" if deal else (t.get("status") or "open"),
             "price": price if deal else None, "gift": gift, "closed_reason": t.get("closed_reason")}
 
@@ -98,7 +123,7 @@ def samples_from_feed(events: list[dict]) -> list[dict]:
         elif e["type"] == "settlement" and p.get("persona") == "abuela":
             team = next((x for x in p["parties"] if x != "abuela"), None)
             refs = {i.get("ref") for i in p.get("items", [])}
-            cands = [t for t in th.values() if t["team"] == team and _topic_ref(t["topic"]) in refs and t["status"] == "open" and t["last"] <= e["tick"]]
+            cands = [t for t in th.values() if t["team"] == team and (_topic_ref(t["topic"]) or _asset_ref(t)) in refs and t["status"] == "open" and t["last"] <= e["tick"]]
             if cands:
                 c = max(cands, key=lambda t: t["last"])
                 c["status"], c["price"] = "deal", p["price"]
@@ -115,9 +140,11 @@ def samples_from_feed(events: list[dict]) -> list[dict]:
 # ------------------------------------------------------------------------------------------ memory
 
 class Memory:
-    def __init__(self, samples: list[dict], me_team: str | None):
+    def __init__(self, samples: list[dict], me_team: str | None, needed: int | None = None):
         self.samples, self.me = samples, me_team
+        self.needed, self.needed_assumed = (needed, False) if needed else (3, True)   # "a few good negotiated deals"; 3 until the server says
         self.stats = self.analyse()
+        self.sells = self.analyse_sells()
 
     # ---- load / refresh
     @classmethod
@@ -145,7 +172,15 @@ class Memory:
                         known[("public", s["thread"])] = s
             except Exception as e:  # the feed is a bonus: never block a run on it
                 print(f"[memory] public feed unavailable ({e})")
-        mem = cls(list(known.values()), team)
+        needed = None                                   # the level-2 dealer's unlock rule, when the organisers publish it
+        try:
+            for d in b.dealers().get("personas", []):
+                u = d.get("unlock") or {}
+                if u.get("early_deals_with") == "abuela" and u.get("early_min_deals"):
+                    needed = int(u["early_min_deals"])
+        except Exception:
+            pass
+        mem = cls(list(known.values()), team, needed)
         mem.save(me)
         if not quiet:
             print(mem.brief())
@@ -154,17 +189,17 @@ class Memory:
     def save(self, me: dict | None = None) -> None:
         MEM.mkdir(parents=True, exist_ok=True)
         (MEM / "samples.jsonl").write_text("".join(json.dumps(s, ensure_ascii=False) + "\n" for s in sorted(self.samples, key=lambda s: (s["source"], s["thread"]))))
-        write_json(MEM / "abuela_memory.json", self.stats)
+        write_json(MEM / "abuela_memory.json", {"buy": self.stats, "sell": self.sells, "unlock": self.unlock_progress()})
         (MEM / "lessons.md").write_text(self.lessons(me))
 
     # ---- analysis
     def analyse(self) -> dict:
         out: dict = {}
         for kind, prior in DEFAULTS.items():
-            ss = [s for s in self.samples if s["kind"] == kind]
+            ss = [s for s in self.samples if s["kind"] == kind and s.get("side", "buy") == "buy"]
             deals = [s for s in ss if s["outcome"] == "deal" and s["price"]]
             welcome = [s["price"] for s in deals if is_welcome(s)]                          # her fixed welcome price
-            negotiated = [s for s in deals if s["bids"] and not is_welcome(s)]
+            negotiated = [s for s in deals if s["bids"] and not is_welcome(s) and not is_opening(s)]
             by_bid = [s["price"] for s in negotiated if s["price"] in s["bids"]]            # a bid of OURS she accepted: evidence of her floor
             finals = [s["final_ask"] for s in ss if s["final_ask"]]
             # a bid she did not take is a refusal: all our bids when we ended on her ask/final, all but the last when she took a bid of ours
@@ -183,6 +218,31 @@ class Memory:
             }
         return out
 
+    def analyse_sells(self) -> dict:
+        """What she pays when WE sell her a card: her opening bid, where her bid stops (her limit), the best price anyone got."""
+        out: dict = {}
+        for kind in ("com", "unc"):
+            ss = [s for s in self.samples if s.get("side") == "sell" and s["kind"] == kind and s["asks"]]
+            deals = [s for s in ss if s["outcome"] == "deal" and s["price"]]
+            lasts = [s["final_ask"] or s["asks"][-1] for s in ss if len(s["asks"]) > 1]    # her last bid: she stops raising it at her limit
+            out[kind] = {"n": len(ss), "n_deals": len(deals), "opening_bid": round(st.median([s["asks"][0] for s in ss])) if ss else None,
+                         "her_limit": round(st.median(lasts)) if lasts else None, "best_price": max((s["price"] for s in deals), default=None),
+                         "deal_prices": sorted(s["price"] for s in deals)}
+        return out
+
+    def advice_sell(self, kind: str) -> dict | None:
+        """None until we have seen at least one sale of this kind. start_cap: no point opening above 1.5 x the best price ever paid."""
+        s = self.sells.get(kind) or {}
+        if not s.get("best_price"):
+            return None
+        return {"her_limit": s["her_limit"], "best_price": s["best_price"], "start_cap": int(s["best_price"] * 1.5) + 1, "confidence": s["n_deals"]}
+
+    def unlock_progress(self) -> dict:
+        """Our negotiated deals with her (welcome deals excluded: they never count). 'good' = graded good or ok, i.e. not worse than others got."""
+        mine = [s for s in self.samples if s["source"] == "own" and s["outcome"] == "deal" and s["bids"] and not is_welcome(s) and not is_opening(s)]
+        good = [s for s in mine if self.grade(s)[0] in ("good", "ok")]
+        return {"negotiated": len(mine), "good": len(good), "needed": self.needed, "assumed": self.needed_assumed}
+
     def advice(self, kind: str) -> dict:
         s = self.stats.get(kind) or self.analyse()[kind]
         probe = max(s["refused_high"] + 1, s["accept_low"] - 1)           # one under the lowest price she has accepted, above what she refused
@@ -191,8 +251,12 @@ class Memory:
 
     # ---- grading our own deals
     def grade(self, s: dict) -> tuple[str, str]:
+        if s.get("side") == "sell":
+            return self.grade_sell(s)
         st_ = self.stats[s["kind"]]
-        paid, others = s["price"], [p["price"] for p in self.samples if p["source"] == "public" and p["kind"] == s["kind"] and p["outcome"] == "deal" and p["bids"]]
+        paid, others = s["price"], [p["price"] for p in self.samples if p["source"] == "public" and p["kind"] == s["kind"] and p["outcome"] == "deal" and p["bids"] and p.get("side", "buy") == "buy" and not is_welcome(p) and not is_opening(p)]
+        if is_opening(s):
+            return "bad", f"paid her opening price {paid} P without negotiating it down: it does not count toward the ladder or the unlock"
         if is_welcome(s):
             return "neutral", f"took her welcome price {paid} P (fixed ~{st_['welcome']}); it never counts toward the ladder, so use it once, on the item with the biggest private gain"
         if s["outcome"] == "deal":
@@ -205,6 +269,17 @@ class Memory:
         why = f", closed: {s['closed_reason']}" if s.get("closed_reason") else ""
         return ("bad", f"no deal after {len(s['bids'])} bids{why}") if s["bids"] else ("neutral", f"talked only ({s['outcome']}{why})")
 
+    def grade_sell(self, s: dict) -> tuple[str, str]:
+        if s["outcome"] != "deal":
+            return ("bad", f"no sale after {len(s['bids'])} asks") if s["bids"] else ("neutral", f"talked only ({s['outcome']})")
+        others = [p["price"] for p in self.samples if p["source"] == "public" and p.get("side") == "sell" and p["kind"] == s["kind"] and p["outcome"] == "deal"]
+        if not others:
+            return "ok", f"sold for {s['price']} P (no comparison yet)"
+        med, best = st.median(others), max(others + [s["price"]])
+        if s["price"] >= med:
+            return "good", f"sold for {s['price']} P, at or over the median {round(med)} P other teams got (best {best} P)"
+        return "bad", f"sold for {s['price']} P; other teams got a median of {round(med)} P (best {best} P)"
+
     def lessons(self, me: dict | None = None) -> str:
         mine = [s for s in sorted(self.samples, key=lambda s: s["thread"]) if s["source"] == "own"]
         lines = ["# What the Abuela agent has learned", "", f"{len(self.samples)} conversations analysed ({len(mine)} ours, {len(self.samples) - len(mine)} other teams', public).", ""]
@@ -212,7 +287,13 @@ class Memory:
         for s in mine:
             g, why = self.grade(s)
             lines.append(f"| {s['thread']} | {s['item']} | {s['outcome']}{' @ ' + str(s['price']) if s['price'] else ''}{' (gift)' if s['gift'] else ''} | **{g}** | {why} |")
-        lines += ["", "## What we know about her, per item kind", "", "| kind | samples | welcome | opens at | final lands at | bids before final | lowest accepted bid | highest refused | probe | ceiling |", "|---|---|---|---|---|---|---|---|---|---|"]
+        u = self.unlock_progress()
+        lines += ["", f"## Level-2 unlock progress: {u['good']} good / {u['negotiated']} negotiated of {u['needed']} needed" + (" (threshold ASSUMED: the organisers have not published it)" if u["assumed"] else ""),
+                  "", "Welcome-price deals never count. A 'good' deal is one graded good or ok against what other teams paid.", "",
+                  "## What she pays when we sell to her", "", "| kind | samples | opens at (her bid) | her limit (last bid) | best price paid | deal prices |", "|---|---|---|---|---|---|"]
+        for k, v in self.sells.items():
+            lines.append(f"| {k} | {v['n']} ({v['n_deals']} sold) | {v['opening_bid'] or '-'} | {v['her_limit'] or '-'} | {v['best_price'] or '-'} | {v['deal_prices'] or '-'} |")
+        lines += ["", "## What we know about her when we buy, per item kind", "", "| kind | samples | welcome | opens at | final lands at | bids before final | lowest accepted bid | highest refused | probe | ceiling |", "|---|---|---|---|---|---|---|---|---|---|"]
         for k, s in self.stats.items():
             a = self.advice(k)
             lines.append(f"| {k} | {s['n']} ({s['n_negotiated']} negotiated) | {s['welcome']} | {s['opening']} | {s['final']} | {s['bids_to_final']} | {s['accept_low']} | {s['refused_high'] or '-'} | {a['probe']} | {a['ceiling']} |")
@@ -225,6 +306,11 @@ class Memory:
         for k in self.stats:
             a = self.advice(k)
             lines.append(f"[memory]   {k:4} probe={a['probe']:>3} ceiling={a['ceiling']:>3} final~{a['expected_final']:>3} welcome={a['welcome']:>3} (from {a['confidence']} negotiated deals)")
+        u = self.unlock_progress()
+        lines.append(f"[memory] level-2 unlock: {u['good']} good / {u['negotiated']} negotiated deals of {u['needed']} needed" + (" (assumed)" if u["assumed"] else ""))
+        for k, v in self.sells.items():
+            if v["n_deals"]:
+                lines.append(f"[memory]   sell {k:4} her limit~{v['her_limit']} best price paid={v['best_price']} ({v['n_deals']} sales seen)")
         bad = [s for s in self.samples if s["source"] == "own" and self.grade(s)[0] == "bad"]
         for s in bad:
             lines.append(f"[memory] LESSON thread {s['thread']} {s['item']}: {self.grade(s)[1]}")

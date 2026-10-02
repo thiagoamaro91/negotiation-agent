@@ -48,6 +48,9 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 - `logs/memory/abuela_memory.json`: per item kind (pack, unc, com): welcome price, where she opens, where her final lands, bids before the final, the lowest price she ever took from a bid, the highest bid she refused.
 - `logs/memory/lessons.md`: each of our deals graded good / ok / bad / neutral against what other teams paid, and the current advice.
 - What it changes in the bot: bids never go past her learned **ceiling** (the highest she has needed before naming a final); a final under our private value is still taken. It never changes what we accept below our value.
-- `python3 agent/memory.py` rebuilds from the committed transcripts with no network. Tests: `python3 tests/test_memory.py`.
+- `python3 agent/memory.py` rebuilds from the committed transcripts with no network. Tests: `python3 tests/test_memory.py` (15 offline tests).
+
+- **Unlock counter:** `lessons.md` and the run brief show `good / negotiated of needed`. Welcome deals and deals at her opening price never count (rules). The threshold is read from the server when a dealer publishes `unlock.early_min_deals`; until then it is **assumed to be 3** and marked so. El Chato (level 2) is announced but his rule is not published yet.
+- **Sell side:** conversations where we sell her a card are parsed too (her bids vs our asks). `lessons.md` shows what she pays per kind; the bot never opens a sell above 1.5 x the best price anyone has got from her (saves rounds; it never goes under our own value + 2 P).
 
 Honest limits: every conversation has its own secret limit, so these numbers are soft evidence; with few deals the advice is mostly priors from Friday's public data. A bad grade means "another team paid less", not proof we could have.

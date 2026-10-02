@@ -9,7 +9,7 @@
    "card": "SAL-06"
   }
  },
- "status": "open",
+ "status": "deal",
  "created_tick": 66,
  "messages": [
   {
@@ -226,7 +226,7 @@
     "to": "abuela",
     "venue": null,
     "thread": 117,
-    "status": "open",
+    "status": "cancelled",
     "give": {
      "cash": 14,
      "assets": [],
@@ -255,7 +255,7 @@
     "to": "t03",
     "venue": null,
     "thread": 117,
-    "status": "queued",
+    "status": "settled",
     "give": {
      "cash": 0,
      "assets": [],
@@ -274,54 +274,7 @@
    }
   }
  ],
- "standing_offers": [
-  {
-   "id": 995,
-   "maker": "t03",
-   "to": "abuela",
-   "venue": null,
-   "thread": 117,
-   "status": "open",
-   "give": {
-    "cash": 14,
-    "assets": [],
-    "types": []
-   },
-   "want": {
-    "cash": 0,
-    "assets": [],
-    "types": [
-     "card:SAL-06"
-    ]
-   },
-   "expires_tick": 72,
-   "created_tick": 70,
-   "final": false
-  },
-  {
-   "id": 1002,
-   "maker": "abuela",
-   "to": "t03",
-   "venue": null,
-   "thread": 117,
-   "status": "queued",
-   "give": {
-    "cash": 0,
-    "assets": [],
-    "types": [
-     "card:SAL-06"
-    ]
-   },
-   "want": {
-    "cash": 25,
-    "assets": [],
-    "types": []
-   },
-   "expires_tick": 73,
-   "created_tick": 71,
-   "final": true
-  }
- ],
+ "standing_offers": [],
  "item": "La Galería",
  "closed_reason": null
 }
