@@ -1,0 +1,54 @@
+# Findings
+
+What we have worked out from the public feed and our own deals. These are inferences from data, not published rules: each section says when it was observed. Re-check after a round change. The feed tools (`tools/feed_recorder.py`, `tools/feed_report.py`, data in `logs/feed/`) come with pull request #1.
+
+## Abuela Carmen (level 1 dealer) — Friday 2 Oct, ticks 0–65
+
+- **Welcome price on each team's first deal, no haggling**: pack 17, uncommon 17, common 7; she pays 13 when we sell to her.
+- After the first deal: packs open at 30 and close at 19–24; uncommons open at 29 and close at 21–25; commons open at 12 and close at 9–10. She buys commons at 5–6 and uncommons at 13–16.
+- Her first reply drops 3–4 P, then she mirrors our step. She gives a final offer after 5–6 replies and accepts ours once it is within 1–2 P of her ask.
+- Raising by 2 P per round reached 21–22. Raising by 1 P ran out her patience and ended at 22–24. `agent/abuela.py` uses `STEP = 1` today; `STEP = 2` is worth a try.
+- Limits: 8 deals per team per hour, 3 packs per team per hour. She gives some teams free cards.
+- Unlocking the next level early needs about 3 **negotiated** deals; deals at her opening price do not count.
+
+## Leaderboard — Friday 2 Oct, ticks 0–65
+
+- The score is **relative** to the other teams: on dealer deals alone the leader was capped at 12.5.
+- Packs bought at 21–24 added nothing. Named cards and sales to Abuela did. Accepting her final offer on a pack (t12 at 24) added nothing either.
+- **Team-to-team trades move the score most.** One sale of a common for 12 P (tick 40) took t10 from 8.3 to 29.1 and the seller t06 from 12.5 to 18.4. At tick 65 the top three (t13 27.9, t10 24.1, t14 20.6) were the teams that had traded with other teams; we were 13th with 8.33.
+- The only rare sold between teams so far went for 65 P (LAT-09, t13 to t14, tick 47).
+- The exact ladder formula is still unknown. Record our score after every deal of our own.
+
+## El Rastro (shared market)
+
+- Fee: 5% plus 1 P per card, paid by the side that accepts.
+- Commons listed at 10–12 P mostly stayed unsold on Friday.
+- Listings expire after 40 ticks by default.
+
+## Where we stand — tick 65
+
+- Our set multipliers and holdings are in `logs/state/me.json`. Lavapiés is our best set (×1.6), Chamberí our worst (×0.5).
+- For the Lavapiés page we are missing the two rares, LAV-09 and LAV-10, which Abuela does not sell. On Friday LAV-09 was held by t07 and LAV-10 by t05 and t08. Each is worth 112 to us.
+- Our trade currency is LAT-10 (worth 77 to us). Surplus to sell: the Malasaña cards and the spare copies of LAV-01 and LAV-03.
+- Nothing in this repo handles team-to-team trades yet: an offer addressed to us waits until someone accepts it by hand.
+
+## What the public feed shows
+
+Every team's structured offers to the dealers (item and price), the dealers' replies with their words, every settlement, El Rastro listings, gifts and announcements. Team words are not published.
+
+## API quirks not in the rules
+
+- `/api/feed` has no paging: `after` and `since` are ignored. Ask for `limit=1000` and dedupe by `id`.
+- `/api/cards/{id}` needs a key, unlike the other public reads.
+- Keyless reads: 60 per second per address. Keyed calls: 5 per second, burst 20.
+- Per tick: 1 accept per team (shared by every agent on the key), 1 message per conversation, 12 new offers. At most 6 open conversations and 30 open offers. Text is capped at 1200 characters.
+- On Friday the clock started late (about 20:20 instead of 19:00) and still closed at 23:00.
+
+## Open questions for the organisers
+
+- The judges' criteria (40 of the 100 points).
+- Whether Friday's late start shifts the schedule.
+- When level 2 opens (`/api/levels` was still empty at tick 65).
+- Whether dealers' true limits are revealed after the Market Test.
+- Whether the one-accept-per-tick limit also covers duel accepts.
+- How the 30 negotiating points split between duels, the dealer ladder and team trades.
