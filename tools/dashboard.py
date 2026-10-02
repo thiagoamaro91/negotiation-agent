@@ -3,6 +3,7 @@ album pages, leaderboard, the El Rastro board with our private value of each lis
 
     python3 tools/dashboard.py              # http://127.0.0.1:8765
     python3 tools/dashboard.py --lan        # also reachable from teammates' laptops, behind a random token
+    DASH_TOKEN=... python3 tools/dashboard.py && tailscale funnel --bg 8765   # public HTTPS link, token-gated
 
 The team key stays in this process; the page only ever sees /data. Public data is read without the key, so the
 dashboard uses ~0.4 keyed requests per second and leaves the 5 req/s budget to the agents.
@@ -239,7 +240,8 @@ def main() -> None:
     url = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai").rstrip("/")
     b = Bazaar(url, os.environ["BAZAAR_KEY"])
     threading.Thread(target=poller, args=(b, url, args.interval), daemon=True).start()
-    token = secrets.token_urlsafe(8) if args.lan else None
+    # DASH_TOKEN (in .env) keeps the shared link stable across restarts, e.g. behind `tailscale funnel 8765`
+    token = os.environ.get("DASH_TOKEN") or (secrets.token_urlsafe(8) if args.lan else None)
     host = "0.0.0.0" if args.lan else "127.0.0.1"
     print(f"dashboard: http://127.0.0.1:{args.port}/" + (f"?t={token}" if token else ""), flush=True)
     if args.lan:

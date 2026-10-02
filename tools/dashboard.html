@@ -57,6 +57,14 @@ h2 { font-size: 15px; font-weight: 800; font-stretch: 90%; letter-spacing: 0.12e
 .quote b { color: var(--her); font-weight: 600; }
 .quote b.us { color: var(--ours); }
 svg.pc { width: 100%; height: 110px; display: block; }
+.howto { margin: 0; font-size: 13px; color: var(--muted); max-width: 95ch; line-height: 1.45; }
+.howto .h { color: var(--her); } .howto .o { color: var(--ours); } .howto .g { color: var(--gold); }
+.pbp { display: grid; gap: 4px; }
+.pbp .sum { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+.pbp table { font-size: 11.5px; }
+.pbp td { padding: 2px 4px; white-space: normal; }
+.pbp .w-her { color: var(--her); font-family: var(--mono); } .pbp .w-us { color: var(--ours); font-family: var(--mono); }
+.pbp .giftrow { color: var(--gold); font-size: 11.5px; }
 svg text { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -104,7 +112,9 @@ svg.spark { width: 100%; height: 70px; display: block; }
 
 <div class="grid">
   <div class="stack">
-    <div class="panel"><h2>Conversations · her price vs ours</h2><div class="convs" id="convs"></div></div>
+    <div class="panel"><h2>Conversations · her price vs ours</h2>
+      <p class="howto">How to read it: <b class="h">red</b> is the dealer's price, <b class="o">blue</b> is ours. She only moves when we move, and copies our step size, so we start low and go up 1 P a round. When her patience runs out she names a <b class="g">final offer</b> (gold ring, ★) at her limit; our bot takes it if it is below what the card is worth to us. A deal scores by how much of her price range we captured.</p>
+      <div class="convs" id="convs"></div></div>
     <div class="panel"><h2>Album · our private multipliers</h2><div class="album" id="album"></div></div>
     <div class="panel"><h2>El Rastro board · worth it to us?</h2><div class="tablewrap"><table id="board"></table></div></div>
   </div>
@@ -162,6 +172,48 @@ function priceChart(msgs) {
   return `<svg class="pc" viewBox="0 0 ${W} ${H}">${ticks}${line("them", "var(--her)")}${line("us", "var(--ours)")}</svg>`;
 }
 
+// Round by round in plain words: who moved, by how much, the gap left, and what it means.
+function playByPlay(c) {
+  const rows = [];
+  let her = null, us = null, opening = null;
+  for (const m of c.messages || []) {
+    const gift = /present from me: ([^.!]+)/.exec(m.text || "");
+    if (m.price == null) {
+      if (gift) rows.push({ who: "gift", note: `Gift: ${gift[1]} (free card, not scored)` });
+      continue;
+    }
+    const prev = m.who === "them" ? her : us;
+    const delta = prev == null ? null : m.price - prev;
+    if (m.who === "them") { her = m.price; if (opening == null) opening = m.price; } else { us = m.price; }
+    let note = "";
+    if (m.who === "them") {
+      if (prev == null) note = "her opening price";
+      else if (m.final) note = "FINAL OFFER: her limit. Take it or she walks";
+      else if (delta === 0) note = "she held: we must move to make her move";
+      else note = `she came down ${-delta} P`;
+    } else {
+      note = prev == null ? "our anchor: low on purpose" : `we went up ${delta} P (small steps earn small steps)`;
+    }
+    if (gift) note += ` · gift: ${gift[1]}`;
+    const gap = her != null && us != null ? her - us : null;
+    rows.push({ who: m.who, price: m.price, delta, gap, note, final: m.final });
+  }
+  let summary = "";
+  const lastPrice = (c.messages || []).filter((m) => m.price != null).slice(-1)[0]?.price;
+  if (c.status === "deal" && opening != null && lastPrice != null) {
+    const saved = opening - lastPrice;
+    summary = `Deal at ${lastPrice} P: ${saved} P below her opening (${Math.round(saved / opening * 100)}% off).`;
+  } else if (c.status === "open" && her != null && us != null) {
+    summary = `Live: gap ${her - us} P. Next we step +1; she mirrors or holds until her final offer.`;
+  } else if (c.status !== "open") {
+    summary = `Ended (${c.status}${c.reason ? ": " + c.reason : ""}) with no deal.`;
+  }
+  const body = rows.slice(-6).map((r) => r.who === "gift"
+    ? `<tr><td colspan="4" class="giftrow">${esc(r.note)}</td></tr>`
+    : `<tr><td class="${r.who === "us" ? "w-us" : "w-her"}">${r.who === "us" ? "us" : "her"}</td><td class="n">${r.price}${r.final ? " ★" : ""}</td><td class="n">${r.delta == null ? "" : (r.delta > 0 ? "+" : "") + r.delta}</td><td>${esc(r.note)}${r.gap != null ? ` <span class="muted">· gap ${r.gap}</span>` : ""}</td></tr>`).join("");
+  return `<div class="pbp"><div class="sum">${esc(summary)}</div>${body ? `<table>${body}</table>` : ""}</div>`;
+}
+
 function topicText(t) {
   if (!t) return "";
   if (t.buy) return "buy " + (t.buy.card || t.buy.pack || ((t.buy.rarity || "") + " " + (t.buy.set || "")));
@@ -178,6 +230,7 @@ function renderConvs(d) {
     return `<div class="conv ${c.status === "open" ? "open" : ""}">
       <div class="hd"><span class="t">#${c.id} ${esc(c.with)} · ${esc(topicText(c.topic))}</span><span class="st ${esc(c.status)}">${esc(c.status)} ${esc(outcome)}</span></div>
       ${priceChart(msgs)}
+      ${playByPlay(c)}
       <div class="quote">${lastThem ? `<b>${esc(c.with)}:</b> ${esc(lastThem.text)}` : ""}${lastUs ? `<br><b class="us">us:</b> ${esc(lastUs.text)}` : ""}</div>
     </div>`;
   }).join("") || `<span class="muted">No conversations yet.</span>`;
