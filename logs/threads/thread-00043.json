@@ -1,0 +1,127 @@
+{
+ "id": 43,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "pack": "sobre_barrio"
+  }
+ },
+ "status": "closed",
+ "created_tick": 22,
+ "messages": [
+  {
+   "id": 197,
+   "tick": 22,
+   "sender": "t03",
+   "text": "Buenos días, Abuela Carmen! I'm new at El Rastro. I'm looking at a neighbourhood pack, but first, how does your stall work?",
+   "offer": null
+  },
+  {
+   "id": 202,
+   "tick": 23,
+   "sender": "abuela",
+   "text": "Hola, cariño, have you eaten? Neighbourhood pack for 17 P. A good start for your album.",
+   "offer": {
+    "id": 224,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 43,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "pack:sobre_barrio"
+     ]
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 25,
+    "created_tick": 23,
+    "final": false
+   }
+  },
+  {
+   "id": 204,
+   "tick": 23,
+   "sender": "t03",
+   "text": "Thank you, that's kind. Which neighbourhoods do your children usually ask for, and do you have a favourite card?",
+   "offer": null
+  },
+  {
+   "id": 209,
+   "tick": 24,
+   "sender": "abuela",
+   "text": "Look, 17 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 229,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 43,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "pack:sobre_barrio"
+     ]
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 26,
+    "created_tick": 24,
+    "final": false
+   }
+  },
+  {
+   "id": 212,
+   "tick": 24,
+   "sender": "t03",
+   "text": "Lovely. Are there things you like in a customer, or things that make you stop dealing with someone?",
+   "offer": null
+  },
+  {
+   "id": 216,
+   "tick": 25,
+   "sender": "abuela",
+   "text": "Oh, oh... 17 P, and only because you have a kind face.",
+   "offer": {
+    "id": 234,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 43,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "pack:sobre_barrio"
+     ]
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 27,
+    "created_tick": 25,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Neighbourhood pack",
+ "closed_reason": null
+}

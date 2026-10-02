@@ -1,0 +1,48 @@
+{
+ "id": 49,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-06"
+  }
+ },
+ "status": "deal",
+ "created_tick": 26,
+ "messages": [
+  {
+   "id": 244,
+   "tick": 27,
+   "sender": "abuela",
+   "text": "Welcome, hijo! Look, La Tabacalera, 17 P. Made for beginners.",
+   "offer": {
+    "id": 266,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 49,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-06"
+     ]
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 29,
+    "created_tick": 27,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Tabacalera",
+ "closed_reason": null
+}

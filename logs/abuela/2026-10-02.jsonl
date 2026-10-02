@@ -1,0 +1,7 @@
+{"ts": "2026-10-02T20:44:01", "run": "20261002-2044-prelog", "agent": "abuela", "event": "open_refused", "item": "LAV-06", "side": "buy", "code": "thread_exists", "msg": "you already have an open thread with abuela"}
+{"ts": "2026-10-02T20:44:01", "run": "20261002-2044-prelog", "agent": "abuela", "event": "summary", "cash": 400, "level": 1, "unlocked": ["abuela"], "deals": 0, "ladder_points": 0.0, "score": 0.0}
+{"ts": "2026-10-02T20:45:54", "run": "20261002-2045-prelog", "agent": "abuela", "event": "open", "thread": 49, "side": "buy", "item": "LAV-06", "value": 40.0, "welcome": true}
+{"ts": "2026-10-02T20:46:53", "run": "20261002-2045-prelog", "agent": "abuela", "event": "her", "thread": 49, "price": 17, "final": false, "round": 1}
+{"ts": "2026-10-02T20:46:53", "run": "20261002-2045-prelog", "agent": "abuela", "event": "accept", "thread": 49, "price": 17, "why": "welcome"}
+{"ts": "2026-10-02T20:47:53", "run": "20261002-2045-prelog", "agent": "abuela", "event": "result", "thread": 49, "status": "deal", "price": 17, "reason": null}
+{"ts": "2026-10-02T20:47:53", "run": "20261002-2045-prelog", "agent": "abuela", "event": "summary", "cash": 383, "level": 1, "unlocked": ["abuela"], "deals": 1, "ladder_points": 0.022, "score": 0.0}
