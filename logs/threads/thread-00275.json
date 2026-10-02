@@ -1,0 +1,396 @@
+{
+ "id": 275,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAT-07"
+  }
+ },
+ "status": "deal",
+ "created_tick": 138,
+ "messages": [
+  {
+   "id": 1838,
+   "tick": 139,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 13 P.",
+   "offer": {
+    "id": 2343,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 141,
+    "created_tick": 139,
+    "final": false
+   }
+  },
+  {
+   "id": 1835,
+   "tick": 139,
+   "sender": "chato",
+   "text": "Vermut del Domingo. Thirty-three. You've seen what it goes for elsewhere.",
+   "offer": {
+    "id": 2340,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 141,
+    "created_tick": 139,
+    "final": false
+   }
+  },
+  {
+   "id": 1851,
+   "tick": 140,
+   "sender": "chato",
+   "text": "You move, I move. 33 P.",
+   "offer": {
+    "id": 2362,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 142,
+    "created_tick": 140,
+    "final": false
+   }
+  },
+  {
+   "id": 1854,
+   "tick": 140,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 14 P.",
+   "offer": {
+    "id": 2365,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 142,
+    "created_tick": 140,
+    "final": false
+   }
+  },
+  {
+   "id": 1874,
+   "tick": 141,
+   "sender": "t03",
+   "text": "Fair is fair. 15 P, paid on the spot.",
+   "offer": {
+    "id": 2393,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 143,
+    "created_tick": 141,
+    "final": false
+   }
+  },
+  {
+   "id": 1864,
+   "tick": 141,
+   "sender": "chato",
+   "text": "One peseta. That is not moving, that is twitching. Thirty-three.",
+   "offer": {
+    "id": 2383,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 143,
+    "created_tick": 141,
+    "final": false
+   }
+  },
+  {
+   "id": 1888,
+   "tick": 142,
+   "sender": "chato",
+   "text": "You move, I move. 32 P.",
+   "offer": {
+    "id": 2411,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 32,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 144,
+    "created_tick": 142,
+    "final": false
+   }
+  },
+  {
+   "id": 1894,
+   "tick": 142,
+   "sender": "t03",
+   "text": "One more step from me: 16 P.",
+   "offer": {
+    "id": 2417,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 144,
+    "created_tick": 142,
+    "final": false
+   }
+  },
+  {
+   "id": 1920,
+   "tick": 143,
+   "sender": "t03",
+   "text": "No theatre. 17 P.",
+   "offer": {
+    "id": 2453,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 145,
+    "created_tick": 143,
+    "final": false
+   }
+  },
+  {
+   "id": 1908,
+   "tick": 143,
+   "sender": "chato",
+   "text": "One step from you, one from me. Thirty-one. Keep twitching and we'll be here till Navidad.",
+   "offer": {
+    "id": 2441,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 31,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 145,
+    "created_tick": 143,
+    "final": false
+   }
+  },
+  {
+   "id": 1929,
+   "tick": 144,
+   "sender": "chato",
+   "text": "30 P.",
+   "offer": {
+    "id": 2473,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 146,
+    "created_tick": 144,
+    "final": false
+   }
+  },
+  {
+   "id": 1936,
+   "tick": 144,
+   "sender": "t03",
+   "text": "I am still here and still serious: 18 P.",
+   "offer": {
+    "id": 2479,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 275,
+    "status": "cancelled",
+    "give": {
+     "cash": 18,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "expires_tick": 146,
+    "created_tick": 144,
+    "final": false
+   }
+  },
+  {
+   "id": 1943,
+   "tick": 145,
+   "sender": "chato",
+   "text": "Twenty-nine. Vermut del Domingo. That is my last word — no more steps. You say no, I pack up and we are done.",
+   "offer": {
+    "id": 2492,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 275,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-07"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 147,
+    "created_tick": 145,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Vermut del Domingo",
+ "closed_reason": null
+}

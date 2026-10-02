@@ -114,22 +114,35 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
 
 # ---------------------------------------------------------------- one negotiation
 
-def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
+def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
     topic = {"buy": {"card": item}} if side == "buy" else {"sell": {"assets": [asset_id]}}
-    try:
-        th = b.open_thread(DEALER, topic=topic)
-    except BazaarError as e:
-        log("open_refused", item=item, side=side, code=e.code, msg=e.message)
-        return {"result": "refused", "code": e.code}
-    tid = th["id"]
-    log("open", thread=tid, side=side, item=item, value=value)
-
     ours: int | None = None
     said = 0
     last_her = None
-    answered = None  # id of her offer we last countered
+    answered = None  # id of his offer we last countered
+    if resume:
+        # pick up a conversation an earlier process left open: continue from our last number, never step back
+        tid = resume
+        msgs = sorted((b.thread(tid).get("messages") or []), key=lambda m: m.get("id") or 0)
+        mine = [m for m in msgs if m.get("sender") != DEALER and m.get("offer")]
+        if mine:
+            ours = offer_price(mine[-1]["offer"])
+            said = len(mine)
+            if msgs[-1].get("sender") != DEALER:  # our number is the latest word: wait for his answer
+                o = her_open_offer(b.thread(tid))
+                answered = o["id"] if o else None
+        log("resume", thread=tid, side=side, item=item, value=value, ours=ours, answered=answered)
+    else:
+        try:
+            th = b.open_thread(DEALER, topic=topic)
+        except BazaarError as e:
+            log("open_refused", item=item, side=side, code=e.code, msg=e.message)
+            return {"result": "refused", "code": e.code}
+        tid = th["id"]
+        log("open", thread=tid, side=side, item=item, value=value)
+
     for rnd in range(MAX_ROUNDS):
         t = b.thread(tid)
         status = t.get("status")
@@ -244,12 +257,14 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
 
 
 def main() -> None:
-    global CASH_RESERVE
+    global CASH_RESERVE, MAX_ROUNDS
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--only", default="", help="comma list of card refs and/or sell:<asset_id>")
     ap.add_argument("--max-deals", type=int, default=3)
+    ap.add_argument("--resume", type=int, default=None, help="thread id to continue for the first target")
+    ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (default: our value)")
     args = ap.parse_args()
@@ -258,6 +273,7 @@ def main() -> None:
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap)
     CASH_RESERVE = args.reserve
+    MAX_ROUNDS = args.max_rounds
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
         print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}")
@@ -274,7 +290,7 @@ def main() -> None:
         if target["side"] == "buy" and me["cash"] - CASH_RESERVE < 5:
             log("skip_cash", item=target["item"], cash=me["cash"])
             continue
-        r = negotiate(b, target, False)
+        r = negotiate(b, target, False, resume=args.resume if target is plan[0] else None)
         if r.get("thread"):
             save_thread(b, r["thread"])  # full transcript, her words included
         if r.get("result") == "deal":

@@ -1,0 +1,396 @@
+{
+ "id": 234,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "SAL-08"
+  }
+ },
+ "status": "deal",
+ "created_tick": 120,
+ "messages": [
+  {
+   "id": 1546,
+   "tick": 121,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 13 P.",
+   "offer": {
+    "id": 1955,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 123,
+    "created_tick": 121,
+    "final": false
+   }
+  },
+  {
+   "id": 1543,
+   "tick": 121,
+   "sender": "chato",
+   "text": "Guantería Antigua. Thirty-three. You want it or you want to look?",
+   "offer": {
+    "id": 1952,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 123,
+    "created_tick": 121,
+    "final": false
+   }
+  },
+  {
+   "id": 1557,
+   "tick": 122,
+   "sender": "chato",
+   "text": "No. 33 P, and I'm being generous.",
+   "offer": {
+    "id": 1967,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 124,
+    "created_tick": 122,
+    "final": false
+   }
+  },
+  {
+   "id": 1560,
+   "tick": 122,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 14 P.",
+   "offer": {
+    "id": 1970,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 124,
+    "created_tick": 122,
+    "final": false
+   }
+  },
+  {
+   "id": 1574,
+   "tick": 123,
+   "sender": "t03",
+   "text": "Fair is fair. 15 P, paid on the spot.",
+   "offer": {
+    "id": 1989,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 125,
+    "created_tick": 123,
+    "final": false
+   }
+  },
+  {
+   "id": 1568,
+   "tick": 123,
+   "sender": "chato",
+   "text": "One peseta. That's your move? Mine stays. Thirty-three.",
+   "offer": {
+    "id": 1983,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 33,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 125,
+    "created_tick": 123,
+    "final": false
+   }
+  },
+  {
+   "id": 1580,
+   "tick": 124,
+   "sender": "chato",
+   "text": "32 P.",
+   "offer": {
+    "id": 1997,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 32,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 126,
+    "created_tick": 124,
+    "final": false
+   }
+  },
+  {
+   "id": 1586,
+   "tick": 124,
+   "sender": "t03",
+   "text": "One more step from me: 16 P.",
+   "offer": {
+    "id": 2003,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 126,
+    "created_tick": 124,
+    "final": false
+   }
+  },
+  {
+   "id": 1598,
+   "tick": 125,
+   "sender": "t03",
+   "text": "No theatre. 17 P.",
+   "offer": {
+    "id": 2017,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 127,
+    "created_tick": 125,
+    "final": false
+   }
+  },
+  {
+   "id": 1591,
+   "tick": 125,
+   "sender": "chato",
+   "text": "One step from me too. Thirty-one. Keep crawling, we'll be here till the market closes.",
+   "offer": {
+    "id": 2010,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 31,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 127,
+    "created_tick": 125,
+    "final": false
+   }
+  },
+  {
+   "id": 1606,
+   "tick": 126,
+   "sender": "chato",
+   "text": "You move, I move. 30 P.",
+   "offer": {
+    "id": 2028,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 128,
+    "created_tick": 126,
+    "final": false
+   }
+  },
+  {
+   "id": 1616,
+   "tick": 126,
+   "sender": "t03",
+   "text": "I am still here and still serious: 18 P.",
+   "offer": {
+    "id": 2037,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 234,
+    "status": "cancelled",
+    "give": {
+     "cash": 18,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "expires_tick": 128,
+    "created_tick": 126,
+    "final": false
+   }
+  },
+  {
+   "id": 1621,
+   "tick": 127,
+   "sender": "chato",
+   "text": "Twenty-nine. Guantería Antigua, that's the last word I have. You say no, I pack up and we're done.",
+   "offer": {
+    "id": 2050,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 234,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 129,
+    "created_tick": 127,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Guantería Antigua",
+ "closed_reason": null
+}

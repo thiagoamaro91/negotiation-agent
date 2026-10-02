@@ -1,0 +1,58 @@
+{
+ "duel": 10,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Taxi Blanco",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 84,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 132,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 652,
+  "price": 113,
+  "tick": 131,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 122,
+   "from": "Rival Rojo",
+   "text": "Hello, and thank you for meeting me. I would propose 87 P for this one.",
+   "price": 87,
+   "days": null
+  },
+  {
+   "tick": 125,
+   "from": "Rival Rojo",
+   "text": "I appreciate it. Let us try to close quickly: 102 P.",
+   "price": 102,
+   "days": null
+  },
+  {
+   "tick": 128,
+   "from": "Rival Rojo",
+   "text": "Fair enough, I will meet you partway at 108 P.",
+   "price": 108,
+   "days": null
+  },
+  {
+   "tick": 131,
+   "from": "Rival Rojo",
+   "text": "We are getting close. 113 P works for me.",
+   "price": 113,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

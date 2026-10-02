@@ -1,0 +1,63 @@
+{
+ "duel": 100,
+ "session": 1,
+ "status": "live",
+ "role": "buyer",
+ "item": "Andén 0",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 152,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 156,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 1327,
+  "price": 98,
+  "tick": 146,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 1285,
+  "price": 135,
+  "tick": 146,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 144,
+   "from": "Rival Luna",
+   "text": "180 P?",
+   "price": 180,
+   "days": null
+  },
+  {
+   "tick": 145,
+   "from": "Rival Luna",
+   "text": "150 P?",
+   "price": 150,
+   "days": null
+  },
+  {
+   "tick": 146,
+   "from": "Rival Luna",
+   "text": "135 P?",
+   "price": 135,
+   "days": null
+  },
+  {
+   "tick": 146,
+   "from": "you",
+   "text": "I can move a little: 98.",
+   "price": 98,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}
