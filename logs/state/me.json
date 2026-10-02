@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 383,
+ "cash": 361,
  "level": 1,
  "unlocked": [
   "abuela"
@@ -192,15 +192,37 @@
    "print_run": 90,
    "name": "La Tabacalera",
    "your_value": 40.0
+  },
+  {
+   "id": 352,
+   "kind": "card",
+   "ref": "LAV-02",
+   "serial": 13,
+   "rarity": "common",
+   "set": "LAV",
+   "print_run": 300,
+   "name": "El Frutero de Argumosa",
+   "your_value": 16.0
+  },
+  {
+   "id": 364,
+   "kind": "card",
+   "ref": "LAV-07",
+   "serial": 7,
+   "rarity": "uncommon",
+   "set": "LAV",
+   "print_run": 90,
+   "name": "Samosas de la Plaza",
+   "your_value": 40.0
   }
  ],
- "collection_value": 277.4,
+ "collection_value": 333.4,
  "album": {
   "pages": [
    {
     "set": "LAV",
     "name": "Lavapiés",
-    "have": 5,
+    "have": 7,
     "of": 10,
     "complete": false,
     "master": false
@@ -230,26 +252,26 @@
     "master": false
    }
   ],
-  "filled": 13,
+  "filled": 15,
   "slots": 40
  },
- "tick": 33,
+ "tick": 46,
  "tick_seconds": 60.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 5.25,
-  "negotiating": 5.25,
+  "score": 4.59,
+  "negotiating": 4.59,
   "market": 0.0,
   "neg_points": 0.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.022,
+  "ladder_points": 0.042,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 1,
-  "album_filled": 13,
+  "album_filled": 15,
   "album_slots": 40,
   "pages_complete": 0,
   "rarest": {
@@ -260,13 +282,13 @@
    "rarity": "rare"
   },
   "luck": 0.0,
-  "deals": 1,
+  "deals": 2,
   "badges": [],
   "adjustments": [],
   "frozen": false,
   "venue": null,
   "luck_private": 0.0,
-  "rank": 9
+  "rank": 14
  },
  "venue": null,
  "open_threads": []

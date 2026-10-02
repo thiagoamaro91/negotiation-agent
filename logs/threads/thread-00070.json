@@ -1,0 +1,396 @@
+{
+ "id": 70,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-07"
+  }
+ },
+ "status": "deal",
+ "created_tick": 38,
+ "messages": [
+  {
+   "id": 414,
+   "tick": 39,
+   "sender": "abuela",
+   "text": "Welcome, hijo! Look, Samosas de la Plaza, 29 P. Made for beginners.",
+   "offer": {
+    "id": 454,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 41,
+    "created_tick": 39,
+    "final": false
+   }
+  },
+  {
+   "id": 415,
+   "tick": 39,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 11 P for it?",
+   "offer": {
+    "id": 455,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 41,
+    "created_tick": 39,
+    "final": false
+   }
+  },
+  {
+   "id": 424,
+   "tick": 40,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 26 P. And take this, a little present from me: El Frutero de Argumosa.",
+   "offer": {
+    "id": 464,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 42,
+    "created_tick": 40,
+    "final": false
+   }
+  },
+  {
+   "id": 427,
+   "tick": 40,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 12 P?",
+   "offer": {
+    "id": 467,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 42,
+    "created_tick": 40,
+    "final": false
+   }
+  },
+  {
+   "id": 436,
+   "tick": 41,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 13 P.",
+   "offer": {
+    "id": 475,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 43,
+    "created_tick": 41,
+    "final": false
+   }
+  },
+  {
+   "id": 431,
+   "tick": 41,
+   "sender": "abuela",
+   "text": "Look, 24 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 470,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 43,
+    "created_tick": 41,
+    "final": false
+   }
+  },
+  {
+   "id": 443,
+   "tick": 42,
+   "sender": "abuela",
+   "text": "Look, 24 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 482,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 44,
+    "created_tick": 42,
+    "final": false
+   }
+  },
+  {
+   "id": 451,
+   "tick": 42,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 14 P, por favor?",
+   "offer": {
+    "id": 489,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 44,
+    "created_tick": 42,
+    "final": false
+   }
+  },
+  {
+   "id": 456,
+   "tick": 43,
+   "sender": "abuela",
+   "text": "Oh, oh... 23 P, and only because you have a kind face.",
+   "offer": {
+    "id": 499,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 45,
+    "created_tick": 43,
+    "final": false
+   }
+  },
+  {
+   "id": 462,
+   "tick": 43,
+   "sender": "t03",
+   "text": "I would treasure it, Abuela. 15 P is what I can manage today.",
+   "offer": {
+    "id": 505,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 45,
+    "created_tick": 43,
+    "final": false
+   }
+  },
+  {
+   "id": 469,
+   "tick": 44,
+   "sender": "abuela",
+   "text": "Look, 22 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 515,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 46,
+    "created_tick": 44,
+    "final": false
+   }
+  },
+  {
+   "id": 477,
+   "tick": 44,
+   "sender": "t03",
+   "text": "Que amable! Let me add a little: 16 P.",
+   "offer": {
+    "id": 523,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 70,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "expires_tick": 46,
+    "created_tick": 44,
+    "final": false
+   }
+  },
+  {
+   "id": 480,
+   "tick": 45,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 22 P. Look, cariño, I can't go lower. This is my last offer.",
+   "offer": {
+    "id": 526,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 70,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 47,
+    "created_tick": 45,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Samosas de la Plaza",
+ "closed_reason": null
+}

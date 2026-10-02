@@ -123,6 +123,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
     ours: int | None = None
     said = 0
     last_her = None
+    answered = None  # id of her offer we last countered
     for rnd in range(MAX_ROUNDS):
         t = b.thread(tid)
         status = t.get("status")
@@ -163,13 +164,17 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
             b.close_thread(tid)
             log("walk", thread=tid, price=her, reservation=reservation)
             return {"result": "walked_by_us", "thread": tid}
-        # 3) our next number: low anchor, then STEP per round toward her
+        # 3) she has not answered our last number yet: never bid against ourselves
+        if o["id"] == answered:
+            b.wait_tick()
+            continue
+        # 4) our next number: low anchor, then STEP per round toward her
         if ours is None:
             nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
         else:
             nxt = ours + STEP if side == "buy" else ours - STEP
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
-        # 4) she is already at (or past) our next number: take her price
+        # 5) she is already at (or past) our next number: take her price
         crossed = her <= nxt if side == "buy" else her >= nxt
         if crossed and good(her):
             b.accept(o["id"])
@@ -180,6 +185,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
             continue
         ours = nxt
         b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, ours), price=ours)
+        answered = o["id"]
         said += 1
         log("say", thread=tid, price=ours, her=her)
         b.wait_tick()
