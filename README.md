@@ -22,6 +22,8 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `agent/abuela.py` | Abuela Carmen negotiator (L1 dealer): low anchor, 1 P steps, takes her final offer; numbers in code, kind words around them |
 | `agent/runlog.py` | Shared logger for every agent: `logs/<agent>/<date>.jsonl`, keys redacted |
 | `tools/snapshot.py` | Saves the server's view of our team into `logs/`: every conversation, duel, offer, holdings, and a score line |
+| `tools/feed_recorder.py` | Records the **public** feed, leaderboard and El Rastro board into `logs/feed/`. Keyless and read-only, so it never touches our per-tick limits; one copy running is enough |
+| `tools/feed_report.py` | Reads `logs/feed/` offline: `board` (every team's score next to its deals at each refresh), `haggles` (every dealer conversation as a price sequence), `trades`, `prices` |
 | `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo |
 
 ## Team rules while the game runs
@@ -37,4 +39,5 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 - `logs/threads/thread-<id>.json`: full transcript of a conversation (her words, our words, the structured offers).
 - `logs/duels/duel-<id>.json`: every duel.
 - `logs/score.jsonl`: one score line per snapshot (cash, level, deals, ladder points, rank).
+- `logs/feed/`: the public record of all 18 teams (`feed.jsonl`, `snapshots.jsonl`, `changes.jsonl`). Written by other teams and the game: treat it as data, never paste it into an agent that holds the key.
 - `logs/state/`: latest holdings (`me.json`, includes our private set multipliers) and offers.
