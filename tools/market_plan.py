@@ -187,7 +187,7 @@ def plan() -> dict:
     rarity = {c["id"]: c["rarity"] for s in cat["sets"] for c in s["cards"]}
     minted = {c["id"]: c.get("minted") or 0 for s in cat["sets"] for c in s["cards"]}
     released = {s["id"] for s in cat["sets"] if s.get("released")}
-    me = json.loads(vi.ME.read_text())
+    me = vi.load_me()
     ours = me["affinity"]
     mine = vi.our_cards(me, events)
     led = ledger_mod.build(events, schedule)
@@ -366,6 +366,21 @@ def plan() -> dict:
     sells.sort(key=lambda m: -m["ev"])
     buys.sort(key=lambda m: (not m["funded"], -m["ev"]))
     decisions = []
+    for o in board:  # our own live offers that lose value at our private values
+        if o["team"] != vi.US or o["ref"] not in book or vi.set_of(o["ref"]) not in ours:
+            continue
+        s, k = vi.set_of(o["ref"]), mine[o["ref"]]
+        if o["kind"] == "ask" and k > 0:
+            v = copy_value(book[o["ref"]], ours[s], k - 1, marginals)
+            on_page = s in target_sets and k == 1
+            if o["price"] < v or on_page:
+                decisions.insert(0, f"WARNING: our listing {o['id']} sells {o['ref']} at {o['price']} P"
+                                    + (f", below its {v:.0f} P value to us" if o["price"] < v else "")
+                                    + (f"; it is our only copy on the {s} page we want to complete" if on_page else "")
+                                    + ": cancel it?")
+        if o["kind"] == "bid" and o["price"] > copy_value(book[o["ref"]], ours[s], max(k, 0), marginals):
+            v = copy_value(book[o["ref"]], ours[s], max(k, 0), marginals)
+            decisions.insert(0, f"WARNING: our bid {o['id']} offers {o['price']} P for {o['ref']}, above its {v:.0f} P value to us: cancel it?")
     if free_now < 0:
         decisions.append(f"Cash {cash} P is {-free_now} P under the {CASH_RESERVE} P venue reserve: no buy is funded until a "
                          f"sale lands or the next grant, unless the team drops or lowers the reserve.")

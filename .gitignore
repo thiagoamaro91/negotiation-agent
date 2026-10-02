@@ -10,3 +10,4 @@ results/
 logs/plan/
 logs/public/clock.json
 logs/brain/
+logs/state/me_live.json

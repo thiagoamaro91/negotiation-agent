@@ -43,6 +43,17 @@ h2 { font-size: 15px; font-weight: 800; font-stretch: 90%; letter-spacing: 0.12e
 @media (max-width: 1050px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .decision { border-left: 3px solid var(--gold); padding: 2px 0 2px 10px; font-size: 13.5px; line-height: 1.4; }
+.decision.warn { border-color: var(--bad); color: #ffd0d4; background: rgba(255, 93, 108, 0.08); padding: 6px 10px; border-radius: 0 6px 6px 0; }
+.stack { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.tape { display: grid; gap: 2px; max-height: 520px; overflow-y: auto; font-size: 12.5px; }
+.tl { display: grid; grid-template-columns: 3.4em 4.2em minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 2px; border-bottom: 1px dashed var(--line); }
+.tl.ours { background: rgba(255, 196, 77, 0.07); }
+.tl.fresh { animation: flash 1.6s ease-out; }
+@keyframes flash { from { background: rgba(61, 220, 151, 0.25); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .tl.fresh { animation: none; } }
+.k { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 5px; border-radius: 4px; background: var(--panel2); color: var(--muted); text-align: center; }
+.k.bid { color: var(--good); } .k.ask { color: var(--hot); } .k.trade { color: var(--gold); } .k.dealer { color: var(--cold); }
+.opp { color: var(--good); font-weight: 600; } .wrn { color: var(--bad); font-weight: 600; }
 .scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 th { text-align: left; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -95,11 +106,9 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
     <p class="note"><span lang="en">Expected = chance someone takes it × gain at our private values × the round's weight (Friday counts half). An offer posted tonight that does not sell carries over to tomorrow. Plans only: every move needs a yes in the team chat.</span><span lang="es">Esperado = probabilidad de que alguien lo acepte × ganancia a nuestros valores × peso de la ronda (el viernes cuenta la mitad). Una oferta publicada esta noche que no se vende sigue mañana. Solo planifica: cada jugada necesita un sí en el chat del equipo.</span></p>
   </div>
   <div class="panel">
-    <h2><span lang="en">How sure we are</span><span lang="es">Cuánto nos fiamos</span></h2>
-    <svg class="curve" id="curve" viewBox="0 0 400 140" preserveAspectRatio="none" aria-label="Model hit rate over time"></svg>
-    <div id="modelnote" class="note"></div>
-    <div id="truth"></div>
-    <div id="assume" class="note"></div>
+    <h2><span lang="en">Live market</span><span lang="es">Mercado en directo</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="tapecount"></span></h2>
+    <div class="tape" id="tape"></div>
+    <p class="note"><span lang="en">Every listing, bid and deal as it happens, with the real team behind each pseudonym. Green: we would gain taking it. Red: one of our own offers loses value.</span><span lang="es">Cada oferta, puja y trato al momento, con el equipo real detrás de cada seudónimo. Verde: ganaríamos aceptándolo. Rojo: una oferta nuestra pierde valor.</span></p>
   </div>
 </div>
 
@@ -109,7 +118,16 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
     <div class="scroll"><table id="teams"></table></div>
     <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start (exact for us). Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales (exacta para nosotros). Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
   </div>
-  <div class="panel" id="detail"></div>
+  <div class="stack">
+    <div class="panel" id="detail"></div>
+    <div class="panel">
+    <h2><span lang="en">How sure we are</span><span lang="es">Cuánto nos fiamos</span></h2>
+    <svg class="curve" id="curve" viewBox="0 0 400 140" preserveAspectRatio="none" aria-label="Model hit rate over time"></svg>
+    <div id="modelnote" class="note"></div>
+    <div id="truth"></div>
+    <div id="assume" class="note"></div>
+  </div>
+  </div>
 </div>
 
 <script>
@@ -152,6 +170,7 @@ function render(d) {
     `<span class="pill"><b>${st.events}</b> ${L("events stored", "eventos guardados")} · API ${st.api_window}</span>`,
     `<span class="pill ${m.hit > m.chance ? "ok" : "warn"}">${L("model", "modelo")} <b>${Math.round(m.hit * 100)}%</b> vs ${Math.round(m.chance * 100)}% ${L("chance", "azar")}</span>`,
     `<span class="pill ${lc.ok ? "ok" : "warn"}">${L("ledger", "caja")} <b>${lc.ok ? "OK" : "check"}</b> ${lc.rebuilt ?? ""}/${lc.real ?? ""}</span>`,
+    `<span class="pill ${d.account && d.account.source.startsWith("relay") ? "ok" : "warn"}">${L("our account", "nuestra cuenta")} <b>${d.account ? esc(d.account.source) : "?"}</b> t${d.account ? d.account.tick : "?"}</span>`,
     `<span class="pill">${d.compute_s}s</span>`,
   ].join("");
   const p = d.plan, h = p.horizons;
@@ -162,7 +181,11 @@ function render(d) {
     [L("next", "siguiente"), h[1] ? h[1].label : "—", h[1] ? `${L("weight", "peso")} ${h[1].weight}${h[1].grant ? ` · +${h[1].grant} P` : ""}` : ""],
     [L("best move", "mejor jugada"), best ? esc(best.ref) : "—", best ? `${esc(best.action)} · ${best.price} P · +${best.ev}` : ""],
   ].map(([l, v, s]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
-  $("decisions").innerHTML = (p.decisions || []).map(x => `<div class="decision">${esc(x)}</div>`).join("");
+  $("decisions").innerHTML = (p.decisions || []).map(x => `<div class="decision${x.startsWith("WARNING") ? " warn" : ""}">${esc(x)}</div>`).join("");
+  const seen = new Set((window.__tapeIds || []));
+  $("tape").innerHTML = (d.tape || []).map(r => `<div class="tl${r.ours ? " ours" : ""}${seen.size && !seen.has(r.id) ? " fresh" : ""}"><span class="mono muted">t${r.tick}</span><span class="k ${esc(r.kind)}">${esc(r.kind)}</span><span>${esc(r.text)}${r.opportunity ? ` <span class="opp">· ${esc(r.opportunity)}</span>` : ""}${r.warning ? ` <span class="wrn">· ${esc(r.warning)}</span>` : ""}</span></div>`).join("");
+  window.__tapeIds = (d.tape || []).map(r => r.id);
+  $("tapecount").textContent = `${(d.tape || []).filter(r => r.opportunity).length} opp · ${(d.tape || []).filter(r => r.warning).length} warn`;
   $("sells").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")}</th><th>${L("expected", "esperado")}</th><th>${L("likely buyers", "compradores")}</th></tr></thead><tbody>` +
     p.sells.map(s => `<tr><td class="mono">${esc(s.ref)} <span class="tag">${s.copy === "spare" ? L("spare", "repe") : L("first", "única")}</span></td><td>${whenTag(s.action)} <span class="muted" style="font-size:11px">${esc(s.action.split(" ")[0])}</span></td><td class="mono">${s.price}</td><td class="mono">+${s.gain}</td><td>${chance(s.p)}</td><td class="mono"><b>+${s.ev}</b></td><td class="mono" style="font-size:12px">${(s.likely_buyers || []).map(b => `${esc(b.team)} ${Math.round(b.p * 100)}%`).join(", ") || (s.counterparty ? esc(s.counterparty) : "")}</td></tr>`).join("") + `</tbody>`;
   $("buys").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")}</th><th>${L("expected", "esperado")}</th><th>${L("from", "de")}</th></tr></thead><tbody>` +
@@ -212,7 +235,12 @@ async function tick() {
   catch (e) { $("err").textContent = "brain unreachable: " + e; $("dot").className = "dot stale"; }
 }
 tick(); curve();
-setInterval(tick, 5000); setInterval(curve, 30000);
+try {
+  const es = new EventSource("/stream" + qs);
+  es.onmessage = () => tick();
+  es.onerror = () => { $("dot").className = "dot stale"; };
+} catch (e) {}
+setInterval(tick, 15000); setInterval(curve, 30000);
 </script>
 </body>
 </html>

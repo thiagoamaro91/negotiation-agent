@@ -165,10 +165,10 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None) -
 
 
 def check_us(led: dict) -> dict | None:
-    """Our rebuilt cash against our real cash in logs/state/me.json, at the snapshot's tick."""
-    if not vi.ME.exists():
+    """Our rebuilt cash against our real cash (the freshest account copy), at that copy's tick."""
+    if not (vi.ME.exists() or vi.ME_LIVE.exists()):
         return None
-    me = json.loads(vi.ME.read_text())
+    me = vi.load_me()
     tick = me.get("tick")
     hist = led.get(vi.US, {}).get("history", [])
     rebuilt = next((c for tk, c in reversed(hist) if tk <= tick), START_CASH)

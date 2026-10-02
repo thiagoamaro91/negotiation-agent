@@ -32,7 +32,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FEED = Path(os.environ.get("BAZAAR_FEED") or ROOT / "logs" / "feed")  # point it at the clone where the recorder runs
-ME = ROOT / "logs" / "state" / "me.json"
+ME = ROOT / "logs" / "state" / "me.json"           # tools/snapshot.py (needs the key)
+ME_LIVE = ROOT / "logs" / "state" / "me_live.json"  # pushed by tools/me_relay.py from the laptop that holds the key
 PUBLIC = ROOT / "logs" / "public"   # cached keyless reads: catalog, schedule, dealers
 URL = "https://bazaar.causaprima.ai"
 US = "t03"
@@ -69,6 +70,19 @@ def public(name: str, refresh: bool = False) -> dict:
 
 def catalog(refresh: bool = False) -> dict:
     return public("catalog", refresh)
+
+
+def load_me() -> dict:
+    """Our account (cash, cards, private multipliers): the freshest of the relayed copy and the last snapshot."""
+    best = None
+    for path in (ME_LIVE, ME):
+        if path.exists():
+            me = json.loads(path.read_text(encoding="utf-8"))
+            if best is None or (me.get("tick") or 0) > (best.get("tick") or 0):
+                best = me
+    if best is None:
+        raise SystemExit("no account snapshot: run tools/snapshot.py or tools/me_relay.py (both need the key)")
+    return best
 
 
 def set_of(key: str) -> str:
@@ -322,8 +336,8 @@ def cmd_team(args) -> None:
 def cmd_check(args) -> None:
     model, by_team, _, _ = load()
     # 1) our own truth, never used by the inference
-    if ME.exists():
-        truth = json.loads(ME.read_text())["affinity"]
+    if ME.exists() or ME_LIVE.exists():
+        truth = load_me()["affinity"]
         r = model.summary(model.posterior(by_team.get(US, [])))
         print(f"1) Team 3, whose real multipliers we know ({counts(by_team.get(US, []))}):")
         for s in model.in_play:
@@ -400,9 +414,7 @@ def wanted(by_team: dict) -> dict:
 def targets(min_gap: float = 5.0, n: int = 12) -> dict:
     """What to sell and to whom, what to buy and from whom, as data."""
     model, by_team, events, book = load()
-    if not ME.exists():
-        raise SystemExit("logs/state/me.json is missing: run tools/snapshot.py (needs the key) first.")
-    me = json.loads(ME.read_text())
+    me = load_me()
     ours = me["affinity"]
     teams = set(by_team) - {US}
     res = {t: model.summary(model.posterior(by_team[t])) for t in teams}

@@ -26,6 +26,10 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `tools/feed_report.py` | Reads `logs/feed/` offline: `board` (every team's score next to its deals at each refresh), `haggles` (every dealer conversation as a price sequence), `trades`, `prices` |
 | `tools/value_inference.py` | Infers every team's secret set multipliers from the public feed (Bayes over the 720 shuffles): `teams`, `team t10`, `check` (validation against our own values and a time split), `targets`. Keyless |
 | `tools/market_plan.py` | Team 3's market plan, recomputed on every run from the inference, the live El Rastro board, the catalog, the dealers and the schedule: what to sell, buy and hold, and when (Friday counts half, pages, the Sunday close). Plans only, never sends. `--json`, `--watch` (writes `logs/plan/latest.json` every tick) |
+| `tools/ledger.py` | Every team's cash and known cards rebuilt from the public feed (exact for us: checked against `/api/me`) |
+| `tools/brain.py` | The market brain: keyless service that recomputes inference, ledger and plan on every new event and serves a live page (`brain.html`: plan, live market tape with the real team behind each pseudonym, every team's cash and values, the model's learning curve). Token-gated (`BRAIN_TOKEN`) |
+| `tools/run_brain.sh` | On the always-on VM: recorder + brain in tmux, restarted if they die |
+| `tools/me_relay.py` | Run on ONE laptop that holds the key: pushes our account to the brain every 20 s (key fields scrubbed), so the plan sees pack pulls; the key never leaves the laptop |
 | `tests/` | `python3 -m unittest discover tests`: the plan's pure rules (fee, copy values, ask and bid prices) |
 | `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo. `logs/public/` caches keyless reads (catalog, clock, schedule, dealers); `logs/plan/` is the live plan, not committed |
 
