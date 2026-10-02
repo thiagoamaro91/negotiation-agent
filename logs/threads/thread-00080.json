@@ -1,0 +1,127 @@
+{
+ "id": 80,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-08"
+  }
+ },
+ "status": "closed",
+ "created_tick": 46,
+ "messages": [
+  {
+   "id": 496,
+   "tick": 46,
+   "sender": "t03",
+   "text": "Buenas, Abuela Carmen! I'm looking at one of your cards, but first I'd love to hear how your day at El Rastro is going.",
+   "offer": null
+  },
+  {
+   "id": 503,
+   "tick": 47,
+   "sender": "t03",
+   "text": "Que bonito. Thank you for your time, Abuela, you are very kind.",
+   "offer": null
+  },
+  {
+   "id": 500,
+   "tick": 47,
+   "sender": "abuela",
+   "text": "Hola, cariño, have you eaten? Teatro Valle-Inclán for 29 P. A good start for your album.",
+   "offer": {
+    "id": 548,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 80,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-08"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 49,
+    "created_tick": 47,
+    "final": false
+   }
+  },
+  {
+   "id": 508,
+   "tick": 48,
+   "sender": "abuela",
+   "text": "Oh, oh... 29 P, and only because you have a kind face.",
+   "offer": {
+    "id": 558,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 80,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-08"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 50,
+    "created_tick": 48,
+    "final": false
+   }
+  },
+  {
+   "id": 514,
+   "tick": 48,
+   "sender": "t03",
+   "text": "Gracias, I'm just looking around for now.",
+   "offer": null
+  },
+  {
+   "id": 520,
+   "tick": 49,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 29 P. A little advice, cariño: a full page is worth much more than the loose cards. Swap your duplicates!",
+   "offer": {
+    "id": 568,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 80,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-08"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 51,
+    "created_tick": 49,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Teatro Valle-Inclán",
+ "closed_reason": null
+}

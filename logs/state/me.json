@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 361,
+ "cash": 313,
  "level": 1,
  "unlocked": [
   "abuela"
@@ -214,15 +214,37 @@
    "print_run": 90,
    "name": "Samosas de la Plaza",
    "your_value": 40.0
+  },
+  {
+   "id": 382,
+   "kind": "card",
+   "ref": "LAV-08",
+   "serial": 10,
+   "rarity": "uncommon",
+   "set": "LAV",
+   "print_run": 90,
+   "name": "Teatro Valle-Inclán",
+   "your_value": 40.0
+  },
+  {
+   "id": 392,
+   "kind": "card",
+   "ref": "SAL-06",
+   "serial": 7,
+   "rarity": "uncommon",
+   "set": "SAL",
+   "print_run": 90,
+   "name": "La Galería",
+   "your_value": 32.5
   }
  ],
- "collection_value": 333.4,
+ "collection_value": 405.9,
  "album": {
   "pages": [
    {
     "set": "LAV",
     "name": "Lavapiés",
-    "have": 7,
+    "have": 8,
     "of": 10,
     "complete": false,
     "master": false
@@ -246,32 +268,32 @@
    {
     "set": "SAL",
     "name": "Salamanca",
-    "have": 1,
+    "have": 2,
     "of": 10,
     "complete": false,
     "master": false
    }
   ],
-  "filled": 15,
+  "filled": 17,
   "slots": 40
  },
- "tick": 46,
+ "tick": 72,
  "tick_seconds": 60.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 4.59,
-  "negotiating": 4.59,
+  "score": 12.11,
+  "negotiating": 12.11,
   "market": 0.0,
   "neg_points": 0.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.042,
+  "ladder_points": 0.062,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 1,
-  "album_filled": 15,
+  "album_filled": 17,
   "album_slots": 40,
   "pages_complete": 0,
   "rarest": {
@@ -282,13 +304,13 @@
    "rarity": "rare"
   },
   "luck": 0.0,
-  "deals": 2,
+  "deals": 4,
   "badges": [],
   "adjustments": [],
   "frozen": false,
   "venue": null,
   "luck_private": 0.0,
-  "rank": 14
+  "rank": 9
  },
  "venue": null,
  "open_threads": []
