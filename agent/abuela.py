@@ -33,7 +33,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
 from runlog import RunLog, save_thread  # noqa: E402
+from memory import Memory, kind_of  # noqa: E402
 
+FAST_STEPS = False          # team decision: 1 P per round tonight; memory only changes the step if --fast-steps is passed
+MEM: Memory | None = None  # learned from every past conversation (agent/memory.py); None with --no-memory
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
 DEALER = "abuela"
 CASH_RESERVE = 280          # keep the L2 venue bond (250 + 20) plus a little
@@ -172,7 +175,12 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
         if ours is None:
             nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
         else:
-            nxt = ours + STEP if side == "buy" else ours - STEP
+            step = STEP
+            if side == "buy" and MEM and FAST_STEPS and kind_of(item):  # opt-in (--fast-steps): +3 while far from the learned probe, then +1
+                step = 3 if MEM.advice(kind_of(item))["probe"] - ours > 3 else STEP
+            nxt = ours + step if side == "buy" else ours - STEP
+        if side == "buy" and MEM and kind_of(item):  # memory: never bid past what she has ever needed before she names a final
+            nxt = min(nxt, MEM.advice(kind_of(item))["ceiling"])
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
         # 5) she is already at (or past) our next number: take her price
         crossed = her <= nxt if side == "buy" else her >= nxt
@@ -249,8 +257,15 @@ def main() -> None:
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--only", default="", help="comma list of card refs and/or sell:<asset_id>")
     ap.add_argument("--max-deals", type=int, default=6)
+    ap.add_argument("--no-memory", action="store_true", help="skip the learning step and use the fixed numbers above")
+    ap.add_argument("--fast-steps", action="store_true", help="let memory climb +3 P per round while far from its learned probe (default: STEP)")
     args = ap.parse_args()
+    global FAST_STEPS
+    FAST_STEPS = args.fast_steps
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
+    global MEM
+    if not args.no_memory:
+        MEM = Memory.refresh(b)  # analyse every past conversation (ours good and bad, and the public ones) BEFORE doing anything
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only)
@@ -273,6 +288,11 @@ def main() -> None:
         r = negotiate(b, target, first)
         if r.get("thread"):
             save_thread(b, r["thread"])  # full transcript, her words included
+        if MEM:
+            MEM = Memory.refresh(b, public=False, quiet=True)  # learn from the conversation we just had before the next one
+            mine = [x for x in MEM.samples if x["source"] == "own" and x["thread"] == r.get("thread")]
+            if mine:
+                log("lesson", thread=r["thread"], grade=MEM.grade(mine[0])[0], why=MEM.grade(mine[0])[1])
         if r.get("result") == "deal":
             done += 1
         if r.get("code") in ("persona_quota", "cooloff", "locked"):

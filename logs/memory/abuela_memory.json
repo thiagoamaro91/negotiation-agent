@@ -1,0 +1,52 @@
+{
+ "pack": {
+  "n": 3,
+  "n_deals": 2,
+  "n_negotiated": 2,
+  "welcome": 17,
+  "opening": 30,
+  "final": 22,
+  "bids_to_final": 7,
+  "accept_low": 19,
+  "refused_high": 20,
+  "deal_prices": [
+   21,
+   23
+  ]
+ },
+ "unc": {
+  "n": 6,
+  "n_deals": 5,
+  "n_negotiated": 4,
+  "welcome": 17,
+  "opening": 29,
+  "final": 22,
+  "bids_to_final": 6,
+  "accept_low": 22,
+  "refused_high": 21,
+  "deal_prices": [
+   22,
+   22,
+   23,
+   24
+  ]
+ },
+ "com": {
+  "n": 6,
+  "n_deals": 6,
+  "n_negotiated": 5,
+  "welcome": 7,
+  "opening": 12,
+  "final": 9,
+  "bids_to_final": 6,
+  "accept_low": 9,
+  "refused_high": 9,
+  "deal_prices": [
+   9,
+   9,
+   10,
+   10,
+   10
+  ]
+ }
+}
