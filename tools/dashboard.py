@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
 
 PAGE = ROOT / "tools" / "dashboard.html"
+HISTORY = ROOT / "logs" / "dashboard_history.jsonl"
 STATE: dict = {"data": None, "error": None, "updated": 0.0}
 LOCK = threading.Lock()
 TEAM = "t03"
@@ -139,6 +140,9 @@ def build(b: Bazaar, url: str, catalog: dict, history: list) -> dict:
     if not history or history[-1]["tick"] != point["tick"] or history[-1]["score"] != point["score"]:
         history.append(point)
         del history[:-400]
+        HISTORY.parent.mkdir(exist_ok=True)
+        with HISTORY.open("a") as f:  # survives restarts of the dashboard
+            f.write(json.dumps(point) + "\n")
 
     album = []
     for st in catalog["sets"]:
@@ -186,6 +190,13 @@ def poller(b: Bazaar, url: str, interval: float) -> None:
                                 "mkt": r["score"].get("market"), "cash": r.get("cash")})
             except Exception:
                 pass
+    if HISTORY.exists():
+        for line in HISTORY.read_text().splitlines()[-400:]:
+            try:
+                history.append(json.loads(line))
+            except Exception:
+                pass
+    history.sort(key=lambda p: (p.get("tick") or 0))
     while True:
         try:
             if catalog is None or time.time() - cat_at > 300:
@@ -216,6 +227,8 @@ def serve(port: int, token: str | None, host: str) -> None:
 
         def do_GET(self):
             u = urlparse(self.path)
+            if u.path == "/favicon.ico":
+                return self._send(204, b"", "image/x-icon")
             if token and parse_qs(u.query).get("t", [""])[0] != token:
                 return self._send(403, b"forbidden", "text/plain")
             if u.path == "/":
