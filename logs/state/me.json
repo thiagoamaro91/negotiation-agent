@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 313,
+ "cash": 291,
  "level": 1,
  "unlocked": [
   "abuela"
@@ -236,9 +236,20 @@
    "print_run": 90,
    "name": "La Galería",
    "your_value": 32.5
+  },
+  {
+   "id": 413,
+   "kind": "card",
+   "ref": "SAL-07",
+   "serial": 8,
+   "rarity": "uncommon",
+   "set": "SAL",
+   "print_run": 90,
+   "name": "Mercado de la Paz",
+   "your_value": 32.5
   }
  ],
- "collection_value": 405.9,
+ "collection_value": 438.4,
  "album": {
   "pages": [
    {
@@ -268,16 +279,16 @@
    {
     "set": "SAL",
     "name": "Salamanca",
-    "have": 2,
+    "have": 3,
     "of": 10,
     "complete": false,
     "master": false
    }
   ],
-  "filled": 17,
+  "filled": 18,
   "slots": 40
  },
- "tick": 72,
+ "tick": 94,
  "tick_seconds": 60.0,
  "score": {
   "team": "t03",
@@ -293,7 +304,7 @@
   "bench_points": null,
   "bench_venue": null,
   "level": 1,
-  "album_filled": 17,
+  "album_filled": 18,
   "album_slots": 40,
   "pages_complete": 0,
   "rarest": {
@@ -304,13 +315,13 @@
    "rarity": "rare"
   },
   "luck": 0.0,
-  "deals": 4,
+  "deals": 5,
   "badges": [],
   "adjustments": [],
   "frozen": false,
   "venue": null,
   "luck_private": 0.0,
-  "rank": 9
+  "rank": 10
  },
  "venue": null,
  "open_threads": []
