@@ -45,6 +45,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import decks as decks_mod
 import ledger as ledger_mod
 import market_plan
 import price_index
@@ -404,6 +405,19 @@ def our_account(me: dict, mine, led: dict, team: dict | None, book: dict, rarity
                       "decisions": len((team or {}).get("decisions") or [])}}
 
 
+def deck_vs_real(events: list, cat: dict, team: dict | None) -> dict | None:
+    """The deck rebuild (tools/decks.py) checked on the one deck we know: ours, at the tick of our last raw account
+    snapshot (the relayed one, else logs/state/me.json)."""
+    me = (team or {}).get("me")
+    if not me:
+        try:
+            me = json.loads(vi.ME.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+    rebuilt = decks_mod.build(events, cat, upto=me.get("tick")).get(vi.US)
+    return {"tick": me.get("tick"), **decks_mod.check(rebuilt, me.get("assets") or [])} if rebuilt else None
+
+
 TRUTH_CACHE: dict = {}
 
 
@@ -559,6 +573,9 @@ def refresh() -> dict:
     snaps = SNAPS.update()
     lb = snaps.body("leaderboard")
     score = {t["team"]: t.get("score") for t in lb.get("teams", [])}
+    album = {t["team"]: {k: t.get(k) for k in ("album_filled", "album_slots", "pages_complete")} for t in lb.get("teams", [])}
+    deck = decks_mod.build(events, cat)
+    deck_check = deck_vs_real(events, cat, team)
     teams = []
     for t in sorted(by_team):
         r = model.summary(model.posterior(by_team[t]), by_team[t])
@@ -569,6 +586,7 @@ def refresh() -> dict:
             "trades": L.get("trades"),
             "unlocked": L.get("unlocked"), "venue": L.get("venue"), "bonds": L.get("bonds"),
             "dealer_spent": L.get("dealer_spent"), "known_cards": L.get("known_cards"),
+            "deck": {k: v for k, v in deck.get(t, {}).items() if k != "ids"}, "album": album.get(t),
             "expected": {s: round(r["expected"][s], 2) for s in model.in_play},
             "dist": {s: {str(m): round(p, 3) for m, p in r["dist"][s].items()} for s in model.in_play},
             "favourite": r["favourite"], "p_favourite": round(r["p_favourite"], 2),
@@ -586,7 +604,7 @@ def refresh() -> dict:
                   "last_tick": events[-1]["tick"], "last_seen": events[-1].get("seen_at")},
         "account": {"source": (me.get("source") or "relay (live)") if live else "snapshot", "tick": me.get("tick"),
                     "age_ticks": events[-1]["tick"] - (me.get("tick") or 0)},
-        "us": us, "truth": truth_panel,
+        "us": us, "truth": truth_panel, "deck_check": deck_check,
         "model": {"hit": round(split["hit"], 3), "naive": round(split["naive_hit"], 3), "n": split["n"],
                   "chance": round(1 / len(model.in_play), 3), "loss": round(split["loss"], 3),
                   "uniform_loss": round(split["uniform_loss"], 3), "beta_choose": model.beta_choose,

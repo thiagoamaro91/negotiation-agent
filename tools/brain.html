@@ -136,6 +136,7 @@ svg.tcurve { width: 100%; height: 150px; display: block; }
     <div class="kpis" id="uskpis" style="margin:0"></div>
     <div class="pages" id="pages"></div>
     <div class="scroll"><table id="cards"></table></div>
+    <div id="deckcheck" class="note"></div>
     <details><summary class="muted small" style="cursor:pointer"><span lang="en">Cash checks: rebuilt ledger vs real readings</span><span lang="es">Comprobación de caja: libro reconstruido frente a lecturas reales</span></summary>
     <div class="scroll"><table id="checks"></table></div></details>
     <p class="note"><span lang="en">From the key machine's own files, relayed without the key (tools/team_relay.py): cash and score from the live /api/me reader (every minute), cards from the last account snapshot plus our public deals since and the Workshop conversions our bots logged, values = book × our multiplier × the copy's share (2nd copy and later are worth less). Album = page slots ever filled (the game's count); held = what we hold now.</span><span lang="es">Sale de los ficheros de la máquina con la clave, enviados sin la clave (tools/team_relay.py): caja y puntos del lector de /api/me en vivo (cada minuto); cartas = la última foto de la cuenta más nuestros tratos públicos desde entonces y lo que nuestros bots apuntaron al convertir en El Taller; valores = libro × nuestro multiplicador × la parte de esa copia (la 2.ª copia y siguientes valen menos). Álbum = huecos de página que se han llenado alguna vez (lo que cuenta el juego); en mano = lo que tenemos ahora.</span></p>
@@ -293,6 +294,15 @@ function renderUs(u, d) {
     (u.checks || []).slice().reverse().map(c => `<tr><td class="mono">${c.tick}</td><td class="small">${esc(c.what)}</td><td class="mono">${c.cash}</td><td class="mono">${c.rebuilt}</td><td class="mono ${c.ahead ? "muted" : c.ok ? "ok-t" : "bad-t"}">${c.ahead ? L("feed behind", "feed atrás") : c.ok ? "✓" : `${c.rebuilt - c.cash > 0 ? "+" : ""}${c.rebuilt - c.cash}`}</td></tr>`).join("") + `</tbody>`;
 }
 
+function deckHtml(t) {
+  const k = t.deck;
+  if (!k) return "";
+  const named = Object.values(k.known).reduce((a, b) => a + b, 0), fl = Object.values(k.floating || {}).reduce((a, b) => a + b, 0);
+  const al = t.album || {};
+  return `<div><b>${L("Deck", "Mazo")}</b> <span class="mono">~${k.total}</span> <span class="muted small">${L(`${named} named · ${k.unknown_ids} owned, never shown · ${fl} without id · ${k.unplaced} pack cards unplaced${k.burned ? ` · −${k.burned} burned at the Workshop (unknown which)` : ""}`, `${named} con nombre · ${k.unknown_ids} suyas sin enseñar · ${fl} sin id · ${k.unplaced} de sobres sin ubicar${k.burned ? ` · −${k.burned} quemadas en El Taller (no se sabe cuáles)` : ""}`)}${al.album_filled != null ? ` · ${L("album", "álbum")} ${al.album_filled}/${al.album_slots ?? "?"}, ${al.pages_complete ?? 0} ${L("pages", "páginas")}` : ""}</span></div>` +
+    `<div class="chips">${Object.entries(k.known).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("")}${Object.entries(k.floating || {}).map(([r, n]) => `<span class="chip" title="${esc(L("got without an id (gift, egg, Workshop)", "recibida sin id (regalo, huevo, Taller)").replace(/<[^>]+>/g, ""))}">${esc(r)}${n > 1 ? " ×" + n : ""}*</span>`).join("")}${k.unknown_ids + k.unplaced ? `<span class="chip muted">+${k.unknown_ids + k.unplaced} ?</span>` : ""}</div>`;
+}
+
 function renderTruth(t) {
   if (!t) { $("truthhead").innerHTML = `<p class="note">${L("Needs our account (the true multipliers).", "Necesita nuestra cuenta (los multiplicadores reales).")}</p>`; return; }
   const n = t.now, p0 = t.prior;
@@ -394,6 +404,10 @@ function render(d) {
   $("decisions").innerHTML = (p.decisions || []).map(x => `<div class="decision${x.startsWith("WARNING") ? " warn" : ""}">${esc(x)}</div>`).join("");
   renderTape(d.tape);
   renderUs(d.us, d);
+  const dc = d.deck_check;
+  $("deckcheck").innerHTML = dc ? L(
+    `<b>Every team's deck</b> is rebuilt from public asset ids (starter blocks of 15, pack blocks, listings, trades). Checked on ours at tick ${dc.tick}: <b>${dc.rebuilt} cards rebuilt vs ${dc.real} real</b>, ${dc.ids_right} copies placed right, <b class="${dc.ids_wrong ? "bad-t" : "ok-t"}">${dc.ids_wrong} wrong</b>, ${dc.names_right}/${dc.named} names right. Click a team below to see its deck.`,
+    `<b>El mazo de cada equipo</b> se reconstruye con los ids públicos de las cartas (bloques iniciales de 15, bloques de sobres, ofertas, tratos). Comprobado con el nuestro en el tick ${dc.tick}: <b>${dc.rebuilt} cartas reconstruidas frente a ${dc.real} reales</b>, ${dc.ids_right} copias bien ubicadas, <b class="${dc.ids_wrong ? "bad-t" : "ok-t"}">${dc.ids_wrong} mal</b>, ${dc.names_right}/${dc.named} nombres bien. Pulsa un equipo abajo para ver su mazo.`) : "";
   renderTruth(d.truth);
   $("sells").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")} <span class="est">est.</span></th><th>${L("expected", "esperado")}</th><th>${L("likely buyers", "compradores")} <span class="est">est.</span></th></tr></thead><tbody>` +
     p.sells.map(s => `<tr><td class="mono">${esc(s.ref)} <span class="tag">${s.copy === "spare" ? L("spare", "repe") : L("first", "única")}</span> <span class="muted small">${s.our_value}</span></td><td>${whenTag(s.action)} <span class="muted" style="font-size:11px">${esc(s.action.split(" ")[0])}</span></td><td class="mono">${s.price}</td><td class="mono">+${s.gain}</td><td>${chance(s.p)}</td><td class="mono"><b>+${s.ev}</b></td><td class="mono" style="font-size:12px">${(s.likely_buyers || []).map(b => `${esc(b.team)} ~${Math.round(b.p * 100)}%`).join(", ") || (s.counterparty ? esc(s.counterparty) : "")}</td></tr>`).join("") + `</tbody>`;
@@ -410,10 +424,10 @@ function render(d) {
     Object.entries(m.us).map(([s, v]) => `<tr><td class="mono">${esc(s)}</td><td class="mono">${v.inferred}</td><td class="mono">${v.true ?? "—"}</td></tr>`).join("") + `</tbody></table>`;
   $("assume").innerHTML = `<b>${L("Assumptions", "Supuestos")}</b><br>` + (p.assumptions || []).map(esc).join("<br>");
   const sets = d.in_play;
-  $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
+  $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>${L("cards", "cartas")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
     d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}${t.cash_unsure ? ` <span class="muted" title="fees the feed cannot attribute for sure">±${t.cash_unsure}</span>` : ""}</td><td>${spark(t.cash_history)}</td>` +
       sets.map(s => `<td><div class="cell" style="background:${heat(t.expected[s])}">${t.expected[s].toFixed(2)}</div></td>`).join("") +
-      `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
+      `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono" title="named ${t.deck ? Object.values(t.deck.known).reduce((a, b) => a + b, 0) : 0}">${t.deck ? "~" + t.deck.total : "—"}</td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
   document.querySelectorAll("#teams tr.clickable").forEach(r => {
     const go = () => { SEL = r.dataset.team; render(DATA); };
     r.addEventListener("click", go);
@@ -424,7 +438,7 @@ function render(d) {
   $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P${t.cash_unsure ? ` ±${t.cash_unsure}` : ""}</h2>` +
     sets.map(s => `<div class="distrow"><span class="mono">${esc(s)}</span><div class="dbar">${mults.map(mm => { const pr = (t.dist[s] || {})[mm] || 0; return pr > 0.005 ? `<span title="${mm}: ${Math.round(pr * 100)}%" style="width:${(pr * 100).toFixed(1)}%;background:${heat(parseFloat(mm))}"></span>` : ""; }).join("")}</div><span class="mono">${t.expected[s].toFixed(2)}</span></div>`).join("") +
     `<p class="note">${L("probability of each multiplier, 1.6 (left) to 0.5", "probabilidad de cada multiplicador, de 1,6 (izquierda) a 0,5")}</p>` +
-    `<div><b>${L("Known cards", "Cartas conocidas")}</b> <span class="muted">(${L("lower bound", "mínimo")})</span></div><div class="chips">${Object.entries(t.known_cards || {}).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("") || `<span class="muted">—</span>`}</div>` +
+    deckHtml(t) +
     `<p class="note">${L(`Spent at dealers ${t.dealer_spent} P · bonds ${t.bonds} P · ${t.evidence} pieces of evidence, ${t.choices} independent choices · ${esc(t.confidence)}`, `Gastado en dealers ${t.dealer_spent} P · fianzas ${t.bonds} P · ${t.evidence} pruebas, ${t.choices} elecciones independientes · ${esc(t.confidence)}`)}</p>`;
 }
 
