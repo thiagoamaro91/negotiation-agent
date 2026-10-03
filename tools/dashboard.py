@@ -20,8 +20,8 @@ checkout, which may not be this one:
 Duels panel (read-only, local files only, no game API call): what agent/duel.py is doing, from its log
 logs/duel/<YYYY-MM-DD>.jsonl (duel_new, rival, hold, say / would_say, accept / would_accept, result, error, refused,
 run_start / run_end / stop) and its accept-slot lock results/duel.lock, both under the same --broker-root (alias
---bots-root). The page may be screen-shared, so our limits never leave this process: only relative gaps (how far an
-offer sits inside or outside our limit, in percent) reach /data.
+--bots-root). The page may be screen-shared, so our limits never leave this process: only a coarse zone per offer
+(outside our limit, at it, near it, far inside it) reaches /data, never a gap number.
 """
 from __future__ import annotations
 
@@ -316,9 +316,12 @@ class Celestina:
 #
 # The panel may be screen-shared or shown to judges, so the view is built from an ALLOWLIST of output keys and never
 # carries a private number: no limit, no paired limit, no soft pie, no surplus in primas, no planned next number and
-# no raw `why` text (it quotes surpluses). Our limit only shows as a relative gap: how far an offer sits inside (+) or
-# outside (-) it, in whole percent.
+# no raw `why` text (it quotes surpluses), and no gap number either: a price plus its exact gap backs out the limit. Each
+# offer only gets a coarse zone, computed here: "outside" our limit, "at" it (inside by less than 5 %), "near" it
+# (5-15 %) or "far" inside it (15 % or more).
 
+DUEL_ZONES = ((0.05, "at"), (0.15, "near"))  # inside our limit by less than this share of it: that zone; else "far"
+DUEL_ZONE_NAMES = ("outside", "at", "near", "far")
 DUEL_STALE_AFTER = 120.0  # seconds without a log line, while duels are live, before the bot shows as stale
 DUEL_FINISHED = 40        # finished duels listed on the panel (the counts cover the whole day)
 DUEL_TEXT = 100           # characters of the last message shown (untrusted: other teams write it)
@@ -374,11 +377,15 @@ def _price_days(x) -> tuple:
     return None, None
 
 
-def gap_pct(role, limit, price) -> int | None:
-    """How far `price` sits inside (+) or outside (-) our limit, in whole percent of it. Never the limit itself."""
+def gap_zone(role, limit, price) -> str | None:
+    """Which coarse zone `price` sits in relative to our limit: "outside", "at", "near" or "far" (inside). The exact
+    gap stays in this function: with the price on screen it would back out the limit."""
     if not (_num(limit) and _num(price)) or limit <= 0 or role not in ("buyer", "seller"):
         return None
-    return round(((price - limit) if role == "seller" else (limit - price)) / limit * 100)
+    inside = ((price - limit) if role == "seller" else (limit - price)) / limit
+    if inside < 0:
+        return "outside"
+    return next((name for top, name in DUEL_ZONES if inside < top), "far")
 
 
 def _ts_epoch(ts) -> float | None:
@@ -516,8 +523,8 @@ def duel_live_row(rec: dict, now_tick) -> dict:
             "status": rec["status"], "round": rec["rounds"], "left": left, "deadline": rec["deadline"],
             "our_price": rec["our_price"], "our_days": rec["our_days"] if two else None, "our_would": rec["our_would"],
             "rival_price": rec["rival_price"], "rival_days": rec["rival_days"] if two else None,
-            "our_gap": gap_pct(rec["role"], rec["limit"], rec["our_price"]),
-            "rival_gap": gap_pct(rec["role"], rec["limit"], rec["rival_price"]),
+            "our_zone": gap_zone(rec["role"], rec["limit"], rec["our_price"]),
+            "rival_zone": gap_zone(rec["role"], rec["limit"], rec["rival_price"]),
             "action": rec["action"], "note": rec["why"], "moving": rec["moving"], "text": rec["text"]}
 
 

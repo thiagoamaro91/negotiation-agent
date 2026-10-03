@@ -398,10 +398,11 @@ function renderCelestina(c) {
 }
 
 // Duels: what agent/duel.py is doing, from its log on the bots' machine. Rival aliases, items and message text come
-// from other teams: every string goes through esc(). Our limits are not in /data; the gauge only shows how far an
-// offer sits inside (right, green) or outside (left, red) our limit, in percent of it.
-const DUEL_GAUGE = 40;  // the gauge spans -40% .. +40% around our limit
-const duelPos = (g) => 50 + Math.max(-DUEL_GAUGE, Math.min(DUEL_GAUGE, g)) * 50 / DUEL_GAUGE;
+// from other teams: every string goes through esc(). Our limits and any gap to them are not in /data; the gauge only
+// places each offer in a coarse zone: outside our limit (left, red) or at / near / far inside it (right, green).
+// The server sends a zone per offer, never a gap number: "outside" our limit, "at" it, "near" it, "far" inside it.
+const DUEL_ZONE = { outside: { x: 22, txt: "outside our limit", cls: "bad" }, at: { x: 57, txt: "at our limit", cls: "good" },
+  near: { x: 70, txt: "near our limit", cls: "good" }, far: { x: 86, txt: "far inside our limit", cls: "good" } };
 const duelResult = (x) => x == null ? "-" : Math.abs(x) <= 1.5 ? `${Math.round(x * 100)}%` : fmt(x, 2);
 const duelRole = (r) => r === "buyer" ? "we buy" : r === "seller" ? "we sell" : esc(r || "?");
 
@@ -421,15 +422,13 @@ function duelBot(b, lock) {
 }
 
 function duelGauge(r) {
-  if (r.our_gap == null && r.rival_gap == null) return `<div class="dsub">no prices on the table yet</div>`;
-  const pt = (g, who) => g == null ? "" : `<span class="pt ${who}" style="left:${duelPos(g).toFixed(1)}%" title="${who === "us" ? "our offer" : "their offer"}: ${Math.abs(g)}% ${g >= 0 ? "inside" : "outside"} our limit"></span>`;
-  let say = "";
-  if (r.rival_gap != null) {
-    const g = r.rival_gap;
-    say = `<span class="chip ${g > 0 ? "good" : "bad"}">their offer ${g === 0 ? "sits at" : Math.abs(g) + "% " + (g > 0 ? "inside" : "outside")} our limit</span>`;
-  }
-  return `<div class="gauge"><span class="track"></span><span class="lim"></span>${pt(r.rival_gap, "them")}${pt(r.our_gap, "us")}</div>
-    <div class="gscale"><span>outside</span><span>our limit</span><span>inside</span></div>${say}`;
+  const zr = DUEL_ZONE[r.rival_zone], zu = DUEL_ZONE[r.our_zone];
+  if (!zr && !zu) return `<div class="dsub">no prices on the table yet</div>`;
+  const same = zr && zu && r.rival_zone === r.our_zone;
+  const pt = (z, who) => !z ? "" : `<span class="pt ${who}" style="left:${z.x + (same ? (who === "us" ? 3 : -3) : 0)}%" title="${who === "us" ? "our offer" : "their offer"}: ${z.txt}"></span>`;
+  const say = zr ? `<span class="chip ${zr.cls}">their offer: ${zr.txt}</span>` : "";
+  return `<div class="gauge"><span class="track"></span><span class="lim"></span>${pt(zr, "them")}${pt(zu, "us")}</div>
+    <div class="gscale"><span>outside</span><span>our limit</span><span>inside: at · near · far</span></div>${say}`;
 }
 
 function duelCard(r) {

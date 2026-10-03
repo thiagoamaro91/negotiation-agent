@@ -91,6 +91,15 @@ def numbers(obj) -> set:
     return {float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", json.dumps(obj))}
 
 
+def keys(obj) -> list:
+    """Every key in the payload, at any depth."""
+    if isinstance(obj, dict):
+        return [k for k in obj] + [x for v in obj.values() for x in keys(v)]
+    if isinstance(obj, list):
+        return [x for v in obj for x in keys(v)]
+    return []
+
+
 def at(ts: str) -> float:
     return time.mktime(time.strptime(f"2026-10-03T12:{ts}", "%Y-%m-%dT%H:%M:%S"))
 
@@ -113,13 +122,13 @@ class FoldTest(unittest.TestCase):
         a = live[501]
         self.assertEqual((a["rival"], a["role"], a["round"], a["left"]), ("Rival Luna", "buyer", 1, 6))
         self.assertEqual((a["our_price"], a["rival_price"], a["our_days"], a["rival_days"]), (97, 129, None, None))
-        self.assertEqual((a["our_gap"], a["rival_gap"]), (29, 6))   # (137-97)/137, (137-129)/137
+        self.assertEqual((a["our_zone"], a["rival_zone"]), ("far", "near"))   # 29 % and 5.8 % inside 137
         self.assertFalse(a["our_would"])
         self.assertEqual(a["note"], "acceptable offer, waiting for the endgame")
         b = live[504]
         self.assertTrue(b["two_issues"])
         self.assertEqual((b["our_price"], b["our_days"], b["rival_price"], b["rival_days"]), (99, 8, 120, 2))
-        self.assertEqual(b["rival_gap"], 16)
+        self.assertEqual((b["our_zone"], b["rival_zone"]), ("far", "far"))  # 31 % and 16 % inside 143
         self.assertEqual(b["note"], "early accept: rival offer is good enough")
 
     def test_finished_rows_and_average(self):
@@ -139,6 +148,25 @@ class FoldTest(unittest.TestCase):
         for key in ("limit", "pair_l", "pair_limit", "soft_pie", "surplus", "mirror", "next", "rival_prices", "resp",
                     "thin_ref", "bar\""):
             self.assertNotIn(key, text)
+
+    def test_no_gap_number_only_coarse_zones(self):
+        # a price plus an exact gap backs out our limit: only a few wide zones may leave the server
+        names = d.DUEL_ZONE_NAMES
+        self.assertLessEqual(len(names), 5)
+        tops = [0.0] + [top for top, _ in d.DUEL_ZONES]
+        self.assertTrue(all(b - a >= 0.05 for a, b in zip(tops, tops[1:])), f"zones finer than 5 %: {tops}")
+        self.assertEqual(set(names), {"outside", "far"} | {name for _, name in d.DUEL_ZONES})
+        self.assertFalse([k for k in keys(self.view) if "gap" in k.lower() or "pct" in k.lower()])
+        numeric_ok = {"duel", "round", "left", "deadline", "our_price", "our_days", "rival_price", "rival_days"}
+        seen = set()
+        for r in self.view["live"]:
+            for k in ("our_zone", "rival_zone"):
+                self.assertIn(r[k], names + (None,))
+                seen.add(r[k])
+            self.assertFalse({k for k, x in r.items() if isinstance(x, (int, float)) and not isinstance(x, bool)}
+                             - numeric_ok)
+            self.assertNotIn("%", json.dumps(r))
+        self.assertEqual(seen, {"far", "near"})
 
     def test_notes_carry_no_digits(self):
         for r in self.view["live"]:
@@ -194,19 +222,20 @@ class StateTest(unittest.TestCase):
         lines = [START, LINES[1], row("02:00", "rival", duel=501, offer=None, rounds=0,
                                       your_offer={"price": 96, "days": 0})]
         r = d.duel_view(fold(lines), at("02:10"))["live"][0]
-        self.assertEqual((r["our_price"], r["rival_price"], r["rival_gap"]), (96, None, None))
+        self.assertEqual((r["our_price"], r["rival_price"], r["rival_zone"]), (96, None, None))
 
     def test_bad_lines_are_skipped(self):
         st = fold(["", "not json", "[1,2]", json.dumps({"event": "hold", "duel": {"x": 1}}), START])
         self.assertEqual(d.duel_view(st, time.time())["counts"]["total"], 0)
 
-    def test_gap(self):
-        self.assertEqual(d.gap_pct("seller", 80, 100), 25)
-        self.assertEqual(d.gap_pct("seller", 80, 72), -10)
-        self.assertEqual(d.gap_pct("buyer", 100, 90), 10)
-        self.assertEqual(d.gap_pct("buyer", 100, 110), -10)
+    def test_zone(self):
+        for role, limit, price, zone in (("seller", 80, 100, "far"), ("seller", 80, 88, "near"), ("seller", 80, 82, "at"),
+                                         ("seller", 80, 80, "at"), ("seller", 80, 79, "outside"),
+                                         ("buyer", 100, 96, "at"), ("buyer", 100, 95, "near"), ("buyer", 100, 90, "near"),
+                                         ("buyer", 100, 85, "far"), ("buyer", 100, 110, "outside")):
+            self.assertEqual(d.gap_zone(role, limit, price), zone, (role, limit, price))
         for args in (("buyer", None, 90), ("buyer", 100, None), ("buyer", 0, 5), ("judge", 100, 90)):
-            self.assertIsNone(d.gap_pct(*args))
+            self.assertIsNone(d.gap_zone(*args))
 
 
 class FilesTest(unittest.TestCase):
