@@ -175,7 +175,8 @@ def apply_world(world: dict) -> dict:
     if world.get("pair_seen") is not None:
         arena.PAIR_SEEN = world["pair_seen"]
     arena.ARENA_DAYS = world.get("days_mode") or ""
-    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS}.get(world.get("weights"))
+    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS,
+            "blend": arena.BLEND_WEIGHTS}.get(world.get("weights"))
 
 
 def run_eval(job: tuple) -> dict:
@@ -228,7 +229,7 @@ def main() -> None:
     ap.add_argument("--out", required=True, help="where the best params go (a duel.py --params file)")
     ap.add_argument("--report", required=True, help="where the markdown report goes")
     ap.add_argument("--max-minutes", type=float, default=0, help="stop after this many minutes (0 = no limit)")
-    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field"],
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend"],
                     help="rival mix: Friday-fitted WEIGHTS, the Duels I field mix (DUELS1_WEIGHTS) or the likely "
                          "field from the Saturday research (FIELD_WEIGHTS)")
     ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
@@ -252,8 +253,8 @@ def main() -> None:
     hold_seeds = list(range(HOLDOUT_SEED0, HOLDOUT_SEED0 + a.holdout_sessions))
     all_kinds = arena.FITTED + arena.CLASSIC
     tune_kinds = TUNE_KINDS
-    if a.weights in ("duels1", "field"):   # tune and hold out on every kind the mix weighs
-        mix = arena.DUELS1_WEIGHTS if a.weights == "duels1" else arena.FIELD_WEIGHTS
+    if a.weights in ("duels1", "field", "blend"):   # tune and hold out on every kind the mix weighs
+        mix = {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS, "blend": arena.BLEND_WEIGHTS}[a.weights]
         tune_kinds = [k for k in arena.KINDS if mix.get(k, 0) > 0]
         all_kinds = tune_kinds
     t0 = time.time()

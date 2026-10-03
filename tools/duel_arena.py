@@ -522,6 +522,10 @@ FIELD = ["boulware", "conceder", "greedy", "micro", "split", "logroll", "llmfair
 # hold, 10% silent or absent, the rest reactive or clever. Kinds left out weigh 0.
 FIELD_WEIGHTS = {"linear": 25, "boulware": 8, "conceder": 7, "steady": 15, "llmfair": 15, "fast": 10, "absent": 5,
                  "silent": 3, "greedy": 2, "tft": 2, "split": 3, "logroll": 2, "micro": 3}
+# Half the observed Duels I field, half the likely field: what we know plus what the other teams may have built since.
+BLEND_WEIGHTS = {k: round(50 * DUELS1_WEIGHTS.get(k, 0) / sum(DUELS1_WEIGHTS.values())
+                          + 50 * FIELD_WEIGHTS.get(k, 0) / sum(FIELD_WEIGHTS.values()), 3)
+                 for k in set(DUELS1_WEIGHTS) | set(FIELD_WEIGHTS)}
 
 
 def rival_params(kind: str, rng: random.Random, T: int) -> dict:
@@ -1224,7 +1228,7 @@ def main() -> None:
     ap.add_argument("--slot-busy", type=float, default=0.0)
     ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
                     "(default PAIR_SEEN = 1; Duels I: 0)")
-    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field"],
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend"],
                     help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
     ap.add_argument("--days-mode", default="", help='two issues: "" robust (duel.py run before --days-confirmed), '
                     '"confirmed", or a --days-best value such as "buyer:10,seller:0"')
@@ -1237,7 +1241,7 @@ def main() -> None:
     if a.pair_seen is not None:
         PAIR_SEEN = a.pair_seen
     ARENA_DAYS = a.days_mode
-    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS}.get(a.weights)
+    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS, "blend": BLEND_WEIGHTS}.get(a.weights)
     kinds = [k for k in KINDS if (weights or WEIGHTS).get(k, 0) > 0] if weights else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}
