@@ -44,6 +44,17 @@ Every team's structured offers to the dealers (item and price), the dealers' rep
 - Per tick: 1 accept per team (shared by every agent on the key), 1 message per conversation, 12 new offers. At most 6 open conversations and 30 open offers. Text is capped at 1200 characters.
 - On Friday the clock started late (about 20:20 instead of 19:00) and still closed at 23:00.
 
+## Friday night, after close (tick 159)
+
+The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Added here, not covered there:
+
+- **The VM recorder has no gap:** 3,770 events with every tick 0-159 and 191 settlements, where the laptop recorder lost ticks 49-118. Committed as `logs/feed-vm/` (feed, leaderboard and board snapshots, changes).
+- **Every venue's book is public:** `GET /api/venues/{id}/offers` answers without a key, so we can record how every team's market behaves.
+- **The kit says how to beat the free stall** (`kit/starter_broker.py`): the stall matches by quoted price; bench traders quote away from limits they keep hidden, some leave soon, most relax their quotes as their patience runs out, the firm ones never do; the Market Test counts the gains between the true limits. A broker match must still respect the quotes (`ask <= price`, `price + fee <= bid`).
+- **Team venue fees move:** t13 went 1 % to 0 % (tick 136) and back to 1 % (tick 147); t06 0.5 % to 0 % (tick 156); t02 announced 0 % for tick 161.
+- **The SDK repeats refused writes:** with `wait_on_tick=True` (the default) a write refused with `wait_for_tick` is sent again on the next tick. For `POST /api/duels/{id}/accept` that accepts whatever the rival's standing offer is by then. `duel.py` and `rastro_seller.py` pass `wait_on_tick=False`; `abuela.py` and `chato.py` use the default.
+- **Game hours look like wall hours:** the schedule pins Saturday 4.0 to 09:00 and 18.0 to 23:00, Sunday 18.0 to 09:00 and 24.0 to 15:00. Fourteen game hours in fourteen wall hours at 30 s ticks (and six in six at 15 s) only fit if a game hour is a wall hour whatever the tick length. To confirm with `t_hours` at 09:00.
+
 ## Open questions for the organisers
 
 - The judges' criteria (40 of the 100 points).
