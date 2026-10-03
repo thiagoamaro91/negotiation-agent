@@ -72,3 +72,16 @@ The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Add
 - Whether dealers' true limits are revealed after the Market Test.
 - Whether the one-accept-per-tick limit also covers duel accepts.
 - How the 30 negotiating points split between duels, the dealer ladder and team trades.
+
+## Asset ids, decks, cash and our own inference — Saturday 3 Oct, ticks 630–1243
+
+- **Every card copy is one asset id, minted in order.** Starter hands are blocks of 15 ids per team in join order (t01 1–15, t02 16–30, t03 31–45). A pack mints its cards as consecutive ids, and the `best` card that `pack.opened` shows is the last slot, so it places the whole block. Listings name the maker's assets and settlements move them. `tools/decks.py` rebuilds every team's deck this way. Checked against our own account at tick 630: 35 cards rebuilt vs 35 real, 32 copies placed by id, 0 wrong, 16/16 names right. Gifts, eggs and Workshop cards carry a name but no id, and the Workshop never says which three commons it burned.
+- **`GET /api/cards/{id}` needs the team key** (401 without it). Any team with a key can census every deck, ours included (`tools/census.py`, #57). The Sunday top-up list comes from `python3 tools/decks.py moved --base <census>` (#58, #59).
+- **The value inference, tested on the one team whose multipliers we know (ours).** From our own public moves it orders 70 % of set pairs right (a uniform prior gets 50 %), with a mean error of 0.20 per multiplier against 0.28 for the prior. It still ranks LAT first and LAV third, while the truth is LAV > SAL > LAT: completing La Latina opportunistically hides our real favourite. Treat every other team's inferred favourite as a hint (`/data` → `truth` on the brain).
+- **Cash is public except where the feed is silent.** Rebuilt from the public feed, our cash matched every real reading we have (11 of 11, through tick 1186). Three traps:
+  - Package trades with cash (cards + 38 P for LAV-10, tick 844) need the matching listing to tell which way the cash went.
+  - The fee is paid by whoever accepts, and the feed does not say who that was. Settle it by the price: did the trade close at the ask or at the bid?
+  - The 400 P "Payday in Madrid" at tick 1201 came only as an `announcement`, with no `schedule.fired` (#52).
+
+  For other teams a few fees stay ambiguous (`cash_unsure`, ±2–3 P), and a private cash event would not show at all.
+- **Gifts follow easter eggs too.** Abuela gave us SAL-03 at tick 1077, right after the "chulapa dorada" egg message.
