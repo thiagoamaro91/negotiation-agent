@@ -680,6 +680,50 @@ class TestGateMemory(unittest.TestCase):
             self.assertFalse(g.known())
 
 
+    def test_a_later_read_never_shortens_a_window_already_placed(self):
+        """The schedule stops listing a session that has not fired yet (it moved, or the API's list is cut short): the
+        window the gate already placed for it stays; only its own end retires it."""
+        state = {"now": 0.0, "tick": 100, "t": 10.0}
+        g = an.Gate(clock=lambda: state["now"])
+        sched = lambda st: {"upcoming": [{"at_hours": 10.0 + 600 / 3600, "action": "bench"}]} if st["now"] < 60 \
+            else {"upcoming": []}
+        self.assertTrue(g.refresh(self.api(state, schedule=sched)))
+        state.update(now=60.0, tick=102, t=10.0 + 60 / 3600)
+        self.assertTrue(g.refresh(self.api(state, schedule=sched)))      # the session is gone from the schedule
+        state["now"] = 600.0                                             # its start, no read in between
+        self.assertIsNotNone(g.quiet_end())
+        state["now"] = 600.0 + an.QUIET_AFTER_S                          # and the window still ends on time
+        self.assertIsNone(g.quiet_end())
+
+
+class TestStatusAfterSilence(unittest.TestCase):
+    def test_the_first_request_after_a_silence_is_a_fresh_status_read(self):
+        """A pause can move a Market Test while the loop sleeps through a silence: after it, nothing is read or posted
+        on the status from before it (Gate.expire), even when that status is younger than STATUS_MAX_AGE_S."""
+        import unittest.mock as um
+        state, posts = {"now": 0.0, "tick": 100}, []
+
+        def get_json(url):
+            if url.endswith("/api/schedule"):
+                return {"upcoming": [{"at_hours": 10.0 + 100 / 3600, "action": "bench", "params": {"ticks": 4}}]
+                        if state["now"] < 100 else []}
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 1.0}
+            if url.endswith("/api/venues"):
+                return {"venues": [{"venue": "v20", "status": "open"}]}
+            return {"offers": [], "events": []}
+        with um.patch.object(an, "QUIET_BEFORE_S", 10), um.patch.object(an, "QUIET_AFTER_S", 30), \
+                um.patch.object(an, "QUIET_TAIL_S", 5):
+            run_loop(["run", "--yes", "--count", "3", "--every-min", "2", "--min-gap-min", "1", "--exclude", ""],
+                     get_json, state, posts)
+        lo, hi = 90, 130                                                 # the silence: 10 s before to 30 s after
+        self.assertTrue(any(t < lo for t, _ in state["calls"]) and any(t >= hi for t, _ in state["calls"]))
+        self.assertEqual([u for t, u in state["calls"] if lo <= t < hi], [])
+        first_after = next(u for t, u in state["calls"] if t >= hi)
+        self.assertTrue(first_after.endswith("/api/schedule"), first_after)
+        self.assertEqual([t for t, _ in posts if lo <= t < hi], [])
+
+
 class TestStateFile(unittest.TestCase):
     def test_the_variant_state_follows_a_patched_state_path(self):
         import tempfile
