@@ -525,8 +525,9 @@ def plan(split: dict | None = None) -> dict:
                              f"{' / '.join(f'{x:.2f}' for x in slots[did])}. "
                              f"{best['action'].capitalize()}: {'an' if best['kind'][0] in 'aeiou' else 'a'} {best['kind']} "
                              f"({cards}) at the median close {best['price']} P "
-                             f"captures ~{best['share']:.0%} of the range, at {top['price']} P ~{top['share']:.0%} "
-                             f"(closes {best['low']}-{best['high']}, opening {best['opening']}, n={best['n']}, {best['source']}).")
+                             f"captures ~{best['share']:.0%} of the range"
+                             + (f", at {top['price']} P ~{top['share']:.0%}" if top["price"] != best["price"] else "")
+                             + f" (closes {best['low']}-{best['high']}, opening {best['opening']}, n={best['n']}, {best['source']}).")
     for p in pages:
         if p["missing"] and len(p["missing"]) <= PAGE_MAX_MISSING:
             decisions.append(f"Page {p['set']}: {p['have']}/{p['of']}, missing {', '.join(p['missing'])}. Holdings never score; "
