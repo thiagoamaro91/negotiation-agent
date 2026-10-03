@@ -65,24 +65,23 @@ class TestFeed(unittest.TestCase):
               {"type": "thread.message", "payload": {}}]
         self.assertEqual(an.offer_makers(ev), {7: "t15", 8: "t06"})
 
-    def test_live_on_venue_drops_cancelled_expired_and_settled(self):
-        a = ask("LAT-07", 26, venue="v20", maker="t15", oid=11, asset=647)
-        b = ask("LAT-01", 10, venue="v20", maker="t15", oid=12, asset=370)
-        c = bid("SAL-01", 5, venue="v20", maker="t07", oid=13)
-        d = dict(bid("SAL-02", 5, venue="v20", maker="t07", oid=14), expires_tick=105)
-        e = ask("MAL-01", 6, venue="v07", maker="t15", oid=15)
-        ev = [listed(x) for x in (a, b, c, d, e)] + [
-            {"type": "offer.cancelled", "tick": 101, "payload": {"offer": 13, "venue": "v20"}},
-            {"type": "settlement", "tick": 102, "payload": {"items": [{"id": 370, "ref": "LAT-01"}]}},
-            {"type": "thread.message", "tick": 110, "payload": {}}]
-        self.assertEqual([o["id"] for o in an.live_on_venue(ev)], [11])
-        self.assertEqual([o["id"] for o in an.other_venues(ev)], [15])
+    def test_books_come_from_each_venue_and_an_unreadable_one_is_skipped(self):
+        served = {"rastro": [ask("A", 5)], "v07": [bid("A", 4)], "v20": [ask("B", 9)]}
+
+        def get(url):
+            v = url.rsplit("/", 2)[-2]
+            if v == "v99":
+                raise OSError("down")
+            return {"offers": served[v]}
+        books = an.market_books(get, ["v07", "v99", "v20"])
+        self.assertEqual(sorted(books), ["rastro", "v07", "v20"])
+        self.assertEqual(books["v07"][0]["venue"], "v07")
 
     def test_describe_names_the_team_and_skips_ours_and_directed(self):
         self.assertEqual(an.describe(ask("LAT-07", 26, oid=9), {9: "t15"}), "t15 sells LAT-07 for 26 P (offer 9)")
         self.assertEqual(an.describe(bid("LAT-06", 14, maker="t06", oid=5)), "t06 buys LAT-06 for 14 P (offer 5)")
         self.assertEqual(an.describe(swap("SAL-03", "LAV-07", maker="t13", oid=4)),
-                         "t13 swaps SAL-03 for any LAV-07 (offer 4)")
+                         "t13 swaps SAL-03 for any LAV-07 (offer 4), taken by accepting it")
         self.assertEqual(an.describe(ask("A", 5, maker="m8812", oid=3)), "a team sells A for 5 P (offer 3)")
         self.assertIsNone(an.describe(ask("A", 5, maker="t03")))
         self.assertIsNone(an.describe(ask("A", 5, maker="t13", to="t16")))
@@ -96,8 +95,15 @@ class TestText(unittest.TestCase):
         self.assertTrue(t.startswith("Live on La Celestina (v20) now: t15 sells LAT-07 for 26 P (offer 21); "
                                      "t06 buys MAL-08 for 9 P (offer 22)."))
         self.assertIn('{"venue": "v20", "give": {"cash": 26}, "want": {"cards": ["LAT-07"]}}', t)
+        self.assertIn("POST /api/offers/21/accept", t)
         self.assertNotIn("http", t)                             # no web link: agents read the feed
         self.assertNotIn("Open bids on El Rastro", t)           # never send sellers to El Rastro
+
+    def test_a_swap_is_never_promised_to_the_broker(self):
+        t = an.build_text([], 0, venue_offers=[swap("LAT-07", "LAT-01", venue="v20", maker="t15", oid=31)])
+        self.assertIn("t15 swaps LAT-07 for any LAT-01 (offer 31), taken by accepting it", t)
+        self.assertIn("POST /api/offers/31/accept", t)
+        self.assertNotIn("broker crosses", t)
 
     def test_pairs_variant_names_both_sides_and_falls_back_to_the_book(self):
         t = an.build_text(BOOK, 1, names=NAMES)

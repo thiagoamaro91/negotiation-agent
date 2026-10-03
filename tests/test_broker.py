@@ -300,6 +300,39 @@ class SafetyNet(unittest.TestCase):
         self.assertIsNone(json.loads((Path(tmp.name) / "hb.json").read_text())["bench_alarm"])
 
 
+class AlarmEdges(unittest.TestCase):
+    """Codex's review of #44: the alarm must not see a cross between two runs, nor break on quotes that are not whole."""
+
+    def run_desk(self, bench, ticks=(1, 2, 3, 4)):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        fake = FakeBroker(book_of(bench), refuse=True)
+        log = MemLog(Path(tmp.name) / "broker.jsonl")
+        clock = [1000.0]
+        desk = brk.Desk(fake, log, "stall", now=lambda: clock[0], heartbeat=Path(tmp.name) / "hb.json")
+        for t in ticks:
+            fake.tick = t
+            desk.step()
+            clock[0] += brk.CLOCK_EVERY  # one clock read per step, so every step sees its tick
+        return log, json.loads((Path(tmp.name) / "hb.json").read_text())
+
+    def test_a_seller_and_a_buyer_of_two_runs_raise_no_alarm_and_are_never_paired(self):
+        bench = [seller("b1-1", 20, maker="bench"), buyer("b2-1", 30, maker="bench")]
+        log, hb = self.run_desk(bench)
+        self.assertIsNone(hb["bench_alarm"])
+        self.assertNotIn("bench_alarm", [r["event"] for r in log.rows])
+        self.assertEqual(brk.safety_net(book_of(bench), [], [(("b1-1", "b2-1", 25), "different_runs")]), [])
+
+    def test_quotes_that_are_not_whole_keep_the_loop_and_its_heartbeat_alive(self):
+        log, hb = self.run_desk([seller("b1-1", 10.5, maker="bench"), buyer("b1-2", 20.5, maker="bench")])
+        self.assertEqual(hb["tick"], 4)
+        self.assertEqual(hb["read_errors_in_a_row"], 0)
+        price = brk.price_for(book_of([]), 10.5, 20.5)
+        self.assertIsInstance(price, int)
+        self.assertTrue(10.5 <= price <= 20.5)
+        self.assertIsNone(brk.price_for(book_of([]), 10.2, 10.8))  # no whole price between the quotes
+
+
 class Fallback(unittest.TestCase):
     def test_bad_offers_do_not_break_the_plan(self):
         good = [seller("b1-1", 20), buyer("b1-2", 30)]

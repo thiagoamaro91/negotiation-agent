@@ -9,7 +9,7 @@ sellers to El Rastro.
 So a message now sells what is on v20 and what v20 would cross, all inside the text (other teams' agents read the feed;
 they do not open web pages):
   - the live offers on v20, with the team that posted them (public: the feed's offer.listed names every maker), the
-    price, the offer id, and the exact order that takes it;
+    price and the offer id, and how to take one (accept it, or post the other side of a cash offer);
   - El Rastro pairs a broker would cross, ask at or just above the bid (NEAR_GAP), with both teams and offer ids:
     El Rastro has no broker and its taker pays 5 % + 1 P, so those pairs sit there; on v20 they meet at the midpoint;
   - a short pitch.
@@ -21,10 +21,11 @@ works against us. Offers addressed to one team (to: tXX) are left out: nobody el
     python3 tools/announce.py run --yes                  # posts one message with the broker key
     python3 tools/announce.py run --yes --every-min 12 --count 40
 
-`plan` is keyless: v20's live offers come from the public feed (listed, minus cancelled, expired or settled). `run`
-reads them from our broker's book instead (authoritative) and needs the broker key (BROKER_KEY, or ~/.bazaar/broker.env
-as agent/broker.py reads it): only the machine that runs the broker has it. The key is never printed or logged.
-Endpoints: GET /api/feed?limit=1000, GET /api/venues/rastro/offers, GET /api/broker/book, POST /api/broker/announce.
+Every offer named comes from the venues' current public books (GET /api/venues/<id>/offers), so nothing taken,
+cancelled or expired is advertised; the feed (GET /api/feed?limit=1000) only names who posted each one. Swaps are
+advertised as taken by accepting them (POST /api/offers/<id>/accept): our broker crosses cash asks and bids only.
+`plan` is keyless. `run` posts with the broker key (BROKER_KEY, or ~/.bazaar/broker.env as agent/broker.py reads it):
+only the machine that runs the broker has it. The key is never printed or logged. POST /api/broker/announce.
 """
 from __future__ import annotations
 
@@ -107,38 +108,18 @@ def offer_makers(events: list) -> dict:
     return out
 
 
-def live_on_venue(events: list, venue: str = VENUE, tick=None) -> list:
-    """Offers listed on `venue` in the feed window that are still open: not cancelled, not expired at `tick` (default:
-    the newest tick seen), and, for an ask, its card not moved by a later settlement. Keyless, so a little stale; run
-    mode reads the broker's book instead."""
-    listed, gone, moved, last = {}, set(), set(), 0
-    for e in events or []:
-        if not isinstance(e, dict):
-            continue
-        last = max(last, e.get("tick") or 0)
-        pl = e.get("payload") or {}
-        if e.get("type") == "offer.listed" and (pl.get("offer") or {}).get("venue") == venue:
-            listed[pl["offer"].get("id")] = pl["offer"]
-        elif e.get("type") == "offer.cancelled":
-            gone.add(pl.get("offer"))
-        elif e.get("type") == "settlement":
-            moved.update(i.get("id") for i in pl.get("items") or [] if isinstance(i, dict))
-    tick = last if tick is None else tick
-    out = []
-    for oid, o in listed.items():
-        exp = o.get("expires_tick")
-        assets = {x.get("id") for x in (o.get("give") or {}).get("assets") or [] if isinstance(x, dict)}
-        if oid in gone or (isinstance(exp, int) and exp < tick) or assets & moved or o.get("status", "open") != "open":
-            continue
-        out.append(o)
+def market_books(get, venues: list) -> dict:
+    """{venue: its open offers right now} from the public books (GET /api/venues/<id>/offers, keyless), El Rastro
+    included. A venue whose book cannot be read is left out of this message. The books are the truth: an offer that
+    was taken, cancelled or expired is simply not there (the feed only names who posted what)."""
+    out = {}
+    for v in dict.fromkeys(["rastro", *venues]):
+        try:
+            out[v] = [dict(o, venue=v) for o in get(f"{URL}/api/venues/{v}/offers").get("offers") or []
+                      if isinstance(o, dict)]
+        except Exception as e:  # one unreadable book costs that venue's lines, never the message
+            print(f"book of {v} unavailable ({type(e).__name__})", flush=True)
     return out
-
-
-def other_venues(events: list) -> list:
-    """Live offers on every team venue but ours, from the feed window (live_on_venue per venue)."""
-    venues = {((e.get("payload") or {}).get("offer") or {}).get("venue") for e in events or []
-              if isinstance(e, dict) and e.get("type") == "offer.listed"}
-    return [o for v in sorted(x for x in venues if x and x not in ("rastro", VENUE)) for o in live_on_venue(events, v)]
 
 
 def describe(o: dict, names: dict | None = None) -> str | None:
@@ -158,8 +139,16 @@ def describe(o: dict, names: dict | None = None) -> str | None:
     if g.get("cash") and not given and len(wanted) == 1 and not w.get("cash"):
         return f"{who} buys {wanted[0]} for {int(g['cash'])} P{oid}"
     if len(given) == 1 and len(wanted) == 1 and not g.get("cash") and not w.get("cash"):
-        return f"{who} swaps {given[0]} for any {wanted[0]}{oid}"
+        return f"{who} swaps {given[0]} for any {wanted[0]}{oid}, taken by accepting it"
     return None
+
+
+def crossable(o: dict) -> bool:
+    """A one-card cash ask or bid: what our broker crosses (public_plan). Swaps are only taken by accepting them."""
+    g, w = o.get("give") or {}, o.get("want") or {}
+    given, wanted = _given(o), _wanted(o)
+    return bool((len(given) == 1 and w.get("cash") and not wanted and not g.get("cash"))
+                or (g.get("cash") and not given and len(wanted) == 1 and not w.get("cash")))
 
 
 def take_order(o: dict) -> str | None:
@@ -226,11 +215,13 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     shown = [(o, d) for o in live for d in [describe(o, names)] if d][:SHOW_OFFERS]
     book = ""
     if shown:
-        order = next((take_order(o) for o, _ in shown if take_order(o)), None)
+        first = shown[0][0]
+        order = next((take_order(o) for o, _ in shown if crossable(o) and take_order(o)), None)
         book = (f"Live on La Celestina ({VENUE}) now: " + "; ".join(d for _, d in shown) + ". "
-                + (f"To take one, post the other side on venue \"{VENUE}\", e.g. {order}: " if order else
-                   f"Post the other side on venue \"{VENUE}\": ")
-                + "our broker crosses it the same tick, 0 % fee, 0 P per card. ")
+                + f"Take one directly: POST /api/offers/{first.get('id', '<id>')}/accept (any offer id above). "
+                + (f"Or post the other side of a cash offer on venue \"{VENUE}\", e.g. {order}, and our broker "
+                   f"crosses it the same tick. " if order else "")
+                + "0 % fee, 0 P per card. ")
     pairs = near_market_pairs(offers, names, skip)
 
     def who(oid, fallback):
@@ -324,17 +315,12 @@ def main(argv: list[str] | None = None) -> None:
         if i:
             time.sleep(max(60.0, args.every_min * 60))
         variant = args.variant if args.variant is not None else next_variant()
-        offers = get_json(f"{URL}/api/venues/rastro/offers").get("offers", [])
         events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
-        offers = [dict(o, venue="rastro") for o in offers] + other_venues(events)
-        venue_offers = live_on_venue(events)
-        if key:  # run: the broker's own book is the truth about what is live on v20
-            try:
-                from bazaar_sdk import Broker
-                venue_offers = Broker(URL, key, timeout=10, retries=1).book().get("offers") or []
-            except Exception as e:  # the feed's view is a fine fallback for one message
-                print(f"broker book unavailable ({type(e).__name__}); using the feed", flush=True)
-        text = build_text(offers, variant, link, exclude, venue_offers, offer_makers(events))
+        venues = [v.get("venue") for v in get_json(f"{URL}/api/venues").get("venues", [])
+                  if isinstance(v, dict) and v.get("status") == "open" and v.get("venue")]
+        books = market_books(get_json, venues + [VENUE])
+        offers = [o for v, book in books.items() if v != VENUE for o in book]
+        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), offer_makers(events))
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         if args.cmd == "plan":
             print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")

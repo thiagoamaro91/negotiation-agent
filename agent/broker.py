@@ -113,8 +113,10 @@ def fee_of(book: dict, price: int) -> int:
     return math.ceil(bps * price / 10000) + per_card
 
 
-def price_for(book: dict, ask: int, bid: int):
-    """The midpoint, lowered until the buyer can also pay the fee; None when no whole price fits [ask, bid - fee]."""
+def price_for(book: dict, ask, bid):
+    """The midpoint, lowered until the buyer can also pay the fee; None when no whole price fits [ask, bid - fee].
+    Quotes that are not whole numbers are bounded to whole prices first (ask up, bid down)."""
+    ask, bid = math.ceil(ask), math.floor(bid)
     for p in range((ask + bid) // 2, ask - 1, -1):
         if p + fee_of(book, p) <= bid:
             return p
@@ -473,29 +475,25 @@ def guard(plan: list, book: dict) -> tuple:
     return ok, bad
 
 
-def pooled_stall(book: dict, skip=(), refused=None) -> list:
-    """The stall's rule over every bench offer of the book in one pool (no run grouping), the venue's fee counted;
-    pairs in `refused` left out. What the safety net sends and what the alarm looks for."""
-    asks, bids = [], []
-    for a, b in bench_quotes(book, skip).values():
-        asks += a
-        bids += b
-    return [m for m in stall_run(asks, bids, book) if (m[0], m[1]) not in (refused or {})]
+def stall_rule_plan(book: dict, skip=(), refused=None) -> list:
+    """The stall's rule within each bench run (stall_plan with the venue's fee), pairs in `refused` left out. What
+    the safety net sends and what the alarm looks for. A run's pairs never mix with another run's."""
+    return [m for m in stall_plan(book, skip, fees=True) if (m[0], m[1]) not in (refused or {})]
 
 
 def safety_net(book: dict, ok: list, bad: list, skip=(), refused=None) -> list:
     """The Market Test must never score 0 because of our own checks. Saturday 11:50: the guard dropped all 15 bench
     pairs as "same_maker" (every bench offer's maker is "bench"), the session counted 0 and the market fell by 1.9.
-    So when the guard dropped bench matches and let none through, the stall's rule over the pooled bench offers is
-    sent as it is: the server checks every match itself and a refused one costs nothing (refused pairs are not sent
-    again, as everywhere else). A policy that chose to wait sends nothing and drops nothing: the net stays off."""
+    So when the guard dropped bench matches and let none through, the stall's rule (per run, fee counted) is sent as
+    it is: the server checks every match itself and a refused one costs nothing (refused pairs are not sent again,
+    as everywhere else). A policy that chose to wait sends nothing and drops nothing: the net stays off."""
     bench_ids = {o.get("id") for o in book.get("bench_offers") or [] if isinstance(o, dict)}
     if not bench_ids or any(m[0] in bench_ids for m in ok):
         return []
     if not any(isinstance(m, (list, tuple)) and m and m[0] in bench_ids for m, _ in bad):
         return []
     used = {x for m in ok for x in m[:2]}
-    return [m for m in pooled_stall(book, set(skip) | used, refused) if m[0] not in used and m[1] not in used]
+    return stall_rule_plan(book, set(skip) | used, refused)
 
 
 def plan_book(book: dict, tick: int, policy: BenchPolicy | None, refused: dict | None = None,
@@ -650,7 +648,10 @@ class Desk:
         bench_alarm = the tick it started; one log line per stretch. Check it before each session."""
         if tick is None:
             return
-        crossing = bool(pooled_stall(book, self.pending))
+        try:
+            crossing = bool(stall_rule_plan(book, self.pending))
+        except Exception:  # never let the alarm cost the loop its heartbeat
+            crossing = False
         if bench_accepted or not crossing:
             self.idle_since = self.alarm = None
             return
@@ -659,7 +660,7 @@ class Desk:
         if self.alarm is None and tick - self.idle_since >= ALARM_TICKS:
             self.alarm = self.idle_since
             self.log.event("bench_alarm", tick=tick, since=self.idle_since,
-                           crossing=[list(m) for m in pooled_stall(book, self.pending)][:5])
+                           crossing=[list(m) for m in stall_rule_plan(book, self.pending)][:5])
 
     def send(self, sell, buy, price, tick) -> bool:
         """Send one match; True when the venue accepted it (watch mode: never)."""
