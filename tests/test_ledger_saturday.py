@@ -129,6 +129,68 @@ class Acceptor(unittest.TestCase):
         self.assertEqual((led["t03"]["cash"], led["t02"]["cash"]), (400 - 135 - 6, 400 + 135))
 
 
+def listed_until(offer_id, maker, expires, **kw):
+    out = listed(offer_id, maker, **kw)
+    out["offer"]["expires_tick"] = expires
+    return out
+
+
+class WhoPaysTheFee(unittest.TestCase):
+    """The rules that tell the acceptor when the price alone is not enough (Saturday's whole feed: 105 fees told by
+    price, 1 by the board, 9 packages or swaps, 2 unsure of which 1 settled by the consistency pass)."""
+
+    def test_an_offer_taken_on_its_last_tick_still_counts(self):
+        # t15's bid 1513 (21 P for MAL-06) expired at tick 102; t07 sold into it and it settled at 103
+        led = ledger.build(feed(
+            (1, "offer.listed", listed_until(1, "t02", 200, give_ids=(103,), want_cash=30)),
+            (2, "offer.listed", listed_until(2, "t03", 102, give_cash=21, want_refs=("MAL-06",))),
+            (103, "settlement", settlement("t02", "t03", "MAL-06", 21, "rastro", fee=3, asset=103))))
+        self.assertEqual((led["t02"]["cash"], led["t03"]["cash"]), (400 + 21 - 3, 400 - 21))
+
+    def test_with_both_at_the_price_the_offer_that_left_the_board_was_filled(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "snapshots.jsonl"
+            path.write_text("".join(json.dumps(r) + "\n" for r in (
+                {"tick": 380, "what": "rastro", "body": {"offers": [{"id": 1}, {"id": 2}]}},
+                {"tick": 381, "what": "rastro", "body": {"offers": [{"id": 1}]}})))
+            posted = ledger.listings(feed(
+                (370, "offer.listed", listed(1, "t02", give_ids=(77,), want_cash=8)),
+                (378, "offer.listed", listed(2, "t03", give_cash=8, want_refs=("MAL-04",)))))
+            first = {"id": 77, "ref": "MAL-04"}
+            self.assertEqual(ledger.acceptor_of(posted, first, "t03", "t02", 8, 381, "rastro", ledger.Boards(path)),
+                             ("t02", "board"))  # our bid 2 left the board: the seller took it
+            self.assertEqual(ledger.acceptor_of(posted, first, "t03", "t02", 8, 381, "rastro",
+                                                ledger.Boards(Path(d) / "none.jsonl")), ("t03", "unsure"))
+
+    def test_an_unsure_fee_moves_to_the_other_side_when_it_would_overdraw(self):
+        # no listing at 50: the old rule charges the seller (the buyer's 40 P bid stood); then the seller pays a dealer
+        # all its cash, which it could not have done after a 5 P fee: the buyer paid it
+        rep = {}
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t02", give_cash=40, want_refs=("SAL-09",))),
+            (2, "settlement", settlement("t01", "t02", "SAL-09", 50, "rastro", fee=5, asset=60)),
+            (3, "settlement", {"persona": "picaros", "price": 450, "items": [{"id": 9, "ref": "RET-09", "frm": "picaros", "to": "t01"}]})),
+            report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (0, 400 - 50 - 5))
+        self.assertEqual([u["tick"] for u in rep["flipped"]], [2])
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (0, 0))
+
+    def test_an_unsure_fee_left_alone_is_reported_on_both_sides(self):
+        rep = {}
+        led = ledger.build(feed((2, "settlement", settlement("t01", "t02", "LAT-02", 18, "rastro", fee=3, asset=53))),
+                           report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (418, 400 - 18 - 3))  # the old rule: the buyer
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (3, 3))
+        self.assertEqual(rep["how"]["unsure"], 1)
+
+    def test_a_card_for_card_swap_charges_its_fee_to_the_side_that_took_the_listing(self):
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t01", give_ids=(5,), want_refs=("SAL-01",))),
+            (2, "settlement", two_way(0, 2, (5, "LAV-08", "t01", "t02"), (6, "SAL-01", "t02", "t01")))))
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 398))
+        self.assertEqual((led["t01"]["trades"], led["t02"]["trades"]), (1, 1))
+
+
 class Grants(unittest.TestCase):
     SATURDAY = "El Retiro has arrived: a pack and the Saturday allowance (150 primas) for everyone"
     SUNDAY = "The Sunday allowance: 150 primas for everyone"
