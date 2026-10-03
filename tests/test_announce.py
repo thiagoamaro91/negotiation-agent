@@ -125,6 +125,28 @@ class TestText(unittest.TestCase):
         (p,) = an.near_market_pairs(both, {54: "t03", 55: "t09", 56: "t16"})   # ours skipped, the next ask pairs
         self.assertEqual(p[2][1], 55)
 
+    def test_our_old_offers_are_known_by_their_pseudonym_or_our_offer_list(self):
+        old = ask("MAL-04", 7, oid=100, maker="mOURS")            # ours, listed before the feed window
+        recent = ask("LAT-01", 9, oid=101, maker="mOURS")         # ours, the feed names it
+        theirs = bid("MAL-04", 7, oid=102, maker="mT16")
+        books = {"rastro": [old, recent, theirs], "v07": [ask("SAL-01", 5, venue="v07", oid=103, maker="mOURS")]}
+        names = an.learn_pseudonyms(books, {101: "t03", 102: "t16"})
+        self.assertEqual(names[100], "t03")                       # same pseudonym on the same venue: ours
+        self.assertNotIn(103, names)                              # pseudonyms are per venue: not linked
+        self.assertEqual(an.near_market_pairs([old, theirs], names), [])
+        self.assertEqual(len(an.near_market_pairs([old, theirs], {102: "t16"})), 1)  # without it, it would pair
+        me = {"offers": [dict(old, maker="t03"), dict(bid("X", 1, oid=104), maker="t13", to="t03")]}
+        self.assertEqual(an.our_offer_ids(me), {100})             # offers addressed to us are not ours
+
+    def test_recorded_feed_keeps_only_listings_and_survives_bad_lines(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "feed.jsonl"
+            f.write_text('{"type": "offer.listed", "actor": "t03", "payload": {"offer": {"id": 7, "maker": "t03"}}}\n'
+                         'not json "offer.listed"\n{"type": "settlement", "payload": {}}\n')
+            self.assertEqual(an.offer_makers(an.recorded_events(f)), {7: "t03"})
+            self.assertEqual(an.recorded_events(Path(d) / "missing.jsonl"), [])
+
     def test_crossing_claims_and_orders_count_v20s_fee(self):
         book = [ask("MAL-04", 10, oid=60), bid("MAL-04", 11, oid=61)]
         names = {60: "t09", 61: "t16"}

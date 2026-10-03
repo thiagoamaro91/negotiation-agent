@@ -22,7 +22,10 @@ works against us. Offers addressed to one team (to: tXX) are left out: nobody el
     python3 tools/announce.py run --yes --every-min 12 --count 40
 
 Every offer named comes from the venues' current public books (GET /api/venues/<id>/offers), so nothing taken,
-cancelled or expired is advertised; the feed (GET /api/feed?limit=1000) only names who posted each one. Swaps are
+cancelled or expired is advertised; the feed only names who posted each one: the API's last 1,000 events plus the
+recorded feed (logs/feed/feed.jsonl on the Mini), and each team's pseudonym per venue learnt from those names; in
+`run`, our own open offers come from GET /api/me/offers with the team key when the machine has one (read only), so
+they are never paired however old they are. Swaps are
 advertised as taken by accepting them (POST /api/offers/<id>/accept): our broker crosses cash asks and bids only.
 `plan` is keyless. `run` posts with the broker key (BROKER_KEY, or ~/.bazaar/broker.env as agent/broker.py reads it):
 only the machine that runs the broker has it. The key is never printed or logged. POST /api/broker/announce.
@@ -119,6 +122,72 @@ def offer_makers(events: list) -> dict:
         who = o.get("maker") or e.get("actor")
         if o.get("id") is not None and isinstance(who, str) and who.startswith("t"):
             out[o["id"]] = who
+    return out
+
+
+FEED_FILE = ROOT / "logs" / "feed" / "feed.jsonl"   # the feed recorder's file on the machine that runs us (the Mini)
+
+
+def recorded_events(path: Path = FEED_FILE) -> list:
+    """offer.listed events from the recorded feed (tools/feed_recorder.py), so makers older than the API's
+    1,000-event window are known too. A missing file or a bad line costs nothing."""
+    out = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"offer.listed"' not in line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(e, dict) and e.get("type") == "offer.listed":
+                    out.append(e)
+    except OSError:
+        pass
+    return out
+
+
+def our_offer_ids(me_offers: dict) -> set:
+    """Ids of our own open offers from GET /api/me/offers. That list also holds offers other teams addressed to us:
+    only maker == OURS counts."""
+    return {o.get("id") for o in (me_offers or {}).get("offers") or []
+            if isinstance(o, dict) and o.get("maker") == OURS and o.get("id") is not None}
+
+
+def team_client():
+    """A read-only use of the team key, when the machine has one (BAZAAR_KEY in the environment or the repo's .env,
+    as the other bots load it): only GET /api/me/offers, to know our own offers for sure. None without a key. The key
+    is never printed or logged."""
+    key = os.environ.get("BAZAAR_KEY", "").strip()
+    if not key:
+        try:
+            for line in (ROOT / ".env").read_text().splitlines():
+                if line.strip().startswith("BAZAAR_KEY="):
+                    key = line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            pass
+    if not key:
+        return None
+    from bazaar_sdk import Bazaar
+    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=1)
+
+
+def learn_pseudonyms(books: dict, names: dict) -> dict:
+    """Public books show makers as pseudonyms, one per team per venue (seen on Saturday: t06 has one on v07, another
+    on El Rastro, another on v02). An offer the feed names ties its pseudonym to the team on that venue; every other
+    offer with that pseudonym on that venue is then the same team's, however old. Returns names extended."""
+    out = dict(names or {})
+    for venue, book in (books or {}).items():
+        alias = {}
+        for o in book or []:
+            team, m = out.get(o.get("id")), o.get("maker")
+            if isinstance(team, str) and team[:1] == "t" and m and m != team:
+                alias[m] = team
+        for o in book or []:
+            m = o.get("maker")
+            if o.get("id") not in out and m in alias:
+                out[o["id"]] = alias[m]
     return out
 
 
@@ -331,8 +400,9 @@ def main(argv: list[str] | None = None) -> None:
     exclude = tuple(x.strip() for x in args.exclude.split(",") if x.strip())
     if args.cmd == "run" and not args.yes:
         ap.error("run posts on the public feed: add --yes")
-    key = None
+    key, team = None, None
     if args.cmd == "run":
+        team = team_client()
         from broker import load_broker_key  # same key source as agent/broker.py
         key = load_broker_key(Path(args.key_file))
         from runlog import RunLog
@@ -349,7 +419,13 @@ def main(argv: list[str] | None = None) -> None:
         fee = (ours.get("fee_bps") or 0, ours.get("fee_per_card") or 0)
         books = market_books(get_json, venues + [VENUE])
         offers = [o for v, book in books.items() if v != VENUE for o in book]
-        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), offer_makers(events), fee)
+        names = learn_pseudonyms(books, {**offer_makers(recorded_events()), **offer_makers(events)})
+        if team is not None:  # our own open offers, for sure: never paired, never named as anyone else's
+            try:
+                names.update({i: OURS for i in our_offer_ids(team.my_offers())})
+            except Exception as e:
+                print(f"our offers unavailable ({type(e).__name__}); feed names and pseudonyms only", flush=True)
+        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), names, fee)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         if args.cmd == "plan":
             print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
