@@ -34,6 +34,7 @@ Usage (from the repo root):
     python3 tools/duel_arena.py                                   # duel.py's defaults, Duels I
     python3 tools/duel_arena.py --params results/duel-params.json --sessions 300 --stress
     python3 tools/duel_arena.py --session 2 --params ~/lab/duel/best_params_duels2.json
+    python3 tools/duel_arena.py --session 2 --pair-seen 0 --weights duels1 --params a.json --params b.json
 """
 from __future__ import annotations
 
@@ -64,6 +65,14 @@ CLASSIC = ["hardliner", "linear", "tft", "deadline", "silent"]
 # Friday's 9 pairs: steady 2, fast 1, cycler 1, oneshot 1, llm 1, absent 3. Classic styles weigh 1 each.
 WEIGHTS = {"steady": 2, "fast": 1, "cycler": 1, "oneshot": 1, "llm": 1, "absent": 2,
            "hardliner": 1, "linear": 1, "tft": 1, "deadline": 1, "silent": 1}
+# Duels I (Saturday, our 34 duels, logs/duels session 2), each rival path read by eye: 13 conceded every tick to the
+# end (linear), 5 every 2-4 ticks (steady), 4 jumped then held (fast), 1 spoke once (oneshot), 2 froze on one number
+# and took our last chance (tft-like), 2 never spoke but took our offer (silent), 7 never spoke nor took (absent).
+DUELS1_WEIGHTS = {"linear": 13, "steady": 5, "fast": 4, "oneshot": 1, "tft": 2, "silent": 2, "absent": 7,
+                  "cycler": 0, "llm": 0, "hardliner": 0, "deadline": 0}
+# Share of duels whose paired limit duel.mirror_limit finds. Friday: the pair was (odd, odd + 1), same rival team.
+# Duels I: 0 of 34 (pairs are (even, odd) with a different rival in each, and the limits are unrelated: 2360 / 2361).
+PAIR_SEEN = 1.0
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
 # duel.py --late-poll (a second read of the duels late in the tick): the share of the rival's same-tick messages that
@@ -475,6 +484,11 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
     decide, allocate (one accept per team per tick); then our accept or message (record_say)."""
     rng = random.Random(seed * 7919 + 1)
     lrng = random.Random(seed * 104729 + 5)       # late-read draws only, so flags off replay the same worlds
+    prng = random.Random(seed * 31337 + 7)        # paired-limit visibility only (PAIR_SEEN)
+    hidden = {dl.pair for dl in duels if PAIR_SEEN < 1 and prng.random() >= PAIR_SEEN}
+
+    def pair_of(d, every):
+        return None if int(d["item"].split("-")[1]) in hidden else duel.mirror_limit(d, every)
     late_fails = 0                                # late reads failed in a row (duel.LATE_MAX_FAILS: late read off)
     T = sess["ticks"]
     results, every = [], []
@@ -509,7 +523,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                 ra = rival_acts[x["dl"].id]
                 if late_look and x["D"] - tick <= late_look and "say" in ra:
                     _post_rival(x, ra.pop("say"), tick)
-                st.pair_l = duel.mirror_limit(d, every)
+                st.pair_l = pair_of(d, every)
                 st.rival_limit = st.pair_l if cfg.mirror else None
                 duel.sync_state(st, d)
                 pairs.append((d, st))
@@ -562,7 +576,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                     if x["deal"]:
                         continue
                     d, st = x["d"], x["st"]
-                    st.pair_l = duel.mirror_limit(d, every)
+                    st.pair_l = pair_of(d, every)
                     st.rival_limit = st.pair_l if cfg.mirror else None
                     duel.sync_state(st, d)
                     again.append((d, st))
@@ -585,7 +599,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
         for x in xs:
             dl, d = x["dl"], x["d"]
             r = {"duel": dl.id, "wave": w, "kind": dl.kind, "role": dl.role, "limit": dl.our_limit,
-                 "rival_limit": dl.rival_limit, "pie": round(dl.pie(), 2), "pair_limit": duel.mirror_limit(d, every),
+                 "rival_limit": dl.rival_limit, "pie": round(dl.pie(), 2), "pair_limit": pair_of(d, every),
                  "sent": len(x["ours"]), "rival_msgs": len(x["theirs"]), "deal": False, "share": 0.0, "score": 0.0,
                  "rounds": d["rounds"]}
             if x["deal"] and not d1_settles and x["deal"][2] >= x["D"] - 1:
@@ -622,16 +636,23 @@ def _post_rival(x: dict, say: tuple, tick: int) -> None:
 
 # ---------------------------------------------------------------- Friday replay (the real rival paths)
 
-def friday_duels(log_dir: Path = ROOT / "logs" / "duels") -> list:
-    """Friday's closed practice duels (structure only: limits, roles, rival prices and ticks; text is never read)."""
+def friday_duels(log_dir: Path = ROOT / "logs" / "duels", session: int = 1) -> list:
+    """Closed duels of one server session (structure only: limits, roles, rival prices and ticks; text is never read).
+    Server session 1 is Friday's practice, 2 is Duels I (Saturday); logs/duels holds both."""
     out = []
     for f in sorted(log_dir.glob("duel-*.json")):
         if "-first" in f.name:
             continue
         d = json.loads(f.read_text())
-        if d.get("status") in ("deal", "no_deal") and isinstance(d.get("your_limit"), (int, float)):
+        if (d.get("status") in ("deal", "no_deal") and isinstance(d.get("your_limit"), (int, float))
+                and d.get("session", 1) == session):
             out.append(d)
     return out
+
+
+def duels1_duels(log_dir: Path = ROOT / "logs" / "duels") -> list:
+    """Duels I's closed duels (server session 2, Saturday 11:30-13:25, to tick 630)."""
+    return friday_duels(log_dir, session=2)
 
 
 def _replay_pass(wave: list, every: list, tick: int, see: int, cfg, late: bool = False) -> list:
@@ -711,6 +732,75 @@ def friday_replay(params: dict, ticks: int = 12, late_look: int = 0, files: list
                          score=round(share * (1 - d["decay_per_round"]) ** rounds, 3))
             results.append(r)
     return results
+
+
+def duels1_replay(params: dict, files: list = None, ticks: int = 16) -> list:
+    """Our policy against the rival price paths of Duels I, on the real tick timeline (duels overlap as they did, so
+    they share the one accept per tick). Rivals do not react or accept; after a rival's last message its offer stands
+    to the deadline (none walked away in Duels I). Where we accepted, the rival's path ends there, so waiting longer
+    than we did finds no better offer here: this replay can only show what waiting COSTS. The paired limit is looked
+    up as in the run loop (Duels I: never found). The late read sees the rival's same-tick message, as `run` did.
+    Scored: duels where the rival posted a price. Score = our surplus / our limit x (1 - decay) ^ rounds; `result`
+    is the server's number (surplus x decay, primas)."""
+    every = files if files is not None else duels1_duels()
+    cfg = cfg_for(params, ticks)
+    ws = []
+    for x in every:
+        path = [(m["tick"], m["price"]) for m in x.get("messages") or []
+                if m.get("from") == x.get("rival") and isinstance(m.get("price"), (int, float))]
+        d = {**{k: x[k] for k in ("duel", "session", "role", "item", "issues", "your_days_weight", "days_meaning",
+                                  "your_limit", "rival", "deadline_tick", "decay_per_round")},
+             "status": "live", "rounds": 0, "your_offer": None, "rival_offer": None, "messages": []}
+        ws.append({"d": d, "path": path, "S": x["deadline_tick"] - ticks, "D": x["deadline_tick"], "st": None,
+                   "deal": None, "real": x})
+    if not ws:
+        return []
+    for tick in range(min(w["S"] for w in ws), max(w["D"] for w in ws)):
+        live = [w for w in ws if w["S"] <= tick < w["D"] and not w["deal"]]
+        if not live:
+            continue
+        for w in live:
+            if w["st"] is None:
+                w["st"] = duel.DuelState(w["d"], tick, ticks)
+        decisions = _replay_pass(live, every, tick, tick, cfg)
+        for d, st, dec in decisions:
+            w = next(w for w in live if w["d"] is d)
+            if dec["action"] == "accept":
+                w["deal"] = (d["rival_offer"]["price"], tick)
+            elif dec["action"] == "say":
+                duel.record_say(st, dec, d, tick)
+                d["messages"].append({"tick": tick, "from": "you", "price": dec["price"], "days": None, "text": ""})
+                d["your_offer"] = {"price": dec["price"], "days": 0}
+        if getattr(duel, "late_due", None) and duel.late_due(decisions, cfg):
+            for d, st, dec in _replay_pass([w for w in live if not w["deal"]], every, tick, tick + 1, cfg, late=True):
+                if dec["action"] == "accept":
+                    next(w for w in live if w["d"] is d)["deal"] = (d["rival_offer"]["price"], tick)
+    results = []
+    for w in ws:
+        d, real = w["d"], w["real"]
+        r = {"duel": d["duel"], "role": d["role"], "limit": d["your_limit"], "rival_prices": len(w["path"]),
+             "sent": sum(1 for m in d["messages"] if m["from"] == "you"), "deal": bool(w["deal"]), "score": 0.0,
+             "result": 0.0, "scored": bool(w["path"]), "real_result": real.get("result") or 0.0,
+             "real_deal": real.get("status") == "deal"}
+        if w["deal"]:
+            price, at = w["deal"]
+            seq = [(m["tick"], "us" if m["from"] == "you" else "them") for m in d["messages"] if m["tick"] < at
+                   or (m["tick"] == at and m["from"] != "you")]
+            rounds = rounds_of(seq, "exchange")
+            s = (price - d["your_limit"]) if d["role"] == "seller" else (d["your_limit"] - price)
+            k = (1 - d["decay_per_round"]) ** rounds
+            r.update(price=price, at=at - w["S"], left=w["D"] - at, rounds=rounds, result=round(s * k, 2),
+                     score=round(s / d["your_limit"] * k, 4))
+        results.append(r)
+    return results
+
+
+def duels1_line(name: str, params: dict) -> str:
+    rr = [r for r in duels1_replay(params) if r["scored"]]
+    n = max(1, len(rr))
+    return (f"{name}: mean score {sum(r['score'] for r in rr) / n:.4f}, result {sum(r['result'] for r in rr):.1f} P, "
+            f"deals {sum(r['deal'] for r in rr)}/{len(rr)} (real run: {sum(r['real_result'] for r in rr):.1f} P, "
+            f"{sum(r['real_deal'] for r in rr)} deals)")
 
 
 def replay_line(name: str, params: dict, late_look: int = 0) -> str:
@@ -794,6 +884,11 @@ STRESS = [  # (label, module overrides, evaluate() kwargs): what if our rival mo
     ("an accept at deadline-1 does not settle", {}, {"d1_settles": False}),
     ("late read: 40% of rival messages land after it, 15% of reads fail", {"LATE_MISS": 0.4, "LATE_FAIL": 0.15}, {}),
     ("late read: every one fails (falls back to the next tick)", {"LATE_FAIL": 1.0}, {}),
+    ("paired limit never visible (Duels I: 0/34)", {"PAIR_SEEN": 0.0}, {}),
+    ("Duels I field mix, paired limit never visible", {"PAIR_SEEN": 0.0}, {"weights": DUELS1_WEIGHTS}),
+    ("Duels I mix, no pair, deadline-1 does not settle", {"PAIR_SEEN": 0.0},
+     {"weights": DUELS1_WEIGHTS, "d1_settles": False}),
+    ("Duels I mix, no pair, accept slot busy 15%", {"PAIR_SEEN": 0.0}, {"weights": DUELS1_WEIGHTS, "slot_busy": 0.15}),
 ]
 
 
@@ -822,15 +917,23 @@ def main() -> None:
     ap.add_argument("--rounds-rule", default="exchange", choices=["exchange", "min"])
     ap.add_argument("--late-look", type=int, default=0)
     ap.add_argument("--slot-busy", type=float, default=0.0)
+    ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
+                    "(default PAIR_SEEN = 1; Duels I: 0)")
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1"],
+                    help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
     ap.add_argument("--json", action="store_true", help="print the summaries as JSON")
     ap.add_argument("--stress", action="store_true", help="also print the stress table (what if the model is wrong)")
     a = ap.parse_args()
+    global PAIR_SEEN
+    if a.pair_seen is not None:
+        PAIR_SEEN = a.pair_seen
+    weights = DUELS1_WEIGHTS if a.weights == "duels1" else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}
     for p in a.params:
         policies[Path(p).stem] = load_policy(p)
     rows = {n: summary(evaluate(p, seeds, a.session, rounds_rule=a.rounds_rule, late_look=a.late_look,
-                                slot_busy=a.slot_busy)) for n, p in policies.items()}
+                                slot_busy=a.slot_busy, weights=weights)) for n, p in policies.items()}
     if a.json:
         print(json.dumps(rows, indent=1))
         return
@@ -840,6 +943,10 @@ def main() -> None:
     print("\nFriday replay (closed practice duels with rival prices; rivals do not react or accept; soft pie):")
     for n, p in policies.items():
         print("  " + replay_line(n, p, a.late_look))
+    print("\nDuels I replay (real timeline, 16 ticks; rivals do not react or accept; score = surplus / our limit x "
+          "decay):")
+    for n, p in policies.items():
+        print("  " + duels1_line(n, p))
     if a.stress:
         print("\nStress (mean score per duel):\n")
         print(stress(policies, seeds, a.session))
