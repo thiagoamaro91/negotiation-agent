@@ -18,6 +18,15 @@
 - Bots get an allowlisted environment with no key in it.
 - 21 more tests driving `up`, `keep`, `status` and the cache with the OS and network mocked; each failed on the reviewed head; 21 more mutations, all caught.
 
+### Changed (second review of #34: less surface)
+- The dealer entries are off by default (pull request #35 first); `up` prints every `off` entry with its reason and `plan` prints the dealers' manual command lines.
+- The process scanner decides from argv strings only and never opens a file (it used to read script files, which could include `.env`); it matches the script basename plus the mode token in any path form, `-m`, `--x=y`, or a `bash -c` loop.
+- `up` reads the bus board and refuses a process claimed on another machine; an unreadable board fails closed.
+- A dealer step is done only on a deal or a nothing-to-do line in its log; exit 0 without one is retried at the next open gate, `max_attempts` times (default 3), then reported.
+- A missing input file stops the keeper as a reported failure; `"enabled": false` stops a keeper before its next launch, and `status` reports a disabled entry that still runs.
+- The duel bot is checked for freshness while a scheduled wave is live; gates need explicit `doors` and `paused` values; notifications are deduplicated per incident.
+- 17 tests added or changed (14 failed on 21c5efa, 3 are controls); 16 more mutations, all caught.
+
 ## [2026-10-03] Team bus
 
 ### Added

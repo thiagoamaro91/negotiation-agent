@@ -1,13 +1,16 @@
 # Sunday runbook: the factory
 
-Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts each bot in its own window of the tmux session `factory` when its gate opens, restarts it, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
+Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
+
+**The dealer bots (Abuela, Chato, Pilar) are off by default and `up` does not start them**: `up` prints each as `off` with the reason. Their safety fixes live in pull request #35 (duel lock checked before every accept, pause-safe waits, distinct exit statuses). Until #35 is merged and deployed, run dealer steps by hand from the `manual` lines that `plan` prints, one dealer at a time, only while the clock runs, the doors are open and no duel wave is live. After #35, an operator may set a dealer's `"enabled": true` and run `up --yes`.
 
 ## Saturday night (before you sleep)
 
-1. Pull `main` on the Mini once the open pull requests are merged. **Pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) is a prerequisite for the dealer runs**: without it, keep `abuela`, `chato` and `pilar` off. Hector's duel rewrite is the other one.
+1. Pull `main` on the Mini once the open pull requests are merged. **Pull request #35 is the prerequisite for any automatic dealer run** (see above); Hector's duel rewrite is the other one.
 2. Clear every `todo` in `tools/factory_sunday.json`: `python3 tools/factory.py plan` prints each one under its command. The duel params file must exist: `plan` says `MISSING input file` and `up` refuses the duel until it does.
 3. Set `notify_cmd` to the Mini's Telegram notifier, so the watchdog can reach you.
-4. Stop Saturday's hand-started bots (the broker loop, gate scripts, desks) once the doors close. `plan` lists any bot still running outside the factory (python, `python -m`, or a shell loop running it), `up` refuses it, and a keeper never launches while one runs. A shell that merely mentions the command (an editor, a grep) can also be flagged: check the pid it names.
+4. Stop Saturday's hand-started bots (the broker loop, gate scripts, desks) once the doors close, **by hand**: `ps -ax | grep -E 'broker_loop|pilar_gate|_gate.sh'`. The factory recognises a bot by its script name plus its mode (`broker.py run`, also `cd agent; python3 broker.py run`, `python3 -m agent.broker run`, and a `bash -c` loop around them). It never opens a file to look inside a script, so a restart loop kept in a script file is visible only while its child runs. `plan` lists what it sees, `up` refuses it, and a keeper never launches beside it. A shell that merely mentions the command (a grep) can also be flagged: check the pid it names.
+5. Check the bus board: `python3 tools/bus.py board`. The bus tells people apart by GitHub login only, so the factory also reads the board's machine column and refuses a process claimed on another machine. Two machines on the same login that run `up` at the same moment can still both pass: run the factory on the Mini only.
 
 ## 08:50 read, 08:55 start
 
@@ -21,7 +24,7 @@ Read it top to bottom: the clock line, the schedule with wall times, every comma
 cd ~/bazaar && python3 tools/factory.py up --yes
 ```
 
-It claims each process on the team bus (`tools/bus.py claim <name> --where mini`), refuses anything already running, held by someone else, or missing an input file, and opens one tmux window per process. If the bus claim fails (GitHub down), nothing starts: say so in the team chat, then run `up --yes --no-bus`. Starting before 09:00 is safe: every gate waits for the doors.
+It reads the bus board, claims each process (`tools/bus.py claim <name> --where mini`), refuses anything already running, claimed on another machine, held by someone else, or missing an input file, prints the `off` entries with their reason, and opens one tmux window per process it starts. If the board or the claim cannot be read (GitHub down), nothing starts: say so in the team chat, then run `up --yes --no-bus`. Starting before 09:00 is safe: every gate waits for the doors and a running clock, and a clock response without explicit `doors` and `paused` values keeps every gate closed.
 
 ## 09:00 check
 
@@ -37,8 +40,7 @@ Expected at 09:01:
 | feed | `RUNNING`, log a few seconds old |
 | broker | `RUNNING`, log under a minute old |
 | duel | `WAITING`, next duel wave at 18.650 h |
-| abuela, chato | `WAITING`, waiting for grant_all |
-| pilar | `DONE`: both its steps are off until someone fills them in |
+| abuela, chato, pilar | `off` (pull request #35 first) |
 | watchdog | `RUNNING` |
 
 At 09:05 check the leaderboard `rounds` to confirm Saturday's round still counts until Round 3 starts.
@@ -51,11 +53,11 @@ Wall times come from `plan`: the game clock stops during any pause, so every pau
 |---|---|---|
 | doors open (09:00) | Sunday opens, 15 s ticks | broker starts (feed and watchdog run from 08:55); dealers and duels keep waiting. No bot launches or restarts while the clock is paused |
 | 16.65 | Round 3 starts, Chamberí released | nothing yet: the ladder work waits for the cash |
-| 16.70 | 150 P allowance | one minute later: Abuela slots 1-3 and the Chato rare start, one process per dealer |
+| 16.70 | 150 P allowance | dealers off: run the Abuela slots 1-3 and the Chato rare by hand from `plan`'s manual lines (or, after #35 and an explicit enable, they start one minute later) |
 | 17.00 | Market Test (16 ticks) | broker matches; watchdog checks dropped and matched |
-| 18.45 | 12 min before Duels III | no new dealer run starts from here (a live one finishes) |
+| 18.45 | 12 min before Duels III | no new dealer run from here: by hand too |
 | 18.48 | 10 min before Duels III | duel run starts: `--duel-ticks 12` from the schedule, `--late-poll 4`, `--until` closing time + 5 min |
-| 18.65 | Duels III (2 rounds, 12-tick duels, decay 0.1, max 4) | dealer runs held while `results/duel.lock` is fresh |
+| 18.65 | Duels III (2 rounds, 12-tick duels, decay 0.1, max 4) | status checks the duel log while the wave is live: something logged since it began, and no silence over 8 ticks while our duel lock exists |
 | 19.00, 21.00 | Market Tests | as at 17.00 |
 | 21.45 | finale warning | nothing |
 | 21.65 | The Final (12-tick duels) and the dealer stalls close | a fresh duel run 10 min before, but only if the wave projects inside opening hours (rechecked every loop) |
@@ -65,13 +67,17 @@ As of Saturday 14:30 the Final at 21.65 fell after Sunday's 15:00 close because 
 
 ## Alerts and the one action for each
 
-The watchdog window runs `status --notify --every 60` and sends the problem text when it changes, and "all clear again" when it clears.
+The watchdog window runs `status --notify --every 60` and sends a message when the set of incidents changes (an incident is the problem text without its numbers, so a growing age or counter does not resend it), and "all clear again" when it clears.
 
 | Alert | Meaning | Action |
 |---|---|---|
 | `<name> is down` | its keeper is not running (window killed, keeper crashed) | `python3 tools/factory.py up --yes` (starts only what is missing) |
 | `<name> exited rc=N, restart K pending` | a broker, feed or duel run crashed; the keeper restarts it in 5 to 120 s | read the end of `results/factory/<name>.out`; if it repeats, post it on the bus |
 | `<dealer>: step <label> exited rc=N: not relaunched` | a dealer run ended badly (lock timeout, close failed, all buys blocked, a crash); the keeper stopped | read `logs/<dealer>/<date>.jsonl`, decide, then `up --yes` (reruns that step) |
+| `<dealer>: step <label> ran N times without a deal or nothing-to-do marker` | the run exited 0 but its log shows neither a deal (`result` with status `deal`) nor an empty plan (`run_start` with `plan: []`), for example a start refused by a fresh duel lock | read the dealer window and log; rerun by hand or `up --yes` |
+| `<name> is disabled in the config but still runs` | someone set `"enabled": false` while it ran; keepers stop only before a launch | `tmux kill-window -t factory:<name>` |
+| `duel stale during Duels III` | the duel bot logged nothing since the wave began, or holds our duel lock with a silent log | `tmux kill-window -t factory:duel` then `up --yes` |
+| `<name>: missing input <file>` (FAILED) | its params file disappeared; the keeper stopped | restore the file, then `up --yes` |
 | `<name>: keeper says running but child pid N is gone` | the bot died and its keeper has not noticed, or the pid now belongs to something else | `tmux kill-window -t factory:<name>` then `up --yes` |
 | `<name>: no log at <path> after N s` | the bot runs but never wrote its log (wrong directory, stuck before its first line) | look at its window; if stuck, kill the window and `up --yes` |
 | `<name>: another copy runs outside the factory (pid N)` | a hand-started copy is running; the keeper will not launch beside it | stop that pid (or leave it and kill the factory window) |

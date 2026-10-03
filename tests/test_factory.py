@@ -226,7 +226,7 @@ DEAD_PID = 4194311          # above the macOS pid limit: never alive
 SERVICE = {"name": "broker", "kind": "service", "required": True, "gates": {"doors_open": True},
            "cmd": ["{python}", "-c", "pass"], "match": ["agent/broker.py", "run"], "log": "logs/broker/{date}.jsonl"}
 DEALER = {"name": "abuela", "kind": "steps", "required": False, "gates": {"doors_open": True, "clock_running": True},
-          "match": ["agent/abuela.py", "run"], "steps": [{"label": "a", "cmd": ["{python}", "-c", "pass"]},
+          "match": ["agent/abuela.py", "run"], "log": "logs/abuela/{date}.jsonl", "steps": [{"label": "a", "cmd": ["{python}", "-c", "pass"]},
                                                          {"label": "b", "cmd": ["{python}", "-c", "pass"]}]}
 
 
@@ -235,8 +235,9 @@ class Stop(Exception):
 
 
 class FakeChild:
-    def __init__(self, rc=0, polls=1, hang=False):
+    def __init__(self, rc=0, polls=1, hang=False, log=None, writes=()):
         self.rc, self.polls, self.hang, self.pid, self.returncode = rc, polls, hang, DEAD_PID, None
+        self.log, self.writes = log, list(writes)
         self.stdout = io.BytesIO(b"bot output\n")
 
     def poll(self):
@@ -246,6 +247,10 @@ class FakeChild:
         if self.hang:            # a long run: end the test here, once
             self.hang = False
             raise Stop
+        if self.writes and self.returncode is None:
+            self.log.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.log, "a") as fh:
+                fh.write("".join(json.dumps(w) + "\n" for w in self.writes))
         self.returncode = self.rc
         return self.rc
 
@@ -265,14 +270,17 @@ class Sandbox(unittest.TestCase):
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
-        self.ps, self.bus_rc, self.bus_calls = [], 0, []
+        self.ps, self.bus_rc, self.bus_calls, self.board = [], 0, [], {}
         for target, value in (("ROOT", self.tmp), ("STATE", self.tmp / "results" / "factory"),
                               ("LOCK", self.tmp / "results" / "duel.lock"), ("ps_lines", lambda: list(self.ps)),
-                              ("bus", self.fake_bus)):
-            mock.patch.object(f, target, value).start()
+                              ("bus", self.fake_bus), ("bus_board", lambda cfg: self.board)):
+            mock.patch.object(f, target, value, create=True).start()
         mock.patch.object(f.signal, "signal", lambda *a: None).start()
         mock.patch.object(f, "RECHECK_S", 0, create=True).start()
         self.addCleanup(mock.patch.stopall)
+
+    def dealer_log(self):
+        return self.tmp / "logs" / "abuela" / f"{f.today()}.jsonl"
 
     def hold(self, name):
         fd = f.acquire_singleton(name)
@@ -353,14 +361,15 @@ class ReviewSingleton(Sandbox):
         self.assertEqual(self.popen, [])
         self.assertIn("4242", st.get("why", ""))
 
-    def test_ps_matches_module_form_and_shell_restart_loops(self):
+    def test_ps_matches_module_form_and_shell_c_loops_but_never_reads_scripts(self):
         loop = self.tmp / "broker_loop.sh"
         loop.write_text("while true; do\n  python3 -u agent/broker.py run --policy stall\n  sleep 10\ndone\n")
         lines = ["  11 /opt/homebrew/bin/python3 -m agent.broker run --policy stall",
-                 f"  12 /bin/bash {loop}",
+                 f"  12 /bin/bash {loop}",                     # inside a script file: seen only via its child
                  "  13 /bin/zsh -c python3 agent/broker.py plan --book x.json",
-                 "  14 node /usr/local/bin/claude -p run agent/broker.py run"]
-        self.assertEqual(f.ps_pids(lines, ["agent/broker.py", "run"]), [11, 12])
+                 "  14 node /usr/local/bin/claude -p run agent/broker.py run",
+                 "  15 /bin/bash -c while true; do python3 agent/broker.py run; sleep 10; done"]
+        self.assertEqual(f.ps_pids(lines, ["agent/broker.py", "run"]), [11, 15])
 
 
 class ReviewBus(Sandbox):
@@ -412,7 +421,8 @@ class ReviewDealerExit(Sandbox):
         self.assertTrue([x for x in problems if "abuela" in x and "rc=3" in x], problems)
 
     def test_next_dealer_step_waits_while_paused(self):
-        rc, st = self.keep(self.config(DEALER), "abuela", [clock(), clock(paused=True)], [FakeChild(), FakeChild()])
+        deal = FakeChild(log=self.dealer_log(), writes=[{"event": "result", "status": "deal"}])
+        rc, st = self.keep(self.config(DEALER), "abuela", [clock(), clock(paused=True)], [deal, FakeChild()])
         self.assertEqual(len(self.popen), 1)
         self.assertEqual((st["done_steps"], st["why"]), (["a"], "clock paused"))
 
@@ -545,6 +555,170 @@ class ReviewMissingInput(Sandbox):
         rc, out, started = self.up(self.config(p))
         self.assertEqual(started, [])
         self.assertIn("docs/duel-lab/missing.json", out)
+
+
+
+# --- third round: fewer capabilities, each fail-closed -----------------------------------------------------------------
+
+class Round3Dealers(Sandbox):
+    def test_dealers_are_off_by_default_and_up_says_why(self):
+        cfg = f.load_config(f.CONFIG)
+        dealers = [p for p in cfg["processes"] if p["kind"] == "steps"]
+        self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar"})
+        for p in dealers:
+            self.assertIs(p.get("enabled"), False, p["name"])
+            self.assertIn("#35", p.get("note", ""), p["name"])
+        _, out, started = self.up(f.CONFIG)
+        for name in ("abuela", "chato", "pilar"):
+            self.assertRegex(out, rf"off +{name}: .*#35")
+            self.assertFalse([c for c in started if f" keep {name} " in c[-1]])
+
+    def test_exit_zero_without_a_marker_is_retried_then_reported(self):
+        cfg = self.config(dict(DEALER, max_attempts=2))
+        kids = [FakeChild(), FakeChild(), FakeChild()]          # exit 0, nothing in the log: the duel-lock refusal
+        rc, st = self.keep(cfg, "abuela", [clock()], kids, sleeps=10)
+        self.assertEqual(len(self.popen), 2)
+        self.assertEqual((st["state"], st["done_steps"], st["failed_steps"]), ("failed", [], ["a"]))
+        _, problems = self.status(cfg, clock())
+        self.assertTrue([x for x in problems if "abuela" in x and "marker" in x], problems)
+
+    def test_a_deal_or_nothing_to_do_marks_the_step_done(self):
+        log = self.dealer_log()
+        kids = [FakeChild(log=log, writes=[{"event": "run_start", "plan": [{"item": "RET-07"}]},
+                                           {"event": "result", "status": "deal"}]),
+                FakeChild(log=log, writes=[{"event": "run_start", "plan": []}, {"event": "run_end"}])]
+        rc, st = self.keep(self.config(DEALER), "abuela", [clock()], kids, sleeps=10)
+        self.assertEqual((rc, st["state"], st["done_steps"]), (0, "done", ["a", "b"]))
+
+
+class Round3Matching(unittest.TestCase):
+    def test_basename_and_mode_whatever_the_path_form(self):
+        lines = ["  31 /usr/bin/python3 broker.py run --policy stall",
+                 "  32 /bin/bash -c cd agent; while true; do python3 broker.py run; sleep 10; done",
+                 "  33 python3 -m broker run",
+                 "  34 python3 /Users/x/bazaar/agent/broker.py plan --book b.json",
+                 "  35 python3 -u agent/chato.py run --dealer=pilar --only sell:44"]
+        self.assertEqual(f.ps_pids(lines, ["agent/broker.py", "run"]), [31, 32, 33])
+        self.assertEqual(f.ps_pids(lines, ["agent/chato.py", "pilar"]), [35])
+        self.assertEqual(f.ps_pids(lines, ["agent/chato.py", "run"], ["pilar"]), [])
+
+    def test_the_scanner_never_opens_a_file(self):
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "run.sh").write_text("#!/bin/bash\npython3 agent/broker.py run\n")
+        (tmp / ".env").write_text("BAZAAR_KEY=never-read\n")
+        lines = [f"  41 /bin/bash {tmp / 'run.sh'}", f"  42 /bin/bash -c source {tmp / '.env'}; python3 x.py",
+                 f"  43 /bin/zsh {tmp / '.env'}"]
+
+        def opened(*a, **k):
+            raise AssertionError(f"the scanner opened a file: {a[:1]}")
+        with mock.patch("builtins.open", opened), mock.patch("io.open", opened), mock.patch("os.open", opened), \
+                mock.patch.object(Path, "read_text", opened), mock.patch.object(Path, "read_bytes", opened):
+            f.ps_pids(lines, ["agent/broker.py", "run"])
+
+
+class Round3Bus(Sandbox):
+    def test_a_claim_held_on_another_machine_refuses(self):
+        self.board = {"broker": ("thiago", "vm")}
+        rc, out, started = self.up(self.config(SERVICE))
+        self.assertEqual(started, [])
+        self.assertIn("vm", out)
+        self.assertNotIn(("claim", "broker"), self.bus_calls)
+
+    def test_a_claim_held_on_this_machine_is_ours(self):
+        self.board = {"broker": ("thiago", "mini")}
+        cfg = self.config(SERVICE)
+        data = json.loads(cfg.read_text())
+        cfg.write_text(json.dumps({**data, "bus": {"session": "s", "where": "mini"}}))
+        rc, out, started = self.up(cfg)
+        self.assertEqual(len(started), 1, out)
+
+    def test_an_unreadable_board_fails_closed(self):
+        self.board = None
+        rc, out, started = self.up(self.config(SERVICE))
+        self.assertEqual(started, [])
+
+
+class Round3Keeper(Sandbox):
+    def test_a_missing_input_stops_the_keeper_and_is_reported(self):
+        cfg = self.config(dict(SERVICE, params="docs/gone.json"))
+        rc, st = self.keep(cfg, "broker", [clock()], [FakeChild()])
+        self.assertNotEqual(rc, "looping")
+        self.assertEqual((st["state"], self.popen), ("failed", []))
+        _, problems = self.status(cfg, clock())
+        self.assertTrue([x for x in problems if "docs/gone.json" in x], problems)
+
+    def test_disabled_on_reload_stops_before_any_launch(self):
+        rc, st = self.keep(self.config(dict(SERVICE, enabled=False)), "broker", [clock()], [FakeChild()])
+        self.assertEqual(self.popen, [])
+        self.assertNotEqual(rc, "looping")
+
+    def test_status_reports_a_disabled_entry_that_still_runs(self):
+        cfg = self.config(dict(SERVICE, enabled=False))
+        self.hold("broker")
+        self.ps = [f"  {os.getpid()} python3 -u agent/broker.py run --policy stall"]
+        f.write_json(f.STATE / "broker.json", {"date": f.today(), "child_pid": os.getpid(), "state": "running"})
+        _, problems = self.status(cfg, clock())
+        self.assertTrue([x for x in problems if "disabled" in x], problems)
+
+
+class Round3DuelFreshness(Sandbox):
+    DUEL = {k: v for k, v in next(p for p in f.load_config(f.CONFIG)["processes"] if p["name"] == "duel").items()
+            if k != "params"}                                   # the real Sunday entry
+
+    def setup_duel(self, log_age_s, lock):
+        cfg = self.config(self.DUEL)
+        self.hold("duel")
+        self.ps = [f"  {os.getpid()} python3 -u agent/duel.py run --params p.json"]
+        f.write_json(f.STATE / "duel.json", {"date": f.today(), "child_pid": os.getpid(), "state": "running",
+                                              "started": time.time() - 3600})
+        log = self.tmp / "logs" / "duel" / f"{f.today()}.jsonl"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("{}\n")
+        os.utime(log, (time.time() - log_age_s, time.time() - log_age_s))
+        if lock:
+            f.LOCK.parent.mkdir(parents=True, exist_ok=True)
+            f.LOCK.write_text(f"{time.time() + 30}\n")
+        return cfg
+
+    def test_nothing_logged_since_the_wave_began_is_stale(self):
+        cfg = self.setup_duel(log_age_s=600, lock=False)        # last line 10 min ago, wave began 3 min ago
+        _, problems = self.status(cfg, clock(t_hours=18.70), schedule=[DUELS3])
+        self.assertTrue([x for x in problems if x.startswith("duel") and "down" not in x], problems)
+
+    def test_a_live_lock_with_a_silent_log_is_stale(self):
+        cfg = self.setup_duel(log_age_s=150, lock=True)         # 150 s > 8 ticks of 15 s
+        _, problems = self.status(cfg, clock(t_hours=19.5), schedule=[DUELS3])
+        self.assertTrue([x for x in problems if x.startswith("duel") and "down" not in x], problems)
+
+    def test_quiet_after_our_duels_end_is_fine(self):
+        cfg = self.setup_duel(log_age_s=900, lock=False)        # wave began 51 min ago, our duels done
+        _, problems = self.status(cfg, clock(t_hours=19.5), schedule=[DUELS3])
+        self.assertEqual([x for x in problems if "duel" in x], [])
+
+
+class Round3ClockAndNotify(Sandbox):
+    def test_gates_fail_closed_on_an_incomplete_clock(self):
+        self.assertFalse(f.check_gates({}, {}, [], None, SUN_0900)[0])
+        self.assertFalse(f.check_gates({}, {"doors": "open"}, [], None, SUN_0900)[0])
+        self.assertFalse(f.check_gates({}, {"paused": False}, [], None, SUN_0900)[0])
+        self.assertTrue(f.check_gates({}, {"doors": "open", "paused": False}, [], None, SUN_0900)[0])
+
+    def test_one_incident_notifies_once_while_its_numbers_change(self):
+        polls = [["broker log silent for 70 s (4 ticks at 15 s)"], ["broker log silent for 130 s (4 ticks at 15 s)"],
+                 ["broker log silent for 190 s (4 ticks at 15 s)"], ["broker log silent for 250 s (4 ticks at 15 s)",
+                                                                     "duel is down"]]
+        sent, n = [], [0]
+
+        def status_once(cfg):
+            n[0] += 1
+            if n[0] > len(polls):
+                raise Stop
+            return [], polls[n[0] - 1]
+        with mock.patch.object(f, "status_once", status_once), mock.patch.object(f, "notify", lambda c, t: sent.append(t)), \
+                mock.patch.object(f.time, "sleep", lambda s: None), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(Stop):
+                f.cmd_status(self.config(SERVICE), True, 60)
+        self.assertEqual(len(sent), 2, sent)          # the incident, then the new one (duel down)
 
 
 if __name__ == "__main__":

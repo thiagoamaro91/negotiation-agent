@@ -1,5 +1,5 @@
 {
-  "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that depends on a teammate's open pull request or on a decision at 08:55. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Gates doors_open and clock_running default to true; only the keyless feed and the watchdog opt out. A dealer step that exits non-zero is not relaunched (needs PR #35). Dealer commands come from section 7 of the Saturday dealer audit.",
+  "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that depends on a teammate's open pull request or on a decision at 08:55. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Gates doors_open and clock_running default to true; only the keyless feed and the watchdog opt out. Processes are matched by script basename plus mode token. The dealers are off until PR #35 lands; a dealer step that exits non-zero, or exits 0 without a deal or nothing-to-do marker max_attempts times (default 3), is not relaunched. Dealer commands come from section 7 of the Saturday dealer audit.",
   "base_url": "https://bazaar.causaprima.ai",
   "tmux_session": "factory",
   "python": null,
@@ -43,12 +43,14 @@
               "--late-poll", "4", "--idle-ticks", "{idle_ticks}", "--until", "{until}"],
       "match": ["agent/duel.py", "run"],
       "log": "logs/duel/{date}.jsonl",
-      "stale_ticks": null,
+      "stale_ticks": 8,
       "todo": "params file does not exist yet: Hector's duel.py rewrite and params (PR #33, docs/duel-lab/duel-params-duels2-final.json) must merge first; copy the final file to this path. --duel-ticks comes from the schedule event (12 for Duels III and the Final) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit. Re-check the flag names after the rewrite merges."
     },
     {
       "name": "abuela",
       "kind": "steps",
+      "enabled": false,
+      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
       "match": ["agent/abuela.py", "run"],
@@ -75,6 +77,8 @@
     {
       "name": "chato",
       "kind": "steps",
+      "enabled": false,
+      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
       "match": ["agent/chato.py", "run"],
@@ -108,6 +112,8 @@
     {
       "name": "pilar",
       "kind": "steps",
+      "enabled": false,
+      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
       "match": ["agent/chato.py", "pilar"],
