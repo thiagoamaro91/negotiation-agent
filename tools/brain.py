@@ -617,7 +617,10 @@ def refresh() -> dict:
     truth = me.get("affinity", {})
     mine = vi.our_cards(me, events)
     ours = model.summary(model.posterior(by_team.get(vi.US, [])), by_team.get(vi.US, []))
-    plan = market_plan.plan(split)
+    st_now = ((team or {}).get("score_state") or {}).get("prev") or {}
+    cash_now = choose_cash(me, st_now, led.get(vi.US, {}).get("history", []), led.get(vi.US, {}).get("cash"),
+                           events[-1]["tick"])
+    plan = market_plan.plan(split, cash_reading=cash_now)  # the page's cash and the plan's funding are one reading
     rarity, _, _ = price_index.card_kinds(cat)
     snaps = SNAPS.update()
     lb = snaps.body("leaderboard")

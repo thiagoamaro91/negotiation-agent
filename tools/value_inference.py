@@ -543,6 +543,12 @@ def our_cards(me: dict, events: list) -> collections.Counter:
             for i in p.get("items") or []:
                 if i.get("kind") != "card":
                     continue
+                if i.get("frm") == US and any(i.get("id") in {g["id"] for g in c.get("got") or []} for c in pending):
+                    while pending:  # we sell a card a pending conversion made: that conversion happened first
+                        c = pending.pop(0)
+                        convert(c)
+                        if i.get("id") in {g["id"] for g in c.get("got") or []}:
+                            break
                 if i.get("frm") == US:
                     leave(i.get("id"), i["ref"])
                 if i.get("to") == US:

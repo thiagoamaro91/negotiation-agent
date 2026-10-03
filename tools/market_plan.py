@@ -260,7 +260,10 @@ def cash_reserve(our_ledger: dict) -> int:
     return VENUE_OPEN_RESERVE if our_ledger.get("venue") else CASH_RESERVE
 
 
-def plan(split: dict | None = None) -> dict:
+def plan(split: dict | None = None, cash_reading: dict | None = None) -> dict:
+    """The plan. `cash_reading` ({"cash", "cash_source"}) is the caller's freshest validated reading of our cash (the brain's
+    live score or account, carried by the ledger only while it agrees); without it, the ledger (or the account when
+    the ledger check fails)."""
     bonus_on = page_bonus_on()
     model, by_team, events, book = vi.load()
     cat = vi.catalog()
@@ -278,6 +281,8 @@ def plan(split: dict | None = None) -> dict:
     chk = ledger_mod.check_us(led)
     if chk is not None and not chk["ok"]:  # the rebuild disagrees with the real account: trust the account
         cash, cash_source = me["cash"], f"account at tick {chk['tick']} (ledger check failed: {chk['rebuilt']} P rebuilt)"
+    if cash_reading and isinstance(cash_reading.get("cash"), (int, float)):  # one reading for the page and the funding
+        cash, cash_source = cash_reading["cash"], cash_reading.get("cash_source") or "caller"
     now_tick = events[-1]["tick"]
     hz = horizons(clock, schedule)
     liquidate = hz[0]["hours"] >= LIQUIDATE_FROM_HOURS

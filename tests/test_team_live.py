@@ -311,6 +311,12 @@ class Workshop(unittest.TestCase):
         mine = brain.vi.our_cards({**ME, "conversions": [convert]}, [self.us("buy", 990, 5, "SAL-02")])
         self.assertEqual((mine["LAV-01"], mine["SAL-02"]), (1, 1))
 
+    def test_a_crafted_card_sold_before_the_conversion_would_apply_stays_sold(self):
+        convert = {"tick": 953, "burned": [{"id": 41, "ref": "LAV-01"}], "got": [{"id": 1001, "ref": "LAV-06"}]}
+        events = [self.us("sell", 954, 1001, "LAV-06"), self.us("buy", 980, 5, "SAL-02")]   # no craft event in the feed
+        mine = brain.vi.our_cards({**ME, "conversions": [convert]}, events)
+        self.assertEqual((mine["LAV-06"], mine["LAV-01"], mine["SAL-02"]), (0, 1, 1))
+
     def test_a_conversion_is_remembered_after_it_leaves_the_relay_window(self):
         brain.remember_conversions(brain.conversions([self.CONVERT]))
         brain.remember_conversions(brain.conversions([]))   # the decision has scrolled out of the relay's window
@@ -346,6 +352,20 @@ class OurAccount(unittest.TestCase):
         lav = next(p for p in u["pages"] if p["set"] == "LAV")
         self.assertEqual((lav["held"], lav["live"], len(lav["missing"])), (2, 10, 8))
         self.assertLess(u["relay"]["age_s"], 60)
+
+    def test_the_plan_is_funded_from_the_same_reading_the_page_shows(self):
+        from unittest import mock
+        seen = {}
+
+        def plan(split=None, cash_reading=None):
+            seen["reading"] = cash_reading
+            raise RuntimeError("stop after the plan call")
+
+        team = {"score_state": {"prev": {"tick": 10 ** 6, "cash": 7}}}
+        with mock.patch.object(brain.market_plan, "plan", plan), mock.patch.object(brain, "load_team", lambda: team):
+            with self.assertRaisesRegex(RuntimeError, "stop after the plan call"):
+                brain.refresh()
+        self.assertEqual((seen["reading"]["cash"], seen["reading"]["cash_source"]), (7, f"live score at t{10 ** 6}"))
 
     def test_without_the_relay_cash_comes_from_the_ledger(self):
         import collections
