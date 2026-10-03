@@ -51,10 +51,26 @@ class Scoring(unittest.TestCase):
 
     def test_two_issues_the_pie_is_the_best_joint_pie_over_days(self):
         days = {"ours": (10, 1.0), "rival": (0, 3.0)}           # we sell and want day 10; the buyer wants day 0
-        dl = one_duel("seller", 100, 150, days=days)
-        self.assertEqual(dl.pie(), 40.0)                        # day 0 is efficient: 50 - 1 x 10 - 3 x 0
-        self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], (140 - 100 - 10) / 40)
-        self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], 40 / 40)
+        with knobs(DAYS_MODEL="distance"):                      # the pre-Duels II guess: w x |day - best|
+            dl = one_duel("seller", 100, 150, days=days)
+            self.assertEqual(dl.pie(), 40.0)                    # day 0 is efficient: 50 - 1 x 10 - 3 x 0
+            self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], (140 - 100 - 10) / 40)
+            self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], 40 / 40)
+        dl = one_duel("seller", 100, 150, days=days)            # the server: the seller earns 1/day, the buyer pays 3
+        self.assertEqual(dl.pie(), 50.0)                        # day 0 still: 50 + 1 x 0 - 3 x 0
+        self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], 40 / 50)
+        self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], (140 - 100 + 10) / 50)
+
+    def test_the_referee_pays_what_the_duels2_server_paid(self):
+        # Saturday's Duels II results (logs/duel, event "result"): our seller surplus x 0.92 ** rounds.
+        # 5692: cost 53, w 2.36, sold at 87 on day 10, 1 round -> 53.0; 5626: cost 88, w 1.12, 132 on day 0, 1 round
+        # -> 40.5; 5675: cost 30, w 2.26, 66 on day 0, no round -> 36.0. The old guess gave 10.5, 30.2 and 13.4.
+        for cost, w, price, day, rounds, result in ((53, 2.36, 87, 10, 1, 53.0), (88, 1.12, 132, 0, 1, 40.5),
+                                                     (30, 2.26, 66, 0, 0, 36.0)):
+            dl = one_duel("seller", cost, 2 * cost, days={"ours": (10, w), "rival": (0, 1.0)})
+            self.assertAlmostEqual(dl.our_surplus(price, day) * 0.92 ** rounds, result, places=1)
+        buyer = one_duel("buyer", 150, 100, days={"ours": (0, 2.0), "rival": (10, 1.0)})
+        self.assertEqual(buyer.our_surplus(120, 4), 150 - 120 - 2.0 * 4)   # a buyer pays w per day from day 0
 
 
 class RoundsRule(unittest.TestCase):
@@ -230,10 +246,12 @@ class DaysWorld(unittest.TestCase):
 
     def test_default_knobs_replay_the_arena_from_before_the_knobs(self):
         # measured on 9cf97d3 (before the knobs existed): 204 duels, 86 deals, score sum 39.9354, mean 0.19576
+        # (the referee of that time: DAYS_MODEL "distance"; the server model changes the scores by design)
         before = (204, 86, 39.9354, "3aa66e5a9dac7b27aad67ff0c4d999999028342822805a84a631691b0d101c7d")
-        self.assertEqual(self.fingerprint(), before)
-        with knobs(DAYS_W=(0.0, 4.0), DAYS_W_REL=None, DAYS_COMPAT=0.0, RIVAL_DMODE=None):
+        with knobs(DAYS_MODEL="distance"):
             self.assertEqual(self.fingerprint(), before)
+            with knobs(DAYS_W=(0.0, 4.0), DAYS_W_REL=None, DAYS_COMPAT=0.0, RIVAL_DMODE=None):
+                self.assertEqual(self.fingerprint(), before)
 
     def test_the_knobs_never_touch_the_scenario_rng(self):
         def shape(ds):
@@ -315,3 +333,20 @@ class DaysWorld(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ForcedDayModes(unittest.TestCase):
+    """Codex on #47: the logroller and the splitter must follow a forced days world (RIVAL_DMODE) like the others."""
+
+    def test_logroller_and_splitter_follow_rival_dmode(self):
+        for kind in ("logroll", "split"):
+            rp = {**arena._kind_params(kind, __import__("random").Random(1), 16, __import__("random").Random(1).uniform,
+                                       {}, False), "dmode": "mid"}
+            r = arena.KINDS[kind]("buyer", 120, 16, rp, (0, 2.0))
+            r._msgs = [(1, 140, 10), (2, 138, 10)]          # we held day 10 twice: a logroller would follow it
+            self.assertEqual(r.day_for((138, 10)), 5, kind)
+        sp = arena.KINDS["split"]("buyer", 120, 16, {"m0": 0.3, "m_floor": 0.0, "tol": 0.0, "e0": 0, "dmode": "mid"},
+                                  (0, 2.0))
+        sp.act(0, {"our_offer": None, "our_msgs": []})
+        out = sp.act(1, {"our_offer": (150, 10), "our_msgs": [(1, 150, 10)]})
+        self.assertEqual(out["say"][1], 5)                   # not the midpoint of its day and ours

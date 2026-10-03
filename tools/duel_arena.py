@@ -77,7 +77,21 @@ PAIR_SEEN = 1.0
 # Two issues. The server's days_meaning wording is unknown, so the arena's names no direction (duel.py then uses its
 # role default and the weight's sign, not its own keyword list). DAYS_FLIP: every side's best day is the opposite of
 # the role default (buyer late, seller early) and the weight shown to us is negative, as a server that signs it would.
-DAYS_WORDING = "primas per day away from your preferred delivery day"
+DAYS_WORDING = "primas per day away from your preferred delivery day"   # pre-Duels II guess, DAYS_MODEL "distance"
+# What the Duels II server said and paid (results 5626, 5675, 5692, Saturday 21:30): a side whose best day is 10 earns
+# its weight per delivery day from day 0 ("each delivery day adds this much cash to your side"), a side whose best day
+# is 0 pays it per day ("each delivery day costs you this much cash"). "distance" is the earlier guess, w x |day - best|
+# for both sides, which undervalued every seller deal by 10 x w.
+DAYS_MODEL = "server"
+WORDING_EARN = "each delivery day adds this much cash to your side"
+WORDING_PAY = "each delivery day costs you this much cash"
+
+
+def days_term(best: int, w: float, day: int) -> float:
+    """What the delivery day costs one side in primas (negative: it earns), under DAYS_MODEL."""
+    if DAYS_MODEL == "server" and best in (0, 10):
+        return w * day if best == 0 else -w * day
+    return w * abs(day - best)
 DAYS_FLIP = False
 # How duel.py runs in the arena on two issues: "" = robust (no --days-confirmed: what `run` does until a human reads
 # the first duel_new lines), "confirmed" (--days-confirmed), or a --days-best value such as "buyer:10,seller:0" (a
@@ -142,7 +156,7 @@ class Rival:
         if self.days is None or day is None:
             return 0.0
         best, w = self.days
-        return w * abs(day - best)
+        return days_term(best, w, day)
 
     def utility(self, price: int, day=None) -> float:
         s = (price - self.L) if self.role == "seller" else (self.L - price)
@@ -431,7 +445,9 @@ class Splitter(Rival):
         if ours is not None and len(view["our_msgs"]) > self.seen:
             self.seen = len(view["our_msgs"])
             day = self.last[1]
-            if day is not None and ours[1] is not None:
+            if self.p.get("dmode") is not None:               # a forced days world (RIVAL_DMODE) rules its day
+                day = self.day_for(ours)
+            elif day is not None and ours[1] is not None:
                 day = int(round((day + ours[1]) / 2))
             mid = (self.last[0] + ours[0]) / 2
             floor = self.price(p["m_floor"], day)
@@ -453,6 +469,8 @@ class Logroller(Steady):
     def day_for(self, ours):
         if self.days is None:
             return None
+        if self.p.get("dmode") is not None:                   # a forced days world (RIVAL_DMODE) rules its day
+            return super().day_for(ours)
         m = getattr(self, "_msgs", [])
         if len(m) >= 2 and m[-1][2] is not None and m[-1][2] == m[-2][2]:
             return m[-1][2]
@@ -613,7 +631,7 @@ class Duel:
         if not self.days or day is None:
             return 0.0
         best, w = self.days["ours"]
-        return w * abs(day - best)
+        return days_term(best, w, day)
 
     def our_surplus(self, price: int, day=None) -> float:
         s = (price - self.our_limit) if self.role == "seller" else (self.our_limit - price)
@@ -724,11 +742,18 @@ def server_view(dl: Duel, sess_no: int, deadline: int) -> dict:
     d = {"duel": dl.id, "session": sess_no, "status": "live", "role": dl.role, "item": f"item-{dl.pair}",
          "issues": list(dl.issues),
          "your_days_weight": _shown_weight(dl) if two else None,
-         "days_meaning": DAYS_WORDING if two else None,
+         "days_meaning": _wording(dl) if two else None,
          "your_limit": dl.our_limit, "limit_meaning": "", "rival": f"Rival {dl.pair}",
          "deadline_tick": deadline, "decay_per_round": dl.decay, "rounds": 0, "your_offer": None,
          "rival_offer": None, "messages": [], "result": None, "price": None, "days": None}
     return d
+
+
+def _wording(dl: Duel) -> str:
+    """days_meaning as the server words it: the server's two sentences under DAYS_MODEL "server", else the guess."""
+    if DAYS_MODEL != "server":
+        return DAYS_WORDING
+    return WORDING_EARN if dl.days["ours"][0] == 10 else WORDING_PAY
 
 
 def _shown_weight(dl: Duel) -> float:

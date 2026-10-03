@@ -134,7 +134,7 @@ class _UF:
         return True
 
 
-def group(duels: list, use_pairs: bool = True) -> tuple:
+def group(duels: list, use_pairs: bool = False) -> tuple:
     """Union-find over templates. Returns ({root template: [duel ids]}, merges log, silent duel ids)."""
     uf, merges = _UF(), []
     for d in duels:
@@ -157,7 +157,8 @@ def group(duels: list, use_pairs: bool = True) -> tuple:
             j = jaccard(ta, tb)
             if j >= JACCARD_MIN and uf.union(a, b):
                 merges.append({"step": "jaccard", "score": round(j, 2), "a": a, "b": b})
-    # 4 the two duels of a pair are the same team, even when it writes a different line per role
+    # 4 (opt-in, --pairs) the two duels of a pair as the same team. Off by default (Codex on #47): consecutive ids on
+    # the same item are not proof of one team, and Duels I paired (even, odd) duels with different rivals
     if use_pairs:
         partner, by_id = pairs(duels), {d["duel"]: d for d in duels}
         for did, pid in sorted(partner.items()):
@@ -353,7 +354,7 @@ def play(b: dict) -> str:
     return "steady concession: take its offer at the last safe tick" + when
 
 
-def build(duels: list, use_pairs: bool = True) -> dict:
+def build(duels: list, use_pairs: bool = False) -> dict:
     groups, merges, silent = group(duels, use_pairs)
     by_id = {d["duel"]: d for d in duels}
     partner = pairs(duels)
@@ -550,7 +551,8 @@ def main() -> None:
     ap.add_argument("--json", default=str(DEFAULT_JSON))
     ap.add_argument("--md", default=str(DEFAULT_MD))
     ap.add_argument("--no-write", action="store_true", help="print only")
-    ap.add_argument("--no-pairs", action="store_true", help="do not merge the two duels of a pair")
+    ap.add_argument("--pairs", action="store_true", help="also merge the two duels of a pair (consecutive ids, same "
+                    "item) as one team; off by default, since that is not proof of one team")
     ap.add_argument("--match", help="a rival's first message: which bot is it?")
     ap.add_argument("--item", default="", help="the duel's item, so --match can template it")
     ap.add_argument("--book", help="match against this saved duel-book.json instead of rebuilding")
@@ -559,7 +561,7 @@ def main() -> None:
         if a.book:
             book = json.loads(Path(a.book).read_text())
         else:
-            book = build(load(Path(a.dir).expanduser()), not a.no_pairs)
+            book = build(load(Path(a.dir).expanduser()), a.pairs)
         ranked = match(book, a.match, a.item)
         bots = {b["id"]: b for b in book["bots"]}
         print(f"template: {template(a.match, a.item)!r}")
@@ -575,7 +577,7 @@ def main() -> None:
             print(f"  {bid:6} {s:.2f}  {t[:70]!r}{hint}")
         return
     src = Path(a.dir).expanduser()
-    book = build(load(src), not a.no_pairs)
+    book = build(load(src), a.pairs)
     print(f"{book['n_duels']} duels -> {book['n_bots']} bots")
     print("\nmerges:")
     for m in book["merges"]:
