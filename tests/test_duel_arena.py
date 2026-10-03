@@ -198,5 +198,120 @@ class ParamsFile(unittest.TestCase):
             self.assertEqual((got["min_surplus"], got["duel_ticks"]), (1, 16))
 
 
+class knobs:
+    """Set arena module globals for a block, restore them after (the days-world knobs, DAYS_FLIP, ARENA_DAYS...)."""
+
+    def __init__(self, **kw):
+        self.kw, self.saved = kw, {}
+
+    def __enter__(self):
+        self.saved = {k: getattr(arena, k) for k in self.kw}
+        for k, v in self.kw.items():
+            setattr(arena, k, v)
+
+    def __exit__(self, *exc):
+        for k, v in self.saved.items():
+            setattr(arena, k, v)
+
+
+def duels2(seed=0):
+    return arena.make_session(seed, arena.SESSIONS[2], arena.FITTED + arena.CLASSIC)
+
+
+class DaysWorld(unittest.TestCase):
+    """The days-world knobs (DAYS_W, DAYS_W_REL, DAYS_COMPAT, RIVAL_DMODE) and the days lab."""
+
+    def fingerprint(self):
+        import hashlib
+        res = arena.evaluate({}, range(3), 2)
+        key = [(r["seed"], r["duel"], r["score"], r.get("price"), r.get("day")) for r in res]
+        return (len(res), sum(r["deal"] for r in res), round(sum(r["score"] for r in res), 4),
+                hashlib.sha256(repr(key).encode()).hexdigest())
+
+    def test_default_knobs_replay_the_arena_from_before_the_knobs(self):
+        # measured on 9cf97d3 (before the knobs existed): 204 duels, 86 deals, score sum 39.9354, mean 0.19576
+        before = (204, 86, 39.9354, "3aa66e5a9dac7b27aad67ff0c4d999999028342822805a84a631691b0d101c7d")
+        self.assertEqual(self.fingerprint(), before)
+        with knobs(DAYS_W=(0.0, 4.0), DAYS_W_REL=None, DAYS_COMPAT=0.0, RIVAL_DMODE=None):
+            self.assertEqual(self.fingerprint(), before)
+
+    def test_the_knobs_never_touch_the_scenario_rng(self):
+        def shape(ds):
+            return [(d.id, d.pair, d.role, d.kind, d.our_limit, d.rival_limit) for d in ds]
+        base = shape(duels2(4))
+        for kw in ({"DAYS_COMPAT": 0.5}, {"RIVAL_DMODE": {"random": 1, "mid": 1}}, {"DAYS_W": (2.0, 8.0)},
+                   {"DAYS_W_REL": (0.005, 0.04)}, {"RIVAL_DMODE": {"ignore": 1}}):
+            with knobs(**kw):
+                self.assertEqual(shape(duels2(4)), base, kw)
+
+    def test_compat_one_gives_both_sides_the_same_best_day(self):
+        seen = set()
+        with knobs(DAYS_COMPAT=1.0):
+            for seed in range(3):
+                for dl in duels2(seed):
+                    self.assertEqual(dl.days["ours"][0], dl.days["rival"][0])
+                    seen.add(dl.days["ours"][0])
+                    default = 0 if dl.role == "buyer" else 10
+                    w = arena.server_view(dl, 2, 99)["your_days_weight"]
+                    self.assertEqual(w < 0, dl.days["ours"][0] != default and dl.days["ours"][1] > 0)
+        self.assertEqual(seen, {0, 10})
+        for dl in duels2(0):                                   # default: opposed, buyer 0, seller 10
+            self.assertNotEqual(dl.days["ours"][0], dl.days["rival"][0])
+
+    def test_ignore_gives_the_rival_weight_zero_and_it_names_our_day(self):
+        base = duels2(1)
+        with knobs(RIVAL_DMODE={"ignore": 1}):
+            ign = duels2(1)
+        for a, b in zip(base, ign):
+            self.assertEqual(b.rival.days[1], 0.0)
+            self.assertEqual(b.days["ours"], a.days["ours"])
+            self.assertEqual(b.rival.day_for((100, 7)), 7)
+            self.assertEqual(b.rival.day_for(None), 0)
+        self.assertTrue(any(a.rival.days[1] > 0 for a in base))
+
+    def test_weight_ranges_rescale_the_same_draws(self):
+        base = duels2(2)
+        with knobs(DAYS_W=(2.0, 8.0)):
+            heavy = duels2(2)
+        with knobs(DAYS_W=(0.0, 1.0)):
+            light = duels2(2)
+        with knobs(DAYS_W_REL=(0.005, 0.04)):
+            rel = duels2(2)
+        for a, h, li, r in zip(base, heavy, light, rel):
+            for side in ("ours", "rival"):
+                w0 = a.days[side][1]
+                self.assertAlmostEqual(h.days[side][1], 2.0 + 1.5 * w0, delta=0.02)
+                self.assertAlmostEqual(li.days[side][1], w0 / 4, delta=0.01)
+                self.assertTrue(0.005 * 65 - 0.01 <= r.days[side][1] <= 0.04 * 134 + 0.01)
+        self.assertGreater(sum(h.days["ours"][1] for h in heavy), 1.9 * sum(a.days["ours"][1] for a in base))
+
+    def test_mid_best_and_random_day_modes(self):
+        with knobs(RIVAL_DMODE={"mid": 1}):
+            self.assertTrue(all(d.rival.day_for((100, 2)) == 5 for d in duels2(0)))
+        with knobs(RIVAL_DMODE={"best": 1}):
+            self.assertTrue(all(d.rival.day_for((100, 2)) == d.rival.days[0] for d in duels2(0)))
+        with knobs(RIVAL_DMODE={"random": 1}):
+            a = [[d.rival.day_for(None) for _ in range(5)] for d in duels2(0)]
+            b = [[d.rival.day_for(None) for _ in range(5)] for d in duels2(0)]
+        self.assertEqual(a, b)                                  # seeded from (seed, pair, duel)
+        days = {x for row in a for x in row}
+        self.assertTrue(days <= set(range(11)) and len(days) > 5)
+
+    def test_days_lab_has_one_row_per_variant_and_restores_the_globals(self):
+        before = (arena.ARENA_DAYS, arena.PAIR_SEEN, arena.DAYS_FLIP, arena.RIVAL_DMODE, arena.DAYS_W)
+        lines = arena.days_lab({"defaults": {}}, range(1)).splitlines()
+        self.assertEqual(before, (arena.ARENA_DAYS, arena.PAIR_SEEN, arena.DAYS_FLIP, arena.RIVAL_DMODE,
+                                  arena.DAYS_W))
+        self.assertEqual(len(lines), 2 + len(arena.DAYS_STRESS))
+        self.assertIn("defaults confirmed WRONG", lines[0])
+        for (label, mods), line in zip(arena.DAYS_STRESS, lines[2:]):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            self.assertEqual(cells[0], label)
+            self.assertEqual(len(cells), 4)
+            self.assertNotEqual(cells[1], "-")
+            self.assertNotEqual(cells[2], "-")
+            self.assertEqual(cells[3] == "-", not mods.get("DAYS_FLIP"), label)
+
+
 if __name__ == "__main__":
     unittest.main()
