@@ -15,7 +15,7 @@ Every RELAY_SECONDS it reads exactly these files and nothing else (no glob, no d
 A symlink, or a path whose name mentions env, key, token or secret, is never opened. tools/redaction.py drops every
 field named like a key, token or secret at any depth and redacts credential-shaped strings (tk-, bk_, adm_) before
 anything leaves the machine. It POSTs the bundle to
-BRAIN_URL/ingest/team with BRAIN_WRITE_TOKEN (from the environment or --env, default ~/bazaar/brain-relay.env), or
+BRAIN_URL/ingest/team (https only, except a brain on loopback; redirects refused) with BRAIN_WRITE_TOKEN (from the environment or --env, default ~/bazaar/brain-relay.env), or
 writes it to --out. It never writes to the shares and never talks to the game.
 """
 from __future__ import annotations
@@ -26,6 +26,8 @@ import os
 import re
 import time
 import sys
+import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -137,10 +139,28 @@ def encode(bundle: dict) -> bytes:
     return body
 
 
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A redirect is refused: the write token and our private data go to BRAIN_URL itself or nowhere."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, f"redirect to {newurl} refused", headers, fp)
+
+
+def check_url(url: str) -> str:
+    """BRAIN_URL must be https, except a brain on this machine (loopback): the bundle and the token travel in it."""
+    u = urllib.parse.urlparse(url)
+    if u.scheme == "https" or (u.scheme == "http" and u.hostname in LOOPBACK):
+        return url.rstrip("/")
+    raise SystemExit(f"BRAIN_URL must be https (or http on loopback), got {u.scheme}://{u.hostname}")
+
+
 def send(body: bytes, url: str, token: str) -> int:
-    req = urllib.request.Request(url.rstrip("/") + "/ingest/team", data=body, method="POST",
+    req = urllib.request.Request(check_url(url) + "/ingest/team", data=body, method="POST",
                                  headers={"Content-Type": "application/json", "X-Brain-Write": token})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with urllib.request.build_opener(NoRedirect).open(req, timeout=20) as r:
         return r.status
 
 
@@ -179,6 +199,8 @@ def main() -> None:
     url, token = os.environ.get("BRAIN_URL"), os.environ.get("BRAIN_WRITE_TOKEN")
     if not (args.out or args.dry_run) and not (url and token):
         raise SystemExit(f"missing BRAIN_URL / BRAIN_WRITE_TOKEN (environment or {args.env})")
+    if not (args.out or args.dry_run):
+        check_url(url)
     while True:
         try:
             b = collect(args.repo, args.live)

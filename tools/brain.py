@@ -38,6 +38,7 @@ import json
 import math
 import os
 import re
+import tempfile
 import threading
 import time
 import traceback
@@ -254,11 +255,30 @@ def valid_team(body, received: float | None = None) -> dict | None:
             "decisions": rows("decisions", 400), "score_rows": rows("score_rows", 200), "desks": desks}
 
 
+ACCOUNT_LOCK = threading.Lock()   # the account's freshness check and its replacement happen as one step
+
+
 def write_json(path: Path, obj) -> None:
+    """Atomic replace through a temporary file of its own, so concurrent writers never share one."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj), encoding="utf-8")
-    tmp.replace(path)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(obj))
+    os.replace(tmp, path)
+
+
+def write_account(me: dict, only_if_fresher: bool) -> bool:
+    """Replace the relayed account; with `only_if_fresher`, only by a strictly later tick. Locked across writers."""
+    with ACCOUNT_LOCK:
+        if only_if_fresher:
+            try:
+                have = json.loads(vi.ME_LIVE.read_text(encoding="utf-8")).get("tick")
+            except (OSError, ValueError):
+                have = None
+            if isinstance(have, int) and me["tick"] <= have:
+                return False
+        write_json(vi.ME_LIVE, me)
+        return True
 
 
 ASSET_REF = re.compile(r"\b([A-Z]{3}-\d{2}) #(\d+)")
@@ -308,13 +328,7 @@ def absorb(team: dict) -> None:
     remember_conversions(conversions(team.get("decisions") or []))
     me = team.get("me")
     if me:
-        me = {**me, "source": "team relay"}
-        try:
-            have = json.loads(vi.ME_LIVE.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            have = {}
-        if me["tick"] > (have.get("tick") or -1):
-            write_json(vi.ME_LIVE, me)
+        write_account({**me, "source": "team relay"}, only_if_fresher=True)
     for d in team.get("desks") or []:
         record_desk({k: v for k, v in d.items() if k != "at"}, now=d.get("at"))
 
@@ -786,10 +800,7 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
                 return self._send(200, b"ok", "text/plain")
             if not valid_account(body):
                 return self._send(400, b"not an account", "text/plain")
-            vi.ME_LIVE.parent.mkdir(parents=True, exist_ok=True)
-            tmp = vi.ME_LIVE.with_suffix(".tmp")
-            tmp.write_text(json.dumps(body), encoding="utf-8")
-            tmp.replace(vi.ME_LIVE)
+            write_account(body, only_if_fresher=False)  # the keyed relay reads /api/me now: always the freshest
             POKE.set()
             return self._send(200, b"ok", "text/plain")
 

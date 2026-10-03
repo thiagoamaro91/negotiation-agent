@@ -98,11 +98,110 @@ class Redaction(unittest.TestCase):
             self.assertNotIn(shape, out)
         self.assertIn("[redacted]", out)
 
+    def test_a_credential_used_as_a_field_name_is_dropped_end_to_end(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo, live = key_machine(Path(d))
+            (live / "decisions.jsonl").write_text(json.dumps(
+                {"ts": "z", "tick": 950, "lane": "market", "action": "restart",
+                 "why": {"bk_live_9fA2xQ7z": "set", "note": {"tk-ab12-cd34": 1, "ok": "kept"}}}) + "\n")
+            body = team_relay.encode(team_relay.collect(repo, live)).decode()
+        self.assertNotIn("bk_live_9fA2xQ7z", body)
+        self.assertNotIn("tk-ab12-cd34", body)
+        self.assertIn("kept", body)
+        raw = {"kind": "team", "decisions": [{"tick": 1, "lane": "x", "why": {"adm_root_42": 1, "bk_live_9fA2xQ7z": 2}}]}
+        tape = json.dumps(brain.merge_tape([], brain.decision_rows(brain.valid_team(raw)["decisions"])))
+        self.assertNotIn("adm_root_42", tape)
+        self.assertNotIn("bk_live", tape)
+
     def test_a_raw_bundle_is_scrubbed_again_by_the_brain(self):
         raw = {"kind": "team", "decisions": [{"tick": 1, "lane": "x", "why": "key bk_live_9fA2xQ7z leaked"}]}
         self.assertNotIn("bk_live", json.dumps(brain.valid_team(raw)))
         self.assertIsNone(brain.valid_desk({"name": "d", "mode": "live", "reason": {"x": 1}}))
         self.assertEqual(brain.valid_desk({"name": "d", "mode": "live", "reason": "bk_live_9fA2xQ7z"})["reason"], "[redacted]")
+
+
+class RelayTransport(unittest.TestCase):
+    """Codex review of #43 (99f5bd2): the bundle and the write token go over https to BRAIN_URL itself, never by
+    cleartext to a remote host and never across a redirect."""
+
+    def test_only_https_or_loopback(self):
+        self.assertEqual(team_relay.check_url("https://brain.example.ts.net/"), "https://brain.example.ts.net")
+        self.assertEqual(team_relay.check_url("http://127.0.0.1:8790"), "http://127.0.0.1:8790")
+        self.assertEqual(team_relay.check_url("http://localhost:8790"), "http://localhost:8790")
+        for bad in ("http://brain.example.ts.net", "http://100.75.84.67:8790", "ftp://127.0.0.1", "brain"):
+            with self.assertRaises(SystemExit, msg=bad):
+                team_relay.check_url(bad)
+
+    def test_a_redirect_is_refused_before_the_token_moves(self):
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        seen = []
+
+        class Target(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                seen.append(self.headers.get("X-Brain-Write"))
+                self.send_response(200)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            do_GET = do_POST   # urllib turns a POST into a GET on 302 and keeps the custom headers
+
+        target = HTTPServer(("127.0.0.1", 0), Target)
+
+        class Redirect(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_POST(self):
+                self.send_response(302)
+                self.send_header("Location", f"http://127.0.0.1:{target.server_port}/ingest/team")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+        hop = HTTPServer(("127.0.0.1", 0), Redirect)
+        for srv in (target, hop):
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            with self.assertRaises(urllib.error.HTTPError):
+                team_relay.send(b"{}", f"http://127.0.0.1:{hop.server_port}", "write-secret")
+            self.assertEqual(seen, [])
+        finally:
+            for srv in (target, hop):
+                srv.shutdown()
+                srv.server_close()
+
+
+class AccountRace(unittest.TestCase):
+    """Codex review of #43 (99f5bd2): two bundles arriving together must not leave the older account in place."""
+
+    def test_concurrent_bundles_keep_the_freshest_account(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            saved = brain.vi.ME_LIVE
+            brain.vi.ME_LIVE = Path(d) / "me_live.json"
+            real_write = brain.write_json
+
+            def slow(path, obj):  # the older bundle is slow to write: without the lock it would land last
+                if path == brain.vi.ME_LIVE and obj.get("tick") == 150:
+                    time.sleep(0.3)
+                real_write(path, obj)
+
+            try:
+                with mock.patch.object(brain, "write_json", slow):
+                    older = threading.Thread(target=brain.absorb, args=({"me": {**ME, "tick": 150, "cash": 300}},))
+                    newer = threading.Thread(target=brain.absorb, args=({"me": {**ME, "tick": 200, "cash": 40}},))
+                    older.start()
+                    time.sleep(0.05)
+                    newer.start()
+                    older.join()
+                    newer.join()
+                me = json.loads(brain.vi.ME_LIVE.read_text())
+                self.assertEqual((me["tick"], me["cash"]), (200, 40))
+                self.assertEqual([p.name for p in Path(d).iterdir()], ["me_live.json"])  # no temp file left behind
+            finally:
+                brain.vi.ME_LIVE = saved
 
 
 class TeamBundle(unittest.TestCase):
