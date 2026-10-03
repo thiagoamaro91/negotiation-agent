@@ -99,7 +99,7 @@ def any_of(probs: list) -> float:
 
 def carry_over(p_now: float, w_now: float, p_next: float, w_next: float) -> float:
     """Weighted chance of a sale for an offer posted now that stays up into the next session if it does not fill."""
-    return p_now * w_now + (1.0 - p_now) * p_next * w_next
+    return cap(p_now * w_now + (1.0 - p_now) * p_next * w_next)
 
 
 def cap(p: float) -> float:
@@ -268,7 +268,10 @@ def plan(split: dict | None = None) -> dict:
     ours = me["affinity"]
     mine = vi.our_cards(me, events)
     led = ledger_mod.build(events, schedule)
-    cash = led[vi.US]["cash"]
+    cash, cash_source = led[vi.US]["cash"], "ledger"
+    chk = ledger_mod.check_us(led)
+    if chk is not None and not chk["ok"]:  # the rebuild disagrees with the real account: trust the account
+        cash, cash_source = me["cash"], f"account at tick {chk['tick']} (ledger check failed: {chk['rebuilt']} P rebuilt)"
     now_tick = events[-1]["tick"]
     hz = horizons(clock, schedule)
     liquidate = hz[0]["hours"] >= LIQUIDATE_FROM_HOURS
@@ -322,7 +325,7 @@ def plan(split: dict | None = None) -> dict:
             pn = p_sale(ref, price, hz[0])
             pt = p_sale(ref, price, hz[1]) if len(hz) > 1 else 0.0
             options = [("list now", carry_over(pn, hz[0]["weight"], pt, hz[1]["weight"]) if len(hz) > 1
-                        else pn * hz[0]["weight"], pn + (1 - pn) * pt, 0)]  # chance it sells tonight or, carried over, tomorrow
+                        else pn * hz[0]["weight"], cap(pn + (1 - pn) * pt), 0)]  # chance it sells tonight or, carried over, tomorrow
             if len(hz) > 1:
                 options.append((f"list at {hz[1]['label']}", pt * hz[1]["weight"], pt, 1))
             for label, wp, p, hi_ in options:
@@ -351,8 +354,9 @@ def plan(split: dict | None = None) -> dict:
             continue
         s = vi.set_of(ref)
         keep = copy_value(book[ref], ours[s], k - 1, marginals)
-        if k == 1 and s in target_sets:
-            holds.append({"ref": ref, "why": f"first copy on the {s} page (page bonus confirmed, {PAGE_MAX_MISSING} or fewer missing)"})
+        if k == 1:  # never propose selling our last copy of a card
+            if s in target_sets:
+                holds.append({"ref": ref, "why": f"first copy on the {s} page (page bonus confirmed, {PAGE_MAX_MISSING} or fewer missing)"})
             continue
         option = best_ask(ref, keep)
         bids = sorted((o for o in board if o["kind"] == "bid" and o["ref"] == ref and o["team"] != vi.US
@@ -535,7 +539,7 @@ def plan(split: dict | None = None) -> dict:
                                 if bonus_on else
                                 f"the ~{p['bonus_if_confirmed']} P page bonus is NOT counted until the desk confirms it enters "
                                 f"trade value (BRAIN_PAGE_BONUS=1)."))
-    return {"tick": now_tick, "horizons": hz, "cash": cash, "reserve": CASH_RESERVE, "free_cash": free_now,
+    return {"tick": now_tick, "horizons": hz, "cash": cash, "cash_source": cash_source, "reserve": CASH_RESERVE, "free_cash": free_now,
             "board": board_source, "me_tick": me.get("tick"), "pages": pages, "sells": sells, "buys": buys, "holds": holds,
             "dealer": dealer_rows, "ladder_ours": {d: v for d, v in ladder.items()}, "dealer_prices": dprices,
             "calibration": {"shrink": lam, "p_cap": P_CAP}, "page_bonus_confirmed": bonus_on,
@@ -561,7 +565,7 @@ def plan(split: dict | None = None) -> dict:
 
 def show(p: dict) -> None:
     h = " · ".join(f"{x['label']} (weight {x['weight']}{', +' + str(x['grant']) + ' P grant' if x['grant'] else ''})" for x in p["horizons"])
-    print(f"Team 3 market plan · tick {p['tick']} · cash {p['cash']} P (ledger), reserve {p['reserve']} P · {h}")
+    print(f"Team 3 market plan · tick {p['tick']} · cash {p['cash']} P ({p.get('cash_source', 'ledger')}), reserve {p['reserve']} P · {h}")
     print(f"board: {p['board']} · our cards: snapshot tick {p['me_tick']} + public settlements")
     if p["decisions"]:
         print("\nDECISIONS FOR THE TEAM")

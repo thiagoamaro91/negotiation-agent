@@ -16,6 +16,17 @@ import brain  # noqa: E402
 import me_relay  # noqa: E402
 
 
+class CatalogEveryCycle(unittest.TestCase):
+    def test_each_refresh_rereads_the_catalog_first(self):
+        from unittest import mock
+        calls = []
+        with mock.patch.object(brain.vi, "catalog", lambda refresh=False: calls.append(refresh)), \
+                mock.patch.object(brain.vi, "load", side_effect=RuntimeError("stop here")):
+            with self.assertRaises(RuntimeError):
+                brain.refresh()
+        self.assertEqual(calls, [True])
+
+
 class Relay(unittest.TestCase):
     def test_no_field_named_like_a_key_leaves_the_laptop(self):
         me = {"cash": 10, "starter_broker_key": "bk-secret", "venue": {"broker_key": "x", "name": "v"},

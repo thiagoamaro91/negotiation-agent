@@ -26,9 +26,20 @@ class Label(unittest.TestCase):
         self.assertEqual(vi.confidence_label(0.95, 1.0), "weak")
 
     def test_strong_needs_both_probability_and_evidence(self):
-        self.assertEqual(vi.confidence_label(0.95, 4.0), "strong")
+        self.assertEqual(vi.confidence_label(0.95, 4.0, raw=True), "strong")
         self.assertEqual(vi.confidence_label(0.59, 10.0), "some")
         self.assertEqual(vi.confidence_label(0.39, 10.0), "weak")
+
+    def test_strong_is_shown_as_some_until_check_shows_it_is_right(self):
+        # measured right 25 % of the time (n=4): demoted to the medium tier; `check` still scores the raw rule
+        self.assertFalse(vi.STRONG_SHOWN)
+        self.assertEqual(vi.confidence_label(0.95, 4.0), "some")
+        saved = vi.STRONG_SHOWN
+        try:
+            vi.STRONG_SHOWN = True
+            self.assertEqual(vi.confidence_label(0.95, 4.0), "strong")
+        finally:
+            vi.STRONG_SHOWN = saved
 
     def test_choices_of_one_set_count_one_over_k(self):
         evs = [choose(i, f"LAV-0{i}") for i in range(1, 6)] + [floor(6, "LAV-01", 9), choose(7, "MAL-01")]

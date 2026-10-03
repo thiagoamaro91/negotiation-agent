@@ -48,6 +48,8 @@ BETA_SHED = 0.5          # sheds say little (most are spare copies from packs); 
 # 1/k (see Model.weights), so a team that asked Abuela for five LAV cards has ~2.3 choice-equivalents, not five.
 STRONG_P, STRONG_CHOICES = 0.6, 4.0
 SOME_P, SOME_CHOICES = 0.4, 2.0
+STRONG_SHOWN = False     # "strong" was right 25 % of the time (n=4): shown as "some" (the medium tier) until
+                         # `check` (which keeps scoring the raw rule) shows otherwise
 RELIABILITY_BINS = (0.0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0001)
 
 
@@ -188,10 +190,11 @@ def choice_weight(evs: list) -> float:
     return sum(w for ev, w in zip(evs, Model.weights(evs)) if ev["kind"] == "choose")
 
 
-def confidence_label(p_favourite: float, choices: float) -> str:
-    """'strong' needs a likely favourite AND enough independent choices behind it; few choices are never strong."""
+def confidence_label(p_favourite: float, choices: float, raw: bool = False) -> str:
+    """'strong' needs a likely favourite AND enough independent choices behind it; few choices are never strong.
+    While STRONG_SHOWN is off, a 'strong' is shown as 'some' (raw=True gives the rule's own label, for `check`)."""
     if p_favourite >= STRONG_P and choices >= STRONG_CHOICES:
-        return "strong"
+        return "strong" if raw or STRONG_SHOWN else "some"
     if p_favourite >= SOME_P and choices >= SOME_CHOICES:
         return "some"
     return "weak"
@@ -329,7 +332,7 @@ class Model:
                         top = self.p_top(post)
                         fav = max(top, key=top.get)
                         flat = top[fav] <= 1.0 / len(self.in_play) + 0.01  # no favourite yet (ties go to the first set)
-                        label = "no evidence" if flat else confidence_label(top[fav], choices)
+                        label = "no evidence" if flat else confidence_label(top[fav], choices, raw=True)
                     n += 1
                     pick = max(pred, key=pred.get)
                     hits += pick == ev["set"]

@@ -45,6 +45,7 @@ class Demand(unittest.TestCase):
         # 40 % it fills tonight at half weight, else 50 % tomorrow at full weight
         self.assertAlmostEqual(mp.carry_over(0.4, 0.5, 0.5, 1.0), 0.4 * 0.5 + 0.6 * 0.5)
         self.assertAlmostEqual(mp.carry_over(0.0, 0.5, 0.7, 1.0), 0.7)
+        self.assertEqual(mp.carry_over(0.9, 1.0, 0.9, 1.0), mp.P_CAP)   # 0.99 uncapped: never a certainty
 
 
 class ScoredLikeTheGame(unittest.TestCase):
@@ -157,6 +158,31 @@ class PlanOnTheCommittedFeed(unittest.TestCase):
         buyers = [b["p"] for s in self.p["sells"] for b in s.get("likely_buyers", [])]
         self.assertTrue(buyers)
         self.assertLessEqual(max(buyers), mp.ATTENTION)  # was 1.0 for t04, t14, t07 on LAV-08 before the fix
+
+    def test_never_proposes_selling_our_last_copy(self):
+        self.assertTrue(all(s["copy"] == "spare" for s in self.p["sells"]))
+
+    def test_cash_is_the_ledger_while_its_check_passes(self):
+        self.assertTrue(self.p["cash_source"] == "ledger" or self.p["cash_source"].startswith("account"))
+
+
+class CashWhenTheLedgerCheckFails(unittest.TestCase):
+    def test_a_failed_ledger_check_uses_the_accounts_cash(self):
+        import value_inference as vi
+        saved = (vi.FEED, vi.public, mp.live_board, mp.ledger_mod.check_us)
+        public = {"clock": {"today": "fri", "t_hours": 2.65, "doors": "closed"},
+                  "schedule": {"upcoming": []}, "dealers": PlanOnTheCommittedFeed.DEALERS}
+        try:
+            vi.FEED = Path(__file__).resolve().parent.parent / "logs" / "feed"
+            vi.public = lambda name, refresh=False: public[name] if name in public else saved[1](name, False)
+            mp.live_board = lambda events: ([], "test: empty board")
+            real = vi.load_me()["cash"]
+            mp.ledger_mod.check_us = lambda led: {"tick": 1, "real": real, "rebuilt": real + 999, "ok": False}
+            p = mp.plan()
+        finally:
+            vi.FEED, vi.public, mp.live_board, mp.ledger_mod.check_us = saved
+        self.assertEqual(p["cash"], real)
+        self.assertTrue(p["cash_source"].startswith("account"))
 
 
 class PageBonus(unittest.TestCase):

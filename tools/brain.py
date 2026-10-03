@@ -282,6 +282,10 @@ def tape(events: list, ours: dict, mine, book: dict, marginals: list) -> list:
 
 def refresh() -> dict:
     t0 = time.time()
+    try:  # GET /api/catalog (keyless) every cycle, so a newly released set (El Retiro) is picked up
+        vi.catalog(refresh=True)
+    except Exception:  # noqa: BLE001  unreachable or bad body: the cached logs/public/catalog.json stays
+        pass
     model, by_team, events, book = vi.load()
     cat = vi.catalog()
     marginals = cat["values"]["copy_marginals"]
