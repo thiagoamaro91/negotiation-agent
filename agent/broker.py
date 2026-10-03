@@ -29,7 +29,8 @@ So the bench policy (pure: plan() never touches the network) is:
   4. Fallback: a run with no history yet, or any exception, uses the stall's rule for that run. A bug costs the edge,
      never the stall's half of the points.
   5. A guard checks every match before it is sent: two live offers of one bench run (or two public offers), a seller
-     and a buyer, different makers, each offer once, a whole price with ask <= price and price + fee <= bid.
+     and a buyer, different makers on public offers (every bench offer shows maker "bench", so makers do not count
+     there), each offer once, a whole price with ask <= price and price + fee <= bid.
 
 Modes (from the repo root):
     python3 agent/broker.py plan --book FILE      # offline: the matches it would send for a recorded book (a JSON
@@ -416,9 +417,6 @@ class BenchPolicy:
             (qb, b), (qs, s) = (left[i], right[j]) if not swap else (right[j], left[i])
             if qb < qs or price_for(book, qs, qb) is None or (s, b) in self.refused:
                 return None
-            mb, ms = trs[b].get("maker"), trs[s].get("maker")
-            if mb is not None and mb == ms:
-                return None
             w = bp[b] - sp[s]
             return w if w > p["min_edge"] else None
 
@@ -460,8 +458,8 @@ def guard(plan: list, book: dict) -> tuple:
             ask, bid = s["want"]["cash"], b["give"]["cash"]
             if not (_num(ask) and ask > 0 and _num(bid) and bid > 0) or s["give"].get("cash") or b["want"].get("cash"):
                 raise ValueError("not_a_seller_and_a_buyer")
-            if s.get("maker") is not None and s.get("maker") == b.get("maker"):
-                raise ValueError("same_maker")
+            if ks == "offers" and s.get("maker") is not None and s.get("maker") == b.get("maker"):
+                raise ValueError("same_maker")  # public offers only: every bench offer's maker is "bench"
             if isinstance(price, bool) or not isinstance(price, int):
                 raise ValueError("price_not_whole")
             if price < ask or price + fee_of(book, price) > bid:
