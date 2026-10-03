@@ -1,5 +1,14 @@
 # Changelog
 
+## [2026-10-03] Card census
+
+### Added
+- `tools/census.py`: an exact card census from `GET /api/cards/{id}`, read only. `run` walks every asset id from 1 at 1 request/s (`--rate`, single-threaded) and stops after 60 consecutive 404s above the highest id found and above `--expect-max` (`--max-id 3000` hard cap, exit 4 if reached without that run). The snapshot `cards-<date>-t<tick>.json` has meta (wall times, ticks at start and end, ids walked, 404s, errors), `cards` {id, ref, name, rarity, set, serial, owner}, `packs`, `teams` {team: {cards, by_ref}} and `other_owners` (dealers, no owner); history only with `--with-history`, in its own file. `ids 12,57` / `--ids-file` re-read only those ids and merge into `--base` (moved, added, removed in meta). `summary` prints every team's deck by set. `selftest` walks a fake server offline.
+- The route needs a key (401 `bad_key` keyless, checked 22:13): the first keyless 401/403 switches the run to the team key (`BAZAAR_KEY` or `.env`, `X-Team-Key`), once per run; a refused key stops the run (exit 5). The key is never printed or written, every error text goes through `tools/redaction.py`, and the loaded key is replaced literally whatever its shape.
+- 429, 5xx and network errors retry the same id with exponential backoff (Retry-After honoured, 60 s cap); after `--max-retries` the id goes into `errors` and `--resume` reads it again; 10 ids failing in a row stop the run. Progress goes line by line to `cards-<date>-partial.jsonl` (scrubbed raw payloads), so `--resume` continues a stopped walk (also past midnight) or rebuilds the snapshot with no request.
+- Market Test silence: `--quiet` windows pause before every request; at start the clock is read, and with the doors open the schedule and the feed place the Market Tests as `tools/announce.py` does: no start inside one or when that status cannot be read (exit 3, `--skip-market-check` overrides), and a pause for the ones ahead.
+- `tests/test_census.py`: 31 offline tests (end of the id space and the `--expect-max` anchor, 429/5xx backoff, failed ids kept and retried on resume, resume after midnight, re-finalize with no request, top-up merge, per-team summary and totals, history file, key fallback once per run and never shown, redaction of errors and payloads, the Market Test start check, quiet windows, selftest).
+
 ## [2026-10-03] Dashboard: Rivals and Market panels
 
 ### Added
