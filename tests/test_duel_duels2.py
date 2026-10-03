@@ -696,11 +696,15 @@ class RobustDays(unittest.TestCase):
     def test_in_the_arena_a_misleading_wording_never_loses_in_robust_mode(self):
         p = json.loads(FINAL.read_text())
         wrong = "each day later reduces your cost"          # says late is best: wrong for every arena buyer
-        with mock.patch.object(arena, "DAYS_WORDING", wrong):
-            robust = [r for r in arena.evaluate(p, range(12), 2) if r["deal"]]
-            self.assertEqual([r for r in robust if r["share"] < 0], [])
-            trusting = [r for r in arena.evaluate({**p, "days_confirmed": True}, range(12), 2) if r["deal"]]
-        self.assertTrue([r for r in trusting if r["share"] < 0])        # the protection is what keeps it at zero
+        # under both referee days models: the server's (a seller earns w per day, a buyer pays it; the arena words
+        # it as the server did, so the misleading sentence replaces _wording) and the earlier distance guess
+        for model in ("server", "distance"):
+            with self.subTest(model=model), mock.patch.object(arena, "DAYS_MODEL", model), \
+                    mock.patch.object(arena, "DAYS_WORDING", wrong), mock.patch.object(arena, "_wording", lambda dl: wrong):
+                robust = [r for r in arena.evaluate(p, range(12), 2) if r["deal"]]
+                self.assertEqual([r for r in robust if r["share"] < 0], [])
+                trusting = [r for r in arena.evaluate({**p, "days_confirmed": True}, range(12), 2) if r["deal"]]
+                self.assertTrue([r for r in trusting if r["share"] < 0])   # the protection is what keeps it at zero
 
 
 def _http_error(code, body):
