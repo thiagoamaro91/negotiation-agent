@@ -33,7 +33,7 @@ def redact(obj):
     if isinstance(obj, str):
         return _SECRET.sub("[redacted]", obj)
     if isinstance(obj, dict):
-        return {k: ("[redacted]" if any(s in k.lower() for s in _SECRET_FIELDS) and isinstance(v, str) else redact(v))
+        return {k: ("[redacted]" if any(s in str(k).lower() for s in _SECRET_FIELDS) and isinstance(v, str) else redact(v))
                 for k, v in obj.items()}
     if isinstance(obj, list):
         return [redact(v) for v in obj]

@@ -1,12 +1,48 @@
 {
- "_note": "El Rastro seller config, read by agent/rastro_seller.py. One entry per spare copy (asset id, not card ref). start_ask is the anchor used only when the asset has no live listing and no earlier price in today's log; floor is the least cash we keep (net of any fee we pay). The bot raises a floor to our private value + 1 if it is set lower, and skips an asset we no longer hold or whose card we hold only once (set allow_last_copy to sell a last copy). Set enabled to false to keep a line without selling it. Nothing is listed until the owner starts `run`. MAL-08 #501 sold Friday tick 147 at 28 P to t17; it stays here only to show the not-held path. The commons keep their lowest-serial copy (LAV-01 #39, LAV-03 #35, LAV-05 #38), which are not listed. Saturday 2026-10-03 prices (owner with Hector): LAV-08 24/22, MAL-06 28/20, LAV-01 9/6, LAV-03 7/6, LAV-05 8/6 (start/floor). A live listing is adopted at its own ask and steps down from there, never below the floor.",
+ "_note": "El Rastro seller config, read by agent/rastro_seller.py. One entry per spare copy (asset id, not card ref). start_ask is the anchor used only when the asset has no live listing and no earlier price in today's log; floor is the least cash we keep (net of any fee we pay). The bot raises a floor to our private value + 1 if it is set lower, and skips an asset we no longer hold or whose card we hold only once (set allow_last_copy to sell a last copy). Set enabled to false to keep a line without selling it. Nothing is listed until the owner starts `run`. MAL-08 #501 sold Friday tick 147 at 28 P to t17; it stays here only to show the not-held path. The commons keep their lowest-serial copy (LAV-01 #39, LAV-03 #35, LAV-05 #38), which are not listed. Saturday 2026-10-03 prices (owner with Hector): LAV-08 24/22, MAL-06 28/20, LAV-01 9/6, LAV-03 7/6, LAV-05 8/6 (start/floor). A live listing is adopted at its own ask and steps down from there, never below the floor. Saturday grant pack (opened tick 168): MAL-02 #579 is the spare (we keep #37, serial 3); 8/6 like the LAV commons, private value of the spare copy is under 1.",
  "venue": "rastro",
  "cards": [
-  {"asset_id": 500, "card": "LAV-08", "start_ask": 24, "floor": 22},
-  {"asset_id": 43, "card": "MAL-06", "start_ask": 28, "floor": 20},
-  {"asset_id": 501, "card": "MAL-08", "start_ask": 28, "floor": 18},
-  {"asset_id": 41, "card": "LAV-01", "start_ask": 9, "floor": 6},
-  {"asset_id": 40, "card": "LAV-03", "start_ask": 7, "floor": 6},
-  {"asset_id": 499, "card": "LAV-05", "start_ask": 8, "floor": 6}
+  {
+   "asset_id": 500,
+   "card": "LAV-08",
+   "start_ask": 24,
+   "floor": 22
+  },
+  {
+   "asset_id": 43,
+   "card": "MAL-06",
+   "start_ask": 28,
+   "floor": 20
+  },
+  {
+   "asset_id": 501,
+   "card": "MAL-08",
+   "start_ask": 28,
+   "floor": 18
+  },
+  {
+   "asset_id": 41,
+   "card": "LAV-01",
+   "start_ask": 9,
+   "floor": 6
+  },
+  {
+   "asset_id": 40,
+   "card": "LAV-03",
+   "start_ask": 7,
+   "floor": 6
+  },
+  {
+   "asset_id": 499,
+   "card": "LAV-05",
+   "start_ask": 8,
+   "floor": 6
+  },
+  {
+   "asset_id": 579,
+   "card": "MAL-02",
+   "start_ask": 8,
+   "floor": 6
+  }
  ]
 }
