@@ -44,8 +44,10 @@ class AgentsLog(unittest.TestCase):
         self.assertEqual(swarm.node_id("bazaar-pr-steward"), "thiago-air-prsteward")
 
     def test_keys_are_redacted(self):
-        e = swarm.agents_event("a", "1", DAY, "10:00:00 [conductor] says: key is tk-abcdef123456 ok")
-        self.assertNotIn("tk-abcdef123456", e["text"])
+        for key in ("tk-abcdef123456", "bk_live_do_not_log_123", "bk-abc-def-123", "adm_x_y_z_1"):
+            e = swarm.agents_event("a", "1", DAY, f"10:00:00 [conductor] says: key is {key} ok")
+            self.assertNotIn(key[3:], e["text"], key)
+            self.assertIn("<redacted> ok", e["text"])
 
 
 class Reads(unittest.TestCase):
@@ -164,25 +166,26 @@ class Score(unittest.TestCase):
 
 
 class Public(unittest.TestCase):
-    def test_public_view_keeps_the_shape_and_drops_private_text(self):
-        dec = swarm.decision_event("d", "1", dict(Decisions.ROW, our_value=218.0))
-        p = swarm.public_view(dec)
-        self.assertEqual((p["src"], p["dst"], p["kind"], p["text"], p["why"]), ("lane-c-trades", "teams", "decision", "accept LAV-10", None))
-        self.assertEqual(p["highlight"], "LAV-10 completes a page")
-        skip = swarm.decision_event("d", "2", dict(Decisions.ROW, action="skip", why="our value 2.8"))
-        self.assertEqual(swarm.public_view(skip)["text"], "")
-
-    def test_numbers_that_are_ours_are_stripped(self):
-        new = swarm.bot_event("duel/x", "1", "duel", {"ts": "2026-10-03T11:59:20", "event": "duel_new", "duel": 2314,
-                                                      "role": "seller", "item": "El Mesón", "limit": 64})
-        res = swarm.bot_event("duel/x", "2", "duel", {"ts": "2026-10-03T12:06:20", "event": "result", "duel": 2328,
-                                                      "status": "deal", "price": 152, "our_surplus": 61})
+    def test_only_public_board_posts_keep_their_text(self):
+        bid = swarm.decision_event("d", "1", dict(Decisions.ROW, action="bid", why="our value 218", result="posted id 12442"))
+        acc = swarm.decision_event("d", "2", dict(Decisions.ROW, our_value=218.0))
         lst = swarm.bot_event("rastro/x", "3", "rastro", {"ts": "2026-10-03T09:33:22", "event": "listed", "card": "LAV-08",
                                                           "price": 24, "floor": 22})
-        self.assertNotIn("64", swarm.public_view(new)["text"])
-        self.assertNotIn("61", swarm.public_view(res)["text"])
-        self.assertIn("152", swarm.public_view(res)["text"])
+        self.assertEqual(swarm.public_view(bid)["text"], "bid LAV-10")
         self.assertEqual(swarm.public_view(lst)["text"], "lists LAV-08 at 24")
+        p = swarm.public_view(acc)
+        self.assertEqual((p["src"], p["dst"], p["kind"], p["text"], p["why"]), ("lane-c-trades", "teams", "decision", "", None))
+        self.assertNotIn("highlight", p)  # "LAV-10 completes a page" tells rivals what we hold
+
+    def test_duel_and_dealer_negotiations_stay_private(self):
+        rows = [("duel", {"event": "say", "duel": 2314, "price": 100, "days": 2}),
+                ("duel", {"event": "accept", "duel": 2328, "resp": {"price": 152}}),
+                ("duel", {"event": "result", "duel": 2328, "status": "deal", "price": 152, "our_surplus": 61}),
+                ("duel", {"event": "duel_new", "duel": 2314, "role": "seller", "item": "El Mesón", "limit": 64}),
+                ("abuela", {"event": "say", "price": 17}), ("pilar", {"event": "accept", "price": 19})]
+        for folder, r in rows:
+            e = swarm.bot_event(f"{folder}/x", "1", folder, dict(r, ts="2026-10-03T12:00:00"))
+            self.assertEqual(swarm.public_view(e)["text"], "", (folder, r["event"]))
 
     def test_messages_bus_and_score_details_stay_out(self):
         bus = swarm.bus_events([comment(1, "thiago-air-f8", ["hector14mv"], "we still miss SAL-09 and SAL-10")])[0]
@@ -192,7 +195,33 @@ class Public(unittest.TestCase):
                                {"score": 27.99, "rank": 6, "neg_points": 97.9, "pages_complete": 1})
         p = swarm.public_view(sc)
         self.assertEqual(p["score"], {"score": 27.99, "rank": 6})
-        self.assertEqual(p["highlight"], "page 2 complete")
+        self.assertNotIn("highlight", p)
+
+
+class Binding(unittest.TestCase):
+    TOKEN = "x" * 20
+
+    def test_private_view_always_needs_a_token(self):
+        self.assertIsNotNone(swarm.bind_problem("127.0.0.1", None, public=False))
+        self.assertIsNone(swarm.bind_problem("127.0.0.1", self.TOKEN, public=False))
+        self.assertIsNotNone(swarm.bind_problem("127.0.0.1", "short", public=False))
+
+    def test_no_wildcard_and_no_open_lan_port(self):
+        for host in ("0.0.0.0", "::", ""):
+            self.assertIsNotNone(swarm.bind_problem(host, self.TOKEN, public=False), host)
+            self.assertIsNotNone(swarm.bind_problem(host, None, public=True), host)
+        self.assertIsNotNone(swarm.bind_problem("100.75.84.67", None, public=True))
+        self.assertIsNone(swarm.bind_problem("100.75.84.67", self.TOKEN, public=False))
+        self.assertIsNone(swarm.bind_problem("127.0.0.1", None, public=True))  # what tailscale funnel forwards to
+
+    def test_main_refuses_before_listening(self):
+        old = swarm.os.environ.pop("SWARM_TOKEN", None)
+        try:
+            self.assertEqual(swarm.main(["run", "--host", "0.0.0.0", "--out", tempfile.gettempdir(), "--no-bus"]), 2)
+            self.assertEqual(swarm.main(["serve", "--out", tempfile.gettempdir()]), 2)
+        finally:
+            if old is not None:
+                swarm.os.environ["SWARM_TOKEN"] = old
 
 
 class FoldAndServe(unittest.TestCase):
@@ -264,6 +293,22 @@ class FoldAndServe(unittest.TestCase):
         self.assertEqual(pub.refresh(), 1)
         self.assertNotIn("secret", json.dumps(pub.events))
         self.assertEqual(swarm.main(["fold", "--public", "--live", str(self.live), "--repo", str(self.repo), "--out", str(self.out)]), 2)
+
+    def test_simultaneous_readers_never_skip_an_event(self):
+        self.out.mkdir()
+        self.fold()
+        pub = swarm.Store(self.out, public=True)
+        path = self.out / swarm.EVENTS
+        for i in range(60):
+            with open(path, "a") as f:
+                f.write(json.dumps({"id": f"n{i}", "ts": "2026-10-03T18:00:00+02:00", "src": "duel", "dst": None,
+                                    "kind": "life", "text": "x"}) + "\n")
+            gate = threading.Barrier(6)
+            ts = [threading.Thread(target=lambda: (gate.wait(), pub.refresh())) for _ in range(6)]
+            [t.start() for t in ts]
+            [t.join() for t in ts]
+        self.assertEqual(len(pub.events), 63)
+        self.assertEqual(pub.off, path.stat().st_size)
 
     def test_reads_are_throttled_and_config_changes_are_news(self):
         book = {"agent": "broker", "event": "book", "book": {"offers": []}}

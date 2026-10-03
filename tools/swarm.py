@@ -17,12 +17,13 @@ Text written by other teams, rivals or dealers never enters the stream (it is ga
 their events keep only numbers. Anything that looks like a key is redacted.
 
 usage (on the Mini, where <live> is ~/bazaar-live and <repo> is this checkout):
-  python3 tools/swarm.py run                                  # fold every 5 s and serve http://127.0.0.1:8777
-  SWARM_TOKEN=... python3 tools/swarm.py run --host 0.0.0.0   # same, reachable over the tailnet with ?t=<token>
+  SWARM_TOKEN=<16+ chars> python3 tools/swarm.py run         # fold every 5 s, serve http://127.0.0.1:8777/?t=<token>
+  tailscale serve --bg --https=8443 8777                      # private view for the tailnet only (never funnel it)
   python3 tools/swarm.py fold                                 # fold once and exit
   python3 tools/swarm.py plan                                 # fold once into memory, print counts, write nothing
-  python3 tools/swarm.py serve --public --port 8778           # second, read-only view for a public link (no folding):
-                                                              # strips private values, whys and every internal text
+  python3 tools/swarm.py serve --public --port 8778           # second, read-only view for a public link (no folding);
+  tailscale funnel --bg 8778                                  # shows only what is already on public boards
+The private view always needs SWARM_TOKEN; nothing listens on a wildcard address (0.0.0.0 would include the LAN).
 development on another machine, against the Mini's shares (read-only there, so --out must be local):
   python3 tools/swarm.py run --live /Volumes/bazaar-live --repo /Volumes/bazaar --out /tmp/swarm
 """
@@ -32,6 +33,7 @@ import argparse
 import datetime as dt
 import glob
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -44,6 +46,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import redaction  # noqa: E402  (one scrubber for everything shown on a page: tk-/bk_/adm_ with - and _ variants)
+
 HERE = Path(__file__).resolve().parent
 PAGE = HERE / "swarm.html"
 BUS_REPO = "thiagoamaro91/negotiation-agent"
@@ -53,7 +58,6 @@ STATE = "swarm-state.json"
 TEXT = 220
 LOCAL_TZ = dt.datetime.now().astimezone().tzinfo
 
-SECRET = re.compile(r"tk-[A-Za-z0-9-]{6,}|bk_[A-Za-z0-9]+|adm_[A-Za-z0-9]+")
 ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 AGENT_LINE = re.compile(r"^(\d\d):(\d\d):(\d\d) \[([^\]]+)\] (says|does): (.*)$")
 MESSAGE_TO = re.compile(r"^message to ([\w.-]+): (.*)$")
@@ -135,7 +139,7 @@ READ_GAP = 60.0  # at most one read per source and reader per minute: the broker
 
 
 def redact(s) -> str:
-    return SECRET.sub("<redacted>", str(s))
+    return redaction.SECRET.sub("<redacted>", str(s))
 
 
 def clip(s, n: int = TEXT) -> str:
@@ -442,32 +446,40 @@ def score_view_points(text: str, day: dt.date) -> list:
 
 # ---------- public view ----------
 
-PUBLIC_TEXT = {"deal", "result", "match", "announce", "duel", "offer"}
-PUBLIC_DECISIONS = {"offer", "bid", "accept", "buy", "sell", "convert"}
+PUBLIC_DECISIONS = {"offer", "bid"}  # posts on a public board; accepts and dealer deals stay private
 PRIVATE_BITS = re.compile(r"\s*\((?:floor|cap)[^)]*\)|,?\s*our surplus [-\d.]+|,?\s*limit [-\d.]+|\bworth [-\d.]+|"
                           r"\bour value [-\d.]+", re.I)
 CARD = re.compile(r"^[A-Z]{3}-\d\d$")
 
 
+def public_text(e: dict) -> str:
+    """Only what already sits on a public board: our listings and posted bids, crosses on our venue during a Market
+    Test, our public announcements, the leaderboard. Duel and dealer negotiations are bilateral and stay out."""
+    kind, src, text = e.get("kind"), e.get("src"), e.get("text") or ""
+    if kind == "offer" and src in ("rastro-seller", "market-desk"):
+        return PRIVATE_BITS.sub("", text).strip()
+    if kind in ("match", "result") and src == "broker":
+        return text
+    if kind == "announce" and src == "announce":
+        return text
+    if kind == "decision":
+        w = text.split()
+        if len(w) > 1 and w[0] in PUBLIC_DECISIONS and CARD.match(w[1]):
+            return f"{w[0]} {w[1]}"
+    return ""
+
+
 def public_view(e: dict) -> dict:
-    """What a public link may show: who talked to whom and when, what we did on public boards, the public score.
-    Never a why, a private value, a floor or limit, cash, or the text of a message, a bus post or a lane's thought."""
+    """Who talked to whom and when, plus public_text. Never a why, a highlight (they come from our holdings), a value,
+    a floor or limit, cash, a negotiation term, or the text of a message, a bus post or a lane's thought."""
     out = {k: e[k] for k in ("id", "ts", "src", "dst", "kind", "source") if k in e}
-    out["why"], kind, text = None, e.get("kind"), e.get("text") or ""
-    if kind == "score":
+    out["why"] = None
+    if e.get("kind") == "score":
         s = e.get("score") or {}
         out["score"] = {"score": s.get("score"), "rank": s.get("rank")}
         out["text"] = f"score {s.get('score')} · rank {s.get('rank')}"
-    elif kind in PUBLIC_TEXT:
-        out["text"] = PRIVATE_BITS.sub("", text).strip()
-    elif kind == "decision":
-        w = text.split()
-        card = w[1] if len(w) > 1 and CARD.match(w[1]) else ""
-        out["text"] = f"{w[0]} {card}".strip() if w and w[0] in PUBLIC_DECISIONS else ""
     else:
-        out["text"] = ""
-    if e.get("highlight"):
-        out["highlight"] = e["highlight"].split(":")[0]
+        out["text"] = public_text(e)
     return out
 
 
@@ -675,32 +687,33 @@ class Store:
         self.refresh()
 
     def refresh(self) -> int:
-        """Pick up lines another process appended (serve mode reads the file the run process writes)."""
-        try:
-            size = self.path.stat().st_size
-        except OSError:
-            return 0
-        if size <= self.off:
-            return 0
-        with open(self.path, "rb") as f:
-            f.seek(self.off)
-            chunk = f.read(size - self.off)
-        end = chunk.rfind(b"\n")
-        if end < 0:
-            return 0
-        new = []
-        for line in chunk[: end + 1].decode("utf-8", "replace").splitlines():
-            try:
-                e = json.loads(line)
-            except ValueError:
-                continue
-            if isinstance(e, dict) and e.get("id") not in self.ids:
-                self.ids.add(e.get("id"))
-                new.append(public_view(e) if self.public else e)
+        """Pick up lines another process appended (serve mode reads the file the run process writes). One lock covers
+        read, dedupe and cursor, so two requests at once cannot both advance the cursor over the same bytes."""
         with self.lock:
+            try:
+                size = self.path.stat().st_size
+            except OSError:
+                return 0
+            if size <= self.off:
+                return 0
+            with open(self.path, "rb") as f:
+                f.seek(self.off)
+                chunk = f.read(size - self.off)
+            end = chunk.rfind(b"\n")
+            if end < 0:
+                return 0
+            new = []
+            for line in chunk[: end + 1].decode("utf-8", "replace").splitlines():
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(e, dict) and e.get("id") not in self.ids:
+                    self.ids.add(e.get("id"))
+                    new.append(public_view(e) if self.public else e)
             self.events.extend(new)
             self.off += end + 1
-        return len(new)
+            return len(new)
 
     def state(self) -> dict:
         try:
@@ -779,7 +792,7 @@ def make_handler(store: Store, live: Path, repo: Path, token: str | None, servin
         def do_GET(self):
             u = urlparse(self.path)
             q = parse_qs(u.query)
-            if token and q.get("t", [""])[0] != token:
+            if token and not hmac.compare_digest(q.get("t", [""])[0].encode(), token.encode()):
                 return self._send(403, b"forbidden\n", "text/plain")
             if u.path == "/":
                 return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
@@ -798,6 +811,23 @@ def make_handler(store: Store, live: Path, repo: Path, token: str | None, servin
                 return self._send(200, json.dumps(body).encode(), "application/json")
             return self._send(404, b"not found\n", "text/plain")
     return Handler
+
+
+LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def bind_problem(host: str, token: str | None, public: bool) -> str | None:
+    """Why a server must not start, or None. The private view shows whys, values and cash: always behind a token.
+    Nothing listens on a wildcard address; expose a port with `tailscale serve` (tailnet) or `funnel` (public)."""
+    if host in ("", "0.0.0.0", "::", "*"):
+        return f"refusing to listen on {host or 'every interface'}: use 127.0.0.1 with tailscale serve/funnel, or the tailnet IP"
+    if token is not None and len(token) < 16:
+        return "SWARM_TOKEN must be at least 16 characters"
+    if not public and not token:
+        return "the private view needs SWARM_TOKEN (it shows decisions' whys, private values and cash)"
+    if host not in LOOPBACK and not token:
+        return f"refusing to listen on {host} without SWARM_TOKEN"
+    return None
 
 
 def fold_loop(folder: Folder, store: Store, interval: float, stop: threading.Event):
@@ -835,9 +865,14 @@ def main(argv=None) -> int:
     if a.public and a.cmd != "serve":
         print("swarm: --public only goes with serve (a second, read-only view of the same file)", file=sys.stderr)
         return 2
+    token = os.environ.get("SWARM_TOKEN") or None
+    if a.cmd in ("run", "serve"):
+        why = bind_problem(a.host, token, a.public)
+        if why:
+            print(f"swarm: {why}", file=sys.stderr)
+            return 2
     if a.cmd == "serve":
         store = Store(out, public=a.public)
-        token = os.environ.get("SWARM_TOKEN") or None
         srv = ThreadingHTTPServer((a.host, a.port), make_handler(store, live, repo, token, serving_only=True))
         print(f"swarm: serving {'PUBLIC ' if a.public else ''}view of {store.path} on http://{a.host}:{a.port}/")
         try:
@@ -856,7 +891,6 @@ def main(argv=None) -> int:
         return 0
     stop = threading.Event()
     threading.Thread(target=fold_loop, args=(folder, store, a.interval, stop), daemon=True).start()
-    token = os.environ.get("SWARM_TOKEN") or None
     srv = ThreadingHTTPServer((a.host, a.port), make_handler(store, live, repo, token))
     print(f"swarm: serving http://{a.host}:{a.port}/" + ("?t=<SWARM_TOKEN>" if token else "") + f"  events → {store.path}")
     try:
