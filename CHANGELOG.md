@@ -1,5 +1,32 @@
 # Changelog
 
+## [2026-10-03] Sunday factory
+
+### Added
+- `tools/factory.py`: one command starts Sunday's bots in order and keeps them up. `plan` (read-only, keyless) prints the clock, every schedule event in Madrid wall time, each process's exact command and gate, and any copy already running outside the factory. `up --yes` claims each process on the bus and opens one tmux window per process, each running a restart loop that waits for its gates (doors open, clock running, no fresh duel lock, no duel wave within 12 min, after the allowance) evaluated in game hours, so a pause only delays it. Duel runs start 10 min before each duel wave, with `--duel-ticks` from the schedule and `--until` from the closing time. Dealer steps run once each, and a step that lived through a pause is rerun. `status` shows one line per process (running, log age, restarts, last Market Test matched and dropped) and exits 1 on a required process down or stale, a crash, or a dropped or missing match; `--notify` runs a configured command, `--every 60` makes it the watchdog.
+- `tools/factory_sunday.json`: the Sunday processes as data (feed recorder, broker, duel, Abuela, Chato, Pilar, the watchdog; Rastro seller and market desk off), with a `todo` on every value that waits for an open pull request or an 08:55 decision.
+- `docs/plans/sunday-runbook.md`: the operator page (08:55 command, 09:00 check, timeline in game hours, one action per alert, decisions that stay with people).
+- `tests/test_factory.py`: 21 tests (wall time at 15, 30 and 60 s ticks and across a pause or the overnight gap, gates, rendering the real config, staleness, the Market Test watch, double starts); 19 mutations, all caught.
+
+### Fixed (adversarial review of #34)
+- One keeper per process: a lock file held for the keeper's life; every launch, restarts included, checks gates, the duel wave, input files and outside copies (python, `python -m`, or a shell restart loop).
+- The bus claim fails closed (`up --yes --no-bus` is the explicit override); doors-open and clock-running gates default on, so the broker and duel runs wait out a pause too.
+- A dealer step that exits non-zero is not relaunched: the keeper stops and `status` reports it (needs the dealer exit statuses and pause-safe waits of #35).
+- A duel wave projected outside opening hours never launches; `up` refuses a process with a missing input file.
+- Shared schedule cache: unique temp files and a tolerant read-merge-write; a failed save no longer kills a keeper.
+- `status` checks the child pid and its command line, says NO CHILD or WAITING instead of trusting the saved label, fails a log that never appears, counts only matches of the bench run's own offers, and alerts on a scheduled Market Test never seen on our book.
+- Bots get an allowlisted environment with no key in it.
+- 21 more tests driving `up`, `keep`, `status` and the cache with the OS and network mocked; each failed on the reviewed head; 21 more mutations, all caught.
+
+### Changed (second review of #34: less surface)
+- The dealer entries are off by default (pull request #35 first); `up` prints every `off` entry with its reason and `plan` prints the dealers' manual command lines.
+- The process scanner decides from argv strings only and never opens a file (it used to read script files, which could include `.env`); it matches the script basename plus the mode token in any path form, `-m`, `--x=y`, or a `bash -c` loop.
+- `up` reads the bus board and refuses a process claimed on another machine; an unreadable board fails closed.
+- A dealer step is done only on a deal or a nothing-to-do line in its log; exit 0 without one is retried at the next open gate, `max_attempts` times (default 3), then reported.
+- A missing input file stops the keeper as a reported failure; `"enabled": false` stops a keeper before its next launch, and `status` reports a disabled entry that still runs.
+- The duel bot is checked for freshness while a scheduled wave is live; gates need explicit `doors` and `paused` values; notifications are deduplicated per incident.
+- 17 tests added or changed (14 failed on 21c5efa, 3 are controls); 16 more mutations, all caught.
+
 ## [2026-10-03] Dealer bots: lunch fixes
 
 ### Fixed
