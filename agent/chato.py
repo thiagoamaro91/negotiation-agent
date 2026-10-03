@@ -21,6 +21,17 @@ Usage (from the repo root):
     python3 agent/chato.py run --only LAV-09 --max-deals 1 --anchor 60 --step 4 --cap 93 --reserve 200
 Only ONE process per team may talk to El Chato at a time (one open conversation per dealer).
 `run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds).
+
+Doña Pilar (--dealer pilar, L3 collector): she only BUYS from us (uncommon, rare, epic; she loves SAL and RET) and
+sells gold packs only, so `plan`/`run` refuse buy targets for her and list sells only. Feed evidence: she opened at
+16 and held 16 across 9 threads; another team asked 49, then 42, and sold LAV-08 at 19. So her first ask is
+max(3 x her opening bid, floor + 20) and we come down 4 P per round, never below the floor (our private value of that
+copy + 2), and take her final offer if it is at or above the floor. Logs go to logs/pilar/<date>.jsonl.
+    python3 agent/chato.py plan --dealer pilar --only sell:42,sell:44 --allow-single
+    python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --max-deals 2
+--allow-single lets an explicitly listed `sell:<asset_id>` go even when it is our last copy (or the copy we keep);
+nothing is ever auto-selected that way: without an explicit id the agent sells spares only.
+--sell-anchor N (absolute first ask) and --sell-step N override the dealer's selling defaults; the floor still holds.
 """
 from __future__ import annotations
 
@@ -36,17 +47,44 @@ sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
 from runlog import RunLog, save_thread  # noqa: E402
 
-RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redacted
+RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redacted (main() swaps it per --dealer)
 DEALER = "chato"
 CASH_RESERVE = 280          # default; the owner may lower it per run with --reserve
 ANCHOR_FRAC = 0.40          # first counter, as a share of her opening price (buying)
 ANCHOR_ABS = None           # --anchor N: absolute first bid when buying (overrides ANCHOR_FRAC)
 SELL_ANCHOR_MULT = 1.6      # first ask, as a multiple of his opening bid (selling); he holds his bid, so stay short
+SELL_ANCHOR_OVER_FLOOR = 0  # first ask is at least floor + this (selling); 0 for Chato, so his anchor is unchanged
+SELL_ANCHOR_ABS = None      # --sell-anchor N: absolute first ask when selling (overrides the multiple; floor holds)
 STEP = 1                    # primas per round when buying: he mirrors our step, his final comes at his limit
 MAX_BID = None              # --max-bid N: our bids stop here; we then wait for his final (accepted up to the cap)
 SELL_STEP = 2               # primas per round when selling (time is short and his bid barely moves)
 MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low
 DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
+
+# Per-dealer table. Chato's row is exactly the constants above, so no --dealer flag means no change.
+DEALERS = {
+    "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True,
+              "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 2, "example_bid": 13},
+    # L3 collector: buys uncommon/rare/epic (loves SAL, RET), sells gold packs only. Opened 16, held 16 (feed).
+    "pilar": {"name": "Doña Pilar", "buys": ("uncommon", "rare", "epic"), "sells_cards": False,
+              "sell_anchor_mult": 3.0, "sell_anchor_over_floor": 20, "sell_step": 4, "example_bid": 16},
+}
+DEFAULT_DEALER = "chato"
+DEALER_NAME = DEALERS[DEFAULT_DEALER]["name"]
+SELL_RARITIES = DEALERS[DEFAULT_DEALER]["buys"]       # what the dealer buys from us
+DEALER_SELLS_CARDS = DEALERS[DEFAULT_DEALER]["sells_cards"]
+
+
+def apply_dealer(dealer: str, sell_anchor: int | None = None, sell_step: int | None = None) -> None:
+    """Point every dealer-specific global at one row of DEALERS (plus the --sell-anchor/--sell-step overrides)."""
+    global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR
+    global SELL_ANCHOR_ABS, SELL_STEP
+    d = DEALERS[dealer]
+    DEALER, DEALER_NAME = dealer, d["name"]
+    SELL_RARITIES, DEALER_SELLS_CARDS = d["buys"], d["sells_cards"]
+    SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR = d["sell_anchor_mult"], d["sell_anchor_over_floor"]
+    SELL_ANCHOR_ABS = sell_anchor
+    SELL_STEP = d["sell_step"] if sell_step is None else int(sell_step)
 
 
 def duel_lock_fresh(path: Path = DUEL_LOCK) -> bool:
@@ -125,12 +163,32 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
     return asset_id in ids and bool(give.get("cash"))
 
 
+def sell_anchor(her: int, floor: int) -> int:
+    """Our first ask when selling: --sell-anchor if set, else max(mult x her opening bid, floor + over_floor).
+    For Chato (over_floor 0) this is round(1.6 x her), exactly as before; the caller still clamps it to the floor."""
+    if SELL_ANCHOR_ABS is not None:
+        return int(SELL_ANCHOR_ABS)
+    return max(int(round(her * SELL_ANCHOR_MULT)), int(floor) + SELL_ANCHOR_OVER_FLOOR)
+
+
+def sell_ladder(her: int, floor: int) -> list:
+    """The asks a sell walks through if the dealer holds `her` (shown by plan; she may cross or stop us earlier)."""
+    out, a = [], max(sell_anchor(her, floor), int(floor))
+    while a > floor and len(out) < 30:
+        out.append(a)
+        a -= SELL_STEP
+    return out + [int(floor)]
+
+
 # ---------------------------------------------------------------- one negotiation
 
 def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
-    topic = {"buy": {"card": item}} if side == "buy" else {"sell": {"assets": [asset_id]}}
+    if side == "buy" and not DEALER_SELLS_CARDS:  # e.g. Pilar sells gold packs only: never open a card buy
+        log("refuse_buy", item=item, dealer=DEALER)
+        return {"result": "refused", "code": "dealer_sells_no_cards"}
+    topic ={"buy": {"card": item}} if side == "buy" else {"sell": {"assets": [asset_id]}}
     ours: int | None = None
     said = 0
     last_her = None
@@ -200,7 +258,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             if side == "buy":
                 nxt = int(ANCHOR_ABS) if ANCHOR_ABS is not None else int(her * ANCHOR_FRAC)
             else:
-                nxt = int(round(her * SELL_ANCHOR_MULT))
+                nxt = sell_anchor(her, reservation)
         else:
             nxt = ours + STEP if side == "buy" else ours - SELL_STEP
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
@@ -238,35 +296,59 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 # ---------------------------------------------------------------- what to trade
 
-def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -> list[dict]:
-    """Buys: uncommons and rares Chato sells that we do not hold, ranked by our value.
-    Sells: our duplicate uncommons/rares (a spare is worth much less to us). --cap lowers (never raises) our value as the
-    most we pay (the ladder scores his price range, not our value)."""
-    catalog = b.catalog()
-    released = {s["id"] for s in catalog["sets"] if s["released"]}
+def listed_sell_ids(only: list[str] | None) -> list[int]:
+    """The asset ids named as sell:<asset_id> in --only, in order."""
+    out = []
+    for x in only or []:
+        k, _, v = x.partition(":")
+        if k == "sell" and v.isdigit():
+            out.append(int(v))
+    return out
+
+
+def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, allow_single: bool = False) -> list[dict]:
+    """Buys: uncommons and rares Chato sells that we do not hold, ranked by our value (none for a dealer that sells
+    no cards, e.g. Pilar). Sells: our duplicate cards of a rarity the dealer buys (a spare is worth much less to us).
+    With allow_single, an asset named as sell:<asset_id> in `only` may go even if it is our last copy; nothing is
+    auto-selected that way. --cap lowers (never raises) our value as the most we pay (the ladder scores his price
+    range, not our value)."""
     held = {}
     for a in me["assets"]:
         if a["kind"] == "card":
             held.setdefault(a["ref"], []).append(a)
     buys = []
-    for s in catalog["sets"]:
-        if s["id"] not in released:
-            continue
-        for c in s["cards"]:
-            if c["rarity"] not in ("uncommon", "rare") or c["id"] in held:
+    if DEALER_SELLS_CARDS:
+        catalog = b.catalog()
+        released = {s["id"] for s in catalog["sets"] if s["released"]}
+        for s in catalog["sets"]:
+            if s["id"] not in released:
                 continue
-            if only and c["id"] not in only:
-                continue
-            v = b.value(c["id"])["your_value"]
-            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
-                         "value": min(v, cap) if cap else v, "private": v})
-    buys.sort(key=lambda x: -x["private"])
+            for c in s["cards"]:
+                if c["rarity"] not in ("uncommon", "rare") or c["id"] in held:
+                    continue
+                if only and c["id"] not in only:
+                    continue
+                v = b.value(c["id"])["your_value"]
+                buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
+                             "value": min(v, cap) if cap else v, "private": v})
+        buys.sort(key=lambda x: -x["private"])
     sells = []
     for ref, copies in held.items():
-        if len(copies) > 1 and copies[0]["rarity"] in ("uncommon", "rare"):
+        if len(copies) > 1 and copies[0]["rarity"] in SELL_RARITIES:
             spare = max(copies, key=lambda a: a["serial"])  # keep the lowest serial
             sells.append({"side": "sell", "item": ref, "name": spare["name"], "asset_id": spare["id"],
                           "value": spare["your_value"] + 2, "private": spare["your_value"]})
+    if allow_single:  # only explicitly named ids; the floor is still that copy's private value + 2
+        by_id = {a["id"]: a for copies in held.values() for a in copies}
+        planned = {s["asset_id"] for s in sells}
+        for aid in listed_sell_ids(only):
+            a = by_id.get(aid)
+            if a is None or aid in planned or a["rarity"] not in SELL_RARITIES:
+                continue
+            sells.append({"side": "sell", "item": a["ref"], "name": a["name"], "asset_id": aid,
+                          "value": a["your_value"] + 2, "private": a["your_value"], "single": True,
+                          "last": len(held[a["ref"]]) == 1})
+            planned.add(aid)
     plan = sells + buys  # sells first: they bring cash in
     if only:
         keys = set(only)
@@ -286,9 +368,7 @@ def bid_ladder(limit: float, spendable: int) -> list:
     return out + [top]
 
 
-def main() -> None:
-    global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP, MAX_BID
-    load_env()
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--only", default="", help="comma list of card refs and/or sell:<asset_id>")
@@ -300,33 +380,116 @@ def main() -> None:
     ap.add_argument("--anchor", type=int, default=None, help="absolute first bid when buying (overrides ANCHOR_FRAC)")
     ap.add_argument("--step", type=int, default=STEP, help="primas per round when buying (default 1)")
     ap.add_argument("--max-bid", type=int, default=None, help="highest number we send when buying; his final is still taken up to the cap")
-    args = ap.parse_args()
+    ap.add_argument("--dealer", choices=sorted(DEALERS), default=DEFAULT_DEALER,
+                    help="which dealer to talk to (default chato; pilar buys from us only)")
+    ap.add_argument("--allow-single", action="store_true",
+                    help="with explicit sell:<asset_id> entries only: sell that copy even if it is our last one")
+    ap.add_argument("--sell-anchor", type=int, default=None,
+                    help="absolute first ask when selling, in P (default per dealer: chato 1.6 x his bid, "
+                         "pilar max(3 x her bid, floor + 20)); never below the floor")
+    ap.add_argument("--sell-step", type=int, default=None, help="primas per round when selling (default chato 2, pilar 4)")
+    args = ap.parse_args(argv)
     if args.step < 1 or (args.anchor is not None and args.anchor < 1):
         ap.error("--step and --anchor must be >= 1")
+    if (args.sell_step is not None and args.sell_step < 1) or (args.sell_anchor is not None and args.sell_anchor < 1):
+        ap.error("--sell-step and --sell-anchor must be >= 1")
+    only = [x.strip() for x in args.only.split(",") if x.strip()]
+    if args.allow_single and not listed_sell_ids(only):
+        ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
+    if not DEALERS[args.dealer]["sells_cards"]:
+        buys = [x for x in only if not x.startswith("sell:")]
+        if buys:
+            ap.error(f"{args.dealer} sells no cards to us (gold packs only): refusing buy targets {','.join(buys)}; "
+                     "list sell:<asset_id> entries only")
+    return args
+
+
+def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single: bool) -> list[str]:
+    """Why each explicitly listed sell:<asset_id> is not in the plan (plan output only)."""
+    by_id = {a["id"]: a for a in me["assets"]}
+    planned = {p.get("asset_id") for p in plan}
+    out = []
+    for aid in listed_sell_ids(only):
+        if aid in planned:
+            continue
+        a = by_id.get(aid)
+        if a is None:
+            why = "not one of our assets"
+        elif a.get("kind") != "card":
+            why = f"not a card ({a.get('kind')})"
+        elif a.get("rarity") not in SELL_RARITIES:
+            why = f"{DEALER} does not buy {a.get('rarity')}"
+        elif not allow_single:
+            why = "not a spare (our last copy, or the copy we keep): add --allow-single to sell it"
+        else:
+            why = "not planned"
+        out.append(f"  skip sell:{aid} {(a or {}).get('ref', '')}: {why}")
+    return out
+
+
+def main() -> None:
+    global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP, MAX_BID, RUN
+    load_env()
+    args = parse_args()
+    apply_dealer(args.dealer, args.sell_anchor, args.sell_step)
+    extra = (args.dealer != DEFAULT_DEALER or args.allow_single or args.sell_anchor is not None
+             or args.sell_step is not None)  # print/log the new selling details; plain chato output is unchanged
     if args.cmd == "run" and duel_lock_fresh():
         print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
-              "Not starting El Chato; try again after the duel wave.", flush=True)
+              f"Not starting {DEALER_NAME}; try again after the duel wave.", flush=True)
         return
     ANCHOR_ABS, STEP, MAX_BID = args.anchor, args.step, args.max_bid
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
-    plan = build_plan(b, me, only, args.cap)
+    plan = build_plan(b, me, only, args.cap, allow_single=args.allow_single)
     CASH_RESERVE = args.reserve
     MAX_ROUNDS = args.max_rounds
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
-        print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}")
+        print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}"
+              + (f"  asset={p.get('asset_id')}{(' LAST COPY' if p.get('last') else ' KEPT COPY') if p.get('single') else ''}"
+                 if extra and p['side'] == 'sell' else ""))
     print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P) anchor={ANCHOR_ABS or f'{ANCHOR_FRAC} x her ask'} "
           f"step={STEP} cap={args.cap}")
     for p in plan:
         if p["side"] == "buy" and ANCHOR_ABS is not None:
             print(f"  bids {p['item']}: {' '.join(str(x) for x in bid_ladder(p['value'], me['cash'] - CASH_RESERVE))}"
                   f" (then wait for his final; take it if <= {int(min(p['value'], me['cash'] - CASH_RESERVE))})")
+    if extra:
+        first = (f"{SELL_ANCHOR_ABS}" if SELL_ANCHOR_ABS is not None
+                 else f"max({SELL_ANCHOR_MULT} x her bid, floor + {SELL_ANCHOR_OVER_FLOOR})")
+        print(f"dealer={DEALER} ({DEALER_NAME}) buys={','.join(SELL_RARITIES)} first ask={first} sell_step={SELL_STEP} "
+              f"allow_single={args.allow_single}")
+        if args.dealer != DEFAULT_DEALER and args.cmd == "plan":
+            try:  # her live menu, to cross-check the table above (read-only GET)
+                menu = (b.dealer(DEALER) or {}).get("menu") or {}
+                print(f"  menu buys: {[x.get('rarity') for x in menu.get('buys') or []]} "
+                      f"sells: {[x.get('pack') or x.get('rarity') for x in menu.get('sells') or []]}")
+            except Exception as e:  # noqa: BLE001  (plan output must not die on a menu read)
+                print(f"  menu read failed: {e}")
+        for p in plan:
+            if p["side"] == "sell":
+                eg = DEALERS[DEALER]["example_bid"]
+                floor = int(-(-p["value"] // 1))
+                asks = []
+                for x in sell_ladder(eg, floor):
+                    asks.append(x)
+                    if x <= eg:  # she is at our ask: we take her price there
+                        break
+                then = f"she crosses: deal at {eg}" if asks[-1] <= eg else f"then her final; take it if >= {floor}"
+                print(f"  asks {p['item']} (asset {p['asset_id']}) if she bids {eg}: "
+                      f"{' '.join(str(x) for x in asks)} ({then})")
+        for s in sell_skips(me, only, plan, args.allow_single):
+            print(s)
     if args.cmd == "plan":
         return
+    if args.dealer != DEFAULT_DEALER:
+        RUN = RunLog(args.dealer)  # logs/<dealer>/<date>.jsonl
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
-              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]])
+              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]],
+              **({"dealer": DEALER, "allow_single": args.allow_single, "sell_anchor": SELL_ANCHOR_ABS,
+                  "sell_step": SELL_STEP} if extra else {}))
     done = 0
     for target in plan:
         if done >= args.max_deals:
