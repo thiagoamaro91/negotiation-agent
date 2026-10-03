@@ -2,6 +2,7 @@
 the feed), the message variants, and that nothing posts without --yes. Offline: no key, no network.
 Run: python3 -m unittest discover tests"""
 import sys
+import time
 import unittest
 from pathlib import Path
 
@@ -203,11 +204,323 @@ class TestText(unittest.TestCase):
         self.assertIn("Selling a spare", an.build_text([], 0))  # nothing concrete: the plain pitch
 
 
+class TestAnnouncer(unittest.TestCase):
+    def test_the_first_read_learns_the_book_then_only_new_eligible_offers_are_fresh(self):
+        a = an.Announcer(4, 1800, on_event=True, eligible=lambda o: o.get("maker") != "t03")
+        self.assertEqual(a.fresh([ask("A", 5, venue="v20", oid=1)]), [])
+        new = [ask("A", 5, venue="v20", oid=1), ask("B", 6, venue="v20", oid=2, maker="t15"),
+               ask("C", 7, venue="v20", oid=3, maker="t03")]
+        self.assertEqual([o["id"] for o in a.fresh(new)], [2])
+        self.assertEqual([o["id"] for o in a.fresh(new)], [2])   # still queued (not posted yet), never twice
+        a.mark_posted(0, 100, "event", [2])
+        self.assertEqual(a.fresh(new), [])                       # posted: the queue is empty, and 2 is not new
+
+    def test_an_offer_that_lands_during_the_cooldown_is_posted_when_it_ends(self):
+        a = an.Announcer(4, 1800, on_event=True, min_gap_s=600)
+        a.fresh([])
+        a.mark_posted(0, 100, "slot")
+        q = a.fresh([ask("A", 5, venue="v20", oid=7)])
+        self.assertIsNone(a.due(300, q))                         # inside the cooldown: waits, but keeps it
+        q = a.fresh([ask("A", 5, venue="v20", oid=7)])
+        self.assertEqual(a.due(650, q), "event")                 # the cooldown is over: posted
+        self.assertEqual([o["id"] for o in q], [7])
+        b = an.Announcer(4, 1800, on_event=True, min_gap_s=600)
+        b.fresh([])
+        b.mark_posted(0, 100, "slot")
+        b.fresh([ask("A", 5, venue="v20", oid=8)])
+        self.assertEqual(b.fresh([]), [])                        # it left the book before the cooldown ended
+
+    def test_a_scheduled_slot_never_comes_closer_than_the_min_gap(self):
+        a = an.Announcer(4, 600, on_event=True, min_gap_s=600)
+        a.mark_posted(0, 100, "slot")
+        a.mark_posted(500, 110, "event")                         # an event post at 500 s ...
+        self.assertIsNone(a.due(700, []))                       # ... so the 600 s slot waits for 500 + 600
+        self.assertEqual(a.due(1100, []), "slot")
+
+    def test_slots_events_gap_and_cap(self):
+        a = an.Announcer(3, 1800, on_event=True, min_gap_s=600)
+        self.assertEqual(a.due(0, []), "slot")                    # the first slot is at once
+        a.mark_posted(0, 100, "slot")
+        self.assertIsNone(a.due(300, []))
+        self.assertIsNone(a.due(300, [{"id": 9}]))               # an event inside the gap waits
+        self.assertEqual(a.due(700, [{"id": 9}]), "event")        # ... and goes once the gap has passed
+        a.mark_posted(700, 120, "event", [9])
+        self.assertIsNone(a.due(1800, []))                       # the next slot counts from the event post
+        self.assertEqual(a.due(2500, []), "slot")
+        a.mark_posted(2500, 150, "slot")
+        self.assertIsNone(a.due(10**6, [{"id": 10}]))            # count reached
+        off = an.Announcer(3, 1800)                              # without on_event, offers never trigger
+        off.mark_posted(0, 100, "slot")
+        self.assertIsNone(off.due(700, [{"id": 9}]))
+
+    def test_responses_count_the_window_after_and_before_from_the_feed(self):
+        def lst(t, maker, venue="v20"):
+            return {"type": "offer.listed", "tick": t, "actor": maker,
+                    "payload": {"offer": {"id": t, "maker": maker, "venue": venue}}}
+        ev = [lst(95, "t15"), lst(105, "t08"), lst(110, "t08"), lst(112, "t03"), lst(108, "t04", "v07"),
+              {"type": "settlement", "tick": 111, "payload": {"venue": "v20"}},
+              {"type": "settlement", "tick": 111, "payload": {"venue": "v07"}}, lst(125, "t13")]
+        a = an.Announcer(2, 1800, measure_ticks=20)
+        a.mark_posted(0, 100, "event", [7])
+        self.assertEqual(a.responses(119, ev), [])               # the window is still open
+        (r,) = a.responses(120, ev)
+        self.assertEqual((r["listed_after"], r["teams_after"], r["trades_after"]), (2, ["t08"], 1))
+        self.assertEqual((r["listed_before"], r["teams_before"], r["trades_before"]), (1, ["t15"], 0))
+        self.assertEqual((r["why"], r["fresh"], r["post"]), ("event", [7], 1))
+        self.assertEqual(a.pending, [])
+
+
+class TestExactOrder(unittest.TestCase):
+    """f9's design (Thiago's data review): an event post names the exact order, until when it stands and who holds
+    the other side elsewhere; a post is judged by whether the order left v20's book and v20 settled."""
+
+    def test_fillers_are_the_other_side_of_that_card_elsewhere_best_first_never_the_maker_or_us(self):
+        order = ask("LAT-07", 26, venue="v20", maker="t15", oid=70)
+        market = [bid("LAT-07", 20, venue="v01", oid=71), bid("LAT-07", 24, oid=72), bid("LAT-07", 30, oid=73),
+                  bid("LAT-08", 50, oid=74), bid("LAT-07", 99, venue="v20", oid=75), ask("LAT-07", 5, oid=76)]
+        names = {71: "t12", 72: "t08", 73: "t03", 74: "t09"}
+        self.assertEqual(an.fillers(order, market, names), [("t08", 24, "rastro"), ("t12", 20, "v01")])
+        self.assertEqual(an.fillers(order, market + [bid("LAT-07", 40, maker="t15", oid=77)], names),
+                         [("t08", 24, "rastro"), ("t12", 20, "v01")])          # the maker's own bid is not a filler
+        bid_order = bid("MAL-08", 9, venue="v20", maker="t06", oid=78)
+        asks = [ask("MAL-08", 12, oid=79), ask("MAL-08", 10, venue="v07", oid=80)]
+        self.assertEqual(an.fillers(bid_order, asks, {79: "t09", 80: "t04"}), [("t04", 10, "v07"), ("t09", 12, "rastro")])
+        self.assertEqual(an.fillers(swap("A", "B", venue="v20"), market), [])
+
+    def test_the_event_post_details_only_the_order_it_leads_with(self):
+        order = dict(ask("LAT-07", 26, venue="v20", maker="t15", oid=70), expires_tick=1240)
+        other = ask("MAL-01", 6, venue="v20", maker="t13", oid=81)
+        market = [bid("LAT-07", 24, oid=72)]
+        t = an.build_text(market, 0, exclude=(), venue_offers=[order, other], names={72: "t08"}, lead=[70])
+        self.assertIn("t15 sells LAT-07 for 26 P (offer 70) [open until tick 1240; open bids for it elsewhere: "
+                      "t08 24 P on El Rastro]", t)
+        self.assertIn("; t13 sells MAL-01 for 6 P (offer 81). ", t)             # no detail for the others
+        self.assertNotIn("open until tick", an.build_text(market, 0, exclude=(), venue_offers=[order], names={72: "t08"}))
+
+    def test_a_response_says_whether_the_announced_order_left_v20(self):
+        a = an.Announcer(2, 1800, measure_ticks=20)
+        a.mark_posted(0, 100, "event", [70, 71])
+        (r,) = a.responses(120, [], v20_ids={71})
+        self.assertEqual(r["fresh_left_book"], [70])
+        b = an.Announcer(2, 1800, measure_ticks=20)
+        b.mark_posted(0, 100, "slot")
+        self.assertNotIn("fresh_left_book", b.responses(120, [])[0])
+
+
+class TestVariantTwoOnEvents(unittest.TestCase):
+    def test_on_event_with_variant_2_never_renders_near_pairs(self):
+        """f9 runs --on-event --variant 2 tonight: every post, event ones included, is pitch + v20's book."""
+        import tempfile
+        import unittest.mock as um
+        state = {"tick": 100, "now": 0.0, "v20": []}
+        posts, logged = [], []
+        near = [ask("MAL-04", 8, oid=90), bid("MAL-04", 7, oid=91)]               # a near pair on El Rastro
+
+        def get_json(url):
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"]}
+            if url.endswith("/api/venues/v20/offers"):
+                return {"offers": state["v20"]}
+            if url.endswith("/api/venues/rastro/offers"):
+                return {"offers": near}
+            if "/api/feed" in url:
+                return {"events": [{"type": "offer.listed", "tick": 100, "actor": t,
+                                    "payload": {"offer": {"id": i, "maker": t, "venue": "rastro"}}}
+                                   for i, t in ((90, "t09"), (91, "t16"))]}
+            if url.endswith("/api/venues"):
+                return {"venues": [{"venue": "v20", "status": "open"}]}
+            return {"offers": []}
+
+        def sleep(_):
+            state["now"] += an.POLL_S
+            state["tick"] += 1
+            if state["tick"] == 103:
+                state["v20"] = [dict(ask("MAL-04", 9, venue="v20", maker="t15", oid=5), expires_tick=160)]
+            if state["tick"] > 2000:
+                raise AssertionError("the run loop did not end")
+
+        class Log:
+            def __init__(self, *_): pass
+            def start(self, **k): pass
+            def event(self, e, **d): logged.append((e, d))
+            def end(self): pass
+
+        with tempfile.TemporaryDirectory() as d, \
+                um.patch.object(an, "get_json", get_json), um.patch.object(an.time, "sleep", sleep), \
+                um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
+                um.patch.object(an, "post_announce", lambda text, key: posts.append(text) or {"ok": True}), \
+                um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+            an.main(["run", "--yes", "--on-event", "--variant", "2", "--count", "2", "--every-min", "30",
+                     "--min-gap-min", "0", "--exclude", ""])
+        self.assertEqual([d["why"] for e, d in logged if e == "announce"], ["slot", "event"])
+        self.assertEqual({d["variant"] for e, d in logged if e == "announce"}, {2})
+        for t in posts:
+            self.assertNotIn("Buyer and seller", t)                              # no near-pair block, ever
+            self.assertNotIn("MAL-04: t09 asks", t)
+        self.assertIn("t15 sells MAL-04 for 9 P (offer 5) [open until tick 160; open bids for it elsewhere: "
+                      "t16 7 P on El Rastro]", posts[1])
+
+    def test_unnamed_fillers_are_never_named(self):
+        order = ask("LAT-07", 26, venue="v20", maker="t15", oid=70)
+        market = [bid("LAT-07", 24, oid=72, maker="m1234abcd"), bid("LAT-07", 20, oid=73)]
+        self.assertEqual(an.fillers(order, market, {73: "t12"}), [("t12", 20, "rastro")])  # 72 could be us
+
+
+class TestSilence(unittest.TestCase):
+    SCHED = {"upcoming": [{"at_hours": 11.0, "action": "bench"}, {"at_hours": 11.65, "action": "duels"},
+                          {"at_hours": 13.0, "action": "bench"}, {"at_hours": 14.077, "action": "day_closes"},
+                          {"at_hours": 14.65, "action": "bench"}]}
+
+    def test_market_test_windows_come_from_the_schedule_and_stop_at_the_day_close(self):
+        clock = {"t_hours": 10.5, "tick_seconds": 30.0, "paused": False}
+        w = an.quiet_windows(self.SCHED, clock, 1000.0, horizon_h=6)
+        start = 1000.0 + 0.5 * 120 * 30                           # 0.5 game hours = 60 ticks of 30 s
+        self.assertEqual(w[0], (start - an.QUIET_BEFORE_S, start + an.QUIET_AFTER_S))  # whole seconds here
+        self.assertEqual(len(w), 2)                              # 14.65 is after the day closes: not placed
+        self.assertEqual(an.quiet_windows(self.SCHED, dict(clock, paused=True), 1000.0), [])
+        self.assertEqual(an.quiet_windows(self.SCHED, {}, 1000.0), [])
+        self.assertEqual(an.quiet_until(w, start), start + an.QUIET_AFTER_S)
+        self.assertIsNone(an.quiet_until(w, start + an.QUIET_AFTER_S))
+
+    def test_manual_windows_parse(self):
+        day = time.strptime("2026-10-03", "%Y-%m-%d")
+        (a, b), = an.parse_quiet("21:53-22:05", day)
+        self.assertEqual(b - a, 12 * 60)
+        self.assertEqual(an.parse_quiet("", day), [])
+
+    def test_the_run_loop_makes_no_api_call_inside_a_market_test_silence(self):
+        import tempfile
+        import unittest.mock as um
+        state = {"now": 0.0, "tick": 100}
+        calls, posts = [], []
+        bench_in_s = 900.0                                     # a Market Test 15 minutes in
+
+        def get_json(url):
+            calls.append((state["now"], url))
+            if url.endswith("/api/schedule"):
+                return {"upcoming": [{"at_hours": 10.0 + bench_in_s / 3600, "action": "bench"}]}
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
+            return {"offers": [], "events": [], "venues": []}
+
+        def sleep(sec):
+            state["now"] += sec
+            state["tick"] = 100 + int(state["now"] // 30)
+            if state["now"] > 10 ** 5:
+                raise AssertionError("the run loop did not end")
+
+        class Log:
+            def __init__(self, *_): pass
+            def start(self, **k): pass
+            def event(self, e, **d): pass
+            def end(self): pass
+
+        with tempfile.TemporaryDirectory() as d, \
+                um.patch.object(an, "get_json", get_json), um.patch.object(an.time, "sleep", sleep), \
+                um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
+                um.patch.object(an, "post_announce", lambda text, key: posts.append(state["now"]) or {"ok": True}), \
+                um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+            an.main(["run", "--yes", "--count", "3", "--every-min", "10", "--min-gap-min", "1", "--exclude", ""])
+        lo, hi = bench_in_s - an.QUIET_BEFORE_S, bench_in_s + an.QUIET_AFTER_S
+        self.assertEqual([t for t, _ in calls if lo <= t < hi], [])     # not one request inside the silence
+        self.assertEqual([t for t in posts if lo <= t < hi], [])
+        self.assertEqual(len(posts), 3)
+
+
 class TestCli(unittest.TestCase):
     def test_run_without_yes_refuses_before_any_key_or_network(self):
         with self.assertRaises(SystemExit) as cm:
             an.main(["run"])
         self.assertEqual(cm.exception.code, 2)          # argparse refused it; no key was read
+
+    def test_run_loop_posts_on_a_new_v20_offer_then_measures_and_stops(self):
+        import tempfile
+        import unittest.mock as um
+        older = ask("MAL-01", 6, venue="v20", maker="t13", oid=4)
+        state = {"tick": 100, "now": 0.0, "v20": [older]}
+        posts, logged = [], []
+
+        def get_json(url):
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"]}
+            if url.endswith("/api/venues/v20/offers"):
+                return {"offers": state["v20"]}
+            if "/api/feed" in url:
+                return {"events": [{"type": "offer.listed", "tick": 104, "actor": "t15",
+                                    "payload": {"offer": {"id": 5, "maker": "t15", "venue": "v20"}}}]}
+            if url.endswith("/api/venues"):
+                return {"venues": [{"venue": "v20", "status": "open"}]}
+            return {"offers": []}
+
+        def sleep(_):
+            state["now"] += an.POLL_S
+            state["tick"] += 1
+            if state["tick"] == 103:                  # an explorer lists on v20
+                state["v20"] = [older, ask("LAT-07", 26, venue="v20", maker="t15", oid=5)]
+
+        class Log:
+            def __init__(self, *_): pass
+            def start(self, **k): pass
+            def event(self, e, **d): logged.append((e, d))
+            def end(self): pass
+
+        with tempfile.TemporaryDirectory() as d, \
+                um.patch.object(an, "get_json", get_json), um.patch.object(an.time, "sleep", sleep), \
+                um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
+                um.patch.object(an, "post_announce", lambda text, key: posts.append(text) or {"ok": True}), \
+                um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+            an.main(["run", "--yes", "--count", "2", "--every-min", "30", "--on-event", "--min-gap-min", "0",
+                     "--exclude", ""])
+        self.assertEqual(len(posts), 2)
+        self.assertIn("now: t15 sells LAT-07 for 26 P (offer 5); t13 sells MAL-01", posts[1])  # the new one leads
+        self.assertIn("POST /api/offers/5/accept", posts[1])
+        whys = [d["why"] for e, d in logged if e == "announce"]
+        self.assertEqual(whys, ["slot", "event"])
+        self.assertEqual(sum(e == "response" for e, _ in logged), 2)          # both measured before it stops
+
+    def test_a_failed_feed_or_venue_index_read_never_cancels_the_run(self):
+        import tempfile
+        import unittest.mock as um
+        state = {"tick": 100, "now": 0.0}
+        posts = []
+
+        def get_json(url):
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"]}
+            if "/api/feed" in url or url.endswith("/api/venues"):
+                raise TimeoutError("slow")
+            if url.endswith("/api/venues/v20/offers"):
+                return {"offers": [ask("LAT-07", 26, venue="v20", maker="t15", oid=5)]}
+            return {"offers": []}
+
+        def sleep(_):
+            state["now"] += an.POLL_S
+            state["tick"] += 1
+            if state["tick"] > 2000:                  # fail, never hang, if the loop cannot end
+                raise AssertionError("the run loop did not end")
+
+        class Log:
+            def __init__(self, *_): pass
+            def start(self, **k): pass
+            def event(self, e, **d): pass
+            def end(self): pass
+
+        with tempfile.TemporaryDirectory() as d, \
+                um.patch.object(an, "get_json", get_json), um.patch.object(an.time, "sleep", sleep), \
+                um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
+                um.patch.object(an, "post_announce", lambda text, key: posts.append(text) or {"ok": True}), \
+                um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+            an.main(["run", "--yes", "--count", "2", "--every-min", "1", "--exclude", ""])
+        self.assertEqual(len(posts), 2)                                # both posts went out
+        self.assertIn("t15 sells LAT-07 for 26 P (offer 5)", posts[0])    # v20's book still read; maker from the book
+        # (and the run ended although no response could be measured: the feed never answered)
+
+    def test_unmeasurable_posts_are_given_up_so_the_run_ends(self):
+        a = an.Announcer(1, 60, measure_ticks=20)
+        a.mark_posted(0, 100, "slot")
+        self.assertEqual(a.give_up(100 + 20 + an.GIVE_UP_TICKS - 1), [])
+        self.assertEqual([p["post"] for p in a.give_up(100 + 20 + an.GIVE_UP_TICKS)], [1])
+        self.assertEqual(a.pending, [])
 
     def test_variant_state_round_trip(self):
         import tempfile
