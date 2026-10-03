@@ -277,9 +277,9 @@ function renderUs(u, d) {
   const sc = u.score || {}, r = u.relay || {};
   const last = (u.checks || []).filter(c => !c.ahead).slice(-1)[0];
   $("ussrc").innerHTML = r.age_s == null ? L("no team relay yet: account snapshot only", "sin relay del equipo: solo la foto de la cuenta")
-    : `${L("relay", "relay")} ${ago(r.age_s)} · ${L("account", "cuenta")} t${u.account_tick} · ${L("live score", "puntos en vivo")} t${u.live_tick ?? "—"}`;
+    : `${L("relay", "relay")} ${ago(r.age_s)} · ${L("account", "cuenta")} t${u.account_tick} · ${L("live score", "puntos en vivo")} t${u.live_tick ?? "—"}${r.live_score_age_s != null ? ` (${L("file", "fichero")} <span class="${r.live_score_age_s > 300 ? "bad-t" : ""}">${ago(r.live_score_age_s)}</span>)` : ""}`;
   const kp = [
-    [L("cash now", "caja ahora"), `${u.cash ?? "—"} P`, last ? `${L("ledger", "libro")} ${last.rebuilt} P at t${last.tick} <b class="${last.ok ? "ok-t" : "bad-t"}">${last.ok ? "✓ exact" : `✗ ${last.rebuilt - last.cash > 0 ? "+" : ""}${last.rebuilt - last.cash}`}</b>` : esc(u.cash_source)],
+    [L("cash now", "caja ahora"), `${u.cash ?? "—"} P`, `${esc(u.cash_source)}${u.cash_stale ? ` <b class="bad-t">${L(`${u.cash_stale} ticks old`, `${u.cash_stale} ticks de retraso`)}</b>` : ""}` + (last ? ` · ${L("ledger", "libro")} ${last.rebuilt}/${last.cash} t${last.tick} <b class="${last.ok ? "ok-t" : "bad-t"}">${last.ok ? "✓" : "✗"}</b>` : "")],
     [L("score · rank", "puntos · puesto"), `${sc.score ?? "—"} <span class="muted" style="font-size:18px">#${sc.rank ?? "—"}</span>`, `${L("negotiating", "negociación")} ${sc.negotiating ?? "—"} · ${L("market", "mercado")} ${sc.market ?? "—"}`],
     [L("negotiation points", "puntos de negociación"), `${sc.neg_points ?? "—"}`, `${L("duels", "duelos")} ${sc.duel_points ?? "—"} · ${L("ladder", "escalera")} ${sc.ladder_points ?? "—"} · ${sc.deals ?? "—"} ${L("deals", "tratos")}`],
     [L("cards held", "cartas en mano"), `${u.copies}`, `${(u.cards || []).length} ${L("different", "distintas")} · ${L("album", "álbum")} ${sc.album_filled ?? "—"} · ${L("pages", "páginas")} ${sc.pages_complete ?? "—"}`],
@@ -387,7 +387,8 @@ function render(d) {
     `<span class="pill ${m.hit > m.chance ? "ok" : "warn"}">${L("model", "modelo")} <b>${Math.round(m.hit * 100)}%</b> vs ${Math.round(m.chance * 100)}% ${L("chance", "azar")}</span>`,
     (() => { const c = ((d.us && d.us.checks) || []).filter(x => !x.ahead).slice(-1)[0]; const ok = c ? c.ok : lc.ok;
       return `<span class="pill ${ok ? "ok" : "warn"}">${L("ledger", "caja")} <b>${ok ? "OK" : "check"}</b> ${c ? `${c.rebuilt}/${c.cash} t${c.tick}` : `${lc.rebuilt ?? ""}/${lc.real ?? ""}`}</span>`; })(),
-    `<span class="pill ${d.us && d.us.relay && d.us.relay.age_s != null && d.us.relay.age_s < 120 ? "ok" : "warn"}">${L("team relay", "relay equipo")} <b>${d.us && d.us.relay && d.us.relay.age_s != null ? ago(d.us.relay.age_s) : L("off", "apagado")}</b></span>`,
+    (() => { const r = (d.us && d.us.relay) || {}; const ok = r.age_s != null && r.age_s < 120 && (r.live_score_age_s == null || r.live_score_age_s < 300);
+      return `<span class="pill ${ok ? "ok" : "warn"}">${L("team relay", "relay equipo")} <b>${r.age_s != null ? ago(r.age_s) : L("off", "apagado")}</b>${r.live_score_age_s != null ? ` · ${L("live score file", "fichero de puntos")} <b>${ago(r.live_score_age_s)}</b>` : ""}</span>`; })(),
     `<span class="pill ${d.account && d.account.source !== "snapshot" ? "ok" : "warn"}">${L("our account", "nuestra cuenta")} <b>${d.account ? esc(d.account.source) : "?"}</b> t${d.account ? d.account.tick : "?"}</span>`,
     `<span class="pill">${d.compute_s}s</span>`,
   ].join("");

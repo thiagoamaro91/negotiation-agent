@@ -129,18 +129,50 @@ class DecisionsOnTheTape(unittest.TestCase):
 
 
 class Workshop(unittest.TestCase):
+    """Codex review of #43 (0766808): burns of copies bought after the snapshot, and conversions leaving the relay's
+    decision window, must not bring burned cards back."""
     CONVERT = {"tick": 953, "lane": "ladder", "action": "convert", "card": "LAV-06",
                "why": "burned spares LAV-01 #41, LAV-05 #499 (values 4+4)", "result": "got LAV-06 #1001 (second copy)"}
 
-    def test_a_logged_conversion_after_the_snapshot_burns_and_adds_copies(self):
-        me = brain.workshop(ME, [self.CONVERT])
-        self.assertEqual(sorted(a["id"] for a in me["assets"]), [7, 42, 1001])
-        self.assertEqual(next(a for a in me["assets"] if a["id"] == 1001)["ref"], "LAV-06")
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.saved = (brain.vi.CONVERSIONS, brain.vi.ME, brain.vi.ME_LIVE)
+        brain.vi.CONVERSIONS = Path(self.tmp.name) / "conversions.json"
+        brain.vi.ME, brain.vi.ME_LIVE = Path(self.tmp.name) / "me.json", Path(self.tmp.name) / "me_live.json"
 
-    def test_a_conversion_the_snapshot_already_shows_is_ignored(self):
-        later = {**ME, "tick": 960}
-        self.assertIs(brain.workshop(later, [self.CONVERT]), later)
-        self.assertEqual(len(brain.workshop(ME, [{**self.CONVERT, "action": "sell"}])["assets"]), 3)
+    def tearDown(self):
+        brain.vi.CONVERSIONS, brain.vi.ME, brain.vi.ME_LIVE = self.saved
+        self.tmp.cleanup()
+
+    def us(self, frm_or_to, tick, aid, ref):
+        side = {"frm": brain.vi.US, "to": "t09"} if frm_or_to == "sell" else {"frm": "abuela", "to": brain.vi.US}
+        return {"tick": tick, "type": "settlement", "payload": {"items": [{"kind": "card", "id": aid, "ref": ref, **side}]}}
+
+    def test_parses_burned_ids_and_the_card_got(self):
+        self.assertEqual(brain.conversions([self.CONVERT, {**self.CONVERT, "action": "sell"}]),
+                         [{"tick": 953, "card": "LAV-06", "burned": [41, 499], "got": [{"id": 1001, "ref": "LAV-06"}]}])
+
+    def test_a_copy_bought_after_the_snapshot_then_burned_stays_gone(self):
+        convert = {"tick": 953, "burned": [41, 499], "got": [{"id": 1001, "ref": "LAV-06"}]}
+        events = [self.us("buy", 900, 499, "LAV-05"), self.us("sell", 961, 1001, "LAV-06")]
+        mine = brain.vi.our_cards({**ME, "conversions": [convert]}, events)
+        self.assertEqual((mine["LAV-01"], mine["LAV-05"], mine["LAV-06"], mine["SAL-01"]), (1, 0, 0, 1))
+        no_burn = brain.vi.our_cards(ME, events)
+        self.assertEqual((no_burn["LAV-01"], no_burn["LAV-05"]), (2, 1))
+
+    def test_a_conversion_is_remembered_after_it_leaves_the_relay_window(self):
+        brain.remember_conversions(brain.conversions([self.CONVERT]))
+        brain.remember_conversions(brain.conversions([]))   # the decision has scrolled out of the relay's window
+        brain.remember_conversions(brain.conversions([self.CONVERT]))   # and a duplicate is not kept twice
+        brain.vi.ME.write_text(json.dumps(ME))
+        me = brain.vi.load_me()
+        self.assertEqual([c["tick"] for c in me["conversions"]], [953])
+        self.assertEqual(brain.vi.our_cards(me, [])["LAV-01"], 1)
+
+    def test_a_snapshot_after_the_conversion_already_includes_it(self):
+        brain.remember_conversions(brain.conversions([self.CONVERT]))
+        brain.vi.ME.write_text(json.dumps({**ME, "tick": 960}))
+        self.assertNotIn("conversions", brain.vi.load_me())
 
 
 class OurAccount(unittest.TestCase):
@@ -153,7 +185,7 @@ class OurAccount(unittest.TestCase):
         mine = collections.Counter({"LAV-01": 2, "LAV-09": 1, "SAL-01": 0})
         u = brain.our_account(ME, mine, led, team, {"LAV-01": 10, "LAV-09": 70, "SAL-01": 10},
                               {"LAV-01": "common", "LAV-09": "rare"}, [1.0, 0.25], ["LAV", "SAL"], last_tick=1040)
-        self.assertEqual((u["cash"], u["cash_source"], u["ledger_cash"]), (60, "live score", 92))
+        self.assertEqual((u["cash"], u["cash_source"], u["cash_stale"], u["ledger_cash"]), (60, "live score at t1000", 40, 92))
         checks = {c["tick"]: c for c in u["checks"]}
         self.assertTrue(checks[620]["ok"] and checks[630]["ok"])
         self.assertEqual((checks[1000]["rebuilt"], checks[1000]["ok"]), (92, False))
@@ -168,7 +200,20 @@ class OurAccount(unittest.TestCase):
         import collections
         u = brain.our_account(ME, collections.Counter(), {"t03": {"cash": 92, "history": []}}, None, {}, {}, [1.0],
                               [], last_tick=700)
-        self.assertEqual((u["cash"], u["cash_source"], u["relay"]["age_s"]), (92, "ledger", None))
+        self.assertEqual((u["cash"], u["cash_source"], u["relay"]["age_s"]), (169, "account at t630", None))
+
+    def test_the_freshest_reading_wins_and_an_agreeing_ledger_carries_it_forward(self):
+        hist = [(0, 400), (150, 20)]
+        old_score = {"tick": 100, "cash": 100}
+        # Codex's case: a stale live-score file (t100, 100 P) must not beat the newer account (t200, 20 P)
+        c = brain.choose_cash({"tick": 200, "cash": 20}, old_score, hist, 20, last_tick=200)
+        self.assertEqual((c["cash"], c["cash_source"], c["cash_stale"]), (20, "account at t200", 0))
+        c = brain.choose_cash({"tick": 200, "cash": 20}, old_score, hist, 20, last_tick=260)
+        self.assertEqual((c["cash"], c["cash_tick"], c["cash_stale"]), (20, 260, 0))
+        self.assertIn("ledger", c["cash_source"])
+        c = brain.choose_cash({"tick": 200, "cash": 25}, old_score, hist, 20, last_tick=260)  # ledger disagrees
+        self.assertEqual((c["cash"], c["cash_source"], c["cash_stale"]), (25, "account at t200", 60))
+        self.assertEqual(brain.choose_cash({}, {}, hist, 20, last_tick=5)["cash_source"], "ledger")
 
 
 class OurCards(unittest.TestCase):

@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FEED = Path(os.environ.get("BAZAAR_FEED") or ROOT / "logs" / "feed")  # point it at the clone where the recorder runs
 ME = ROOT / "logs" / "state" / "me.json"           # tools/snapshot.py (needs the key)
 ME_LIVE = ROOT / "logs" / "state" / "me_live.json"  # pushed by tools/me_relay.py from the laptop that holds the key
+CONVERSIONS = ROOT / "logs" / "state" / "conversions.json"  # Workshop conversions our bots logged (tools/brain.py keeps them)
 PUBLIC = ROOT / "logs" / "public"   # cached keyless reads: catalog, schedule, dealers
 URL = "https://bazaar.causaprima.ai"
 US = "t03"
@@ -89,7 +90,12 @@ def load_me() -> dict:
                 best = me
     if best is None:
         raise SystemExit("no account snapshot: run tools/snapshot.py or tools/me_relay.py (both need the key)")
-    return best
+    try:
+        convs = json.loads(CONVERSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        convs = []
+    later = [c for c in convs if isinstance(c, dict) and isinstance(c.get("tick"), int) and c["tick"] > (best.get("tick") or 0)]
+    return {**best, "conversions": later} if later else best
 
 
 def set_of(key: str) -> str:
@@ -491,20 +497,50 @@ def holdings(events: list, teams: set) -> dict:
 
 
 def our_cards(me: dict, events: list) -> collections.Counter:
-    """Our cards: the last snapshot (logs/state/me.json) plus our public settlements, gifts and easter eggs after it."""
-    mine = collections.Counter(a["ref"] for a in me["assets"] if a["kind"] == "card")
+    """Our cards, copy by copy: the last snapshot (logs/state/me.json) by asset id, then in tick order our public
+    settlements, gifts and easter eggs after it, and the Workshop conversions attached to the account (`conversions`:
+    [{tick, burned: [asset ids], got: [{id, ref}]}]), so a copy bought after the snapshot and then burned stays gone."""
+    since = me.get("tick", 0)
+    held = {a["id"]: a["ref"] for a in me["assets"] if a.get("kind") == "card"}
+    loose = collections.Counter()  # copies we got without an id (gifts, eggs) and have not seen leave
+    convs = sorted((c for c in me.get("conversions") or [] if c.get("tick", 0) > since), key=lambda c: c["tick"])
+
+    def leave(aid, ref) -> None:
+        if aid in held:
+            del held[aid]
+        elif loose[ref] > 0:
+            loose[ref] -= 1
+        else:  # no id to match: drop any copy of that card
+            other = next((k for k, r in held.items() if r == ref), None)
+            if other is not None:
+                del held[other]
+
+    def convert(c: dict) -> None:
+        for aid in c.get("burned") or []:
+            held.pop(aid, None)
+        for g in c.get("got") or []:
+            held[g["id"]] = g["ref"]
+
     for e in events:
-        p = e["payload"]
-        if e["tick"] <= me.get("tick", 0):
+        if e["tick"] <= since:
             continue
+        while convs and convs[0]["tick"] <= e["tick"]:
+            convert(convs.pop(0))
+        p = e["payload"]
         if e["type"] == "settlement":
             for i in p.get("items") or []:
-                if i.get("kind") == "card":
-                    mine[i["ref"]] += (i.get("to") == US) - (i.get("frm") == US)
+                if i.get("kind") != "card":
+                    continue
+                if i.get("frm") == US:
+                    leave(i.get("id"), i["ref"])
+                if i.get("to") == US:
+                    held[i["id"] if i.get("id") is not None else object()] = i["ref"]
         elif e["type"] in ("gift.given", "egg.given") and p.get("team") == US:
             for ref in p.get("cards") or []:
-                mine[ref] += 1
-    return mine
+                loose[ref] += 1
+    for c in convs:
+        convert(c)
+    return collections.Counter(held.values()) + loose
 
 
 def wanted(by_team: dict) -> dict:

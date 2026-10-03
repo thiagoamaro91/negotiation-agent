@@ -269,37 +269,51 @@ def write_json(path: Path, obj) -> None:
 ASSET_REF = re.compile(r"\b([A-Z]{3}-\d{2}) #(\d+)")
 
 
-def workshop(me: dict, decisions: list) -> dict:
-    """Our account with the Workshop conversions logged after it applied: the public feed says only "turned three
-    common cards into X", so the burned copies stay in our holdings until the next account snapshot. A `convert`
-    decision names them ("burned spares LAV-01 #41, ...") and the card it got ("got LAV-06 #1001")."""
-    burned, got = set(), []
+def conversions(decisions: list) -> list:
+    """The Workshop conversions our bots logged: the public feed says only "turned three common cards into X", so the
+    burned copies stay in our holdings until the next account snapshot. A `convert` decision names them ("burned
+    spares LAV-01 #41, ...") and the card it got ("got LAV-06 #1001")."""
+    out = []
     for d in decisions:
         tick = d.get("tick")
-        if d.get("action") != "convert" or not isinstance(tick, int) or tick <= me["tick"]:
+        if d.get("action") != "convert" or not isinstance(tick, int) or isinstance(tick, bool):
             continue
-        burned |= {int(i) for _, i in ASSET_REF.findall(str(d.get("why") or ""))}
-        got += [{"id": int(i), "kind": "card", "ref": ref, "set": vi.set_of(ref)}
-                for ref, i in ASSET_REF.findall(str(d.get("result") or ""))]
-    if not (burned or got):
-        return me
-    have = {a.get("id") for a in me["assets"]}
-    assets = [a for a in me["assets"] if a.get("id") not in burned] + [a for a in got if a["id"] not in have]
-    return {**me, "assets": assets, "workshop": {"burned": sorted(burned), "got": [a["id"] for a in got]}}
+        burned = sorted({int(i) for _, i in ASSET_REF.findall(str(d.get("why") or ""))})
+        got = [{"id": int(i), "ref": ref} for ref, i in ASSET_REF.findall(str(d.get("result") or ""))]
+        if burned or got:
+            out.append({"tick": tick, "card": d.get("card"), "burned": burned, "got": got})
+    return out
+
+
+def remember_conversions(found: list) -> list:
+    """Every conversion ever relayed, kept in vi.CONVERSIONS (the relay sends only the latest decisions, so an old one
+    would otherwise fall out of the window and its burned copies come back). vi.load_me() attaches the ones after the
+    account's tick."""
+    try:
+        kept = json.loads(vi.CONVERSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        kept = []
+    seen = {(c.get("tick"), tuple(c.get("burned") or []), tuple(g.get("id") for g in c.get("got") or [])) for c in kept}
+    new = [c for c in found if (c["tick"], tuple(c["burned"]), tuple(g["id"] for g in c["got"])) not in seen]
+    if new:
+        kept = sorted(kept + new, key=lambda c: c.get("tick") or 0)
+        write_json(vi.CONVERSIONS, kept)
+    return kept
 
 
 def absorb(team: dict) -> None:
-    """The bundle's account (with the Workshop conversions logged since) becomes the relayed account unless the one we
-    have is fresher; its desk files become heartbeats, aged by the file's own time (a desk that stopped writing shows
-    its real silence)."""
+    """The bundle's account becomes the relayed account unless the one we have is fresher, and its Workshop
+    conversions are remembered; its desk files become heartbeats, aged by the file's own time (a desk that stopped
+    writing shows its real silence)."""
+    remember_conversions(conversions(team.get("decisions") or []))
     me = team.get("me")
     if me:
-        me = {**workshop(me, team.get("decisions") or []), "source": "team relay"}
+        me = {**me, "source": "team relay"}
         try:
             have = json.loads(vi.ME_LIVE.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             have = {}
-        if me["tick"] > (have.get("tick") or -1) or (me["tick"] == have.get("tick") and me != have):
+        if me["tick"] > (have.get("tick") or -1):
             write_json(vi.ME_LIVE, me)
     for d in team.get("desks") or []:
         record_desk({k: v for k, v in d.items() if k != "at"}, now=d.get("at"))
@@ -393,16 +407,37 @@ def our_account(me: dict, mine, led: dict, team: dict | None, book: dict, rarity
                       "live": st.get(f"set_{s}")})
     score = {k: st.get(k) for k in ("score", "rank", "negotiating", "market", "neg_points", "duel_points",
                                     "ladder_points", "bench_efficiency", "deals", "pages_complete", "album_filled")}
-    live_cash = st.get("cash") if finite(st.get("cash")) else None
     files = (team or {}).get("files") or {}
+    now = time.time()
+    cash = choose_cash(me, st, hist, led.get(vi.US, {}).get("cash"), last_tick)
+    live_file = files.get("score.state.json")
     return {"account_tick": me.get("tick"), "account_source": me.get("source") or "snapshot",
-            "live_tick": st.get("tick"), "cash": live_cash if live_cash is not None else led.get(vi.US, {}).get("cash"),
-            "cash_source": "live score" if live_cash is not None else "ledger",
+            "live_tick": st.get("tick"), **cash,
             "ledger_cash": led.get(vi.US, {}).get("cash"), "score": score, "cards": cards, "pages": pages,
             "checks": checks[-12:], "copies": sum(c["n"] for c in cards),
-            "relay": {"age_s": round(time.time() - team["received"], 1) if team and finite(team.get("received")) else None,
-                      "files_age_s": {k: round(time.time() - v) for k, v in files.items()},
+            "relay": {"age_s": round(now - team["received"], 1) if team and finite(team.get("received")) else None,
+                      "files_age_s": {k: round(now - v) for k, v in files.items()},
+                      "live_score_age_s": round(now - live_file) if finite(live_file) else None,
                       "decisions": len((team or {}).get("decisions") or [])}}
+
+
+def choose_cash(me: dict, st: dict, hist: list, ledger_now, last_tick: int) -> dict:
+    """Our cash now: the freshest real reading (the account snapshot or the live score reader, by tick). When the
+    rebuilt ledger agrees with that reading at its tick and the feed has moved on, the ledger's latest value is fresher
+    still; otherwise the reading stands. `cash_stale` says how many ticks the reading is behind the feed."""
+    readings = [{"tick": r["tick"], "cash": r["cash"], "what": r["what"]}
+                for r in ({"tick": me.get("tick"), "cash": me.get("cash"), "what": "account"},
+                          {"tick": st.get("tick"), "cash": st.get("cash"), "what": "live score"})
+                if isinstance(r["tick"], int) and not isinstance(r["tick"], bool) and finite(r["cash"])]
+    if not readings:
+        return {"cash": ledger_now, "cash_source": "ledger", "cash_tick": last_tick, "cash_stale": None}
+    fresh = max(readings, key=lambda r: r["tick"])
+    behind = last_tick - fresh["tick"]
+    if behind > 0 and ledger_now is not None and ledger_mod.cash_at(hist, fresh["tick"]) == fresh["cash"]:
+        return {"cash": ledger_now, "cash_source": f"ledger (agrees with the {fresh['what']} at t{fresh['tick']})",
+                "cash_tick": last_tick, "cash_stale": 0}
+    return {"cash": fresh["cash"], "cash_source": f"{fresh['what']} at t{fresh['tick']}", "cash_tick": fresh["tick"],
+            "cash_stale": max(behind, 0)}
 
 
 def deck_vs_real(events: list, cat: dict, team: dict | None) -> dict | None:
