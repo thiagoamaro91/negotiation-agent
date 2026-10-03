@@ -357,6 +357,13 @@ class FakeKeyed(FakePublic):
     def __init__(self, board, assets, tick=100):
         super().__init__(board, tick)
         self.assets, self.writes, self.reads = assets, [], 0
+        self.duel_list, self.duel_reads = [], 0     # GET /api/duels: our live duels (a list, or an exception to raise)
+
+    def duels(self, done=False):
+        self.duel_reads += 1
+        if isinstance(self.duel_list, Exception):
+            raise self.duel_list
+        return {"duels": list(self.duel_list)}
 
     def me(self):
         self.reads += 1
@@ -492,6 +499,96 @@ class DeskLoop(unittest.TestCase):
         d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
         d.tick(d.public.clock())
         self.assertEqual([w for w in k.writes if w[0] == "accept"], [])
+
+
+def duel(did, status="live", deadline=110):
+    return {"duel": did, "session": 2, "status": status, "role": "seller", "deadline_tick": deadline}
+
+
+class DuelGuard(unittest.TestCase):
+    """GET /api/duels: duel.py may run on another machine, where results/duel.lock is invisible to the desk."""
+    setUp = DeskLoop.setUp                # a temp lease 25 s into tick 100 (no inherited tests)
+    tearDown = DeskLoop.tearDown
+
+    def desk(self, mode, board, assets, duels=(), **kw):
+        d, k = DeskLoop.desk(self, mode, board, assets)
+        for f, v in kw.items():
+            setattr(d.cfg, f, v)
+        k.duel_list = duels if isinstance(duels, Exception) else list(duels)
+        return d, k
+
+    def accepts(self, k):
+        return [w for w in k.writes if w[0] == "accept"]
+
+    def test_live_duel_defers_every_accept_bids_go_on(self):
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[duel(30, deadline=116)])
+        res = d.tick(d.public.clock())
+        self.assertIsNone(res["accept"])
+        self.assertEqual(rec(res, 1)["action"], "defer")
+        self.assertIn("duel_live", rec(res, 1)["reason"])
+        self.assertIn("duel 30", rec(res, 1)["reason"])
+        self.assertEqual(self.accepts(k), [])
+        self.assertTrue([w for w in k.writes if w[0] == "list"])   # bids still posted
+        hb = __import__("json").loads((self.dir / "desk-market.json").read_text())
+        self.assertIn("duel_live", hb["duel_guard"])
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[duel(30, deadline=116), duel(32, deadline=104)])
+        self.assertIn("duel 32 is live, deadline tick 104 (4 ticks left) (+1 more)",
+                      rec(d.tick(d.public.clock()), 1)["reason"])            # the most urgent one is named
+
+    def test_finished_duels_do_not_block(self):
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[duel(30, "deal"), duel(31, "no_deal")])
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [("accept", 1, None)])
+
+    def test_failed_read_defers(self):
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=md.BazaarError("network", "down", 0))
+        res = d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [])
+        self.assertIn("/api/duels unread (network)", rec(res, 1)["reason"])
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
+        k.duel_list = None                                         # a body without a duels list
+        k.duels = lambda done=False: {"error": "?"}
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [])
+
+    def test_guard_ticks_window(self):
+        # tick 100: a duel ending at 120 is 20 ticks away; with --duel-guard-ticks 3 the desk may accept
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[duel(30, deadline=120)], duel_guard_ticks=3)
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [("accept", 1, None)])
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[duel(30, deadline=120), duel(31, deadline=103)],
+                         duel_guard_ticks=3)
+        res = d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [])
+        self.assertIn("duel 31", rec(res, 1)["reason"])
+
+    def test_read_once_per_tick(self):
+        # the accept path re-reads the account and boards before accepting; /api/duels is read once per tick
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [("accept", 1, None)])
+        self.assertEqual(k.duel_reads, 1)
+        d.public.tick = 101
+        d.tick(d.public.clock())
+        self.assertEqual(k.duel_reads, 2)
+
+    def test_watch_defers_too_and_sends_nothing(self):
+        d, k = self.desk("watch", [listing(1, "SAL-05", 5)], [], duels=[duel(30)])
+        res = d.tick(d.public.clock())
+        self.assertIsNone(res["accept"])
+        self.assertEqual(k.writes, [])
+
+    def test_keyless_has_no_server_guard(self):
+        d = md.Desk("plan", md.Config(min_cash=0, bids=False), FakePublic([]), keyed=None, out=self.lines.append,
+                    heartbeat=None)
+        self.assertIsNone(d.duel_guard(100))
+
+    def test_local_lock_still_honoured(self):
+        (self.dir / "duel.lock").write_text(f"{self.now + 90:.1f}\n")
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [], duels=[])
+        res = d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [])
+        self.assertIn("duel.lock", rec(res, 1)["reason"])
 
 
 if __name__ == "__main__":

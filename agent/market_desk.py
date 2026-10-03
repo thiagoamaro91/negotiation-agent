@@ -21,7 +21,10 @@ Every tick, one pass:
   4. One accept per tick for the whole team, so only the best-gain candidate is taken; the rest are logged as
      deferred. In `run` it goes through agent/lease.py at MARKET priority (after half the tick, never in a duel's
      last ticks, never twice in a tick). Never while results/duel.lock is fresh (agent/duel.py holds the team's
-     accept slot while any of our duels is live): every candidate is then logged as deferred.
+     accept slot while any of our duels is live): every candidate is then logged as deferred. The lock is a local
+     file and duel.py may run on another machine, so keyed modes also read GET /api/duels once per tick and defer
+     every accept (reason duel_live) while any duel of ours is live (--duel-guard-ticks N: only within N ticks of
+     its deadline), or when that read fails. Bids and cancels go on (a filled bid is the other team's accept).
   5. BID: our own want-to-buy offers (give cash, want {"cards": [ref]}) on El Rastro only, for page cards we lack.
      The seller who accepts pays the fee, so our gain is value - bid. Price = an anchor from the observed prices
      (team trades for that card, else its set and rarity, else its rarity, else 80 % of book), raised by --bid-step
@@ -150,6 +153,7 @@ class Config:
     address_swaps: bool = False         # address each swap to one team that holds the card (public settlements)
     swap_any_rarity: bool = False       # offer a lower-rarity spare for a card (default: same rarity or higher)
     swap_seller_spares: bool = False    # may offer copies in rastro_seller's config (it would adopt the offer)
+    duel_guard_ticks: int | None = None  # keyed: no accept while a duel of ours is live (N: within N ticks of its end)
 
 
 # ---------------------------------------------------------------- pure: fees, margins, structure
@@ -845,6 +849,8 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
         if snap.get("duel_lock"):
             records.append({**c, "action": "defer", "reason": "results/duel.lock is fresh: the duel bot holds "
                                                               "the team's accept slot"})
+        elif snap.get("duel_live"):
+            records.append({**c, "action": "defer", "reason": snap["duel_live"]})
         elif accept is None:
             accept = c
             note = ""
@@ -1319,6 +1325,7 @@ class Desk:
         self.shadow_gone: set = set()     # watch: our assets a would-be sale or swap handed over
         self.swap_dupes: list = []        # run: a second live swap of ours asking the same card (cancelled)
         self.cancelled_ids: set = set()   # run: offers of ours we cancelled (never cancelled twice, never re-read)
+        self._duels_tick, self._duels_why = None, None   # GET /api/duels, read once per tick
         self.said: dict = {}              # last logged decision per offer/card (log on change only)
         self.ticks = 0
         self.last = None
@@ -1395,7 +1402,43 @@ class Desk:
         return {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
                 "me_id": acct["id"], "cash": acct["cash"] + shadow_cash,
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
-                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": self.reserved}
+                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": self.reserved,
+                "duel_live": self.duel_guard(tick)}
+
+    def duel_guard(self, tick: int) -> str | None:
+        """Server-side duel guard (keyed modes): results/duel.lock is a file on the machine that runs duel.py, which
+        need not be the desk's, so the desk also reads GET /api/duels, once per tick (cached: take()'s re-read
+        reuses it). While any of our duels is live (--duel-guard-ticks N: only while one is within N ticks of its
+        deadline) every accept is deferred with reason duel_live; bids and cancels go on. A failed read defers too.
+        Keyless modes cannot read it (the route needs the key) and keep the local lock only."""
+        if self.keyed is None:
+            return None
+        if self._duels_tick == tick:
+            return self._duels_why
+        why = None
+        try:
+            body = self.keyed.duels()
+            duels = body.get("duels") if isinstance(body, dict) else None
+            if not isinstance(duels, list):
+                raise BazaarError("bad_response", "no duels list", 0)
+            n = self.cfg.duel_guard_ticks
+            live = []
+            for d in duels:
+                if not isinstance(d, dict) or d.get("status") != "live":
+                    continue
+                dl = d.get("deadline_tick")
+                left = dl - tick if isinstance(dl, int) and not isinstance(dl, bool) else None
+                if n is None or left is None or left <= n:   # no deadline: count it, to be safe
+                    live.append((left if left is not None else -1, d.get("duel"), dl))
+            if live:
+                left, did, dl = min(live)
+                more = f" (+{len(live) - 1} more)" if len(live) > 1 else ""
+                why = (f"duel_live: duel {did} is live, deadline tick {dl} ({left} ticks left){more}: the duel bot "
+                       f"holds the team's accept slot")
+        except Exception as e:   # unread (network, 429, a client without the route): defer, never guess
+            why = f"duel_live: /api/duels unread ({getattr(e, 'code', type(e).__name__)}); accepts deferred to be safe"
+        self._duels_tick, self._duels_why = tick, why
+        return why
 
     def duel_lock_fresh(self) -> bool:
         """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
@@ -1680,6 +1723,7 @@ class Desk:
                        "swap_fills": sum(1 for r in res["records"] if r["kind"] == "swap"
                                          and r["action"] in ("take", "defer"))},
             "account": snap.get("account_source"), "stop": bool(self.lease and self.lease.stopped()),
+            "duel_guard": snap.get("duel_live"), "duel_lock": bool(snap.get("duel_lock")),
         })
 
 
@@ -1731,7 +1775,8 @@ def build_config(args) -> Config:
                   swap_fill=not args.no_swap_fills, swap_post=not args.no_swap_posts, swap_venue=args.swap_venue,
                   swap_max=args.swap_max, swap_expires=args.swap_expires, swap_min_value=args.swap_min_value,
                   swap_max_fee=args.swap_max_fee, address_swaps=args.address_swaps,
-                  swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares)
+                  swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares,
+                  duel_guard_ticks=args.duel_guard_ticks)
 
 
 def add_config_args(ap: argparse.ArgumentParser) -> None:
@@ -1773,6 +1818,9 @@ def add_config_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--swap-any-rarity", action="store_true", help="may offer a lower-rarity spare for a card")
     ap.add_argument("--swap-seller-spares", action="store_true",
                     help="may offer copies in rastro_seller's config (only when the seller is not running)")
+    ap.add_argument("--duel-guard-ticks", type=int, default=c.duel_guard_ticks, metavar="N",
+                    help="keyed: defer accepts only while a live duel of ours is within N ticks of its deadline "
+                         "(default: while any duel of ours is live)")
 
 
 def until_time(hhmm: str) -> datetime:
