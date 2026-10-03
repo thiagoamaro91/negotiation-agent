@@ -36,6 +36,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -55,6 +56,16 @@ NEAR_GAP = 3            # a bid within this many P of the ask counts as "almost 
                         # 20 P card is 2 P; at 0 % the two sides can meet halfway)
 OURS = "t03"            # our own offers never appear: we cannot trade on our own venue anyway
 SHOW_OFFERS = 4         # live v20 offers named in one message
+POLL_S = 20             # run: seconds between reads of v20's book (keyless) while waiting
+MEASURE_TICKS = 20      # run: a post's response is what reached v20 in this many ticks after it (and before, as base)
+MIN_GAP_MIN = 10        # run --on-event: never two posts closer than this, whatever the trigger
+GIVE_UP_TICKS = 40      # run: a response the feed could not give this many ticks after its window is logged unavailable
+QUIET_BEFORE_S = 120    # run: Market Test silence (team rule: no API call from any lane), from this long before a
+QUIET_AFTER_S = 600     # bench session starts until this long after it (19:53-20:05 for the 19:55 test)
+QUIET_TAIL_S = 120      # run: silence kept this long after a session's last tick (its ticks x tick_seconds)
+BENCH_TICKS = 16        # a Market Test session's length when the schedule or the feed does not say
+STATUS_MAX_AGE_S = 300  # run: no post unless the Market Test schedule was read this recently (unknown = defer)
+STATUS_RETRY_S = 60     # run: how often a failed schedule read is tried again (no other request meanwhile)
 # Cards Team 3 lacks (from /api/me at tick 556, after the silver pack): never advertised. Holdings are private, so
 # this cannot be derived keylessly; update it when we buy one, or pass --exclude.
 MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09", "SAL-10",
@@ -128,20 +139,21 @@ def offer_makers(events: list) -> dict:
 FEED_FILE = ROOT / "logs" / "feed" / "feed.jsonl"   # the feed recorder's file on the machine that runs us (the Mini)
 
 
-def recorded_events(path: Path = FEED_FILE) -> list:
-    """offer.listed events from the recorded feed (tools/feed_recorder.py), so makers older than the API's
-    1,000-event window are known too. A missing file or a bad line costs nothing."""
+def recorded_events(path: Path = FEED_FILE, kinds=("offer.listed",)) -> list:
+    """Events of the given kinds from the recorded feed (tools/feed_recorder.py), so what is older than the API's
+    1,000-event window is known too. A missing file or a bad line costs nothing."""
     out = []
+    marks = tuple(f'"{k}"' for k in kinds)
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
-                if '"offer.listed"' not in line:
+                if not any(m in line for m in marks):
                     continue
                 try:
                     e = json.loads(line)
                 except ValueError:
                     continue
-                if isinstance(e, dict) and e.get("type") == "offer.listed":
+                if isinstance(e, dict) and e.get("type") in kinds:
                     out.append(e)
     except OSError:
         pass
@@ -170,7 +182,7 @@ def team_client():
     if not key:
         return None
     from bazaar_sdk import Bazaar
-    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=1)
+    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=0)  # one attempt: no retry inside a silence
 
 
 def learn_pseudonyms(books: dict, names: dict) -> dict:
@@ -297,8 +309,45 @@ def near_market_pairs(offers: list, names: dict, skip=()) -> list:
     return sorted(out, key=lambda x: (x[2][0] - x[1][0], -x[1][0]))
 
 
+def fillers(o: dict, offers: list, names: dict | None = None, n: int = 3) -> list:
+    """Who could fill a v20 order, from the other venues' public books: for an ask, the best bids for that card; for
+    a bid, the best asks; never the order's own maker, us, or a maker the feed cannot name (it could be us).
+    [(team, price, venue)], best first."""
+    sh = shape(o)
+    if sh is None or sh[0] == "swap":
+        return []
+    names = names or {}
+    kind, ref, _ = sh
+    maker = names.get(o.get("id")) or o.get("maker")
+    want = "bid" if kind == "ask" else "ask"
+    out = []
+    for x in offers or []:
+        if not isinstance(x, dict) or x.get("to") or x.get("venue") == VENUE:
+            continue
+        sx = shape(x)
+        who = names.get(x.get("id")) or x.get("maker")
+        if not sx or sx[0] != want or sx[1] != ref or who in (maker, OURS):
+            continue
+        if not (isinstance(who, str) and who[:1] == "t" and who[1:].isdigit()):
+            continue  # unnamed (a pseudonym older than the feed window): it could be us, so it is never named
+        out.append((who, sx[2], x.get("venue") or "rastro"))
+    return sorted(out, key=lambda t: -t[1] if want == "bid" else t[1])[:n]
+
+
+def order_detail(o: dict, offers: list, names: dict | None = None) -> str:
+    """For the order an event post leads with: until when it stands and who holds the other side elsewhere."""
+    bits = []
+    if isinstance(o.get("expires_tick"), int):
+        bits.append(f"open until tick {o['expires_tick']}")
+    f = fillers(o, offers, names)
+    if f:
+        side = "open bids" if (shape(o) or ("",))[0] == "ask" else "open asks"
+        bits.append(f"{side} for it elsewhere: " + ", ".join(f"{w} {p} P on {venue_name(v)}" for w, p, v in f))
+    return f" [{'; '.join(bits)}]" if bits else ""
+
+
 def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISSING, venue_offers=(),
-               names: dict | None = None, fee=(0, 0)) -> str:
+               names: dict | None = None, fee=(0, 0), lead=()) -> str:
     """One announcement, at most MAX_CHARS. `offers`: open offers off our venue (El Rastro's book, other venues' live
     offers); `venue_offers`: v20's live offers; `names`: {offer id: team} from the feed. variant 0: v20's book first;
     1: the near pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
@@ -306,7 +355,9 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     skip = set(exclude or ())
     names = names or {}
     live = [o for o in venue_offers or [] if not refs(o) & skip]
-    shown = [(o, d) for o in live for d in [describe(o, names)] if d][:SHOW_OFFERS]
+    lead = set(lead or ())
+    shown = [(o, d + (order_detail(o, offers, names) if o.get("id") in lead else ""))
+             for o in live for d in [describe(o, names)] if d][:SHOW_OFFERS]
     book = ""
     if shown:
         first = shown[0][0]
@@ -352,6 +403,246 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     return (text.strip() + tail)[:MAX_CHARS]
 
 
+class Announcer:
+    """When to post, and what reached v20 after each post. Pure (the caller passes the clock, v20's book and the feed),
+    so the tests drive it without a network.
+
+    Posts: at most `count`. A scheduled slot every `every_s` seconds (the first one at once). With on_event, a new
+    offer on v20 that we would advertise (eligible) posts at once instead of waiting for the slot, never closer than
+    `min_gap_s` to the previous post; the next slot then counts from that post. Why: other teams' bots go where offers
+    already are (no team's first offer on another venue followed an announcement naming it, 64 cases on Saturday),
+    and a few explorers (t15, t04, t08, t13) post on empty venues: the moment one of them lists on v20 is the one
+    moment a trade is possible, and the moment worth announcing.
+
+    Response, logged per post: offers listed on v20 by other teams and trades settled on v20 in the MEASURE_TICKS
+    after the post, with the same counts for the MEASURE_TICKS before it as the baseline (all from the public feed)."""
+
+    def __init__(self, count: int, every_s: float, on_event: bool = False, min_gap_s: float = MIN_GAP_MIN * 60,
+                 measure_ticks: int = MEASURE_TICKS, eligible=lambda o: True):
+        self.count, self.every_s, self.on_event, self.min_gap_s = count, every_s, on_event, min_gap_s
+        self.measure_ticks, self.eligible = measure_ticks, eligible
+        self.posted, self.last_post, self.next_slot = 0, None, None
+        self.queue = []         # eligible new v20 offers waiting for a post
+        self.seen = None        # v20 offer ids already known (None until the first read: nothing is new at start)
+        self.pending = []       # posts waiting for their response window
+
+    def fresh(self, v20_book: list) -> list:
+        """New offers on v20 that we would advertise, queued until a post is allowed (an offer that lands during the
+        cooldown is posted when it ends, unless it has left the book by then). The first read only learns the book.
+        Returns the queue as it stands, in arrival order."""
+        ids = [o for o in v20_book or [] if isinstance(o, dict) and o.get("id") is not None]
+        live = {o["id"] for o in ids}
+        if self.seen is None:
+            self.seen = set(live)
+            return []
+        new = [o for o in ids if o["id"] not in self.seen]
+        self.seen.update(o["id"] for o in new)
+        self.queue = [o for o in self.queue if o["id"] in live] + [o for o in new if self.eligible(o)]
+        return list(self.queue)
+
+    def due(self, now: float, fresh: list) -> str | None:
+        """"event", "slot" or None. No two posts closer than min_gap_s, whatever the trigger."""
+        if self.posted >= self.count:
+            return None
+        if self.last_post is not None and now - self.last_post < self.min_gap_s:
+            return None
+        if self.on_event and fresh:
+            return "event"
+        if self.next_slot is None or now >= self.next_slot:
+            return "slot"
+        return None
+
+    def mark_posted(self, now: float, tick: int, why: str, fresh_ids=()) -> None:
+        self.posted += 1
+        self.last_post, self.next_slot = now, now + self.every_s
+        done = set(fresh_ids)   # only the offers this post actually advertised leave the queue
+        self.queue = [o for o in self.queue if o.get("id") not in done]
+        self.pending.append({"post": self.posted, "tick": tick, "why": why, "fresh": list(fresh_ids)})
+
+    def give_up(self, tick: int, after: int = GIVE_UP_TICKS) -> list:
+        """Posts whose response window closed more than `after` ticks ago and could not be measured (the feed kept
+        failing): they leave `pending`, so the run always ends."""
+        late = [p for p in self.pending if tick >= p["tick"] + self.measure_ticks + after]
+        self.pending = [p for p in self.pending if p not in late]
+        return late
+
+    def responses(self, tick: int, events: list, names: dict | None = None, v20_ids=None) -> list:
+        """Response records for the posts whose window has closed at `tick`; they leave `pending`."""
+        out, keep = [], []
+        for p in self.pending:
+            if tick < p["tick"] + self.measure_ticks:
+                keep.append(p)
+                continue
+            r = dict(p, **window_counts(events, p["tick"], self.measure_ticks, names))
+            if v20_ids is not None:  # the announced orders no longer on v20 (taken, cancelled or expired)
+                r["fresh_left_book"] = [i for i in p.get("fresh", []) if i not in v20_ids]
+            out.append(r)
+        self.pending = keep
+        return out
+
+
+def window_counts(events: list, t0: int, k: int, names: dict | None = None) -> dict:
+    """Offers listed on v20 by other teams and trades settled on v20, in (t0, t0 + k] ("after") and [t0 - k, t0)
+    ("before"), from the public feed."""
+    def count(lo, hi):
+        listed, teams, trades = 0, set(), 0
+        for e in events or []:
+            t = e.get("tick") if isinstance(e, dict) else None
+            if not isinstance(t, int) or not lo <= t <= hi:
+                continue
+            pl = e.get("payload") or {}
+            if e.get("type") == "offer.listed" and (pl.get("offer") or {}).get("venue") == VENUE:
+                who = (pl.get("offer") or {}).get("maker") or e.get("actor")
+                if who != OURS:
+                    listed += 1
+                    teams.add(who)
+            elif e.get("type") == "settlement" and pl.get("venue") == VENUE:
+                trades += 1
+        return listed, sorted(t for t in teams if t), trades
+    la, ta, xa = count(t0 + 1, t0 + k)
+    lb, tb, xb = count(t0 - k, t0 - 1)
+    return {"window_ticks": k, "listed_after": la, "teams_after": ta, "trades_after": xa,
+            "listed_before": lb, "teams_before": tb, "trades_before": xb}
+
+
+def session_end(start: float, ticks, tick_s: float) -> float:
+    """When a session's silence ends: QUIET_AFTER_S after its start (the team rule), or QUIET_TAIL_S after its last
+    tick when its ticks at this pace run longer (60 s ticks: 16 ticks = 16 min)."""
+    ticks = ticks if isinstance(ticks, int) and ticks > 0 else BENCH_TICKS
+    return max(start + QUIET_AFTER_S, start + ticks * tick_s + QUIET_TAIL_S)
+
+
+def quiet_windows(schedule: dict, clock: dict, now: float, horizon_h: float = 3.0) -> list:
+    """[(start, end)] wall-clock epochs when no lane may call the API: each upcoming Market Test (schedule action
+    "bench") from QUIET_BEFORE_S before its start to QUIET_AFTER_S after. A game hour is a wall hour at any tick
+    length (tests/test_factory.py); on a paused clock that is the earliest the session can start, and the next read
+    places it again. Only sessions within `horizon_h` game hours and before the day closes; rounded outwards."""
+    try:
+        t_now = float(clock["t_hours"])
+    except (KeyError, TypeError, ValueError):
+        return []
+    try:
+        tick_s = float(clock.get("tick_seconds") or 30.0)
+    except (TypeError, ValueError):
+        tick_s = 30.0
+    out = []
+    for ev in sorted((schedule or {}).get("upcoming") or [], key=lambda e: e.get("at_hours", 0)):
+        at = ev.get("at_hours")
+        if not isinstance(at, (int, float)) or at - t_now > horizon_h:
+            continue
+        if ev.get("action") == "day_closes":
+            break
+        if ev.get("action") == "bench":
+            start = now + (at - t_now) * 3600          # in the past when the session has already begun
+            end = session_end(start, (ev.get("params") or {}).get("ticks"), tick_s)
+            if end > now:
+                out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
+    return out
+
+
+def active_windows(events: list, clock: dict, now: float) -> list:
+    """Windows of Market Tests that have already started (the schedule lists only upcoming ones, so a restart in the
+    middle of a session would miss it): every bench.started in the feed placed by its start tick. [(start, end)]."""
+    try:
+        tick, tick_s = int(clock["tick"]), float(clock["tick_seconds"])
+    except (KeyError, TypeError, ValueError):
+        return []
+    out = []
+    for e in events or []:
+        if not isinstance(e, dict) or e.get("type") != "bench.started":
+            continue
+        pl = e.get("payload") or {}
+        st = pl.get("start_tick", e.get("tick"))
+        if not isinstance(st, int) or st > tick:
+            continue
+        ticks = pl.get("ticks") if isinstance(pl.get("ticks"), int) and pl.get("ticks") > 0 else BENCH_TICKS
+        start = now - (tick - st) * tick_s
+        # the ticks still to run, at the clock's pace now (a pause or a slower clock only pushes the end later)
+        end = max(session_end(start, ticks, tick_s), now + (st + ticks - tick) * tick_s + QUIET_TAIL_S)
+        if end > now:
+            out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
+    return out
+
+
+class Silenced(Exception):
+    """Raised instead of making a request inside a Market Test silence."""
+
+
+class Gate:
+    """Every request and every post asks the gate first (Codex BLOCKERs on #45: silence checked right before each
+    request and right before posting; no post while the Market Test status is unknown or stale)."""
+
+    def __init__(self, manual=(), clock=None):
+        self.manual, self.windows, self.status_at, self.tried_at = list(manual), list(manual), None, None
+        self.clock = clock or (lambda: time.time())  # looked up at call time, so a patched clock is honoured
+
+    def quiet_end(self):
+        return quiet_until(self.windows, self.clock())
+
+    def check(self) -> None:
+        if self.quiet_end() is not None:
+            raise Silenced()
+
+    def known(self) -> bool:
+        return self.status_at is not None and self.clock() - self.status_at <= STATUS_MAX_AGE_S
+
+    def due_refresh(self) -> bool:
+        """Read the status again when it is 60 s from going stale, or STATUS_RETRY_S after a failed read."""
+        now = self.clock()
+        if self.status_at is not None and now - self.status_at < STATUS_MAX_AGE_S - 60:
+            return False
+        return self.tried_at is None or now - self.tried_at >= STATUS_RETRY_S
+
+    def refresh(self, get, extra_events=()) -> bool:
+        """Read the schedule, the clock and the feed (each request gated); True when the status is known again."""
+        self.tried_at = self.clock()
+        try:
+            self.check()
+            schedule = get(f"{URL}/api/schedule")
+            self.check()
+            clock = get(f"{URL}/api/clock")
+            at_clock = self.clock()                    # the windows are placed from this instant, not later
+        except Silenced:
+            return False
+        except Exception as e:
+            print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
+            return False
+        try:  # sessions already running: the API's feed window, plus the recorded feed passed in
+            self.check()
+            events = get(f"{URL}/api/feed?limit=1000").get("events", [])
+        except Silenced:
+            return False
+        except Exception as e:  # without the feed a session already running cannot be ruled out: status unknown
+            print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
+            return False
+        self.windows = (self.manual + quiet_windows(schedule, clock, at_clock)
+                        + active_windows(list(events) + list(extra_events), clock, at_clock))
+        self.status_at = at_clock
+        return True
+
+
+def parse_quiet(text: str, today: time.struct_time | None = None) -> list:
+    """--quiet "21:53-22:05,09:32-09:45": wall-clock windows for today (local time) as [(start, end)] epochs."""
+    out = []
+    base = today or time.localtime()
+    for part in (text or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        a, b = part.split("-")
+        def at(hm):
+            h, m = (int(x) for x in hm.strip().split(":"))
+            return time.mktime((base.tm_year, base.tm_mon, base.tm_mday, h, m, 0, 0, 0, -1))
+        out.append((at(a), at(b)))
+    return out
+
+
+def quiet_until(windows: list, now: float):
+    """The end of the window `now` falls in, or None."""
+    ends = [end for start, end in windows if start <= now < end]
+    return max(ends) if ends else None
+
+
 def next_variant(path: Path = STATE) -> int:
     try:
         return int(json.loads(path.read_text()).get("next", 0))
@@ -372,15 +663,34 @@ def get_json(url: str) -> dict:
         return json.load(r)
 
 
+_KEYLIKE = re.compile(r"(tk-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}|bk_[A-Za-z0-9_-]+|adm_[A-Za-z0-9_-]+)")  # no \b: a key
+                                                                                         # glued to a word too
+
+
+def clean(obj):
+    """Anything that looks like a key, stripped (runlog.redact, then the same shapes even when glued to other
+    characters), before it is printed or logged: an HTTP error body is the server's text and could echo a key back."""
+    from runlog import redact
+    obj = redact(obj)
+    if isinstance(obj, str):
+        return _KEYLIKE.sub("[redacted]", obj)
+    if isinstance(obj, dict):
+        return {k: clean(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [clean(v) for v in obj]
+    return obj
+
+
 def post_announce(text: str, key: str) -> dict:
-    """POST /api/broker/announce with the broker key. Returns the server's answer or {"http_error", "body"}."""
+    """POST /api/broker/announce with the broker key. Returns the server's answer or {"http_error", "body"}, cleaned
+    of anything that looks like a key."""
     req = urllib.request.Request(f"{URL}/api/broker/announce", method="POST", data=json.dumps({"text": text}).encode(),
                                  headers={"X-Broker-Key": key, "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
-            return json.load(r)
+            return clean(json.load(r))
     except urllib.error.HTTPError as e:
-        return {"http_error": e.code, "body": e.read().decode(errors="replace")[:300]}
+        return clean({"http_error": e.code, "body": e.read().decode(errors="replace")[:300]})
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -392,8 +702,15 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--link", default=LINK, help="append this link (off by default: agents do not open pages)")
     ap.add_argument("--exclude", default=",".join(MISSING),
                     help="comma list of cards never advertised (default: the cards we lack)")
-    ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between messages")
-    ap.add_argument("--count", type=int, default=1, help="run only: how many messages")
+    ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between scheduled messages")
+    ap.add_argument("--count", type=int, default=1, help="run only: how many messages at most")
+    ap.add_argument("--on-event", action="store_true",
+                    help="run only: also post at once when a new offer appears on v20 (never closer than --min-gap-min)")
+    ap.add_argument("--min-gap-min", type=float, default=MIN_GAP_MIN, help="run: minutes between any two posts")
+    ap.add_argument("--deadline-min", type=float, default=None,
+                    help="run: stop after this many minutes whatever happens (default: count x every-min + 60)")
+    ap.add_argument("--quiet", default="", help='run: extra silence windows today, e.g. "21:53-22:05" (Market Test '
+                                                'silences from /api/schedule are always kept)')
     ap.add_argument("--key-file", default=str(KEY_FILE))
     args = ap.parse_args(argv)
     link = None if args.no_link else args.link
@@ -408,34 +725,134 @@ def main(argv: list[str] | None = None) -> None:
         from runlog import RunLog
         log = RunLog("announce")
         log.start(plan={"count": args.count, "every_min": args.every_min, "link": bool(link)})
-    for i in range(max(1, args.count) if args.cmd == "run" else 1):
-        if i:
-            time.sleep(max(60.0, args.every_min * 60))
-        variant = args.variant if args.variant is not None else next_variant()
-        events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
-        index = [v for v in get_json(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+    gate = Gate(parse_quiet(args.quiet))
+
+    def api(url: str) -> dict:
+        """Every request of a run goes through the gate (plan mode never has windows)."""
+        gate.check()
+        return get_json(url)
+
+    def compose(variant: int, first=()) -> tuple:
+        """(text, ids of the v20 offers the text names). A failed feed read costs only the team names; a failed
+        venue index only the other venues and v20's fee (taken as 0 %, 0 P; El Rastro's and v20's books are still
+        read): one bad read never cancels the run. Silenced propagates: a post is never built across a silence."""
+        try:
+            events = api(f"{URL}/api/feed?limit=1000").get("events", [])
+        except Silenced:
+            raise
+        except Exception as e:
+            print(f"feed unavailable ({type(e).__name__}); no team names in this message", flush=True)
+            events = []
+        try:
+            index = [v for v in api(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+        except Silenced:
+            raise
+        except Exception as e:
+            print(f"venue index unavailable ({type(e).__name__}); El Rastro and v20 only", flush=True)
+            index = []
         venues = [v.get("venue") for v in index if v.get("status") == "open" and v.get("venue")]
         ours = next((v for v in index if v.get("venue") == VENUE), {})
         fee = (ours.get("fee_bps") or 0, ours.get("fee_per_card") or 0)
-        books = market_books(get_json, venues + [VENUE])
+        books = market_books(api, venues + [VENUE])
         offers = [o for v, book in books.items() if v != VENUE for o in book]
         names = learn_pseudonyms(books, {**offer_makers(recorded_events()), **offer_makers(events)})
         if team is not None:  # our own open offers, for sure: never paired, never named as anyone else's
             try:
+                gate.check()
                 names.update({i: OURS for i in our_offer_ids(team.my_offers())})
+            except Silenced:
+                raise
             except Exception as e:
                 print(f"our offers unavailable ({type(e).__name__}); feed names and pseudonyms only", flush=True)
-        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), names, fee)
+        firsts = {o.get("id") for o in first}
+        v20 = sorted(books.get(VENUE, []), key=lambda o: o.get("id") not in firsts)  # the new offer leads
+        text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
+        return text, [o.get("id") for o in v20 if o.get("id") is not None and f"(offer {o.get('id')})" in text]
+
+    if args.cmd == "plan":
+        variant = args.variant if args.variant is not None else next_variant()
+        text, _ = compose(variant)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
-        if args.cmd == "plan":
-            print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
-            return
-        res = post_announce(text, key)
-        print("->", json.dumps(res, ensure_ascii=False)[:300])
-        log.event("announce", variant=variant % 3, chars=len(text), text=text, result=res)
-        if "http_error" in res:
+        print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
+        return
+
+    skip = set(exclude)
+    ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
+                    eligible=lambda o: describe(o) is not None and not refs(o) & skip)
+    minutes = args.deadline_min if args.deadline_min is not None else max(1, args.count) * max(1.0, args.every_min) + 60
+    deadline = time.time() + minutes * 60
+    while ann.posted < ann.count or ann.pending:
+        if time.time() >= deadline:  # a feed or status outage must not keep the process alive for ever
+            for p in ann.pending:
+                log.event("response_unavailable", reason="deadline", **p)
+            print(f"[{time.strftime('%H:%M:%S')}] deadline reached: {ann.posted}/{ann.count} posts", flush=True)
             break
-        save_variant(variant + 1)
+        end = gate.quiet_end()
+        if end is not None:  # Market Test silence: no request at all until it ends
+            print(f"[{time.strftime('%H:%M:%S')}] silence until {time.strftime('%H:%M:%S', time.localtime(end))}",
+                  flush=True)
+            log.event("silence", until=round(end, 1))
+            time.sleep(max(1.0, min(end, deadline) - time.time()))
+            continue
+        if gate.due_refresh():
+            gate.refresh(get_json, recorded_events(kinds=("bench.started",)))
+            continue                                   # start again from the silence check with what was learnt
+        if not gate.known():                           # status unknown: no request but the status read, no post
+            time.sleep(POLL_S)
+            continue
+        try:
+            tick = api(f"{URL}/api/clock").get("tick")
+            v20 = api(f"{URL}/api/venues/{VENUE}/offers").get("offers") or []
+        except Silenced:
+            continue
+        except Exception as e:  # a failed read waits for the next poll
+            print(f"read failed ({type(e).__name__}); retrying", flush=True)
+            time.sleep(POLL_S)
+            continue
+        fresh = ann.fresh(v20)
+        why = ann.due(time.time(), fresh)
+        if why:
+            # --variant wins for every post (f9 runs --on-event --variant 2: pitch + v20's book, no near-pair block);
+            # without it an event leads with v20's book (variant 0) and slots rotate
+            variant = args.variant if args.variant is not None else (0 if why == "event" else next_variant())
+            try:
+                text, advertised = compose(variant, fresh if why == "event" else ())
+                if why == "event" and not set(advertised) & {o.get("id") for o in fresh}:
+                    raise LookupError("the new offer could not be verified on v20's book")
+                gate.check()                           # right before the post, after every slow read
+                if not gate.known():
+                    raise LookupError("Market Test status went stale while composing")
+            except Silenced:
+                continue                               # the queue is kept: the event goes out after the silence
+            except LookupError as e:
+                print(f"[{time.strftime('%H:%M:%S')}] {why} post deferred: {e}", flush=True)
+                log.event("deferred", why=why, reason=str(e), fresh=[o.get("id") for o in fresh])
+                time.sleep(POLL_S)
+                continue
+            res = post_announce(text, key)
+            print(clean(f"[{time.strftime('%H:%M:%S')}] {why} post {ann.posted + 1}/{ann.count} variant {variant % 3} "
+                        f"-> {json.dumps(res, ensure_ascii=False)[:200]}\n{text}"), flush=True)
+            log.event("announce", why=why, variant=variant % 3, chars=len(text), text=text, result=clean(res),
+                      tick=tick, fresh=[o.get("id") for o in fresh], advertised=advertised)
+            if "http_error" in res:
+                break
+            done = [i for i in advertised if i in {o.get("id") for o in fresh}]
+            ann.mark_posted(time.time(), tick if isinstance(tick, int) else 0, why, done)
+            if why != "event":
+                save_variant(variant + 1)
+        if ann.pending and isinstance(tick, int) and any(tick >= p["tick"] + ann.measure_ticks for p in ann.pending):
+            try:
+                events = api(f"{URL}/api/feed?limit=1000").get("events", [])
+                for r in ann.responses(tick, events, v20_ids={o.get("id") for o in v20 if isinstance(o, dict)}):
+                    print(clean(f"[{time.strftime('%H:%M:%S')}] response {json.dumps(r)}"), flush=True)
+                    log.event("response", **r)
+            except Silenced:
+                continue
+            except Exception as e:
+                print(f"feed read failed ({type(e).__name__})", flush=True)
+                for p in ann.give_up(tick):
+                    log.event("response_unavailable", **p)
+        time.sleep(POLL_S)
     log.end()
 
 
