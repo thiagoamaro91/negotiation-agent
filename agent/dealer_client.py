@@ -150,7 +150,8 @@ class Rounds:
     deferred: ticks spent waiting on the duel lock (they cost no round; bounded by max_defer).
     end_tries: accept attempts refused after the budget was spent (bounded by END_ACCEPTS).
     close_refusals: refused closes in this thread (bounded by CLOSE_TRIES).
-    lost: MAX_FAILED_WAITS waits in a row could not confirm a tick; the caller closes the thread."""
+    lost: MAX_FAILED_WAITS waits in a row could not confirm a tick; the caller closes the thread. A later confirmed
+    tick (for instance while that close is refused) clears it, so the bot decides again on a fresh read."""
 
     def __init__(self, b, max_rounds: int, max_defer: int = MAX_DEFER_TICKS):
         self.b, self.max_rounds, self.max_defer = b, int(max_rounds), int(max_defer)
@@ -168,6 +169,7 @@ class Rounds:
             c = self.b.wait_tick() or {}
             if c.get("tick") is not None:
                 self.failed_waits = 0
+                self.lost = False  # the clock is back: decide on a fresh read again (an in-limit final may stand)
                 if not free:
                     self.used += 1
                 return True
@@ -243,9 +245,11 @@ def flag_value(v):
     return int(v) if isinstance(v, float) and v.is_integer() else v
 
 
-def unsettled_line(tid: int, price: int) -> str:
-    """The one line run prints when an accept went out but its settlement could not be confirmed (EXIT_UNSETTLED)."""
-    return (f"Thread {tid}: our accept at {price} P went out but its settlement could not be confirmed (thread "
+def unsettled_line(tid: int, price: int, side: str, item: str, asset_id: int | None = None) -> str:
+    """The one line run prints when an accept went out but its settlement could not be confirmed (EXIT_UNSETTLED).
+    It names the planned trade (side and card, and the copy for a sell) so the operator knows what to check."""
+    what = f"{side} {item}" + (f", asset {asset_id}" if side == "sell" and asset_id is not None else "")
+    return (f"Thread {tid} ({what}): our accept at {price} P went out but its settlement could not be confirmed (thread "
             f"unreadable or clock not advancing). The plan was stopped so no further trade can start; check thread "
             f"{tid} and our holdings before running again.")
 

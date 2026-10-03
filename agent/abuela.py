@@ -461,7 +461,8 @@ def main() -> None:
             log("stop", code="lock_timeout", thread=r["thread"])
             break
         if r.get("result") == "unsettled":  # an accept went out and may have traded: start nothing else
-            stop = (EXIT_UNSETTLED, unsettled_line(r["thread"], r.get("price")))
+            stop = (EXIT_UNSETTLED, unsettled_line(r["thread"], r.get("price"), target["side"], target["item"],
+                                                   target.get("asset_id")))
             log("stop", code="unsettled", thread=r["thread"])
             break
         if r.get("result") == "clock_lost":

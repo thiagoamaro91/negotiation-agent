@@ -152,6 +152,16 @@ class SettleCases(BotState):
         self.assertEqual(code, self.mod.EXIT_UNSETTLED, out)
         self.assertTrue(any("Thread 7" in ln and "settle" in ln for ln in out.splitlines()), out)
 
+    def test_unsettled_line_names_the_side_and_the_card(self):
+        item = "LAV-09" if self.mod is chato else "LAV-01"
+        srv = buy_server(self.mod, 10 if self.mod is abuela else 80)
+        srv.request_hooks.append(fail_after("thread", ("accept", 1)))
+        code, out, _, _ = run_main(self.mod, ["run", "--only", item, "--max-deals", "1"], server=srv)
+        self.assertEqual(code, self.mod.EXIT_UNSETTLED, out)
+        lines = [ln for ln in out.splitlines() if "Thread 7" in ln and "settle" in ln]
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn(f"buy {item}", lines[0])
+
 
 class TestSettleChato(SettleCases, unittest.TestCase):
     mod = chato
@@ -172,6 +182,22 @@ class ClockLostCases(BotState):
         self.assertEqual(r["result"], "clock_lost")
         self.assertEqual(srv.status(), "closed")
         self.assertLess(srv.vc.now, 3600.0)
+
+    def test_clock_recovering_during_the_close_lets_the_bot_take_an_in_limit_final(self):
+        # Codex timeline on #38: sell floor 40; the clock is unreadable from second 1 to 380, long enough for the
+        # clock to count as lost; the first close is refused (503); the clock recovers and confirms tick 126, and
+        # her final 41 (posted at tick 123, lapsing at 127) is still standing: take it, do not close on it.
+        srv = FakeServer(dealer=self.mod.DEALER, opening=16, clock_down=(1.0, 380.0), max_requests=3000)
+        srv.inject["close"] = [(503, "unavailable")]
+
+        def final_at_123(s, t):
+            if t == 123:
+                s.post(41, final=True, t=t)
+        srv.hooks.append(final_at_123)
+        r = self.negotiate(srv)
+        self.assertEqual(len(srv.writes("close")), 1)                # the refused one: no second close
+        self.assertEqual(r["result"], "deal")
+        self.assertEqual(srv.accepted[0][1:], (41, 126))
 
     def test_frozen_game_never_gets_a_resend_in_the_same_tick(self):
         # tick 100 frozen for 90 s: a refused message may only go out again once tick 101 is confirmed
