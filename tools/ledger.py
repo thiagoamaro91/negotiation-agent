@@ -19,7 +19,9 @@ Everyone starts with 400 P (kit/RULES.md). From there the public feed shows ever
 - venue openings (a 250 P bond + 20 P; the free starter stalls of Saturday tick 201 cost nothing, "bond": 0 and
   "starter": true), bond refunds on venue.closed ("refund"), cash gifts and the organisers' grants. A grant's cash
   comes from the event, else from the schedule entry with the same note, else from the note itself ("150 primas":
-  the Saturday allowance fired at tick 165 with no cash field and had left the schedule by then).
+  the Saturday allowance fired at tick 165 with no cash field and had left the schedule by then). A grant told only
+  in an organisers' announcement counts too ("Payday in Madrid: every team gets 400 primas", tick 1201, with no
+  schedule.fired), unless a structured grant fired within two ticks.
 
 Holes in the recording: our recorder lost ticks 49-118 on Friday to DNS errors (logs/feed-vm/README.md).
 Wherever two consecutive events are more than a tick apart, build() fills the hole from the complete copies in
@@ -55,9 +57,10 @@ VENUE_FEE = 20
 HOUSE_VENUES = (None, "rastro")
 GAP_SOURCES = (vi.ROOT / "logs" / "feed-vm" / "feed.jsonl",)  # complete copies of stretches our recorder missed
 EXPIRY_GRACE = 1  # an accept on an offer's last tick settles on the next one (ticks 40, 49, 103, 152, 946)
-MAX_FLIP_COMBOS = 4096  # consistency pass: combinations of the unsure settlements it weighs (teams below zero first)
+MAX_FLIP_COMBOS = 4096  # consistency pass: largest group of linked unsure settlements it weighs exactly
 GAP_TICKS = 1  # two consecutive events further apart than this: a hole in the recording, filled from GAP_SOURCES
 PRIMAS = re.compile(r"(\d+)\s*primas", re.IGNORECASE)
+PAYDAY = re.compile(r"every team gets (\d+) primas", re.IGNORECASE)  # an organisers' grant told only in words (tick 1201)
 _source_cache: dict = {}
 
 
@@ -105,8 +108,8 @@ def fill_gaps(events: list, sources: tuple = GAP_SOURCES) -> list:
 
 def listings(events: list) -> dict:
     """Who posted what, to tell the acceptor of a settlement. ('offer', id) -> [the offer as posted: maker, tick, cash on
-    each side, ids it gives, refs and ids it wants, expiry, recipient, venue]; ('ask', asset id), ('bid', card ref) and
-    ('give', asset id) -> [offer ids]; ('cancel', offer id) -> [ticks]."""
+    each side, ids it gives, refs and ids it wants, expiry, recipient, venue]; ('ask', asset id), ('give', asset id),
+    ('bid', card ref) and ('bid_id', asset id) -> [offer ids]; ('cancel', offer id) -> [ticks]."""
     out = collections.defaultdict(list)
     for e in events:
         p = e["payload"]
@@ -129,6 +132,9 @@ def listings(events: list) -> dict:
             out[("give", a.get("id"))].append(o.get("id"))
         for ref in vi.card_types(want):
             out[("bid", ref)].append(o.get("id"))
+        for a in want.get("assets") or []:
+            if isinstance(a, dict):
+                out[("bid_id", a.get("id"))].append(o.get("id"))
     return out
 
 
@@ -231,19 +237,57 @@ def board_fill(posted: dict, boards: Boards, tick: int, venue: str | None, ask_h
     return None
 
 
-def acceptor_of(posted: dict, first: dict, buyer: str, seller: str, price: int, tick: int, venue: str | None = None,
+def legs(items: list) -> tuple:
+    """A settlement's two legs: ({team: ids of the cards it sent}, {team: the cards it got}), and its sides."""
+    sent, got = collections.defaultdict(set), collections.defaultdict(list)
+    for i in items:
+        sent[i.get("frm")].add(i.get("id"))
+        got[i.get("to")].append(i)
+    return sent, got, set(sent) | set(got)
+
+
+def fits(o: dict, other: str, sent: dict, got: dict, price: int, pays: bool | None) -> bool:
+    """Does listing `o` describe the whole settlement? For `other` (or anyone), giving exactly the cards its maker
+    sent, wanting exactly the cards its maker got (by card type or by asset id), and the settled cash on the right
+    side: `pays` True = its maker paid the price, False = was paid it, None = either (a package)."""
+    maker = o["maker"]
+    received = got.get(maker, [])
+    refs = collections.Counter(i.get("ref") for i in received if i.get("id") not in o["want_ids"])
+    net = o["give_cash"] - o["want_cash"]
+    if pays is None:
+        cash_ok = price in (o["give_cash"], o["want_cash"]) if price else not (o["give_cash"] or o["want_cash"])
+    else:
+        cash_ok = net == (price if pays else -price)
+    return (o["give_ids"] == sent.get(maker, set()) and o["want_ids"] <= {i.get("id") for i in received}
+            and refs == o["want_refs"] and o["to"] in (None, other) and cash_ok)
+
+
+def candidates(posted: dict, items: list) -> list:
+    """Every listing that names one of the settlement's cards: giving it, or wanting its type or its asset id."""
+    ids = set()
+    for i in items:
+        ids |= set(posted.get(("give", i.get("id")), [])) | set(posted.get(("bid", i.get("ref")), []))
+        ids |= set(posted.get(("bid_id", i.get("id")), []))
+    return [offer(posted, oid) for oid in sorted(ids, key=str)]
+
+
+def acceptor_of(posted: dict, items, buyer: str, seller: str, price: int, tick: int, venue: str | None = None,
                 boards: Boards | None = None) -> tuple:
-    """Who accepted a one-way trade, and so paid the fee, and how we know: (team, "price" | "board" | "unsure").
-    The listing taken is the seller's standing ask or the buyer's standing bid at the settled price (t16 sold LAT-09
-    into our 88 P bid at tick 724 while its own ask stood at 135); see standing(). With both at that price, the one
-    that left the board without a cancel was filled. Otherwise the old rule, marked unsure: the seller's ask wins, then
-    the buyer's bid, then the buyer. `boards` defaults to the snapshots next to the feed being read (vi.FEED)."""
-    asks = [offer(posted, i) for i in posted.get(("ask", first.get("id")), [])]
-    bids = [offer(posted, i) for i in posted.get(("bid", first.get("ref")), [])]
-    ask_hit = [o["id"] for o in asks
-               if o["maker"] == seller and standing(posted, o, tick, venue) and o["want_cash"] == price]
-    bid_hit = [o["id"] for o in bids if o["maker"] == buyer and o["to"] in (None, seller)
-               and standing(posted, o, tick, venue) and o["give_cash"] == price]
+    """Who accepted a one-way trade (the seller's cards for the buyer's cash), and so paid the fee, and how we know:
+    (team, "price" | "board" | "unsure"). The listing taken is the seller's standing ask or the buyer's standing bid
+    that fits the whole settlement (see fits() and standing(): t16 sold LAT-09 into our 88 P bid at tick 724 while its
+    own ask stood at 135). With both fitting, the one that left the board cleanly was filled (board_fill). Otherwise
+    the old rule, marked unsure: the seller's ask wins, then the buyer's bid, then the buyer. `items` is the list of
+    cards that moved (one dict is read as a single card from seller to buyer); `boards` defaults to the snapshots next
+    to the feed being read (vi.FEED)."""
+    if isinstance(items, dict):
+        items = [{"frm": seller, "to": buyer, **items}]
+    sent, got, _ = legs(items)
+    cands = candidates(posted, items)
+    ask_hit = [o["id"] for o in cands if o["maker"] == seller and standing(posted, o, tick, venue)
+               and fits(o, buyer, sent, got, price, False)]
+    bid_hit = [o["id"] for o in cands if o["maker"] == buyer and standing(posted, o, tick, venue)
+               and fits(o, seller, sent, got, price, True)]
     if ask_hit and not bid_hit:
         return buyer, "price"
     if bid_hit and not ask_hit:
@@ -253,41 +297,32 @@ def acceptor_of(posted: dict, first: dict, buyer: str, seller: str, price: int, 
         if side:
             return (seller if side == "bid" else buyer), "board"
         return buyer, "unsure"
+    asks = [offer(posted, i) for i in posted.get(("ask", items[0].get("id")), [])]
     any_ask = [o["maker"] for o in asks if o["tick"] <= tick]
     if any_ask and any_ask[-1] == seller:
         return buyer, "unsure"
-    return (seller if any(o["maker"] == buyer and o["tick"] <= tick for o in bids) else buyer), "unsure"
+    return (seller if any(o["maker"] == buyer and o["tick"] <= tick for o in cands) else buyer), "unsure"
 
 
 def package_deal(posted: dict, items: list, tick: int, venue: str | None = None, price: int = 0) -> tuple | None:
     """A settlement with cards going both ways (a package: our 38 P + four cards for t07's LAV-10 at tick 844, or a
-    card-for-card swap). The accepted listing must match the whole settlement: standing (see standing()), made by one
-    of the two sides for the other (or for anyone), giving exactly the cards its maker sent, wanting exactly the cards
-    its maker got, and with the settled cash on one of its sides (no cash for a swap). Returns (maker, the other side,
-    give cash, want cash) of the latest such listing, or None when none fits or two fit with different readings."""
-    sent, got = collections.defaultdict(set), collections.defaultdict(list)
-    for i in items:
-        sent[i.get("frm")].add(i.get("id"))
-        got[i.get("to")].append(i)
-    parties = set(sent) | set(got)
+    card-for-card swap). The accepted listing must fit the whole settlement (see fits() and standing()); either side
+    may have paid the cash. Returns (maker, the other side, give cash, want cash) of the latest such listing, or None
+    when none fits or two fit with different readings."""
+    sent, got, parties = legs(items)
     if len(parties) != 2:
         return None
-    fits = []
-    for oid in sorted({oid for i in items for oid in posted.get(("give", i.get("id")), [])}, key=str):
-        o = offer(posted, oid)
+    found = []
+    for o in candidates(posted, items):
         maker = o["maker"]
         if maker not in parties or not standing(posted, o, tick, venue):
             continue
         other = next(x for x in parties if x != maker)
-        received = got.get(maker, [])
-        refs = collections.Counter(i.get("ref") for i in received if i.get("id") not in o["want_ids"])
-        cash_ok = price in (o["give_cash"], o["want_cash"]) if price else not (o["give_cash"] or o["want_cash"])
-        if (o["give_ids"] == sent[maker] and o["want_ids"] <= {i.get("id") for i in received}
-                and refs == o["want_refs"] and o["to"] in (None, other) and cash_ok):
-            fits.append((o["tick"], maker, other, o["give_cash"], o["want_cash"]))
-    if len({(maker, give_cash == price) for _, maker, _, give_cash, _ in fits}) != 1:
+        if fits(o, other, sent, got, price, None):
+            found.append((o["tick"], maker, other, o["give_cash"], o["want_cash"]))
+    if len({(maker, give_cash == price) for _, maker, _, give_cash, _ in found}) != 1:
         return None  # nothing fits, or two listings that read the settlement differently: leave it unsure
-    return max(fits)[1:]
+    return max(found)[1:]
 
 
 def grant_cash(schedule: dict | None, payload: dict) -> int:
@@ -358,13 +393,15 @@ def consistent_flips(rep: dict) -> tuple:
 
     Unknowns: each unsure one-way fee (keep it on the old rule's payer, or move it to the other side) and each
     settlement whose direction is unknown (which side paid the cash, which side paid the fee; a dealer's settlement
-    without items: paid or got the price). Every combination is weighed by shifting cash on the points the build
-    recorded (no rebuild: nothing else in the ledger depends on cash), up to MAX_FLIP_COMBOS combinations, the
-    unknowns of teams below zero first. The combinations that leave the fewest teams below zero are the feasible ones;
-    the fee payers of the one with the fewest moved fees are applied (forced); a settlement of unknown direction stays
-    unapplied (its whole amount is in cash_unsure, which then covers every reading). A one-way fee is pinned only when
-    every feasible combination agrees on its payer, and never when an unknown that touches its teams was left out of
-    the search, or a settlement without known sides exists. Returns ({event id: payer}, {pinned event ids})."""
+    without items: paid or got the price). Unknowns that share a team, directly or through other unknowns, form a
+    group; a team's cash only moves with its own group, so each group is weighed on its own, exhaustively, by shifting
+    cash on the points the build recorded (no rebuild: nothing else in the ledger depends on cash). In each group the
+    combinations that leave the fewest of its teams below zero are the feasible ones; the fee payers of the one with
+    the fewest moved fees are applied (forced); a settlement of unknown direction stays unapplied (its whole amount is
+    in cash_unsure, which covers every reading). A one-way fee is pinned only when every feasible combination of its
+    group agrees on its payer. A group with more than MAX_FLIP_COMBOS combinations keeps the old rule and pins
+    nothing, and nothing is pinned while a settlement without known sides exists. Returns ({event id: payer},
+    {pinned event ids})."""
     points = rep.get("points") or {}
     base_low = {team for team, pts in points.items() if any(c < 0 for _, c in pts)}
     unsure = [u for u in rep["unsure"] if u.get("seq") is not None]
@@ -377,7 +414,8 @@ def consistent_flips(rep: dict) -> tuple:
         """(u, options, cash shifts of each option, teams it touches)."""
         s = u["seq"]
         if u["payer"] is not None:
-            return u, [None, other(u)], [[], [(u["payer"], s, u["fee"]), (other(u), s, -u["fee"])]], {u["buyer"], u["seller"]}
+            shift = [(u["payer"], s, u["fee"]), (other(u), s, -u["fee"])]
+            return u, [None, other(u)], [[], shift], {u["buyer"], u["seller"]}
         a = u["parties"][0]
         b = u["parties"][1] if len(u["parties"]) > 1 else "dealer"
         opts, shifts = [], []
@@ -391,24 +429,14 @@ def consistent_flips(rep: dict) -> tuple:
                     d.append((fee_by, s, -u["fee"]))
                 opts.append((payer, fee_by))
                 shifts.append(d)
-        return u, opts, shifts, {x for x in u["parties"]}
+        return u, opts, shifts, set(u["parties"])
 
-    unknowns = [unknown(u) for u in unsure if u["payer"] is not None or u.get("parties")]
-    if not unknowns:
-        return {}, set()
-    keep, size = [], 1
-    for v in sorted(unknowns, key=lambda v: (not (v[3] & base_low), -v[0]["seq"])):
-        if size * len(v[1]) <= MAX_FLIP_COMBOS:
-            keep.append(v)
-            size *= len(v[1])
-    left_out = set().union(*(v[3] for v in unknowns if v not in keep))
-    keep.sort(key=lambda v: -v[0]["seq"])
-
-    def below(shifts: list) -> int:
+    def below(shifts: list, teams: set) -> int:
+        """How many of `teams` go below zero with these cash shifts (each: team, event position, P)."""
         by_team = collections.defaultdict(list)
         for team, s, d in shifts:
             by_team[team].append((s, d))
-        low = base_low - set(by_team)
+        low = (base_low & teams) - set(by_team)
         for team, ds in by_team.items():
             pts = points.get(team) or []
             checks = list(pts) + [(s, next((c for q, c in reversed(pts) if q <= s), START_CASH)) for s, _ in ds]
@@ -416,18 +444,42 @@ def consistent_flips(rep: dict) -> tuple:
                 low.add(team)
         return len(low)
 
-    scored = []
-    for choice in itertools.product(*(range(len(v[1])) for v in keep)):
-        shifts = [d for v, c in zip(keep, choice) for d in v[2][c]]
-        moved = sum(1 for v, c in zip(keep, choice) if v[0]["payer"] is not None and c)
-        scored.append((below(shifts), moved, choice))
-    fewest = min(n for n, _, _ in scored)
-    feasible = [(moved, choice) for n, moved, choice in scored if n == fewest]
-    chosen = min(feasible, key=lambda x: x[0])[1]
-    forced = {v[0]["event"]: v[1][c] for v, c in zip(keep, chosen) if v[0]["payer"] is not None and c}
-    pinned = set() if blind else {
-        v[0]["event"] for i, v in enumerate(keep)
-        if v[0]["payer"] is not None and not (v[3] & left_out) and len({c[i] for _, c in feasible}) == 1}
+    unknowns = [unknown(u) for u in unsure if u["payer"] is not None or u.get("parties")]
+    parent: dict = {}
+
+    def root(team):
+        while parent.setdefault(team, team) != team:
+            team = parent[team]
+        return team
+
+    for v in unknowns:
+        first, *rest = sorted(v[3], key=str)
+        for team in rest:
+            parent[root(team)] = root(first)
+    groups = collections.defaultdict(list)
+    for v in unknowns:
+        groups[root(next(iter(v[3])))].append(v)
+    forced, pinned = {}, set()
+    for group in groups.values():
+        size = 1
+        for v in group:
+            size *= len(v[1])
+        if size > MAX_FLIP_COMBOS:  # too many to weigh exactly: the old rule stays, nothing of this group is pinned
+            continue
+        group.sort(key=lambda v: -v[0]["seq"])
+        teams = set().union(*(v[3] for v in group))
+        scored = []
+        for choice in itertools.product(*(range(len(v[1])) for v in group)):
+            shifts = [d for v, c in zip(group, choice) for d in v[2][c]]
+            moved = sum(1 for v, c in zip(group, choice) if v[0]["payer"] is not None and c)
+            scored.append((below(shifts, teams), moved, choice))
+        fewest = min(n for n, _, _ in scored)
+        feasible = [(moved, choice) for n, moved, choice in scored if n == fewest]
+        chosen = min(feasible, key=lambda x: x[0])[1]
+        forced.update({v[0]["event"]: v[1][c] for v, c in zip(group, chosen) if v[0]["payer"] is not None and c})
+        if not blind:
+            pinned |= {v[0]["event"] for i, v in enumerate(group)
+                       if v[0]["payer"] is not None and len({c[i] for _, c in feasible}) == 1}
     return forced, pinned
 
 
@@ -445,6 +497,7 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
     posted = listings(events)
     owners: dict = {}  # venue id -> owning team
     gifted_at = set()
+    grant_ticks = {e["tick"] for e in events if e["type"] == "schedule.fired" and e["payload"].get("action") == "grant_all"}
 
     def record(tick: int) -> None:
         for team in led:
@@ -564,7 +617,7 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
                 continue
             buyer = receivers[0]
             seller = next((i.get("frm") for i in items if i.get("frm") != buyer), None)
-            acceptor, how = acceptor_of(posted, items[0], buyer, seller, price, t, p.get("venue"), boards)
+            acceptor, how = acceptor_of(posted, items, buyer, seller, price, t, p.get("venue"), boards)
             if not p.get("fee"):
                 how = "no fee"
             elif how == "unsure":
@@ -616,9 +669,18 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
                 if cash and not any((team, tk) in gifted_at for tk in range(t - 2, t + 3)):
                     move(team, t, cash, f"grant: {p.get('note', '')}")
                     led[team]["grants"] += cash
+        elif kind == "announcement" and PAYDAY.search(p.get("text") or ""):
+            # the organisers' own announcements only (teams post venue.announcement); skipped when a structured grant
+            # fired within two ticks, so the same money is never counted twice
+            cash = int(PAYDAY.search(p["text"]).group(1))
+            if not any(tk in grant_ticks for tk in range(t - 2, t + 3)):
+                for team in led:
+                    if not any((team, tk) in gifted_at for tk in range(t - 2, t + 3)):
+                        move(team, t, cash, f"grant: {p['text'][:80]}")
+                        led[team]["grants"] += cash
         elif kind == "level.unlocked" and p.get("team") in led:
             led[p["team"]]["unlocked"].append(p.get("persona"))
-        if kind in ("settlement", "venue.opened", "venue.closed", "gift.given", "schedule.fired"):
+        if kind in ("settlement", "venue.opened", "venue.closed", "gift.given", "schedule.fired", "announcement"):
             record(t)
     for team in led:
         led[team]["known_cards"] = {r: n for r, n in (led[team]["cards_in"] - led[team]["cards_out"]).items() if n > 0}
