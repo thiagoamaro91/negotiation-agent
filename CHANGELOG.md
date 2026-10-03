@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026-10-03] Team bus
+
+### Added
+- `tools/bus.py`: team bus on [issue #25](https://github.com/thiagoamaro91/negotiation-agent/issues/25), so Claude sessions on different accounts and machines can message each other. `post`, `ask` (blocks for the answer), `wait` (meant as background Bash: no tokens while it polls, exits when a message arrives), `read`, and a who-runs-what board (`claim`, `release`, `board`) rebuilt from the claim log. Sender is the GitHub account; comments typed by a person in the GitHub app count as messages (to whoever they @-mention, otherwise to all).
+- `CLAUDE.md`: *Team bus* section, the protocol every session follows.
+- `tests/test_bus.py`: 23 tests (message format, addressing, cursor, ask matching, board races); 13 mutations, all caught.
+
 ## [2026-10-02]
 
 ### Added
