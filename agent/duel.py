@@ -346,6 +346,8 @@ def days_cost(d: dict, days: int | None, override: str) -> float:
     best, w = days_profile(d, override)
     if days_unconfirmed(d, override):
         return w * max(int(days), 10 - int(days))   # the worse of best day 0 and best day 10
+    if d.get("role") == "seller" and best == 10:
+        return -w * int(days)   # f9 21:33: server pays sellers +w per day from day 0 (5692, 5675, 5626); no shortfall penalty
     return w * abs(int(days) - best)
 
 
