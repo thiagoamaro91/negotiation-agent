@@ -1,4 +1,4 @@
-"""agent/chato.py with --dealer: Chato's selling path unchanged by default, Pilar's big-step schedule above the floor,
+"""agent/chato.py with --dealer: Chato's selling path unchanged by default, Pilar's slow schedule above the floor,
 and last copies sold only when named by asset id with --allow-single. A fake dealer, no key, no network.
 
     python3 -m unittest discover -s tests
@@ -90,14 +90,15 @@ def sell_target(asset_id, ref, your_value):
 
 class DealerCase(unittest.TestCase):
     def setUp(self):
-        self._run = chato.RUN
+        self._run, self._lock = chato.RUN, chato.duel_lock_fresh
         chato.RUN = NullRun()
+        chato.duel_lock_fresh = lambda *a: False   # every accept re-checks the lock: never read the real file here
         chato.apply_dealer("chato")
         chato.MAX_ROUNDS = 12
 
     def tearDown(self):
         chato.apply_dealer("chato")
-        chato.RUN = self._run
+        chato.RUN, chato.duel_lock_fresh = self._run, self._lock
         chato.MAX_ROUNDS = 12
 
 
@@ -138,16 +139,16 @@ class TestPilar(DealerCase):
         super().setUp()
         chato.apply_dealer("pilar")
 
-    def test_thread_goes_to_pilar_with_big_steps_and_walks_below_floor(self):
+    def test_thread_goes_to_pilar_with_slow_steps_and_walks_below_floor(self):
         # MAL-06 single, private 17.5 -> floor ceil(19.5) = 20; she holds 16 and names 19 as her final
         b = FakeDealer("pilar", 42, opening=16, final=19)
         r = chato.negotiate(b, sell_target(42, "MAL-06", 17.5), False)
         self.assertEqual(b.calls[0], ("open_thread", "pilar", {"sell": {"assets": [42]}}))
-        self.assertEqual(b.says, [48, 44, 40, 36, 32, 28, 24, 20])   # max(3 x 16, 20 + 20) = 48, then -4
+        self.assertEqual(b.says, list(range(29, 19, -1)))   # max(1.25 x 16, 20 + 9) = 29, then -1 down to 20
         self.assertTrue(all(p >= 20 for p in b.says))
         self.assertNotIn("accept", [c[0] for c in b.calls])
         self.assertEqual(r["result"], "walked_by_us")
-        self.assertEqual(chato.sell_ladder(16, 20), [48, 44, 40, 36, 32, 28, 24, 20])
+        self.assertEqual(chato.sell_ladder(16, 20), list(range(29, 19, -1)))
 
     def test_final_at_or_above_floor_is_taken(self):
         b = FakeDealer("pilar", 42, opening=16, final=21)
@@ -156,13 +157,14 @@ class TestPilar(DealerCase):
         self.assertEqual(b.calls[-1][2], 21)
         self.assertEqual(r["result"], "deal")
 
-    def test_anchor_floor_plus_20_when_her_bid_is_low(self):
-        # floor 51 (private 49): max(3 x 16 = 48, 51 + 20 = 71) = 71
-        self.assertEqual(chato.sell_anchor(16, 51), 71)
+    def test_anchor_floor_plus_9_when_her_bid_is_low(self):
+        # floor 51 (private 49): max(1.25 x 16 = 20, 51 + 9 = 60) = 60
+        self.assertEqual(chato.sell_anchor(16, 51), 60)
         ladder = chato.sell_ladder(16, 51)
-        self.assertEqual(ladder[:3], [71, 67, 63])
+        self.assertEqual(ladder[:3], [60, 59, 58])
         self.assertEqual(ladder[-1], 51)
         self.assertTrue(all(p >= 51 for p in ladder))
+        self.assertEqual(chato.sell_anchor(40, 20), 50)   # she opens high: 1.25 x her bid, never her opener itself
 
     def test_overrides_never_go_below_floor(self):
         chato.apply_dealer("pilar", sell_anchor=30, sell_step=7)
@@ -177,8 +179,8 @@ class TestPilar(DealerCase):
     def test_she_crosses_our_ask(self):
         b = FakeDealer("pilar", 42, opening=16, script=[45])
         r = chato.negotiate(b, sell_target(42, "MAL-06", 17.5), False)
-        self.assertEqual(b.says, [48])
-        self.assertEqual(b.calls[-1], ("accept", 102, 45))   # 45 >= our next ask 44
+        self.assertEqual(b.says, [29])
+        self.assertEqual(b.calls[-1], ("accept", 102, 45))   # 45 >= our next ask 28
         self.assertEqual(r["result"], "deal")
 
     def test_offers_from_another_maker_are_ignored(self):
@@ -315,7 +317,7 @@ class TestFloor(DealerCase):
         target = chato.apply_floor([p for p in self.plan if p["asset_id"] == 42], 18)[0][0]
         b = FakeDealer("pilar", 42, opening=16, final=19)        # 19 was a walk at the default floor 20
         r = chato.negotiate(b, target, False)
-        self.assertEqual(b.says, [48, 44, 40, 36, 32, 28, 24, 20, 18])   # max(48, 18 + 20), -4, never below 18
+        self.assertEqual(b.says, list(range(27, 17, -1)))   # max(20, 18 + 9) = 27, -1, never below 18
         self.assertEqual(b.calls[-1][0], "accept")
         self.assertEqual(b.calls[-1][2], 19)
         self.assertEqual(r["result"], "deal")

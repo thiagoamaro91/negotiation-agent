@@ -14,24 +14,33 @@ What the feed showed in his first hour (Friday 22:00, 70 public messages, no dea
 
 Plan per deal is Abuela's: anchor low, step 1 P, and take his final offer if it is inside our limit. The ladder
 scores the share of his price range we capture, so ending at his limit is the goal; our private value is a cap.
+With --max-bid our bids stop there; we keep listening while his offer improved in the last 2 ticks, then take it if
+it is inside our limit, or close at once (max_bid_no_deal). When the round budget runs out we take his standing
+offer if it is inside our limit (buy: at or under it; sell: at or over our floor) instead of closing on it.
 
 Usage (from the repo root):
     python3 agent/chato.py plan
     python3 agent/chato.py run --only SAL-08 --max-deals 1 --reserve 200 --cap 30
     python3 agent/chato.py run --only LAV-09 --max-deals 1 --anchor 60 --step 4 --cap 93 --reserve 200
 Only ONE process per team may talk to El Chato at a time (one open conversation per dealer).
-`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds).
+`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds), and
+re-checks the lock before every accept: while it is fresh the accept waits a tick (no round spent).
+`run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it.
+The client never resends a refused write and waits through a paused clock (agent/dealer_client.py).
 
 Doña Pilar (--dealer pilar, L3 collector): she only BUYS from us (uncommon, rare, epic; she loves SAL and RET) and
 sells gold packs only, so `plan`/`run` refuse buy targets for her and list sells only. Feed evidence: she opened at
-16 and held 16 across 9 threads; another team asked 49, then 42, and sold LAV-08 at 19. So her first ask is
-max(3 x her opening bid, floor + 20) and we come down 4 P per round, never below the floor (our private value of that
-copy + 2), and take her final offer if it is at or above the floor. Logs go to logs/pilar/<date>.jsonl.
+16 and held 16 across 9 threads; another team asked 49, then 42, and sold LAV-08 at 19. Our Saturday threads showed
+she concedes by time: her finals were 19 to 21 on 7-8 round threads and 17 on 4-5 round threads. So our first ask
+is max(1.25 x her opening bid, floor + 9) (27 for floor 18), we come down 1 P per round over a 40-round budget,
+never below the floor (our private value of that copy + 2), and take her final offer if it is at or above the
+floor. Logs go to logs/pilar/<date>.jsonl.
     python3 agent/chato.py plan --dealer pilar --only sell:42,sell:44 --allow-single
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --max-deals 2
 --allow-single lets an explicitly listed `sell:<asset_id>` go even when it is our last copy (or the copy we keep);
 nothing is ever auto-selected that way: without an explicit id the agent sells spares only.
---sell-anchor N (absolute first ask) and --sell-step N override the dealer's selling defaults; the floor still holds.
+--sell-anchor N (absolute first ask), --sell-step N and --max-rounds N override the dealer's defaults; the floor
+still holds.
 --floor P replaces the default sell floor (private value + 2) with P for this run; a copy whose private value is above
 P (hard minimum ceil(private value)) is refused: plan shows it, run stops before opening any thread.
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --floor 18 --max-deals 2
@@ -48,7 +57,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "kit"))
-from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
+from bazaar_sdk import BazaarError  # noqa: E402
+# the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
+from dealer_client import DealerBazaar as Bazaar  # noqa: E402
+from dealer_client import (ACCEPTED, DEFERRED, EXIT_RESERVE, close_safely, guarded_accept,  # noqa: E402,F401
+                           reserve_line)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redacted (main() swaps it per --dealer)
@@ -60,18 +73,25 @@ SELL_ANCHOR_MULT = 1.6      # first ask, as a multiple of his opening bid (selli
 SELL_ANCHOR_OVER_FLOOR = 0  # first ask is at least floor + this (selling); 0 for Chato, so his anchor is unchanged
 SELL_ANCHOR_ABS = None      # --sell-anchor N: absolute first ask when selling (overrides the multiple; floor holds)
 STEP = 1                    # primas per round when buying: he mirrors our step, his final comes at his limit
-MAX_BID = None              # --max-bid N: our bids stop here; we then wait for his final (accepted up to the cap)
+MAX_BID = None              # --max-bid N: our bids stop here; his offer is still taken up to the reservation
+MAX_BID_STALL = 2           # pinned at --max-bid: listen while his offer improved in the last 2 ticks, then decide
 SELL_STEP = 2               # primas per round when selling (time is short and his bid barely moves)
-MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low
+MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low (per dealer: DEALERS)
+END_ACCEPT_TRIES = 2        # refused accepts retried (a tick apart) once the round budget is spent
 DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
 
 # Per-dealer table. Chato's row is exactly the constants above, so no --dealer flag means no change.
 DEALERS = {
     "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True,
-              "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 2, "example_bid": 13},
+              "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 2, "example_bid": 13,
+              "max_rounds": 12},
     # L3 collector: buys uncommon/rare/epic (loves SAL, RET), sells gold packs only. Opened 16, held 16 (feed).
+    # She concedes by time, not by our steps: her finals were 19 to 21 on 7-8 round threads and 17 on 4-5 round
+    # threads (Saturday). So: first ask max(1.25 x her bid, floor + 9) (27 for floor 18 against her usual 16; the
+    # 1.25 only matters if she opens high, so we never take her opener outright), 1 P steps, a 40-round budget.
     "pilar": {"name": "Doña Pilar", "buys": ("uncommon", "rare", "epic"), "sells_cards": False,
-              "sell_anchor_mult": 3.0, "sell_anchor_over_floor": 20, "sell_step": 4, "example_bid": 16},
+              "sell_anchor_mult": 1.25, "sell_anchor_over_floor": 9, "sell_step": 1, "example_bid": 16,
+              "max_rounds": 40},
 }
 DEFAULT_DEALER = "chato"
 DEALER_NAME = DEALERS[DEFAULT_DEALER]["name"]
@@ -79,16 +99,19 @@ SELL_RARITIES = DEALERS[DEFAULT_DEALER]["buys"]       # what the dealer buys fro
 DEALER_SELLS_CARDS = DEALERS[DEFAULT_DEALER]["sells_cards"]
 
 
-def apply_dealer(dealer: str, sell_anchor: int | None = None, sell_step: int | None = None) -> None:
-    """Point every dealer-specific global at one row of DEALERS (plus the --sell-anchor/--sell-step overrides)."""
+def apply_dealer(dealer: str, sell_anchor: int | None = None, sell_step: int | None = None,
+                 max_rounds: int | None = None) -> None:
+    """Point every dealer-specific global at one row of DEALERS (plus the --sell-anchor/--sell-step/--max-rounds
+    overrides: an explicit flag always wins over the dealer's default)."""
     global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR
-    global SELL_ANCHOR_ABS, SELL_STEP
+    global SELL_ANCHOR_ABS, SELL_STEP, MAX_ROUNDS
     d = DEALERS[dealer]
     DEALER, DEALER_NAME = dealer, d["name"]
     SELL_RARITIES, DEALER_SELLS_CARDS = d["buys"], d["sells_cards"]
     SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR = d["sell_anchor_mult"], d["sell_anchor_over_floor"]
     SELL_ANCHOR_ABS = sell_anchor
     SELL_STEP = d["sell_step"] if sell_step is None else int(sell_step)
+    MAX_ROUNDS = d["max_rounds"] if max_rounds is None else int(max_rounds)
 
 
 def duel_lock_fresh(path: Path = DUEL_LOCK) -> bool:
@@ -218,80 +241,149 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         tid = th["id"]
         log("open", thread=tid, side=side, item=item, value=value)
 
-    for rnd in range(MAX_ROUNDS):
-        t = b.thread(tid)
+    rnd = 0           # rounds spent (one per tick); lock deferrals and clock pauses (inside wait_tick) cost none
+    stall = 0         # reads in a row in which his price did not improve (the --max-bid pin listens while it does)
+    end_refusals = 0  # refused accepts once the round budget is spent
+
+    def tick(free: bool = False) -> None:
+        nonlocal rnd
+        b.wait_tick()
+        if not free:
+            rnd += 1
+
+    while True:
+        out = rnd >= MAX_ROUNDS
+        try:
+            t = b.thread(tid)
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
+            if out:
+                break
+            tick()
+            continue
         status = t.get("status")
         if status != "open":
             log("closed", thread=tid, status=status, reason=t.get("closed_reason"), ours=ours, her=last_her)
             return {"result": status, "thread": tid, "ours": ours, "her": last_her}
         o = her_open_offer(t)
-        if o is None:
-            b.wait_tick()
-            continue
-        if not offer_matches(o, side, item, asset_id):
+        if o is not None and not offer_matches(o, side, item, asset_id):
             log("mismatch", thread=tid, offer=o)  # a switched item: never accept it
-            b.wait_tick()
+            o = None
+        if o is None:
+            if out:
+                break
+            tick()
             continue
         her = offer_price(o)
         final = bool(o.get("final"))
+        improved = last_her is None or (her < last_her if side == "buy" else her > last_her)
+        stall = 0 if improved else stall + 1
         if her != last_her:
             log("her", thread=tid, price=her, final=final, round=rnd)
         last_her = her
-        cash = b.me()["cash"] if side == "buy" else None
+        try:
+            cash = b.me()["cash"] if side == "buy" else None
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
+            if out:
+                break
+            tick()
+            continue
         reservation = (min(value, cash - CASH_RESERVE) if side == "buy" else value)
         reservation = int(reservation) if side == "buy" else int(-(-reservation // 1))
 
         def good(p: int) -> bool:
             return p <= reservation if side == "buy" else p >= reservation
 
-        # 2) her last word: take it if it is still a good deal, else walk
+        # our bid sits at --max-bid while his offer is still above it but our reservation is higher
+        at_max_bid = (side == "buy" and MAX_BID is not None and ours is not None and ours >= int(MAX_BID)
+                      and int(MAX_BID) < reservation)
+        why = None
         if final:
-            if good(her):
-                b.accept(o["id"])
-                log("accept", thread=tid, price=her, why="final")
-                return settle(b, tid, her)
-            b.close_thread(tid)
-            log("walk", thread=tid, price=her, reservation=reservation)
-            return {"result": "walked_by_us", "thread": tid}
-        # 3) she has not answered our last number yet: never bid against ourselves
-        if o["id"] == answered:
-            b.wait_tick()
+            # 1) his last word: take it if it is still a good deal, else walk
+            if not good(her):
+                close_safely(b, tid, log)
+                log("walk", thread=tid, price=her, reservation=reservation)
+                return {"result": "walked_by_us", "thread": tid}
+            why = "final"
+        elif out:
+            # 2) the round budget is spent: never close on a standing offer inside our reservation
+            if not good(her):
+                break
+            why = "budget_end"
+        elif at_max_bid and stall >= MAX_BID_STALL:
+            # 3) pinned at --max-bid and he stopped improving: take his offer if it is inside our reservation
+            if not good(her):
+                close_safely(b, tid, log)
+                log("max_bid_no_deal", thread=tid, ours=ours, her=her, reservation=reservation, max_bid=MAX_BID,
+                    stall=stall)
+                return {"result": "max_bid_no_deal", "thread": tid, "ours": ours, "her": her}
+            why = "max_bid_stall"
+        elif o["id"] == answered:
+            # 4) he has not answered our last number yet: never bid against ourselves
+            tick()
             continue
-        # 4) our next number: low anchor, then STEP per round toward her
-        if ours is None:
-            if side == "buy":
-                nxt = int(ANCHOR_ABS) if ANCHOR_ABS is not None else int(her * ANCHOR_FRAC)
-            else:
-                nxt = sell_anchor(her, reservation)
         else:
-            nxt = ours + STEP if side == "buy" else ours - SELL_STEP
-        nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
-        if side == "buy" and MAX_BID is not None:
-            nxt = min(nxt, int(MAX_BID))  # stop bidding here; his final is still taken up to the reservation
-        # 5) she is already at (or past) our next number: take her price
-        crossed = her <= nxt if side == "buy" else her >= nxt
-        if crossed and good(her):
-            b.accept(o["id"])
-            log("accept", thread=tid, price=her, why="crossed", ours=ours)
+            # 5) our next number: low anchor, then STEP per round toward him
+            if ours is None:
+                if side == "buy":
+                    nxt = int(ANCHOR_ABS) if ANCHOR_ABS is not None else int(her * ANCHOR_FRAC)
+                else:
+                    nxt = sell_anchor(her, reservation)
+            else:
+                nxt = ours + STEP if side == "buy" else ours - SELL_STEP
+            nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
+            if side == "buy" and MAX_BID is not None:
+                nxt = min(nxt, int(MAX_BID))  # stop bidding here; his offer is still taken up to the reservation
+            # 6) he is already at (or past) our next number: take his price
+            crossed = her <= nxt if side == "buy" else her >= nxt
+            if crossed and good(her):
+                why = "crossed"
+            elif ours is not None and nxt == ours:  # pinned: listen (his final, or the --max-bid stall rule)
+                tick()
+                continue
+            else:
+                try:
+                    b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, nxt), price=nxt)
+                except BazaarError as e:  # nothing moved: same number next tick, after a fresh read
+                    log("say_refused", thread=tid, price=nxt, code=e.code, msg=e.message, round=rnd)
+                    tick()
+                    continue
+                ours = nxt
+                answered = o["id"]
+                said += 1
+                log("say", thread=tid, price=ours, her=her)
+                tick()
+                continue
+        # 7) accept, behind the duel lock; a refusal is never resent blindly: wait, re-read, decide again
+        r = guarded_accept(b, o["id"], duel_lock_fresh, log, thread=tid, price=her, why=why, round=rnd)
+        if r == ACCEPTED:
+            log("accept", thread=tid, price=her, why=why, ours=ours, round=rnd)
             return settle(b, tid, her)
-        if ours is not None and nxt == ours:  # pinned at our reservation: wait for her final offer
-            b.wait_tick()
+        if r == DEFERRED:
+            tick(free=True)  # the duel bot holds the team's accept this tick: no round spent
             continue
-        ours = nxt
-        b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, ours), price=ours)
-        answered = o["id"]
-        said += 1
-        log("say", thread=tid, price=ours, her=her)
-        b.wait_tick()
-    b.close_thread(tid)
+        if out:
+            end_refusals += 1
+            if end_refusals > END_ACCEPT_TRIES:
+                break
+            tick(free=True)
+            continue
+        tick()
+    close_safely(b, tid, log)
     log("max_rounds", thread=tid, ours=ours, her=last_her)
     return {"result": "max_rounds", "thread": tid}
 
 
 def settle(b: Bazaar, tid: int, price: int) -> dict:
+    t: dict = {}
     for _ in range(4):  # it settles on the next tick
         b.wait_tick()
-        t = b.thread(tid)
+        try:
+            t = b.thread(tid)
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message)
+            continue
         if t.get("status") != "open":
             break
     log("result", thread=tid, status=t.get("status"), price=price, reason=t.get("closed_reason"))
@@ -395,7 +487,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--only", default="", help="comma list of card refs and/or sell:<asset_id>")
     ap.add_argument("--max-deals", type=int, default=3)
     ap.add_argument("--resume", type=int, default=None, help="thread id to continue for the first target")
-    ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
+    ap.add_argument("--max-rounds", type=int, default=None,
+                    help="round budget per thread, one round per tick (default per dealer: chato 12, pilar 40)")
     ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (default: our value)")
     ap.add_argument("--anchor", type=int, default=None, help="absolute first bid when buying (overrides ANCHOR_FRAC)")
@@ -407,8 +500,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     help="with explicit sell:<asset_id> entries only: sell that copy even if it is our last one")
     ap.add_argument("--sell-anchor", type=int, default=None,
                     help="absolute first ask when selling, in P (default per dealer: chato 1.6 x his bid, "
-                         "pilar max(3 x her bid, floor + 20)); never below the floor")
-    ap.add_argument("--sell-step", type=int, default=None, help="primas per round when selling (default chato 2, pilar 4)")
+                         "pilar max(1.25 x her bid, floor + 9)); never below the floor")
+    ap.add_argument("--sell-step", type=int, default=None, help="primas per round when selling (default chato 2, pilar 1)")
     ap.add_argument("--floor", type=int, default=None,
                     help="sell floor in P for this run, replacing private value + 2; refused below ceil(private value)")
     args = ap.parse_args(argv)
@@ -418,6 +511,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ap.error("--sell-step and --sell-anchor must be >= 1")
     if args.floor is not None and args.floor < 1:
         ap.error("--floor must be >= 1")
+    if args.max_rounds is not None and args.max_rounds < 1:
+        ap.error("--max-rounds must be >= 1")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
     if args.allow_single and not listed_sell_ids(only):
         ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
@@ -456,7 +551,7 @@ def main() -> None:
     global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP, MAX_BID, RUN
     load_env()
     args = parse_args()
-    apply_dealer(args.dealer, args.sell_anchor, args.sell_step)
+    apply_dealer(args.dealer, args.sell_anchor, args.sell_step, args.max_rounds)
     extra = (args.dealer != DEFAULT_DEALER or args.allow_single or args.sell_anchor is not None
              or args.sell_step is not None or args.floor is not None)  # print/log the new selling details; plain chato output is unchanged
     if args.cmd == "run" and duel_lock_fresh():
@@ -464,13 +559,15 @@ def main() -> None:
               f"Not starting {DEALER_NAME}; try again after the duel wave.", flush=True)
         return
     ANCHOR_ABS, STEP, MAX_BID = args.anchor, args.step, args.max_bid
-    b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
+    # wait_on_tick=False: a refused write comes back to negotiate(), which re-reads and decides again (never resent)
+    b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"],
+               wait_on_tick=False)
+    b.on_pause = lambda c: log("clock_paused", tick=c.get("tick"), paused=c.get("paused"), doors=c.get("doors"))
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap, allow_single=args.allow_single)
     plan, floor_refused = apply_floor(plan, args.floor)
     CASH_RESERVE = args.reserve
-    MAX_ROUNDS = args.max_rounds
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
         print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}"
@@ -481,7 +578,8 @@ def main() -> None:
     for p in plan:
         if p["side"] == "buy" and ANCHOR_ABS is not None:
             print(f"  bids {p['item']}: {' '.join(str(x) for x in bid_ladder(p['value'], me['cash'] - CASH_RESERVE))}"
-                  f" (then wait for his final; take it if <= {int(min(p['value'], me['cash'] - CASH_RESERVE))})")
+                  f" (then take his offer once it is <= {int(min(p['value'], me['cash'] - CASH_RESERVE))}"
+                  + (", or close if he stalls 2 ticks above it" if MAX_BID is not None else "") + ")")
     if extra:
         first = (f"{SELL_ANCHOR_ABS}" if SELL_ANCHOR_ABS is not None
                  else f"max({SELL_ANCHOR_MULT} x her bid, floor + {SELL_ANCHOR_OVER_FLOOR})")
@@ -522,13 +620,18 @@ def main() -> None:
               **({"dealer": DEALER, "allow_single": args.allow_single, "sell_anchor": SELL_ANCHOR_ABS,
                   "sell_step": SELL_STEP, "floor": args.floor} if extra else {}))
     done = 0
+    buys_reached, buys_short = 0, []
+    need = max(5, ANCHOR_ABS or 0)   # the least a buy needs above the reserve: never open below --anchor
     for target in plan:
         if done >= args.max_deals:
             break
         me = b.me()
-        if target["side"] == "buy" and me["cash"] - CASH_RESERVE < max(5, ANCHOR_ABS or 0):
-            log("skip_cash", item=target["item"], cash=me["cash"], reserve=CASH_RESERVE, anchor=ANCHOR_ABS)
-            continue   # e.g. before the grant: never open at a bid below --anchor and burn a dealer slot
+        if target["side"] == "buy":
+            buys_reached += 1
+            if me["cash"] - CASH_RESERVE < need:
+                log("skip_cash", item=target["item"], cash=me["cash"], reserve=CASH_RESERVE, anchor=ANCHOR_ABS)
+                buys_short.append(target["item"])
+                continue   # e.g. before the grant: never open at a bid below --anchor and burn a dealer slot
         r = negotiate(b, target, False, resume=args.resume if target is plan[0] else None)
         if r.get("thread"):
             save_thread(b, r["thread"])  # full transcript, her words included
@@ -538,9 +641,15 @@ def main() -> None:
             log("stop", code=r["code"])
             break
     me = b.me()
+    blocked = buys_reached and len(buys_short) == buys_reached
+    if blocked:  # say it out loud instead of finishing silently with nothing done
+        log("reserve_blocks_buys", cash=me["cash"], reserve=CASH_RESERVE, need=need, items=buys_short)
     s = me["score"]
     RUN.end(cash=me["cash"], level=me["level"], unlocked=me["unlocked"], deals=s.get("deals"),
             ladder_points=s.get("ladder_points"), score=s.get("score"), rank=s.get("rank"))
+    if blocked:
+        print(reserve_line(me["cash"], CASH_RESERVE, need, len(buys_short)), flush=True)
+        sys.exit(EXIT_RESERVE)
 
 
 if __name__ == "__main__":

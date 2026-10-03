@@ -19,7 +19,10 @@ Usage (from the repo root):
     python3 agent/abuela.py run           # work through the plan, one conversation at a time
     python3 agent/abuela.py run --only LAV-07,sell:39
     python3 agent/abuela.py run --only SAL-01 --reserve 200 --cap 10   # --cap only lowers our limit
-`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds).
+`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds), and
+re-checks the lock before every accept: while it is fresh the accept waits a tick (no round spent).
+`run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it.
+The client never resends a refused write and waits through a paused clock (agent/dealer_client.py).
 Only ONE process per team may talk to Abuela at a time (one open conversation per dealer).
 """
 from __future__ import annotations
@@ -33,7 +36,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "kit"))
-from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
+from bazaar_sdk import BazaarError  # noqa: E402
+# the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
+from dealer_client import DealerBazaar as Bazaar  # noqa: E402
+from dealer_client import (ACCEPTED, DEFERRED, EXIT_RESERVE, close_safely, guarded_accept,  # noqa: E402,F401
+                           reserve_line)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
@@ -136,80 +143,112 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
     said = 0
     last_her = None
     answered = None  # id of her offer we last countered
-    for rnd in range(MAX_ROUNDS):
-        t = b.thread(tid)
+    rnd = 0          # rounds spent (one per tick); lock deferrals and clock pauses (inside wait_tick) cost none
+
+    def tick(free: bool = False) -> None:
+        nonlocal rnd
+        b.wait_tick()
+        if not free:
+            rnd += 1
+
+    while rnd < MAX_ROUNDS:
+        try:
+            t = b.thread(tid)
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
+            tick()
+            continue
         status = t.get("status")
         if status != "open":
             log("closed", thread=tid, status=status, reason=t.get("closed_reason"), ours=ours, her=last_her)
             return {"result": status, "thread": tid, "ours": ours, "her": last_her}
         o = her_open_offer(t)
         if o is None:
-            b.wait_tick()
+            tick()
             continue
         if not offer_matches(o, side, item, asset_id):
             log("mismatch", thread=tid, offer=o)  # a switched item: never accept it
-            b.wait_tick()
+            tick()
             continue
         her = offer_price(o)
         final = bool(o.get("final"))
         if her != last_her:
             log("her", thread=tid, price=her, final=final, round=rnd)
         last_her = her
-        cash = b.me()["cash"] if side == "buy" else None
+        try:
+            cash = b.me()["cash"] if side == "buy" else None
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
+            tick()
+            continue
         reservation = (min(value, cash - CASH_RESERVE) if side == "buy" else value)
 
         def good(p: int) -> bool:
             return p <= reservation if side == "buy" else p >= reservation
 
+        why = None
         # 1) the welcome price (~0.7 x book) never moves and is far below our value: take it at once.
         #    Capped at WELCOME_MAX_FRAC x book so a normal opening is never mistaken for it.
         if first_deal and side == "buy" and good(her) and her <= WELCOME_MAX_FRAC * target["book"]:
-            b.accept(o["id"])
-            log("accept", thread=tid, price=her, why="welcome")
-            return settle(b, tid, her)
+            why = "welcome"
         # 2) her last word: take it if it is still a good deal, else walk
-        if final:
-            if good(her):
-                b.accept(o["id"])
-                log("accept", thread=tid, price=her, why="final")
-                return settle(b, tid, her)
-            b.close_thread(tid)
-            log("walk", thread=tid, price=her, reservation=reservation)
-            return {"result": "walked_by_us", "thread": tid}
+        elif final:
+            if not good(her):
+                close_safely(b, tid, log)
+                log("walk", thread=tid, price=her, reservation=reservation)
+                return {"result": "walked_by_us", "thread": tid}
+            why = "final"
         # 3) she has not answered our last number yet: never bid against ourselves
-        if o["id"] == answered:
-            b.wait_tick()
+        elif o["id"] == answered:
+            tick()
             continue
-        # 4) our next number: low anchor, then STEP per round toward her
-        if ours is None:
-            nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
         else:
-            nxt = ours + STEP if side == "buy" else ours - STEP
-        nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
-        # 5) she is already at (or past) our next number: take her price
-        crossed = her <= nxt if side == "buy" else her >= nxt
-        if crossed and good(her):
-            b.accept(o["id"])
-            log("accept", thread=tid, price=her, why="crossed", ours=ours)
+            # 4) our next number: low anchor, then STEP per round toward her
+            if ours is None:
+                nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
+            else:
+                nxt = ours + STEP if side == "buy" else ours - STEP
+            nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
+            # 5) she is already at (or past) our next number: take her price
+            crossed = her <= nxt if side == "buy" else her >= nxt
+            if crossed and good(her):
+                why = "crossed"
+            elif ours is not None and nxt == ours:  # pinned at our reservation: wait for her final offer
+                tick()
+                continue
+            else:
+                try:
+                    b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, nxt), price=nxt)
+                except BazaarError as e:  # nothing moved: same number next tick, after a fresh read
+                    log("say_refused", thread=tid, price=nxt, code=e.code, msg=e.message, round=rnd)
+                    tick()
+                    continue
+                ours = nxt
+                answered = o["id"]
+                said += 1
+                log("say", thread=tid, price=ours, her=her)
+                tick()
+                continue
+        # 6) accept, behind the duel lock; a refusal is never resent blindly: wait, re-read, decide again
+        r = guarded_accept(b, o["id"], duel_lock_fresh, log, thread=tid, price=her, why=why, round=rnd)
+        if r == ACCEPTED:
+            log("accept", thread=tid, price=her, why=why, ours=ours, round=rnd)
             return settle(b, tid, her)
-        if ours is not None and nxt == ours:  # pinned at our reservation: wait for her final offer
-            b.wait_tick()
-            continue
-        ours = nxt
-        b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, ours), price=ours)
-        answered = o["id"]
-        said += 1
-        log("say", thread=tid, price=ours, her=her)
-        b.wait_tick()
-    b.close_thread(tid)
+        tick(free=(r == DEFERRED))  # the duel bot holds the team's accept this tick: no round spent
+    close_safely(b, tid, log)
     log("max_rounds", thread=tid, ours=ours, her=last_her)
     return {"result": "max_rounds", "thread": tid}
 
 
 def settle(b: Bazaar, tid: int, price: int) -> dict:
+    t: dict = {}
     for _ in range(4):  # it settles on the next tick
         b.wait_tick()
-        t = b.thread(tid)
+        try:
+            t = b.thread(tid)
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message)
+            continue
         if t.get("status") != "open":
             break
     log("result", thread=tid, status=t.get("status"), price=price, reason=t.get("closed_reason"))
@@ -271,7 +310,10 @@ def main() -> None:
               "Not starting Abuela; try again after the duel wave.", flush=True)
         return
     CASH_RESERVE = args.reserve
-    b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
+    # wait_on_tick=False: a refused write comes back to negotiate(), which re-reads and decides again (never resent)
+    b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"],
+               wait_on_tick=False)
+    b.on_pause = lambda c: log("clock_paused", tick=c.get("tick"), paused=c.get("paused"), doors=c.get("doors"))
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap)
@@ -285,13 +327,18 @@ def main() -> None:
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
               plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]])
     done = 0
+    buys_reached, buys_short = 0, []
+    need = 5   # the least a buy needs above the reserve
     for target in plan:
         if done >= args.max_deals:
             break
         me = b.me()
-        if target["side"] == "buy" and me["cash"] - CASH_RESERVE < 5:
-            log("skip_cash", item=target["item"], cash=me["cash"])
-            continue
+        if target["side"] == "buy":
+            buys_reached += 1
+            if me["cash"] - CASH_RESERVE < need:
+                log("skip_cash", item=target["item"], cash=me["cash"])
+                buys_short.append(target["item"])
+                continue
         first = (me["score"].get("deals") or 0) == 0
         r = negotiate(b, target, first)
         if r.get("thread"):
@@ -302,9 +349,15 @@ def main() -> None:
             log("stop", code=r["code"])
             break
     me = b.me()
+    blocked = buys_reached and len(buys_short) == buys_reached
+    if blocked:  # say it out loud instead of finishing silently with nothing done
+        log("reserve_blocks_buys", cash=me["cash"], reserve=CASH_RESERVE, need=need, items=buys_short)
     s = me["score"]
     RUN.end(cash=me["cash"], level=me["level"], unlocked=me["unlocked"], deals=s.get("deals"),
             ladder_points=s.get("ladder_points"), score=s.get("score"), rank=s.get("rank"))
+    if blocked:
+        print(reserve_line(me["cash"], CASH_RESERVE, need, len(buys_short)), flush=True)
+        sys.exit(EXIT_RESERVE)
 
 
 if __name__ == "__main__":
