@@ -107,6 +107,7 @@ def main() -> None:
         table.setdefault((row, col), {})[pname] = summ
         per_seed[(row, col, pname)] = ps
     replay = {n: arena.duels1_line(n, p) for n, p in policies.items()}
+    replay2 = {n: arena.duels2_line(n, p) for n, p in policies.items()}
 
     names = list(policies)
     lines = [f"# Duel matrix: {arena.SESSIONS[a.session]['name']}", "",
@@ -134,12 +135,15 @@ def main() -> None:
         lines.append(f"| {row} | {col} | " + " | ".join(parts) + " |")
     lines += ["", "Duels I replay (real rival price paths; rivals do not react or accept):", ""]
     lines += [f"- {replay[n]}" for n in names]
+    lines += ["", "Duels II replay (real (price, day) paths, 16 ticks, decay 0.08; rivals do not react or accept):", ""]
+    lines += [f"- {replay2[n]}" for n in names]
     md = "\n".join(lines) + "\n"
     print(md)
     if a.out_md:
         Path(a.out_md).expanduser().write_text(md)
     if a.out_json:
-        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay}, indent=1))
+        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay, "replay2": replay2},
+                                                            indent=1))
 
 
 if __name__ == "__main__":

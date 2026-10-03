@@ -411,3 +411,27 @@ class MatrixDuels2(unittest.TestCase):
         row, col, name, summ, per_seed = matrix.cell(jobs[-1])
         self.assertEqual((arena.DAYS_W_EMP, arena.RIVAL_DMODE_ROLE, arena.PAIR_SEEN, arena.ARENA_DAYS), before)
         self.assertEqual(summ["n"], 68)
+
+
+class Duels2Replay(unittest.TestCase):
+    def duel_file(self, role="seller", limit=100, weight=2.0, path=((1000, 120, 10),), D=1016):
+        meaning = "each delivery day adds this much cash to your side" if role == "seller" else \
+            "each delivery day costs you this much cash"
+        return {"duel": 7, "session": 3, "status": "deal", "role": role, "item": "x", "issues": ["price", "days"],
+                "your_days_weight": weight, "days_meaning": meaning, "your_limit": limit, "rival": "Rival R",
+                "deadline_tick": D, "decay_per_round": 0.08, "result": 1.0,
+                "messages": [{"tick": t, "from": "Rival R", "text": "", "price": p, "days": day} for t, p, day in path]}
+
+    def test_a_deal_is_paid_with_the_servers_day_term(self):
+        p = json.loads((ROOT / "docs" / "duel-lab" / "duel-params-duels2-blend.json").read_text())
+        [r] = arena.duels2_replay(p, [self.duel_file()])
+        self.assertTrue(r["deal"])
+        self.assertEqual((r["price"], r["day"], r["rounds"]), (120, 10, 0))
+        self.assertEqual(r["result"], 40.0)                      # 120 - 100 + 2 x 10: the seller earns its days
+        [b] = arena.duels2_replay(p, [self.duel_file("buyer", 140, 2.0, ((1000, 100, 5),))])
+        self.assertEqual(b["result"], 30.0)                      # 140 - 100 - 2 x 5: the buyer pays them
+
+    def test_it_reads_the_68_duels_of_duels2(self):
+        files = arena.duels2_duels()
+        self.assertEqual(len(files), 68)
+        self.assertTrue(all(f["issues"] == ["price", "days"] for f in files))

@@ -1118,6 +1118,103 @@ def duels1_replay(params: dict, files: list = None, ticks: int = 16) -> list:
     return results
 
 
+def duels2_duels(log_dir: Path = ROOT / "logs" / "duels") -> list:
+    """Duels II's closed duels (server session 3, Saturday 21:16-23:00): price and delivery day."""
+    return friday_duels(log_dir, session=3)
+
+
+def duels2_replay(params: dict, files: list = None, ticks: int = 16, days_best: str = "buyer:0,seller:10") -> list:
+    """Our policy against the rival (price, day) paths of Duels II on the real tick timeline, as duels1_replay does
+    for price only: rivals do not react or accept, a rival's last offer stands to the deadline, and where we accepted
+    in the real run the rival's path ends there (so this replay shows what waiting costs, never what it gains, and
+    cannot reproduce the 14 deals where the rival took our offer). Our days cost is the server's (DAYS_MODEL), read
+    with --days-best `days_best` as the run did. Scored: duels where the rival posted a price; result = our surplus
+    with the day term x (1 - decay) ^ rounds (the server's number, primas); score = result / our limit."""
+    every = files if files is not None else duels2_duels()
+    cfg = cfg_for({**params, "days_best": days_best}, ticks)
+    ws = []
+    for x in every:
+        path = [(m["tick"], m["price"], m.get("days")) for m in x.get("messages") or []
+                if m.get("from") == x.get("rival") and isinstance(m.get("price"), (int, float))]
+        d = {**{k: x[k] for k in ("duel", "session", "role", "item", "issues", "your_days_weight", "days_meaning",
+                                  "your_limit", "rival", "deadline_tick", "decay_per_round")},
+             "status": "live", "rounds": 0, "your_offer": None, "rival_offer": None, "messages": []}
+        ws.append({"d": d, "path": path, "S": x["deadline_tick"] - ticks, "D": x["deadline_tick"], "st": None,
+                   "deal": None, "real": x})
+    if not ws:
+        return []
+
+    def read(live, tick, see, late=False):
+        for w in live:
+            d = w["d"]
+            theirs = [(t, p, day) for t, p, day in w["path"] if t < see]
+            mine = [m for m in d["messages"] if m["from"] == "you"]
+            d["messages"] = sorted(mine + [{"tick": t, "from": d["rival"], "price": p, "days": day, "text": ""}
+                                           for t, p, day in theirs], key=lambda m: (m["tick"], m["from"] != "you"))
+            if theirs:
+                t, p, day = theirs[-1]
+                d["rival_offer"] = {"id": len(theirs), "price": p, "tick": t, "days": day if day is not None else 0}
+            w["st"].pair_l = duel.mirror_limit(d, every)
+            w["st"].rival_limit = w["st"].pair_l if cfg.mirror else None
+            duel.sync_state(w["st"], d)
+        pairs = [(w["d"], w["st"]) for w in live]
+        duel.set_windows(pairs, cfg)
+        decisions = [(d, st, duel.decide(d, st, tick, cfg)) for d, st in pairs]
+        return duel.allocate(decisions, cfg, late=True) if late else duel.allocate(decisions, cfg) or decisions
+
+    for tick in range(min(w["S"] for w in ws), max(w["D"] for w in ws)):
+        live = [w for w in ws if w["S"] <= tick < w["D"] and not w["deal"]]
+        if not live:
+            continue
+        for w in live:
+            if w["st"] is None:
+                w["st"] = duel.DuelState(w["d"], tick, ticks)
+        decisions = read(live, tick, tick)
+        for d, st, dec in decisions:
+            w = next(w for w in live if w["d"] is d)
+            if dec["action"] == "accept":
+                w["deal"] = (d["rival_offer"]["price"], d["rival_offer"]["days"], tick)
+            elif dec["action"] == "say":
+                duel.record_say(st, dec, d, tick)
+                d["messages"].append({"tick": tick, "from": "you", "price": dec["price"], "days": dec["days"],
+                                      "text": ""})
+                d["your_offer"] = {"price": dec["price"], "days": dec["days"]}
+        if duel.late_due(decisions, cfg):
+            rest = [w for w in live if not w["deal"]]
+            for d, st, dec in (read(rest, tick, tick + 1, late=True) if rest else []):
+                if dec["action"] == "accept":
+                    next(w for w in rest if w["d"] is d)["deal"] = (d["rival_offer"]["price"],
+                                                                     d["rival_offer"]["days"], tick)
+    results = []
+    for w in ws:
+        d, real = w["d"], w["real"]
+        r = {"duel": d["duel"], "role": d["role"], "limit": d["your_limit"], "rival_prices": len(w["path"]),
+             "sent": sum(1 for m in d["messages"] if m["from"] == "you"), "deal": bool(w["deal"]), "score": 0.0,
+             "result": 0.0, "scored": bool(w["path"]), "real_result": real.get("result") or 0.0,
+             "real_deal": real.get("status") == "deal"}
+        if w["deal"]:
+            price, day, at = w["deal"]
+            seq = [(m["tick"], "us" if m["from"] == "you" else "them") for m in d["messages"] if m["tick"] < at
+                   or (m["tick"] == at and m["from"] != "you")]
+            rounds = rounds_of(seq, "exchange")
+            best = 0 if d["role"] == "buyer" else 10
+            s = ((price - d["your_limit"]) if d["role"] == "seller" else (d["your_limit"] - price)) \
+                - days_term(best, float(d["your_days_weight"] or 0), int(day))
+            k = (1 - d["decay_per_round"]) ** rounds
+            r.update(price=price, day=day, at=at - w["S"], left=w["D"] - at, rounds=rounds, result=round(s * k, 2),
+                     score=round(s / d["your_limit"] * k, 4))
+        results.append(r)
+    return results
+
+
+def duels2_line(name: str, params: dict) -> str:
+    rr = [r for r in duels2_replay(params) if r["scored"]]
+    n = max(1, len(rr))
+    return (f"{name}: mean score {sum(r['score'] for r in rr) / n:.4f}, result {sum(r['result'] for r in rr):.1f} P, "
+            f"deals {sum(r['deal'] for r in rr)}/{len(rr)} (real run: {sum(r['real_result'] for r in rr):.1f} P, "
+            f"{sum(r['real_deal'] for r in rr)} deals)")
+
+
 def duels1_line(name: str, params: dict) -> str:
     rr = [r for r in duels1_replay(params) if r["scored"]]
     n = max(1, len(rr))
@@ -1335,6 +1432,11 @@ def main() -> None:
           "decay):")
     for n, p in policies.items():
         print("  " + duels1_line(n, p))
+    if a.session >= 2:
+        print("\nDuels II replay (real (price, day) paths, 16 ticks, decay 0.08, --days-best buyer:0,seller:10; rivals do "
+              "not react or accept; score = result / our limit):")
+        for n, p in policies.items():
+            print("  " + duels2_line(n, p))
     if a.stress:
         print("\nStress (mean score per duel):\n")
         print(stress(policies, seeds, a.session))
