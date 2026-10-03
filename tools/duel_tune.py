@@ -158,21 +158,39 @@ def selftest_value(params: dict, ticks: int = 16) -> float:
     return duel.sim_table(res)[-1][4]
 
 
-def d1_value(params: dict, seeds, session: int, kinds, slot_busy: float) -> float:
+def d1_value(params: dict, seeds, session: int, kinds, slot_busy: float, weights: dict = None) -> float:
     """Mean score per duel if an accept at deadline-1 never settles (a third of the seeds)."""
-    res = arena.evaluate(params, seeds[::3], session, kinds=kinds, slot_busy=slot_busy, d1_settles=False)
+    res = arena.evaluate(params, seeds[::3], session, kinds=kinds, slot_busy=slot_busy, d1_settles=False,
+                         weights=weights)
     return sum(r["score"] for r in res) / max(1, len(res))
 
 
+# The world the arena plays in (--weights, --pair-seen, --days-mode) and the params held fixed (--fixed-from): set
+# inside each worker by run_eval, since spawned worker processes do not inherit the parent's module globals.
+WORLD = {"weights": None, "pair_seen": None, "days_mode": "", "fixed": {}}
+
+
+def apply_world(world: dict) -> dict:
+    """Set the arena globals for this world; returns the rival weights to pass to arena.evaluate."""
+    if world.get("pair_seen") is not None:
+        arena.PAIR_SEEN = world["pair_seen"]
+    arena.ARENA_DAYS = world.get("days_mode") or ""
+    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS,
+            "blend": arena.BLEND_WEIGHTS}.get(world.get("weights"))
+
+
 def run_eval(job: tuple) -> dict:
-    params, seeds, session, kinds, slot_busy, held_out = job
+    params, seeds, session, kinds, slot_busy, held_out = job[:6]
+    world = job[6] if len(job) > 6 else WORLD
+    weights = apply_world(world)
+    params = {**params, **world.get("fixed", {})}
     res = []
     for rule in ("exchange", "min"):
         for d1 in (True, False):
             group = [s for s in seeds if (s % 2 == 0) == (rule == "exchange")
                      and (held_out or ((s // 2) % 4 != 3)) == d1]
             res.extend(arena.evaluate(params, group, session, kinds=kinds, rounds_rule=rule, slot_busy=slot_busy,
-                                      d1_settles=d1))
+                                      d1_settles=d1, weights=weights))
     per_seed = {}
     for r in res:
         per_seed.setdefault(r["seed"], []).append(r["score"])
@@ -180,7 +198,7 @@ def run_eval(job: tuple) -> dict:
             "per_seed": {s: sum(v) / len(v) for s, v in per_seed.items()},
             "replay": replay_score(params) if session == 1 else None,
             "sim": selftest_value(params) if session == 1 and held_out else None,
-            "d1": d1_value(params, seeds, session, kinds, slot_busy) if held_out else None}
+            "d1": d1_value(params, seeds, session, kinds, slot_busy, weights) if held_out else None}
 
 
 def paired(a: dict, b: dict) -> tuple:
@@ -211,12 +229,34 @@ def main() -> None:
     ap.add_argument("--out", required=True, help="where the best params go (a duel.py --params file)")
     ap.add_argument("--report", required=True, help="where the markdown report goes")
     ap.add_argument("--max-minutes", type=float, default=0, help="stop after this many minutes (0 = no limit)")
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend"],
+                    help="rival mix: Friday-fitted WEIGHTS, the Duels I field mix (DUELS1_WEIGHTS) or the likely "
+                         "field from the Saturday research (FIELD_WEIGHTS)")
+    ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
+                    "(arena default 1.0, Friday; Duels I: 0 of 34)")
+    ap.add_argument("--days-mode", default="", help='"" robust (duel.py run before --days-confirmed), "confirmed", '
+                    'or a --days-best value')
+    ap.add_argument("--fixed-from", default="", help="a --params file whose non-tunable keys (and --freeze keys) are "
+                    "held fixed in every candidate and written to --out (e.g. the PR #10 flags)")
+    ap.add_argument("--freeze", default="", help="comma list of tunable keys held at their --fixed-from value")
     a = ap.parse_args()
+    fixed = {}
+    if a.fixed_from:
+        src = arena.load_policy(a.fixed_from)
+        frozen = {k.strip() for k in a.freeze.split(",") if k.strip()}
+        fixed = {k: v for k, v in src.items() if (k not in TUNABLE or k in frozen) and k != "duel_ticks"}
+    WORLD.update({"weights": a.weights, "pair_seen": a.pair_seen, "days_mode": a.days_mode, "fixed": fixed})
+    apply_world(WORLD)
     rng = random.Random(a.seed)
     sess = arena.SESSIONS[a.session]
     tune_seeds = list(range(0, a.tune_sessions))
     hold_seeds = list(range(HOLDOUT_SEED0, HOLDOUT_SEED0 + a.holdout_sessions))
     all_kinds = arena.FITTED + arena.CLASSIC
+    tune_kinds = TUNE_KINDS
+    if a.weights in ("duels1", "field", "blend"):   # tune and hold out on every kind the mix weighs
+        mix = {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS, "blend": arena.BLEND_WEIGHTS}[a.weights]
+        tune_kinds = [k for k in arena.KINDS if mix.get(k, 0) > 0]
+        all_kinds = tune_kinds
     t0 = time.time()
 
     named = {"defaults": {}}
@@ -227,10 +267,10 @@ def main() -> None:
     pool = mp.Pool(a.workers)
 
     def tune_eval(cands):
-        return pool.map(run_eval, [(c, tune_seeds, a.session, TUNE_KINDS, a.slot_busy, False) for c in cands])
+        return pool.map(run_eval, [(c, tune_seeds, a.session, tune_kinds, a.slot_busy, False, WORLD) for c in cands])
 
     def hold_eval(cands):
-        return pool.map(run_eval, [(c, hold_seeds, a.session, all_kinds, a.slot_busy, True) for c in cands])
+        return pool.map(run_eval, [(c, hold_seeds, a.session, all_kinds, a.slot_busy, True, WORLD) for c in cands])
 
     held = dict(zip(named, hold_eval(list(named.values()))))
     ref = held["defaults"]
@@ -316,6 +356,7 @@ def write_out(a, inc: dict, inc_hold: dict, held: dict, named: dict, history: li
               final: bool = False) -> None:
     sess = arena.SESSIONS[a.session]
     out = {k: v for k, v in flat_to_file(inc).items()}
+    out.update(WORLD.get("fixed", {}))
     out["duel_ticks"] = sess["ticks"]
     Path(a.out).expanduser().parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).expanduser().write_text(json.dumps(out, indent=2) + "\n")
