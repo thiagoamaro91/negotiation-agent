@@ -1,0 +1,43 @@
+duels: 18  closed: 12  live at snapshot: 6  deals: 0  statuses: ['live', 'no_deal']
+results of closed duels: [0.0]
+
+rounds vs who spoke:
+  we spoke=False rival spoke=False: 4 duels, rounds=[0] [23, 24, 91, 92]
+  we spoke=False rival spoke=True : 7 duels, rounds=[0] [9, 10, 29, 30, 38, 93, 94]
+  we spoke=True  rival spoke=False: 2 duels, rounds=[0] [139, 140]
+  we spoke=True  rival spoke=True : 5 duels, rounds=[1] [37, 99, 100, 103, 104]
+
+our own messages: count per duel, our opening as multiple of limit
+  duel 37 seller limit 73 sent 125 at tick 140 (x1.712, 4 ticks before deadline)
+  duel 99 seller limit 134 sent 187 at tick 146 (x1.396, 10 ticks before deadline)
+  duel 100 buyer limit 152 sent 98 at tick 146 (x0.645, 10 ticks before deadline)
+  duel 103 seller limit 102 sent 143 at tick 146 (x1.402, 10 ticks before deadline)
+  duel 104 buyer limit 103 sent 67 at tick 146 (x0.650, 10 ticks before deadline)
+  duel 139 seller limit 79 sent 115 at tick 146 (x1.456, 10 ticks before deadline)
+  duel 140 buyer limit 110 sent 66 at tick 146 (x0.600, 10 ticks before deadline)
+
+silent-accept counterfactual (closed duels): best rival price inside our limit, and the last standing offer
+duel role  L   best  surplus%L  tick-to-deadline | last  surplus%L | rounds if accepted silently
+   9 buyer   118    82     30.5%      1 |    82     30.5% | 0
+  10 seller   84   113     34.5%      1 |   113     34.5% | 0
+  23 buyer    88  no rival offer (rival silent)
+  24 seller   65  no rival offer (rival silent)
+  29 seller   79    82      3.8%      8 |    82      3.8% | 0
+  30 buyer   150   132     12.0%      8 |   132     12.0% | 0
+  37 seller   73   102     39.7%      1 |   102     39.7% | n/a (we spoke)
+  38 buyer   164   106     35.4%      1 |   106     35.4% | 0
+  91 seller   98  no rival offer (rival silent)
+  92 buyer   182  no rival offer (rival silent)
+  93 seller   83   133     60.2%      1 |   133     60.2% | 0
+  94 buyer   142    86     39.4%      1 |    86     39.4% | 0
+
+closed duels with a rival price: 8/12; an offer inside our limit existed in 8/8; last standing offer inside our limit in 8/8
+mean surplus of last standing offer (when inside): 31.9% of limit; best offer came on the rival's last message in 8/8
+
+live duels at snapshot: rival standing offer vs our limit
+  99 seller L 134 rival 154 surplus +20 (+14.9%), our offer 187, rounds 1
+  100 buyer L 152 rival 135 surplus +17 (+11.2%), our offer 98, rounds 1
+  103 seller L 102 rival 88 surplus -14 (-13.7%), our offer 143, rounds 1
+  104 buyer L 103 rival 95 surplus +8 (+7.8%), our offer 67, rounds 1
+  139 seller L 79 no rival offer, rounds 0
+  140 buyer L 110 no rival offer, rounds 0

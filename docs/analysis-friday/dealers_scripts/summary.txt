@@ -1,0 +1,6 @@
+abuela|common|neg deals 17 (+2 welcome)|open med 12.0|final 8/10/12|bids med 2|engaged 23: deal 17 walked-after-final 0 left-without-final 6
+abuela|uncommon|neg deals 20 (+3 welcome)|open med 29|final 21/24/25|bids med 4|engaged 27: deal 20 walked-after-final 1 left-without-final 6
+abuela|pack:sobre_barrio|neg deals 13 (+7 welcome)|open med 30.0|final 19/22/24|bids med 5|engaged 26: deal 13 walked-after-final 3 left-without-final 10
+chato|uncommon|neg deals 6 (+0 welcome)|open med 33|final 28/29/32|bids med 6|engaged 7: deal 6 walked-after-final 0 left-without-final 1
+chato|rare|neg deals 7 (+0 welcome)|open med 97.0|final 82/91/93|bids med 4|engaged 8: deal 6 walked-after-final 0 left-without-final 2
+chato|pack:sobre_plata|neg deals 1 (+0 welcome)|open med 188|final 181/181/181|bids med 4|engaged 1: deal 1 walked-after-final 0 left-without-final 0

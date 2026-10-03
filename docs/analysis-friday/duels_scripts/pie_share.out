@@ -1,0 +1,14 @@
+duel    9 buyer  L  118 pairL   84 mirrored pie   34 last   82 share   1.06 no_deal
+duel   10 seller L   84 pairL  118 mirrored pie   34 last  113 share   0.85 no_deal
+duel   29 seller L   79 pairL  150 mirrored pie   71 last   82 share   0.04 no_deal
+duel   30 buyer  L  150 pairL   79 mirrored pie   71 last  132 share   0.25 no_deal
+duel   37 seller L   73 pairL  164 mirrored pie   91 last  102 share   0.32 no_deal
+duel   38 buyer  L  164 pairL   73 mirrored pie   91 last  106 share   0.64 no_deal
+duel   93 seller L   83 pairL  142 mirrored pie   59 last  133 share   0.85 no_deal
+duel   94 buyer  L  142 pairL   83 mirrored pie   59 last   86 share   0.95 no_deal
+duel   99 seller L  134 pairL  152 mirrored pie   18 last  154 share   1.11 live
+duel  100 buyer  L  152 pairL  134 mirrored pie   18 last  135 share   0.94 live
+duel  103 seller L  102 pairL  103 mirrored pie    1 last   88 share -14.00 live
+duel  104 buyer  L  103 pairL  102 mirrored pie    1 last   95 share   8.00 live
+last offer >= 0.85 x mirrored pie: 6/12
+our pair value/cost ratios: [1.01, 1.134, 1.354, 1.392, 1.405, 1.711, 1.857, 1.899, 2.247]; below 1.55 (current anchor R): 5/9

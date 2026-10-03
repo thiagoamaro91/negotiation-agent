@@ -1,0 +1,328 @@
+== 0. Coverage ==
+records 174 from thread files 3
+feed gap ticks 49-118; feed end tick 159; Chato open_to_all tick 158
+
+== DONE CHECK: our (t03) deals ==
+  thread 49 abuela LAV-06 price 17 src feed closed_on dealer_ask
+  thread 70 abuela LAV-07 price 22 src feed closed_on dealer_final
+  thread 105 abuela LAV-08 price 23 src thread_file closed_on dealer_final
+  thread 117 abuela SAL-06 price 25 src thread_file closed_on dealer_final
+  thread 150 abuela SAL-07 price 22 src thread_file closed_on dealer_final
+  thread 234 chato SAL-08 price 29 src feed closed_on dealer_final
+  thread 253 chato LAT-06 price 28 src feed closed_on dealer_final
+  thread 275 chato LAT-07 price 29 src feed closed_on dealer_final
+
+== 1. Per dealer x side x rarity (field, all teams) ==
+dealer|side|rarity|threads|deals|welcome|negotiated|walk_after_final|no_deal|censored|opening med (min-max)|final deal min/med/max (negotiated)|welcome prices|team bids to deal med|dealer final offer min/med/max
+abuela|None|None|1|0|0|0|0|0|1|- (-)|-|[]|-|-
+abuela|buy|common|27|19|0|19|0|6|2|12 (7-12)|7/10/12|[]|2|-
+abuela|buy|pack:sobre_barrio|48|20|2|18|3|22|3|30 (17-30)|17/21/24|[17, 17]|5|17/21.5/24
+abuela|buy|uncommon|38|23|1|22|1|9|5|29 (17-29)|17/23.5/25|[17]|3.5|22/22/25
+abuela|sell|None|2|0|0|0|0|1|1|- (-)|-|[]|-|-
+abuela|sell|common|19|13|2|11|1|0|5|5 (5-20)|5/6/23|[5, 13]|5|5/6/23
+abuela|sell|uncommon|6|5|0|5|0|1|0|12 (12-12)|13/14/16|[]|5|13/14.5/16
+chato|buy|pack:sobre_plata|1|1|0|1|0|0|0|188 (188-188)|181/181/181|[]|4|-
+chato|buy|rare|11|7|0|7|0|3|1|97 (97-97)|82/91/93|[]|4|90/91/93
+chato|buy|uncommon|9|6|0|6|0|3|0|33 (33-33)|28/29/32|[]|6|28/29/29
+chato|sell|rare|1|1|1|0|0|0|0|- (-)|-|[46]|-|46/46/46
+chato|sell|uncommon|11|3|0|3|2|3|3|13 (13-13)|13/13/15|[]|5|13/15/16
+
+== 2. Chato rare threads (all teams) ==
+  th 213 t13 sell LAT-09 open_tick 119 last 119 dealer [46] team [] final 46 -> deal 46 dealer_final cens=False gapopen=True
+  th 219 t14 buy LAV-10 open_tick 119 last 120 dealer [92, 91] team [] final 91 -> deal 91 dealer_final cens=False gapopen=True
+  th 223 t12 buy MAL-09 open_tick 119 last 126 dealer [96, 95, 92, 90] team [82, 84] final 90 -> deal 90 dealer_final cens=False gapopen=True
+  th 225 t17 buy MAL-09 open_tick 119 last 119 dealer [96] team [] final None -> no_deal None  cens=False gapopen=True
+  th 243 t04 buy LAV-10 open_tick 124 last 140 dealer [97, 96, 95, 92, 90, 88, 86, 84] team [46, 60, 66, 72, 74, 76, 78, 80, 82] final None -> deal 82 team_bid_accepted cens=False gapopen=False
+  th 246 t14 buy LAV-09 open_tick 125 last 131 dealer [97, 97, 96, 95, 94, 93] team [72, 73, 74, 75, 76] final 93 -> deal 93 dealer_final cens=False gapopen=False
+  th 248 t08 buy MAL-09 open_tick 126 last 142 dealer [97, 97, 96] team [63, 67] final None -> no_deal None  cens=False gapopen=False
+  th 255 t12 buy MAL-10 open_tick 128 last 135 dealer [97, 97, 95, 93] team [46, 68, 83, 89] final None -> deal 89 team_bid_accepted cens=False gapopen=False
+  th 263 t07 buy LAV-10 open_tick 131 last 137 dealer [97, 96, 95, 93, 91] team [68, 82, 88, 90, 91] final None -> deal 91 team_bid_accepted cens=False gapopen=False
+  th 286 t04 buy LAV-09 open_tick 142 last 154 dealer [97, 96, 95, 93, 91, 89, 87] team [60, 62, 64, 66, 68, 70, 72] final None -> no_deal None  cens=False gapopen=False
+  th 289 t05 buy LAV-09 open_tick 145 last 150 dealer [97, 97, 95, 93] team [70, 73, 76] final None -> deal 93 dealer_ask cens=False gapopen=False
+  th 298 t07 buy LAT-10 open_tick 150 last 157 dealer [97, 97, 96, 94, 90, 86, 82] team [58, 62, 66, 70, 74, 78] final None -> no_deal None  cens=True gapopen=False
+
+== 2b. Chato uncommon buy threads ==
+  th 228 t05 LAV-06 dealer [33, 33, 33, 32, 32, 31] team [23, 26, 28, 29, 30, 31] final None -> deal 31 team_bid_accepted cens=False
+  th 234 t03 SAL-08 dealer [33, 33, 33, 32, 31, 30, 29] team [13, 14, 15, 16, 17, 18] final 29 -> deal 29 dealer_final cens=False
+  th 235 t17 SAL-08 dealer [33] team [] final None -> no_deal None  cens=False
+  th 253 t03 LAT-06 dealer [33, 33, 33, 32, 32, 31, 30, 29, 28] team [13, 14, 15, 16, 17, 18, 19, 20] final 28 -> deal 28 dealer_final cens=False
+  th 261 t18 LAT-08 dealer [33, 33, 33, 32] team [24, 27, 30] final None -> no_deal None  cens=False
+  th 264 t05 LAV-07 dealer [] team [] final None -> empty None  cens=False
+  th 268 t18 LAT-08 dealer [33, 33, 33, 32] team [28, 29, 31] final None -> deal 32 dealer_ask cens=False
+  th 272 t14 LAV-06 dealer [33, 33, 33, 32, 31, 30, 29] team [22, 23, 24, 25, 26, 27, 28] final None -> deal 28 team_bid_accepted cens=False
+  th 275 t03 LAT-07 dealer [33, 33, 33, 32, 31, 30, 29] team [13, 14, 15, 16, 17, 18] final 29 -> deal 29 dealer_final cens=False
+
+== 3. Deals at or below group median (negotiated buys) ==
+ ('abuela', 'buy', 'common') median 10 n 19
+   LOW th 34 t17 MAL-01 price 7 open 7 first_bid 3 (43%) steps [4] nbids 2 closed_on team_bid_accepted dealer [7, 7]
+   LOW th 46 t14 LAV-03 price 7 open 7 first_bid 7 (100%) steps [] nbids 1 closed_on team_bid_accepted dealer [7]
+   LOW th 274 t10 SAL-02 price 8 open 12 first_bid 4 (33%) steps [2, 1, 1] nbids 4 closed_on team_bid_accepted dealer [12, 10, 9, 9]
+   LOW th 40 t05 LAV-05 price 9 open 12 first_bid 7 (58%) steps [1] nbids 2 closed_on dealer_ask dealer [12, 10, 9]
+   LOW th 45 t05 LAV-02 price 9 open 12 first_bid 7 (58%) steps [1, 1] nbids 3 closed_on team_bid_accepted dealer [12, 10, 10]
+   LOW th 62 t14 LAV-04 price 9 open 12 first_bid 5 (42%) steps [1, 1, 1] nbids 4 closed_on dealer_ask dealer [12, 10, 10, 9, 9]
+   LOW th 68 t18 SAL-02 price 9 open 12 first_bid 5 (42%) steps [2] nbids 2 closed_on dealer_ask dealer [12, 10, 9]
+   LOW th 72 t14 LAV-05 price 9 open 12 first_bid 5 (42%) steps [1, 1, 1, 1] nbids 5 closed_on team_bid_accepted dealer [12, 11, 10, 10, 10]
+   LOW th 229 t16 SAL-01 price 9 open 12 first_bid 7 (58%) steps [1] nbids 2 closed_on dealer_ask dealer [12, 10, 9, 9]
+   MED th 28 t13 SAL-03 price 10 open 12 first_bid 6 (50%) steps [1, 1] nbids 3 closed_on dealer_ask dealer [12, 10, 10]
+   MED th 31 t13 SAL-05 price 10 open 12 first_bid 5 (42%) steps [1, 1, 1] nbids 4 closed_on dealer_ask dealer [12, 11, 10, 10]
+   MED th 47 t17 MAL-02 price 10 open 12 first_bid 3 (25%) steps [7] nbids 2 closed_on team_bid_accepted dealer [12, 10]
+   MED th 53 t17 MAL-03 price 10 open 12 first_bid 3 (25%) steps [7] nbids 2 closed_on team_bid_accepted dealer [12, 10]
+   MED th 76 t10 LAV-04 price 10 open 12 first_bid 7 (58%) steps [2] nbids 2 closed_on dealer_ask dealer [12, 11, 10]
+   MED th 236 t02 SAL-03 price 10 open 12 first_bid 9 (75%) steps [] nbids 1 closed_on dealer_ask dealer [12, 10]
+   MED th 241 t15 LAT-03 price 10 open 12 first_bid 10 (83%) steps [] nbids 1 closed_on team_bid_accepted dealer [12]
+   MED th 242 t02 SAL-04 price 10 open 12 first_bid 9 (75%) steps [] nbids 1 closed_on dealer_ask dealer [12, 10]
+   MED th 250 t02 SAL-05 price 10 open 12 first_bid 9 (75%) steps [1] nbids 2 closed_on team_bid_accepted dealer [12, 11]
+   high th 52 t06 LAV-03 price 12 open 12 first_bid 4 (33%) steps [2] nbids 2 closed_on dealer_ask dealer [12]
+ ('abuela', 'buy', 'pack:sobre_barrio') median 21 n 18
+   LOW th 2 t06 sobre_barrio price 17 open 17 first_bid 15 (88%) steps [1] nbids 2 closed_on dealer_ask dealer [17, 17]
+   LOW th 4 t09 sobre_barrio price 17 open None first_bid - (-) steps [] nbids 0 closed_on other dealer []
+   LOW th 9 t07 sobre_barrio price 17 open None first_bid - (-) steps [] nbids 0 closed_on other dealer []
+   LOW th 11 t08 sobre_barrio price 17 open 17 first_bid 8 (47%) steps [1, 3, 2, 3] nbids 5 closed_on dealer_final dealer [17, 17, 17, 17, 17, 17]
+   LOW th 13 t04 sobre_barrio price 17 open 17 first_bid 12 (71%) steps [2] nbids 2 closed_on dealer_ask dealer [17, 17]
+   LOW th 64 t17 sobre_barrio price 19 open 30 first_bid 10 (33%) steps [1, 5, 2, 1] nbids 5 closed_on team_bid_accepted dealer [30, 25, 23, 22, 21]
+   LOW th 66 t09 sobre_barrio price 19 open 30 first_bid 13 (43%) steps [2, 1, 1, 1, 1] nbids 6 closed_on team_bid_accepted dealer [30, 25, 23, 22, 21]
+   LOW th 271 t12 sobre_barrio price 19 open 30 first_bid 9 (30%) steps [2, 2, 2, 2, 1] nbids 6 closed_on dealer_final dealer [30, 25, 23, 22, 21, 21, 20, 19]
+   MED th 39 t06 sobre_barrio price 21 open 30 first_bid 11 (37%) steps [4, 2, 2, 1, 1] nbids 6 closed_on team_bid_accepted dealer [30, 25, 24, 23, 22]
+   MED th 63 t12 sobre_barrio price 21 open 30 first_bid 9 (30%) steps [3, 3, 2, 2] nbids 5 closed_on dealer_final dealer [30, 25, 24, 23, 22, 21]
+   MED th 277 t07 sobre_barrio price 21 open 30 first_bid 14 (47%) steps [4, 2, 1] nbids 4 closed_on team_bid_accepted dealer [30, 25, 23, 22]
+   high th 29 t05 sobre_barrio price 22 open 30 first_bid 16 (53%) steps [2, 2] nbids 3 closed_on dealer_ask dealer [30, 25, 23, 22]
+   high th 36 t05 sobre_barrio price 22 open 30 first_bid 16 (53%) steps [2, 2, 2] nbids 4 closed_on team_bid_accepted dealer [30, 26, 25, 24]
+   high th 254 t06 sobre_barrio price 22 open 30 first_bid 13 (43%) steps [4, 1, 1, 1] nbids 5 closed_on dealer_final dealer [30, 25, 24, 23, 22]
+   high th 44 t08 sobre_barrio price 23 open 30 first_bid 17 (57%) steps [2, 2, 1, 1] nbids 5 closed_on team_bid_accepted dealer [30, 27, 26, 25, 24]
+   high th 23 t07 sobre_barrio price 24 open 30 first_bid 16 (53%) steps [2, 2, 2] nbids 4 closed_on dealer_ask dealer [30, 26, 25, 24, 24]
+   high th 26 t12 sobre_barrio price 24 open 30 first_bid 12 (40%) steps [2, 3, 2, 2] nbids 5 closed_on dealer_final dealer [30, 27, 26, 25, 24, 24]
+   high th 33 t06 sobre_barrio price 24 open 30 first_bid 11 (37%) steps [4, 3, 2, 2] nbids 5 closed_on dealer_final dealer [30, 27, 26, 25, 24]
+ ('abuela', 'buy', 'uncommon') median 23.5 n 22
+   LOW th 16 t13 SAL-06 price 17 open 17 first_bid 15 (88%) steps [1] nbids 2 closed_on dealer_ask dealer [17, 17]
+   LOW th 24 t10 LAV-08 price 17 open 17 first_bid 10 (59%) steps [3, 0] nbids 3 closed_on dealer_ask dealer [17, 17, 17, 17]
+   LOW th 22 t06 LAV-06 price 21 open 29 first_bid 11 (38%) steps [4, 2, 3, 1] nbids 5 closed_on team_bid_accepted dealer [29, 25, 23, 22]
+   LOW th 41 t13 MAL-06 price 21 open 29 first_bid 11 (38%) steps [2, 2, 4, 1, 1] nbids 6 closed_on team_bid_accepted dealer [29, 25, 23, 22, 21]
+   LOW th 218 t08 MAL-07 price 21 open 23 first_bid 15 (65%) steps [1, 1] nbids 3 closed_on dealer_ask dealer [23, 22, 21]
+   LOW th 30 t06 LAV-07 price 22 open 29 first_bid 11 (38%) steps [4, 3, 1, 2, 1] nbids 6 closed_on team_bid_accepted dealer [29, 26, 24, 24, 23]
+   LOW th 67 t07 LAT-07 price 22 open 29 first_bid 13 (45%) steps [4, 2, 1] nbids 4 closed_on dealer_final dealer [29, 25, 24, 23, 22]
+   LOW th 70 t03 LAV-07 price 22 open 29 first_bid 11 (38%) steps [1, 1, 1, 1, 1] nbids 6 closed_on dealer_final dealer [29, 26, 24, 24, 23, 22, 22]
+   LOW th 150 t03 SAL-07 price 22 open 29 first_bid 11 (38%) steps [1, 1, 1] nbids 4 closed_on dealer_final dealer [29, 25, 24, 23, 22]
+   LOW th 71 t10 MAL-07 price 23 open 29 first_bid 18 (62%) steps [5] nbids 2 closed_on team_bid_accepted dealer [29, 25]
+   LOW th 105 t03 LAV-08 price 23 open 29 first_bid 11 (38%) steps [1, 1, 1, 1] nbids 5 closed_on dealer_final dealer [29, 26, 25, 24, 24, 23]
+   high th 35 t10 LAV-06 price 24 open 29 first_bid 15 (52%) steps [3, 2] nbids 3 closed_on dealer_ask dealer [29, 26, 24, 24]
+   high th 51 t10 LAV-07 price 24 open 29 first_bid 15 (52%) steps [3, 2, 3] nbids 4 closed_on dealer_ask dealer [29, 26, 25, 24]
+   high th 73 t13 SAL-08 price 24 open 29 first_bid 11 (38%) steps [2, 2] nbids 3 closed_on dealer_ask dealer [29, 25, 24]
+   high th 74 t07 LAT-06 price 24 open 29 first_bid 13 (45%) steps [5, 2] nbids 3 closed_on dealer_ask dealer [29, 26, 24, 24]
+   high th 221 t12 LAV-07 price 24 open 26 first_bid 20 (77%) steps [2] nbids 2 closed_on dealer_ask dealer [26, 25, 25, 24]
+   high th 247 t08 SAL-08 price 24 open 29 first_bid 12 (41%) steps [1, 1, 1, 1] nbids 5 closed_on dealer_final dealer [29, 27, 26, 25, 25, 24]
+   high th 59 t07 LAT-08 price 25 open 29 first_bid 13 (45%) steps [5, 3, 1] nbids 4 closed_on dealer_ask dealer [29, 27, 26, 25, 25]
+   high th 60 t17 MAL-06 price 25 open 29 first_bid 3 (10%) steps [22] nbids 2 closed_on team_bid_accepted dealer [29, 25]
+   high th 217 t04 LAV-07 price 25 open 25 first_bid 21 (84%) steps [] nbids 1 closed_on dealer_ask dealer [25]
+   high th 227 t02 SAL-08 price 25 open 29 first_bid 22 (76%) steps [3] nbids 2 closed_on team_bid_accepted dealer [29, 26]
+   high th 117 t03 SAL-06 price 25 open 29 first_bid 11 (38%) steps [1, 1, 1] nbids 4 closed_on dealer_final dealer [29, 27, 26, 25, 25]
+ ('chato', 'buy', 'rare') median 91 n 7
+   LOW th 243 t04 LAV-10 price 82 open 97 first_bid 46 (47%) steps [14, 6, 6, 2, 2, 2, 2, 2] nbids 9 closed_on team_bid_accepted dealer [97, 96, 95, 92, 90, 88, 86, 84]
+   LOW th 255 t12 MAL-10 price 89 open 97 first_bid 46 (47%) steps [22, 15, 6] nbids 4 closed_on team_bid_accepted dealer [97, 97, 95, 93]
+   LOW th 223 t12 MAL-09 price 90 open 96 first_bid 82 (85%) steps [2] nbids 2 closed_on dealer_final dealer [96, 95, 92, 90]
+   MED th 219 t14 LAV-10 price 91 open 92 first_bid - (-) steps [] nbids 0 closed_on dealer_final dealer [92, 91]
+   MED th 263 t07 LAV-10 price 91 open 97 first_bid 68 (70%) steps [14, 6, 2, 1] nbids 5 closed_on team_bid_accepted dealer [97, 96, 95, 93, 91]
+   high th 246 t14 LAV-09 price 93 open 97 first_bid 72 (74%) steps [1, 1, 1, 1] nbids 5 closed_on dealer_final dealer [97, 97, 96, 95, 94, 93]
+   high th 289 t05 LAV-09 price 93 open 97 first_bid 70 (72%) steps [3, 3] nbids 3 closed_on dealer_ask dealer [97, 97, 95, 93]
+ ('chato', 'buy', 'uncommon') median 29 n 6
+   LOW th 253 t03 LAT-06 price 28 open 33 first_bid 13 (39%) steps [1, 1, 1, 1, 1, 1, 1] nbids 8 closed_on dealer_final dealer [33, 33, 33, 32, 32, 31, 30, 29, 28]
+   LOW th 272 t14 LAV-06 price 28 open 33 first_bid 22 (67%) steps [1, 1, 1, 1, 1, 1] nbids 7 closed_on team_bid_accepted dealer [33, 33, 33, 32, 31, 30, 29]
+   MED th 234 t03 SAL-08 price 29 open 33 first_bid 13 (39%) steps [1, 1, 1, 1, 1] nbids 6 closed_on dealer_final dealer [33, 33, 33, 32, 31, 30, 29]
+   MED th 275 t03 LAT-07 price 29 open 33 first_bid 13 (39%) steps [1, 1, 1, 1, 1] nbids 6 closed_on dealer_final dealer [33, 33, 33, 32, 31, 30, 29]
+   high th 228 t05 LAV-06 price 31 open 33 first_bid 23 (70%) steps [3, 2, 1, 1, 1] nbids 6 closed_on team_bid_accepted dealer [33, 33, 33, 32, 32, 31]
+   high th 268 t18 LAT-08 price 32 open 33 first_bid 28 (85%) steps [1, 2] nbids 3 closed_on dealer_ask dealer [33, 33, 33, 32]
+
+== 4. Dealer concession vs team step ==
+ abuela: non-final concessions, (rarity, team_step) -> dealer drops [n, mean, list]
+   ('common', None): n=19 mean=1.47 [0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2]
+   ('common', -3): n=1 mean=0.00 [0]
+   ('common', 0): n=3 mean=0.67 [0, 1, 1]
+   ('common', 1): n=18 mean=0.61 [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+   ('common', 2): n=3 mean=1.00 [1, 1, 1]
+   ('pack:sobre_barrio', None): n=13 mean=3.23 [0, 0, 0, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5]
+   ('pack:sobre_barrio', 1): n=18 mean=1.17 [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]
+   ('pack:sobre_barrio', 2): n=25 mean=1.68 [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+   ('pack:sobre_barrio', 3): n=6 mean=1.33 [0, 1, 1, 1, 1, 4]
+   ('pack:sobre_barrio', 4): n=3 mean=4.33 [3, 5, 5]
+   ('pack:sobre_barrio', 5): n=1 mean=1.00 [1]
+   ('uncommon', None): n=21 mean=2.81 [0, 0, 0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4]
+   ('uncommon', -1): n=4 mean=0.25 [0, 0, 0, 1]
+   ('uncommon', 0): n=1 mean=0.00 [0]
+   ('uncommon', 1): n=18 mean=0.89 [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+   ('uncommon', 2): n=11 mean=1.64 [0, 0, 1, 1, 1, 1, 2, 2, 2, 4, 4]
+   ('uncommon', 3): n=8 mean=1.50 [0, 1, 1, 1, 2, 2, 2, 3]
+   ('uncommon', 4): n=3 mean=2.67 [1, 3, 4]
+   drops larger than team step (non-final): 17 of 137
+ chato: non-final concessions, (rarity, team_step) -> dealer drops [n, mean, list]
+   ('pack:sobre_plata', 10): n=3 mean=2.33 [0, 2, 5]
+   ('rare', None): n=5 mean=0.80 [0, 0, 0, 1, 3]
+   ('rare', 1): n=3 mean=1.33 [1, 1, 2]
+   ('rare', 2): n=10 mean=1.80 [1, 1, 2, 2, 2, 2, 2, 2, 2, 2]
+   ('rare', 3): n=2 mean=1.00 [0, 2]
+   ('rare', 4): n=6 mean=2.67 [1, 1, 2, 4, 4, 4]
+   ('rare', 6): n=4 mean=1.75 [1, 1, 2, 3]
+   ('rare', 14): n=1 mean=1.00 [1]
+   ('rare', 22): n=1 mean=0.00 [0]
+   ('uncommon', None): n=7 mean=0.00 [0, 0, 0, 0, 0, 0, 0]
+   ('uncommon', 1): n=11 mean=0.45 [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+   ('uncommon', 2): n=2 mean=0.00 [0, 0]
+   ('uncommon', 3): n=1 mean=0.00 [0]
+   drops larger than team step (non-final): 1 of 48
+
+== 4b. First dealer concession vs first team bid as % of opening (buys) ==
+   abuela ('common', 25, 1, 293, 12)
+   abuela ('common', 25, 2, 47, 12)
+   abuela ('common', 25, 2, 53, 12)
+   abuela ('common', 33, 0, 52, 12)
+   abuela ('common', 33, 2, 274, 12)
+   abuela ('common', 42, 1, 31, 12)
+   abuela ('common', 42, 1, 72, 12)
+   abuela ('common', 42, 1, 252, 12)
+   abuela ('common', 42, 2, 62, 12)
+   abuela ('common', 42, 2, 68, 12)
+   abuela ('common', 42, 2, 266, 12)
+   abuela ('common', 42, 2, 270, 12)
+   abuela ('common', 43, 0, 27, 7)
+   abuela ('common', 43, 0, 34, 7)
+   abuela ('common', 50, 2, 28, 12)
+   abuela ('common', 58, 1, 76, 12)
+   abuela ('common', 58, 1, 240, 12)
+   abuela ('common', 58, 2, 40, 12)
+   abuela ('common', 58, 2, 45, 12)
+   abuela ('common', 58, 2, 81, 12)
+   abuela ('common', 75, 1, 250, 12)
+   abuela ('common', 75, 2, 236, 12)
+   abuela ('common', 75, 2, 242, 12)
+   abuela ('common', 83, 0, 241, 12)
+   abuela ('common', 100, 0, 46, 7)
+   abuela ('pack:sobre_barrio', 20, 4, 77, 30)
+   abuela ('pack:sobre_barrio', 30, 4, 38, 30)
+   abuela ('pack:sobre_barrio', 30, 4, 259, 30)
+   abuela ('pack:sobre_barrio', 30, 5, 63, 30)
+   abuela ('pack:sobre_barrio', 30, 5, 271, 30)
+   abuela ('pack:sobre_barrio', 30, 5, 295, 30)
+   abuela ('pack:sobre_barrio', 33, 5, 64, 30)
+   abuela ('pack:sobre_barrio', 35, 0, 12, 17)
+   abuela ('pack:sobre_barrio', 37, 3, 33, 30)
+   abuela ('pack:sobre_barrio', 37, 4, 267, 30)
+   abuela ('pack:sobre_barrio', 37, 5, 39, 30)
+   abuela ('pack:sobre_barrio', 40, 3, 26, 30)
+   abuela ('pack:sobre_barrio', 40, 4, 21, 30)
+   abuela ('pack:sobre_barrio', 43, 0, 285, 30)
+   abuela ('pack:sobre_barrio', 43, 5, 66, 30)
+   abuela ('pack:sobre_barrio', 43, 5, 254, 30)
+   abuela ('pack:sobre_barrio', 47, 0, 11, 17)
+   abuela ('pack:sobre_barrio', 47, 5, 277, 30)
+   abuela ('pack:sobre_barrio', 53, 4, 23, 30)
+   abuela ('pack:sobre_barrio', 53, 4, 36, 30)
+   abuela ('pack:sobre_barrio', 53, 5, 29, 30)
+   abuela ('pack:sobre_barrio', 53, 5, 65, 30)
+   abuela ('pack:sobre_barrio', 57, 3, 44, 30)
+   abuela ('pack:sobre_barrio', 71, 0, 13, 17)
+   abuela ('pack:sobre_barrio', 76, 0, 5, 17)
+   abuela ('pack:sobre_barrio', 88, 0, 2, 17)
+   abuela ('pack:sobre_barrio', 88, 0, 8, 17)
+   abuela ('uncommon', 10, 4, 60, 29)
+   abuela ('uncommon', 34, 4, 265, 29)
+   abuela ('uncommon', 34, 4, 282, 29)
+   abuela ('uncommon', 38, 2, 117, 29)
+   abuela ('uncommon', 38, 3, 30, 29)
+   abuela ('uncommon', 38, 3, 70, 29)
+   abuela ('uncommon', 38, 3, 105, 29)
+   abuela ('uncommon', 38, 4, 22, 29)
+   abuela ('uncommon', 38, 4, 41, 29)
+   abuela ('uncommon', 38, 4, 73, 29)
+   abuela ('uncommon', 38, 4, 150, 29)
+   abuela ('uncommon', 41, 2, 247, 29)
+   abuela ('uncommon', 45, 2, 59, 29)
+   abuela ('uncommon', 45, 3, 74, 29)
+   abuela ('uncommon', 45, 3, 245, 29)
+   abuela ('uncommon', 45, 4, 67, 29)
+   abuela ('uncommon', 45, 4, 237, 29)
+   abuela ('uncommon', 52, 3, 35, 29)
+   abuela ('uncommon', 52, 3, 51, 29)
+   abuela ('uncommon', 55, 2, 82, 29)
+   abuela ('uncommon', 59, 0, 24, 17)
+   abuela ('uncommon', 62, 4, 71, 29)
+   abuela ('uncommon', 66, 4, 281, 29)
+   abuela ('uncommon', 88, 0, 16, 17)
+   chato ('pack:sobre_plata', 74, 2, 290, 188)
+   chato ('rare', 47, 1, 243, 97)
+   chato ('rare', 47, 2, 255, 97)
+   chato ('rare', 60, 1, 298, 97)
+   chato ('rare', 62, 1, 286, 97)
+   chato ('rare', 65, 1, 248, 97)
+   chato ('rare', 70, 1, 263, 97)
+   chato ('rare', 72, 2, 289, 97)
+   chato ('rare', 74, 1, 246, 97)
+   chato ('uncommon', 39, 1, 234, 33)
+   chato ('uncommon', 39, 1, 253, 33)
+   chato ('uncommon', 39, 1, 275, 33)
+   chato ('uncommon', 67, 1, 272, 33)
+   chato ('uncommon', 73, 1, 261, 33)
+   chato ('uncommon', 85, 1, 268, 33)
+
+== 4c. Final offer vs path (buys with a final) ==
+  abuela pack:sobre_barrio th 11 t08 open 17 final 17 final/open 1.00 nbids 5 first 8 last 17 -> deal
+  abuela pack:sobre_barrio th 12 t15 open 17 final 17 final/open 1.00 nbids 7 first 6 last 12 -> walk_after_final
+  abuela pack:sobre_barrio th 26 t12 open 30 final 24 final/open 0.80 nbids 5 first 12 last 21 -> deal
+  abuela pack:sobre_barrio th 33 t06 open 30 final 24 final/open 0.80 nbids 5 first 11 last 22 -> deal
+  abuela pack:sobre_barrio th 38 t18 open 30 final 23 final/open 0.77 nbids 5 first 9 last 13 -> walk_after_final
+  abuela pack:sobre_barrio th 63 t12 open 30 final 21 final/open 0.70 nbids 5 first 9 last 19 -> deal
+  abuela pack:sobre_barrio th 254 t06 open 30 final 22 final/open 0.73 nbids 5 first 13 last 20 -> deal
+  abuela pack:sobre_barrio th 259 t12 open 30 final 23 final/open 0.77 nbids 4 first 9 last 15 -> walk_after_final
+  abuela pack:sobre_barrio th 271 t12 open 30 final 19 final/open 0.63 nbids 6 first 9 last 18 -> deal
+  abuela pack:sobre_barrio th 295 t12 open 30 final 21 final/open 0.70 nbids 5 first 9 last 17 -> walk_after_final
+  abuela uncommon th 67 t07 open 29 final 22 final/open 0.76 nbids 4 first 13 last 20 -> deal
+  abuela uncommon th 70 t03 open 29 final 22 final/open 0.76 nbids 6 first 11 last 16 -> deal
+  abuela uncommon th 105 t03 open 29 final 23 final/open 0.79 nbids 5 first 11 last 15 -> deal
+  abuela uncommon th 117 t03 open 29 final 25 final/open 0.86 nbids 4 first 11 last 14 -> deal
+  abuela uncommon th 150 t03 open 29 final 22 final/open 0.76 nbids 4 first 11 last 14 -> deal
+  abuela uncommon th 247 t08 open 29 final 24 final/open 0.83 nbids 5 first 12 last 16 -> deal
+  abuela uncommon th 265 t17 open 29 final 22 final/open 0.76 nbids 5 first 10 last 20 -> walk_after_final
+  chato rare th 219 t14 open 92 final 91 final/open 0.99 nbids 0 first - last - -> deal
+  chato rare th 223 t12 open 96 final 90 final/open 0.94 nbids 2 first 82 last 84 -> deal
+  chato rare th 246 t14 open 97 final 93 final/open 0.96 nbids 5 first 72 last 76 -> deal
+  chato uncommon th 234 t03 open 33 final 29 final/open 0.88 nbids 6 first 13 last 18 -> deal
+  chato uncommon th 253 t03 open 33 final 28 final/open 0.85 nbids 8 first 13 last 20 -> deal
+  chato uncommon th 275 t03 open 33 final 29 final/open 0.88 nbids 6 first 13 last 18 -> deal
+
+== 5. Sell side (team sells to dealer) ==
+  abuela th 17 t12 tick 0 None None book None dealer_bids [] team_asks [] final None -> empty None
+  abuela th 18 t12 tick 0 LAV-02 common book 10 dealer_bids [13] team_asks [] final None -> deal 13
+  abuela th 32 t12 tick 12 LAT-03 common book 10 dealer_bids [5, 5, 5, 5, 5] team_asks [14, 12, 10, 8] final 5 -> deal 5
+  abuela th 37 t14 tick 16 LAT-01 common book 10 dealer_bids [13, 13, 13, 13, 13] team_asks [23, 22, 21, 20] final 13 -> walk_after_final None
+  abuela th 42 t09 tick 22 MAL-08 uncommon book 25 dealer_bids [12, 13, 13, 13, 13] team_asks [30, 26, 23, 20, 17] final 13 -> deal 13
+  abuela th 48 t12 tick 25 LAV-06 uncommon book 25 dealer_bids [12, 14, 15, 15, 16, 16] team_asks [35, 32, 29, 26, 23] final 16 -> deal 16
+  abuela th 54 t09 tick 28 MAL-08 uncommon book 25 dealer_bids [12, 12, 12, 12, 12, 12] team_asks [30, 26, 23, 20, 17, 15, 13] final None -> deal 13
+  abuela th 56 t02 tick 28 MAL-02 common book 10 dealer_bids [13, 13, 13, 13, 13, 13, 13, 13] team_asks [21, 21, 21, 18, 16, 15, 14] final 13 -> deal 13
+  abuela th 57 t04 tick 29 LAV-04 common book 10 dealer_bids [5, 5, 5, 6, 6] team_asks [17, 16, 15, 14, 13] final 6 -> deal 6
+  abuela th 69 t08 tick 37 LAT-05 common book 10 dealer_bids [20, 22, 22, 23, 23] team_asks [35, 34, 32, 29] final 23 -> deal 23
+  abuela th 75 t12 tick 41 SAL-05 common book 10 dealer_bids [5, 5, 5, 5, 5, 5] team_asks [14, 12, 10, 8, 7] final 5 -> deal 5
+  chato th 213 t13 tick 119 LAT-09 rare book 70 dealer_bids [46] team_asks [] final 46 -> deal 46
+  abuela th 226 t13 tick 119 SAL-02 common book 10 dealer_bids [6, 6, 6, 6] team_asks [19, 18, 17, 16, 14] final 6 -> deal 6
+  chato th 238 t13 tick 122 MAL-06 uncommon book 25 dealer_bids [13, 13, 13, 13, 14, 15] team_asks [51, 49, 46, 43, 40, 37] final 15 -> deal 15
+  abuela th 249 t16 tick 127 SAL-06 uncommon book 25 dealer_bids [12, 13, 14, 14] team_asks [25, 17, 16, 15] final None -> deal 14
+  abuela th 251 t10 tick 127 MAL-02 common book 10 dealer_bids [5, 5, 5, 5, 5, 5] team_asks [11, 9, 8, 7, 6] final 5 -> deal 5
+  abuela th 256 t13 tick 128 LAV-03 common book 10 dealer_bids [5, 5, 5, 6, 6, 6] team_asks [22, 20, 18, 16, 15, 14, 13] final 6 -> deal 6
+  chato th 257 t02 tick 129 SAL-07 uncommon book 25 dealer_bids [13, 13] team_asks [20, 17] final None -> no_deal None
+  abuela th 260 t02 tick 130 SAL-07 uncommon book 25 dealer_bids [12, 13] team_asks [24] final None -> no_deal None
+  chato th 273 t10 tick 136 SAL-07 uncommon book 25 dealer_bids [13, 13, 13, 13, 13, 14, 15, 16, 16] team_asks [39, 36, 33, 31, 29, 27, 26, 25] final 16 -> walk_after_final None
+  chato th 276 t05 tick 138 LAT-08 uncommon book 25 dealer_bids [13, 13, 13, 13, 13] team_asks [24, 23, 22, 21, 13] final 13 -> deal 13
+  chato th 278 t18 tick 140 LAT-07 uncommon book 25 dealer_bids [13] team_asks [26] final None -> no_deal None
+  chato th 279 t06 tick 140 LAV-08 uncommon book 25 dealer_bids [13, 13, 13, 13] team_asks [26, 21, 18, 16] final None -> no_deal None
+  abuela th 283 t13 tick 141 MAL-01 common book 10 dealer_bids [5, 5, 5, 5, 5] team_asks [22, 20, 19, 18, 17] final 5 -> deal 5
+  abuela th 287 t10 tick 142 MAL-03 common book 10 dealer_bids [5, 5, 5, 5, 5, 5, 5] team_asks [15, 14, 13, 12, 11, 10] final 5 -> deal 5
+  abuela th 288 t05 tick 145 LAV-05 common book 10 dealer_bids [5] team_asks [] final None -> deal 5
+  chato th 291 t10 tick 146 SAL-07 uncommon book 25 dealer_bids [13, 13, 13, 13, 14, 15] team_asks [39, 36, 33, 31, 29] final 15 -> walk_after_final None
+  chato th 294 t09 tick 148 MAL-08 uncommon book 25 dealer_bids [13, 13, 13] team_asks [22, 18, 14, 13] final None -> no_deal None
+  chato th 296 t18 tick 149 LAV-06 uncommon book 25 dealer_bids [13, 13, 13, 13, 13] team_asks [22, 17, 15, 14] final None -> deal 13
+  abuela th 297 t09 tick 150 MAL-08 uncommon book 25 dealer_bids [12, 13, 14, 14] team_asks [20, 18, 16, 15] final None -> deal 14
+  abuela th 299 t10 tick 151 LAT-01 common book 10 dealer_bids [5, 5, 5, 6, 6] team_asks [15, 14, 13, 12] final 6 -> deal 6
+  abuela th 302 t13 tick 153 LAT-05 common book 10 dealer_bids [5, 5, 5, 5, 5, 5] team_asks [22, 20, 19, 18, 16, 15, 14] final None -> no_deal None
+  chato th 304 t10 tick 154 SAL-07 uncommon book 25 dealer_bids [13, 13, 13, 13] team_asks [39, 36, 33, 31] final None -> no_deal None
+  abuela th 305 t07 tick 156 MAL-04 common book 10 dealer_bids [5, 5, 5] team_asks [20, 18, 16, 14] final None -> no_deal None
+  abuela th 308 t10 tick 159 None None book None dealer_bids [] team_asks [] final None -> empty None
+  abuela th 309 t07 tick 159 MAL-04 common book 10 dealer_bids [] team_asks [20] final None -> no_deal None
+  abuela th 310 t07 tick 159 MAL-02 common book 10 dealer_bids [] team_asks [20] final None -> no_deal None
+  chato th 311 t07 tick 159 LAT-06 uncommon book 25 dealer_bids [] team_asks [50] final None -> no_deal None
+  abuela th 312 t07 tick 159 MAL-04 common book 10 dealer_bids [] team_asks [20] final None -> no_deal None

@@ -1,0 +1,46 @@
+duel role  L  pairL | rival first mode(xN) final | first/L  first==L anyprice==L | H_pair viol | H_same viol
+   9 buyer   118   84 | Rival Sol    102  102(x1)   82 | 0.864 False False | 1/4 | 4/4 | open margin vs pairL +0.214
+  10 seller   84  118 | Rival Rojo    87   87(x1)  113 | 1.036 False False | 0/4 | 4/4 | open margin vs pairL +0.263
+  23 buyer    88 65 | no rival prices
+  24 seller   65 88 | no rival prices
+  29 seller   79  150 | Rival Luna    82   82(x1)   82 | 1.038 False False | 0/1 | 1/1 | open margin vs pairL +0.453
+  30 buyer   150   79 | Rival Luna   132  132(x1)  132 | 0.880 False False | 0/1 | 1/1 | open margin vs pairL +0.671
+  37 seller   73  164 | Rival Oro     73   73(x7)  102 | 1.000 True  True  | 0/12 | 5/12 | open margin vs pairL +0.555
+  38 buyer   164   73 | Rival Noche  128  128(x7)  106 | 0.780 False False | 0/12 | 12/12 | open margin vs pairL +0.753
+  91 seller   98 182 | no rival prices
+  92 buyer   182 98 | no rival prices
+  93 seller   83  142 | Rival Luna    74   74(x1)  133 | 0.892 False False | 0/11 | 7/11 | open margin vs pairL +0.479
+  94 buyer   142   83 | Rival Rojo   123  123(x1)   86 | 0.866 False False | 0/11 | 11/11 | open margin vs pairL +0.482
+  99 seller  134  152 | Rival Rojo   103  103(x1)  154 | 0.769 False False | 1/3 | 2/3 | open margin vs pairL +0.322
+ 100 buyer   152  134 | Rival Luna   180  180(x1)  135 | 1.184 False False | 0/3 | 2/3 | open margin vs pairL +0.343
+ 103 seller  102  103 | Rival Sol     85   85(x1)   88 | 0.833 False False | 0/2 | 0/2 | open margin vs pairL +0.175
+ 104 buyer   103  102 | Rival Luna    98   98(x1)   95 | 0.951 False False | 2/2 | 2/2 | open margin vs pairL -0.039
+ 139 seller   79 110 | no rival prices
+ 140 buyer   110 79 | no rival prices
+
+duels with rival prices: 12 of 18
+H_reveal: first price == our limit: 1/12; any rival price == our limit: 1/12; first within +-2 of limit: 1/12; mode == limit: 1/12; final == limit: 0/12
+  rival first / our limit: min 0.769 max 1.184 mean 0.924
+H_same: duels with >=1 rival price across our own limit (would breach a rival limit equal to ours): 11/12
+H_pair: duels with >=1 rival price that would breach the mirrored limit: 3/12 -> [9, 99, 104]
+
+pair  item                    our cost  our value  value>cost  same-rival-template  both-sides-priced  H_pair-viol
+9/10  Taxi Blanco                  84        118  True       True                 True               True
+23/24  Andén 0                      65         88  True       False                False              False
+29/30  Taxi Blanco                  79        150  True       False                True               False
+37/38  El Rastro al Amanecer        73        164  True       True                 True               False
+91/92  Plaza de Olavide             98        182  True       False                False              False
+93/94  El Tren Fantasma             83        142  True       True                 True               False
+99/100  Andén 0                     134        152  True       True                 True               True
+103/104  Plaza de Olavide            102        103  True       False                True               True
+139/140  Mercado de Vallehermoso       79        110  True       False                False              False
+
+pairs: 9; our value > our cost in 9/9; both duels priced by rival in 6; identical rival text template across the pair in 4/9; pairs with an H_pair violation: 3
+
+opening margin vs mirrored limit (rival buyer: 1-first/value, rival seller: first/cost-1):
+  9/10: duel 9 rival-seller +0.214, duel 10 rival-buyer +0.263
+  29/30: duel 29 rival-buyer +0.453, duel 30 rival-seller +0.671
+  37/38: duel 37 rival-buyer +0.555, duel 38 rival-seller +0.753
+  93/94: duel 93 rival-buyer +0.479, duel 94 rival-seller +0.482
+  99/100: duel 99 rival-buyer +0.322, duel 100 rival-seller +0.343
+  103/104: duel 103 rival-buyer +0.175, duel 104 rival-seller -0.039
