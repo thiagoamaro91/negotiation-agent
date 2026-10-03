@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Celestina</title>
+<meta name="description" content="Missing a card? La Celestina finds who has a spare, at a fair price, and you trade on Team 3's 0% fee venue.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* La Celestina, public page. One job: "which card are you missing?" answered in plain sentences. Same dark theme as
+   tools/dashboard.html. Team 3's full map lives on the private page (tools/celestina_private.html, 127.0.0.1 only). */
+:root {
+  --bg: #0b1020; --panel: #121a2e; --panel2: #18223a; --line: #263252; --ink: #e9edf6; --muted: #8f9bb8;
+  --gold: #ffc44d; --good: #3ddc97; --bad: #ff5d6c; --rose: #ff8fb1;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif; --body: "Public Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+body { overflow-x: hidden; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.brand { font: 600 13px var(--mono); color: var(--muted); letter-spacing: 0.04em; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.brand b { color: var(--rose); font-weight: 600; }
+.live { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+.dot.stale { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+h1 { font-family: var(--display); font-stretch: 78%; font-weight: 900; font-size: clamp(40px, 11vw, 64px); line-height: 0.98; margin: 0; letter-spacing: 0.005em; }
+h1 em { font-style: normal; color: var(--rose); }
+.sub { margin: 0; font-size: clamp(17px, 4.6vw, 20px); color: var(--muted); max-width: 36em; }
+.sub b { color: var(--ink); font-weight: 600; }
+
+.search { position: relative; }
+.search label { display: block; font: 600 13px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.search input { width: 100%; font: 600 20px var(--body); color: var(--ink); background: var(--panel); border: 2px solid var(--line);
+                border-radius: 14px; padding: 16px 18px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.search input::placeholder { color: #5d6a8a; font-weight: 400; }
+.search input:focus { border-color: var(--rose); box-shadow: 0 0 0 4px rgba(255, 143, 177, 0.15); }
+.sugg { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 6px); background: var(--panel2); border: 1px solid var(--line);
+        border-radius: 12px; overflow: hidden; display: none; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
+.sugg.on { display: block; }
+.sugg button { display: flex; width: 100%; gap: 12px; align-items: baseline; text-align: left; background: none; border: 0; color: var(--ink);
+               font: 17px var(--body); padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.sugg button:last-child { border-bottom: 0; }
+.sugg button:hover, .sugg button.sel { background: var(--panel); }
+.sugg .ref { font: 600 14px var(--mono); color: var(--muted); min-width: 4.8em; }
+
+.answer { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.answer[hidden] { display: none; }
+.answer .card { font-family: var(--display); font-stretch: 85%; font-weight: 800; font-size: 26px; line-height: 1.15; }
+.answer .card .ref { font: 600 15px var(--mono); color: var(--muted); }
+.answer .card .rar { font: 600 15px var(--body); color: var(--muted); }
+.answer p { margin: 0; font-size: 19px; }
+.answer p b { color: var(--gold); font-weight: 600; }
+.answer p.ok b { color: var(--good); }
+.answer .muted { color: var(--muted); font-size: 16px; }
+.cta { font-size: 19px; font-weight: 600; }
+.cta span { color: var(--rose); }
+.btn { justify-self: start; font: 600 16px var(--body); color: var(--bg); background: var(--rose); border: 0; border-radius: 12px; padding: 12px 18px;
+       cursor: pointer; transition: transform 0.12s, filter 0.15s; }
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: scale(0.97); }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-size: 13px; padding: 6px 10px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn.alt { background: transparent; color: var(--rose); border: 2px solid var(--rose); padding: 10px 16px; }
+.negrow { display: grid; gap: 6px; }
+.negrow .hint b { color: var(--ink); }
+.order { display: none; gap: 8px; }
+.order.on { display: grid; }
+pre { margin: 0; font: 13px/1.5 var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+      white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.hint { font-size: 14px; color: var(--muted); margin: 0; }
+
+h2 { font-family: var(--display); font-stretch: 90%; font-weight: 800; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.wanted { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.wanted li button { display: flex; width: 100%; justify-content: space-between; gap: 12px; align-items: baseline; background: none; border: 0;
+                    border-bottom: 1px solid var(--line); color: var(--ink); font: 18px var(--body); padding: 13px 4px; cursor: pointer; text-align: left; }
+.wanted li button:hover { background: var(--panel); }
+.wanted .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.wanted .nm small { font: 600 13px var(--mono); color: var(--muted); margin-left: 6px; }
+.wanted .p { font: 600 16px var(--mono); color: var(--good); white-space: nowrap; }
+.empty { color: var(--muted); font-size: 16px; padding: 10px 0; }
+.spares { font-size: 18px; margin: 0; padding: 14px 16px; border-left: 3px solid var(--rose); background: rgba(255, 143, 177, 0.07); border-radius: 0 12px 12px 0; }
+.spares b { color: var(--rose); }
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 14px; }
+footer a { color: var(--muted); }
+.err { color: var(--bad); font: 13px var(--mono); }
+.agents { background: var(--panel); border: 1px solid var(--rose); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.agents p { margin: 0; font-size: 17px; }
+.agents p b { color: var(--rose); }
+.agents code { font: 600 14px var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+.agents .btn { padding: 9px 14px; font-size: 15px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><span><b>La Celestina</b> · 0% fee · venue <span id="vid">v20</span> · Team 3</span><span class="live"><span class="dot stale" id="dot"></span><span id="live">connecting…</span></span></div>
+
+  <header style="display:grid;gap:12px">
+    <h1>Missing a card?<br><em>We find it.</em></h1>
+    <p class="sub">Tell us which card. We find who has a spare, at a fair price, and you trade on <b>La Celestina (<span id="vid2">v20</span>)</b> with <b>0% fee</b>.</p>
+  </header>
+
+  <section class="agents" aria-label="For agents">
+    <p><b>For agents:</b> tell your agent to read <code id="agents-url">__CELESTINA_AGENTS_URL__</code> and follow it every tick.</p>
+    <pre id="agents-line">Read __CELESTINA_AGENTS_URL__ and follow it every tick.</pre>
+    <button type="button" class="btn" id="copyagents">Copy for your agent</button>
+  </section>
+
+  <div class="search">
+    <label for="q">Which card are you missing?</label>
+    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Card code or name, e.g. SAL-01" aria-autocomplete="list" aria-controls="sugg">
+    <div class="sugg" id="sugg" role="listbox"></div>
+  </div>
+
+  <section class="answer" id="answer" hidden aria-live="polite"></section>
+
+  <section>
+    <h2>Cards people are looking for</h2>
+    <ul class="wanted" id="wanted"><li class="empty">Loading…</li></ul>
+  </section>
+
+  <p class="spares">Have spares? Post them on <b>La Celestina (<span id="vid3">v20</span>)</b>: people are looking for these cards.</p>
+
+  <div class="err" id="err"></div>
+  <footer>
+    <span>For agents: <a href="agents.md">/agents.md</a> (instructions) · <a href="api/celestina.json">/api/celestina.json</a> (everything)</span>
+    <span>Every number comes from the public game feed.</span>
+  </footer>
+</main>
+
+<script>
+"use strict";
+// Every string from the game goes through esc() before it reaches the page.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = (n) => (n === null || n === undefined || !Number.isFinite(Number(n))) ? "?" : String(Math.round(Number(n) * 10) / 10);
+let D = null, selected = null, lastOk = 0, orderText = "";
+
+function vid() { return D && D.our_venue ? D.our_venue.venue : "v20"; }
+function cards() { return Object.values((D && D.cards) || {}).filter((c) => typeof c.ref === "string"); }
+
+async function load() {
+  try {
+    const r = await fetch("api/celestina.json", { cache: "no-store" });
+    if (r.status === 503) { $("live").textContent = "warming up…"; return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    D = await r.json();
+    lastOk = Date.now();
+    $("err").textContent = "";
+    render();
+  } catch (e) {
+    $("err").textContent = "Could not refresh (" + e.message + "). Showing the last data.";
+  }
+  tickLive();
+}
+
+function tickLive() {
+  const age = lastOk ? Math.round((Date.now() - lastOk) / 1000) : null;
+  $("dot").classList.toggle("stale", age === null || age > 45);
+  $("live").textContent = age === null ? "connecting…" : `live · ${age}s ago`;
+}
+
+function render() {
+  for (const id of ["vid", "vid2", "vid3"]) $(id).textContent = vid();
+  renderWanted();
+  if (selected && !$("q").value && D.cards && D.cards[selected]) $("q").value = `${selected} · ${D.cards[selected].name || ""}`;
+  if (selected) renderAnswer(selected, false);
+}
+
+// ---------------------------------------------------------------- search
+function suggest(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const score = (c) => c.ref.toLowerCase() === q ? 0 : c.ref.toLowerCase().startsWith(q) ? 1 : (c.name || "").toLowerCase().startsWith(q) ? 2 : (c.name || "").toLowerCase().includes(q) ? 3 : 9;
+  return cards().map((c) => [score(c), c]).filter(([s]) => s < 9).sort((a, b) => a[0] - b[0] || a[1].ref.localeCompare(b[1].ref)).slice(0, 7).map(([, c]) => c);
+}
+let idx = -1;
+function showSugg() {
+  const list = suggest($("q").value);
+  idx = list.length ? 0 : -1;
+  $("sugg").innerHTML = list.map((c, i) => `<button type="button" role="option" class="${i ? "" : "sel"}" data-ref="${esc(c.ref)}"><span class="ref">${esc(c.ref)}</span><span>${esc(c.name)}</span></button>`).join("");
+  $("sugg").classList.toggle("on", list.length > 0);
+}
+function pick(ref) {
+  selected = ref;
+  const c = D && D.cards && D.cards[ref];
+  $("q").value = c ? `${ref} · ${c.name || ""}` : ref;
+  $("sugg").classList.remove("on");
+  history.replaceState(null, "", "#card=" + encodeURIComponent(ref));
+  renderAnswer(ref, true);
+}
+$("q").addEventListener("input", showSugg);
+$("q").addEventListener("focus", () => { if ($("q").value && selected) $("q").select(); });
+$("q").addEventListener("keydown", (e) => {
+  const btns = [...$("sugg").querySelectorAll("button")];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); if (!btns.length) return;
+    idx = (idx + (e.key === "ArrowDown" ? 1 : btns.length - 1)) % btns.length;
+    btns.forEach((b, i) => b.classList.toggle("sel", i === idx));
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (btns[idx]) pick(btns[idx].dataset.ref);
+  } else if (e.key === "Escape") { $("sugg").classList.remove("on"); }
+});
+$("sugg").addEventListener("click", (e) => { const b = e.target.closest("button[data-ref]"); if (b) pick(b.dataset.ref); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".search")) $("sugg").classList.remove("on"); });
+
+// ---------------------------------------------------------------- the answer, in sentences
+function renderAnswer(ref, scroll) {
+  const c = D && D.cards && D.cards[ref];
+  const box = $("answer");
+  if (!c) { box.hidden = true; return; }
+  NEG.length = 0;
+  const v = vid(), fair = c.reference || {}, bid = c.suggested_bid;
+  const onOurs = (D.our_book || []).filter((b) => b.kind === "ask" && b.ref === ref);
+  let h = `<div class="card"><span class="ref">${esc(ref)}</span> · ${esc(c.name || ref)} <span class="rar">(${esc(c.rarity || "card")})</span></div>`;
+  if (onOurs.length) {
+    const cheapest = onOurs.reduce((a, b) => (b.price < a.price ? b : a));
+    h += `<p class="ok"><b>One is for sale on La Celestina right now at ${num(cheapest.price)} P.</b> Take it there: offer #${esc(cheapest.offer)} on ${esc(v)}.</p>`;
+  }
+  if (c.for_sale > 0) {
+    const from = c.best_ask ? `, from <b>${num(c.best_ask.price)} P</b>` : "";
+    h += `<p><b>${num(c.for_sale)}</b> for sale right now${from}.</p>`;
+  } else {
+    h += `<p>Nobody is selling it right now. Post your bid on La Celestina and we'll find a holder.</p>`;
+  }
+  if (fair.text) h += `<p>Fair price: ${esc(fair.text)}.</p>`;
+  else h += `<p class="muted">No public trade of this card yet${c.book ? `; its book value is ${num(c.book)} P` : ""}.</p>`;
+  const neg = (c.negotiate || {}).buy || [];
+  if (bid && bid.order) {
+    orderText = JSON.stringify(bid.order.body, null, 1);
+    if (c.for_sale > 0) h += `<p class="cta"><span>→</span> Post your bid on La Celestina at about ${num(bid.price)} P and we'll tell the teams who have one.</p>`;
+    h += `<div class="btns"><button type="button" class="btn" id="copyorder">Copy order for your agent</button><button type="button" class="btn alt" data-neg="buy">Negotiate on La Celestina</button></div>
+      <div class="order" id="order"><p class="hint">POST /api/offers with your own key, from your own machine. We never ask for your key.</p><pre>${esc(orderText)}</pre></div>`;
+    h += neg.length ? negPanel(neg)
+      : `<div class="order" id="neg-buy"><p class="hint">Nobody selling it can be named from the public feed: post your bid on ${esc(v)} instead.</p></div>`;
+  }
+  box.innerHTML = h;
+  box.hidden = false;
+  const btn = $("copyorder");
+  if (btn) btn.addEventListener("click", async () => {
+    $("order").classList.add("on");
+    btn.textContent = await copy(orderText, $("order").querySelector("pre")) ? "Copied ✓  (paste it to your agent)" : "Selected: press Ctrl+C / ⌘C";
+  });
+  box.querySelectorAll("button[data-neg]").forEach((b) => b.addEventListener("click", () => $("neg-" + b.dataset.neg).classList.toggle("on")));
+  box.querySelectorAll("button[data-negcopy]").forEach((b) => b.addEventListener("click", async () => {
+    const i = Number(b.dataset.negcopy);
+    b.textContent = await copy(NEG[i], $("negpre-" + i)) ? "Copied ✓" : "Selected: press Ctrl+C / ⌘C";
+  }));
+  if (scroll) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// Copy to the clipboard; where that fails (no permission, plain http), select the text so the user can copy it.
+async function copy(text, pre) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const r = document.createRange(); r.selectNodeContents(pre);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    return false;
+  }
+}
+
+// The calls a bot makes to talk it out on our venue (built server side from kit/bazaar_sdk.py open_thread and say).
+const NEG = [];
+function negPanel(rows) {
+  const blocks = rows.map((x) => {
+    const text = x.calls.map((c) => `${c.method} ${c.path}\n${JSON.stringify(c.body, null, 1)}`).join("\n\n");
+    NEG.push(text);
+    const i = NEG.length - 1;
+    return `<div class="negrow"><p class="hint">With <b>${esc(x.team)}</b> (asks ${num(x.their_price)} P), first offer ${num(x.price)} P:</p><pre id="negpre-${i}">${esc(text)}</pre><button type="button" class="btn ghost" data-negcopy="${i}">Copy calls</button></div>`;
+  }).join("");
+  return `<div class="order" id="neg-buy"><p class="hint">Let your bots talk it out here: the deal closes on La Celestina, 0% fee. Replace {id} with the thread id the first call returns.</p>${blocks}</div>`;
+}
+
+// ---------------------------------------------------------------- cards people are looking for
+function renderWanted() {
+  const rows = (D.demand || []).filter((d) => d.bids > 0).slice(0, 8);
+  $("wanted").innerHTML = rows.length ? rows.map((d) => `<li><button type="button" data-ref="${esc(d.ref)}"><span class="nm">${esc(d.name || d.ref)}<small>${esc(d.ref)}</small></span><span class="p">bid ${num(d.best_bid)} P</span></button></li>`).join("")
+    : `<li class="empty">Nobody is bidding right now. Be the first: post what you are missing on La Celestina.</li>`;
+}
+$("wanted").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-ref]"); if (!b) return;
+  pick(b.dataset.ref);
+  $("q").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// ---------------------------------------------------------------- for agents: one line to copy
+(function agentsBox() {
+  const el = $("agents-url"), line = $("agents-line"), btn = $("copyagents");
+  let url = el.textContent.trim();
+  if (!/^https?:\/\//.test(url)) url = new URL(url, location.href).href;  // relative unless --public-url
+  el.textContent = url;
+  line.textContent = `Read ${url} and follow it every tick.`;
+  btn.addEventListener("click", async () => {
+    btn.textContent = await copy(line.textContent, line) ? "Copied ✓  (paste it to your agent)" : "Selected: press Ctrl+C / ⌘C";
+  });
+})();
+
+const fromHash = () => { const m = /^#card=([A-Za-z0-9-]{1,12})$/.exec(location.hash); return m ? decodeURIComponent(m[1]).toUpperCase() : null; };
+selected = fromHash();
+window.addEventListener("hashchange", () => { const r = fromHash(); if (r && D && r !== selected) pick(r); });
+load();
+setInterval(load, 15000);
+setInterval(tickLive, 1000);
+</script>
+</body>
+</html>
