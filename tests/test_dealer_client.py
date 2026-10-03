@@ -5,10 +5,8 @@ holds through a paused clock or closed doors and tolerates a null next_tick_in (
 """
 import unittest
 
-from bazaar_sdk import Bazaar as KitBazaar
-from bazaar_sdk import BazaarError
-from dealer_fakes import (BOTS, FakeAccount, FakeServer, NullRun, VirtualClock, lock_sequence, patched_sleep,
-                          restore_globals, run_main, save_globals, sell_target)
+from dealer_fakes import (BOTS, BazaarError, FakeAccount, FakeServer, KitBazaar, NullRun, VirtualClock, lock_sequence,
+                          patched_sleep, restore_globals, run_main, save_globals, sell_target)
 
 
 def scripted(clocks):
@@ -116,6 +114,24 @@ class TestPauseSafeWait(unittest.TestCase):
                 c = b.wait_tick()
             self.assertIsNone(c.get("tick"), mod.__name__)
             self.assertLess(len(n), 1000, mod.__name__)
+
+    def test_stuck_clock_is_reported_once_a_minute(self):
+        """A running clock whose tick never moves (a frozen server, not flagged paused) is reported to the operator,
+        once a minute across successive waits, while the bot spends no rounds on it."""
+        same = {"tick": 100, "paused": False, "doors": "open", "next_tick_in": 0}
+        for mod in BOTS:
+            b = client(mod)
+            b._call = lambda method, path, body=None, query=None: dict(same)
+            seen = []
+            b.on_wait = lambda kind, c, waited: seen.append((kind, waited))
+            vc = VirtualClock()
+            with patched_sleep(vc):
+                for _ in range(6):                               # six waits of about 30 s each: about 3 minutes
+                    self.assertIsNone(b.wait_tick().get("tick"), mod.__name__)
+            kinds = [k for k, _ in seen]
+            self.assertEqual(set(kinds), {"clock_stuck"}, (mod.__name__, seen))
+            # waits end every ~30 s, so "once a minute" lands every 60 to 90 s: more than once, fewer than every wait
+            self.assertTrue(2 <= len(kinds) <= 4, (mod.__name__, vc.now, seen))
 
     def test_pause_reports_once_a_minute(self):
         """item 6: a long pause is reported once a minute, not once per wait."""

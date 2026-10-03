@@ -11,7 +11,8 @@ DealerBazaar is the kit client (kit/bazaar_sdk.py, unchanged) with three changes
 - wait_tick() returns a clock only once a new tick has started with the clock running and the doors open. While the
   game is paused, the doors are closed, or the clock cannot be read, it keeps polling and reports through on_wait
   once a minute. It returns {} when no new tick could be confirmed (clock unreadable for CLOCK_GIVE_UP seconds, or
-  a running clock whose tick does not move): a bot counts a round only for a confirmed new tick. It never raises.
+  a running clock whose tick does not move, also reported once a minute as clock_stuck): a bot counts a round only
+  for a confirmed new tick. It never raises.
 
 Rounds keeps one conversation's budget: a round is a confirmed tick; lock deferrals are counted apart and bounded;
 once the budget is spent the bot still makes a fresh decision each tick, with at most END_ACCEPTS accept attempts.
@@ -63,9 +64,10 @@ class DealerBazaar(Bazaar):
 
     def __init__(self, url: str, key: str, *, wait_on_tick: bool = False, **kw):
         super().__init__(url, key, wait_on_tick=wait_on_tick, **kw)
-        # optional callback(kind, clock, waited_seconds), kind "paused", "doors_closed" or "clock_unreadable":
-        # called when a wait first finds the game not running, then once per REPORT_EVERY seconds
+        # optional callback(kind, clock, waited_seconds), kind "paused", "doors_closed", "clock_unreadable" or
+        # "clock_stuck": called when a wait first finds the game not running, then once per REPORT_EVERY seconds
         self.on_wait = None
+        self._stuck_since = self._stuck_told = None  # a running clock that does not move, across successive waits
 
     def _call(self, method, path, body=None, query=None):
         if method == "GET":
@@ -119,8 +121,15 @@ class DealerBazaar(Bazaar):
             if start is None:
                 start = tick
             elif tick is not None and tick > start:
+                self._stuck_since = self._stuck_told = None
                 return c
-            if naps >= STUCK_POLLS:
+            if naps >= STUCK_POLLS:  # the clock runs but its tick does not move: tell the operator, spend nothing
+                if self._stuck_since is None:
+                    self._stuck_since = now
+                if self._stuck_told is None or now - self._stuck_told >= REPORT_EVERY:
+                    self._stuck_told = now
+                    if self.on_wait is not None:
+                        self.on_wait("clock_stuck", c, now - self._stuck_since)
                 return {}
             time.sleep(seconds_to_tick(c) + 0.15 if naps == 0 else 0.25)
             naps += 1

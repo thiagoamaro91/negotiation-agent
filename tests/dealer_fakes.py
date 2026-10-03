@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 sys.path.insert(0, str(ROOT / "kit"))
 
+from bazaar_sdk import Bazaar as KitBazaar  # noqa: E402,F401  (the plain kit client, for fake self-tests)
 from bazaar_sdk import BazaarError  # noqa: E402,F401
 
 import abuela  # noqa: E402
