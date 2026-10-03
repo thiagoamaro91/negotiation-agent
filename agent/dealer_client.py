@@ -16,9 +16,13 @@ DealerBazaar is the kit client (kit/bazaar_sdk.py, unchanged) with three changes
 
 Rounds keeps one conversation's budget: a round is a confirmed tick; lock deferrals are counted apart and bounded;
 once the budget is spent the bot still makes a fresh decision each tick, with at most END_ACCEPTS accept attempts.
+Rounds.wait() blocks until a tick is confirmed, so no decision or write follows an unconfirmed wait; after
+MAX_FAILED_WAITS unconfirmed waits in a row the clock counts as lost and the bot closes the thread.
+settle_trade() follows an accepted offer to its settlement and reports "unsettled" when it cannot confirm it.
 """
 from __future__ import annotations
 
+import shlex
 import time
 
 from bazaar_sdk import Bazaar, BazaarError
@@ -32,6 +36,8 @@ STUCK_POLLS = 120       # running clock whose tick never moves: return {} after 
 
 END_ACCEPTS = 2         # accept attempts once the round budget is spent (each one after a fresh read)
 CLOSE_TRIES = 3         # refused closes (each followed by a fresh read and decision) before reporting close_failed
+MAX_FAILED_WAITS = 5    # unconfirmed waits in a row (about 1 min each) before the clock counts as lost
+SETTLE_TRIES = 8        # waits to see an accepted offer settle (it settles on the next tick) before "unsettled"
 MAX_DEFER_TICKS = 60    # default for --max-defer-ticks: ticks an accept may wait on the duel lock in one thread
 
 ACCEPTED, DEFERRED, REFUSED = "accepted", "deferred", "refused"
@@ -40,6 +46,8 @@ ACCEPTED, DEFERRED, REFUSED = "accepted", "deferred", "refused"
 EXIT_RESERVE = 3        # every buy was skipped because cash is under the reserve
 EXIT_CLOSE_FAILED = 4   # a thread could not be closed: it still holds the dealer's only conversation slot
 EXIT_LOCK_TIMEOUT = 5   # the duel lock stayed fresh for --max-defer-ticks: the thread was closed without a deal
+EXIT_UNSETTLED = 6      # an accept went out but its settlement could not be confirmed: the plan stopped
+EXIT_CLOCK_LOST = 7     # the game clock could not be confirmed for MAX_FAILED_WAITS waits: the thread was closed
 
 
 def clock_running(c: dict) -> bool:
@@ -141,22 +149,32 @@ class Rounds:
     used: rounds spent, one per confirmed new tick (a wait that could not confirm a tick spends nothing).
     deferred: ticks spent waiting on the duel lock (they cost no round; bounded by max_defer).
     end_tries: accept attempts refused after the budget was spent (bounded by END_ACCEPTS).
-    close_refusals: refused closes in this thread (bounded by CLOSE_TRIES)."""
+    close_refusals: refused closes in this thread (bounded by CLOSE_TRIES).
+    lost: MAX_FAILED_WAITS waits in a row could not confirm a tick; the caller closes the thread."""
 
     def __init__(self, b, max_rounds: int, max_defer: int = MAX_DEFER_TICKS):
         self.b, self.max_rounds, self.max_defer = b, int(max_rounds), int(max_defer)
-        self.used = self.deferred = self.end_tries = self.close_refusals = 0
+        self.used = self.deferred = self.end_tries = self.close_refusals = self.failed_waits = 0
+        self.lost = False
 
     def spent(self) -> bool:
         return self.used >= self.max_rounds
 
     def wait(self, free: bool = False) -> bool:
-        """Wait for the next tick; spend a round only if a new tick was confirmed (and the wait is not free)."""
-        c = self.b.wait_tick() or {}
-        advanced = c.get("tick") is not None
-        if advanced and not free:
-            self.used += 1
-        return advanced
+        """Block until a new tick is confirmed, and spend a round for it unless the wait is free. An unconfirmed wait
+        is never followed by a decision or a write: it waits again. False once MAX_FAILED_WAITS waits in a row
+        could not confirm a tick (self.lost): the caller must close the thread instead of deciding anything."""
+        while True:
+            c = self.b.wait_tick() or {}
+            if c.get("tick") is not None:
+                self.failed_waits = 0
+                if not free:
+                    self.used += 1
+                return True
+            self.failed_waits += 1
+            if self.failed_waits >= MAX_FAILED_WAITS:
+                self.lost = True
+                return False
 
     def defer(self) -> None:
         """The duel lock is fresh: wait a tick without spending a round."""
@@ -193,6 +211,49 @@ def try_close(b, tid: int, log, rounds: Rounds, why: str) -> bool:
         log("close_refused", thread=tid, code=e.code, msg=e.message, why=why, attempt=rounds.close_refusals)
     rounds.wait(free=True)
     return False
+
+
+def settle_trade(b, tid: int, price: int, log) -> dict:
+    """Follow an accepted offer to its settlement (the next tick). Only a confirmed tick followed by a good read
+    counts: a wait that could not confirm a tick, or a read that failed, proves nothing. Result "unsettled" after
+    SETTLE_TRIES waits without seeing the thread leave "open": the caller must stop, the trade may have happened."""
+    for tries in range(1, SETTLE_TRIES + 1):
+        c = b.wait_tick() or {}
+        if c.get("tick") is None:
+            continue
+        try:
+            t = b.thread(tid)
+        except BazaarError as e:
+            log("read_refused", thread=tid, code=e.code, msg=e.message)
+            continue
+        if t.get("status") != "open":
+            log("result", thread=tid, status=t.get("status"), price=price, reason=t.get("closed_reason"))
+            return {"result": t.get("status"), "thread": tid, "price": price}
+    log("unsettled", thread=tid, price=price, tries=SETTLE_TRIES)
+    return {"result": "unsettled", "thread": tid, "price": price}
+
+
+def command(script: str, flags: list) -> str:
+    """A shell command line: python3 <script> run <flags...>, each value quoted for the shell."""
+    return " ".join(["python3", script, "run"] + [shlex.quote(str(f)) for f in flags])
+
+
+def flag_value(v):
+    """A flag value as the operator would type it: 50.0 prints as 50."""
+    return int(v) if isinstance(v, float) and v.is_integer() else v
+
+
+def unsettled_line(tid: int, price: int) -> str:
+    """The one line run prints when an accept went out but its settlement could not be confirmed (EXIT_UNSETTLED)."""
+    return (f"Thread {tid}: our accept at {price} P went out but its settlement could not be confirmed (thread "
+            f"unreadable or clock not advancing). The plan was stopped so no further trade can start; check thread "
+            f"{tid} and our holdings before running again.")
+
+
+def clock_lost_line(tid: int, waits: int) -> str:
+    """The one line run prints when the game clock was lost and the thread was closed (EXIT_CLOCK_LOST)."""
+    return (f"Thread {tid} closed without a deal: the game clock could not be confirmed for {waits} waits in a row "
+            f"(unreadable or not advancing). Check the game before running again.")
 
 
 def reserve_line(cash: int, reserve: int, need: int, skipped: int, team_reserve: int = 280) -> str:

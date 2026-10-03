@@ -363,9 +363,10 @@ class TestWritesAbuela(WriteCases, ServerCase):
 
 class PauseCases:
     def test_clock_errors_during_a_pause_spend_no_rounds(self):
-        # item 7: 75-minute pause; for 70 minutes of it the clock endpoint times out. Her final (41, above our floor
-        # 40) comes at tick 104; with a 5-round budget we only see it if the failing minutes cost no rounds.
-        srv = self.server(opening=16, pause=(20.0, 20.0 + 75 * 60), clock_down=(30.0, 30.0 + 70 * 60), expiry=10 ** 6)
+        # item 7: 10-minute pause; for 200 s of it the clock endpoint times out (3 failed waits, under the
+        # MAX_FAILED_WAITS bound after which the clock counts as lost: see test_dealer_followup). Her final (41, above
+        # our floor 40) comes at tick 104; with a 5-round budget we only see it if the failing waits cost no rounds.
+        srv = self.server(opening=16, pause=(20.0, 620.0), clock_down=(30.0, 230.0), expiry=10 ** 6)
 
         def final_at_104(s, t):
             if t == 104:
