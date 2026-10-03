@@ -229,6 +229,22 @@ class WhoPaysTheFee(unittest.TestCase):
         self.assertEqual((led["t01"]["cash"], led["t02"]["cash"], led["t03"]["cash"]), (0, 408, 0))
         self.assertEqual(rep["overdrawn"], [])
         self.assertEqual([u["tick"] for u in rep["flipped"]], [2])
+        self.assertEqual([led[t]["cash_unsure"] for t in ("t01", "t02", "t03")], [0, 0, 0])  # the only way that fits
+
+    def test_when_several_ways_fit_the_fees_stay_unsure(self):
+        # the same two trades, but t03 keeps its cash: t02, t03 or both could have paid a fee, so nothing is pinned
+        # and t03 is 408 or 410, never "408 ±0"
+        rep = {}
+        led = ledger.build(feed(
+            (2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+            (3, "settlement", settlement("t03", "t01", "SAL-02", 10, "rastro", fee=2, asset=62)),
+            (5, "settlement", {"persona": "picaros", "price": 378, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]})),
+            report=rep)
+        self.assertEqual(rep["overdrawn"], [])
+        self.assertEqual([led[t]["cash_unsure"] for t in ("t01", "t02", "t03")], [4, 2, 2])
+        for team, possible in (("t01", (0, 2)), ("t02", (408, 410)), ("t03", (408, 410))):
+            for real in possible:
+                self.assertLessEqual(abs(real - led[team]["cash"]), led[team]["cash_unsure"], (team, real))
 
     def test_a_settlement_without_items_is_reported_not_fatal(self):
         rep = {}
@@ -239,6 +255,59 @@ class WhoPaysTheFee(unittest.TestCase):
         self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 400))
         self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (45, 45))
         self.assertEqual(sum(1 for u in rep["unsure"] if u.get("incomplete")), 3)
+
+    def test_an_offer_cancelled_between_snapshots_is_not_read_as_filled(self):
+        # boards at ticks 1 and 4; our bid (on the board at 1) is cancelled at tick 4; t02's ask appears at tick 2 and
+        # is what the tick-3 settlement filled. The board cannot tell: unsure, never "the seller took our bid"
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "snapshots.jsonl"
+            path.write_text("".join(json.dumps(r) + "\n" for r in (
+                {"tick": 1, "what": "rastro", "body": {"offers": [{"id": 1}]}},
+                {"tick": 4, "what": "rastro", "body": {"offers": []}})))
+            posted = ledger.listings(feed(
+                (0, "offer.listed", listed(1, "t03", give_cash=8, want_refs=("MAL-04",))),
+                (2, "offer.listed", listed(2, "t02", give_ids=(77,), want_cash=8)),
+                (4, "offer.cancelled", {"offer": 1, "venue": "rastro"})))
+            self.assertEqual(ledger.acceptor_of(posted, {"id": 77, "ref": "MAL-04"}, "t03", "t02", 8, 3, "rastro",
+                                                ledger.Boards(path)), ("t03", "unsure"))
+
+    def test_the_board_tells_only_a_clean_fill_against_an_offer_that_stayed(self):
+        # ask 2 sits on the board before and after; bid 1 leaves it. A fill only if bid 1 was neither cancelled nor
+        # expired in between, and only if the ask was on the board before too
+        cases = (({}, {"tick": 0}, ("t02", "board")),                                 # clean: the seller took our bid
+                 ({"cancel": 4}, {"tick": 0}, ("t03", "unsure")),                     # bid withdrawn in between
+                 ({"expires": 2}, {"tick": 0}, ("t03", "unsure")),                    # bid ran out in between
+                 ({}, {"tick": 2, "absent": True}, ("t03", "unsure")))                # ask was not on the board before
+        for bid, ask, want in cases:
+            with tempfile.TemporaryDirectory() as d:
+                path = Path(d) / "snapshots.jsonl"
+                before = [{"id": 1}] + ([] if ask.get("absent") else [{"id": 2}])
+                path.write_text("".join(json.dumps(r) + "\n" for r in (
+                    {"tick": 1, "what": "rastro", "body": {"offers": before}},
+                    {"tick": 4, "what": "rastro", "body": {"offers": [] if ask.get("absent") else [{"id": 2}]}})))
+                rows = [(0, "offer.listed", listed_until(1, "t03", bid.get("expires"), give_cash=8, want_refs=("MAL-04",))),
+                        (ask["tick"], "offer.listed", listed(2, "t02", give_ids=(77,), want_cash=8))]
+                if bid.get("cancel"):
+                    rows.append((bid["cancel"], "offer.cancelled", {"offer": 1, "venue": "rastro"}))
+                posted = ledger.listings(feed(*rows))
+                got = ledger.acceptor_of(posted, {"id": 77, "ref": "MAL-04"}, "t03", "t02", 8, 3, "rastro", ledger.Boards(path))
+                self.assertEqual(got, want, (bid, ask))
+
+    def test_the_board_is_read_next_to_the_feed_in_use(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "snapshots.jsonl").write_text("".join(json.dumps(r) + "\n" for r in (
+                {"tick": 380, "what": "rastro", "body": {"offers": [{"id": 1}, {"id": 2}]}},
+                {"tick": 381, "what": "rastro", "body": {"offers": [{"id": 1}]}})))
+            posted = ledger.listings(feed(
+                (370, "offer.listed", listed(1, "t02", give_ids=(77,), want_cash=8)),
+                (378, "offer.listed", listed(2, "t03", give_cash=8, want_refs=("MAL-04",)))))
+            saved = ledger.vi.FEED
+            try:
+                ledger.vi.FEED = Path(d)  # what tools/dashboard.py does for --feed
+                got = ledger.acceptor_of(posted, {"id": 77, "ref": "MAL-04"}, "t03", "t02", 8, 381, "rastro")
+            finally:
+                ledger.vi.FEED = saved
+            self.assertEqual(got, ("t02", "board"))
 
     def test_the_latest_snapshot_of_a_tick_is_the_one_read(self):
         with tempfile.TemporaryDirectory() as d:
