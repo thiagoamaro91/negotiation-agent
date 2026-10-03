@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 361,
+ "cash": 344,
  "level": 2,
  "unlocked": [
   "abuela",
@@ -239,6 +239,17 @@
    "your_value": 32.5
   },
   {
+   "id": 396,
+   "kind": "card",
+   "ref": "LAT-02",
+   "serial": 12,
+   "rarity": "common",
+   "set": "LAT",
+   "print_run": 300,
+   "name": "Puesto del Rastro",
+   "your_value": 11.0
+  },
+  {
    "id": 413,
    "kind": "card",
    "ref": "SAL-07",
@@ -305,6 +316,17 @@
    "your_value": 27.5
   },
   {
+   "id": 568,
+   "kind": "card",
+   "ref": "SAL-04",
+   "serial": 15,
+   "rarity": "common",
+   "set": "SAL",
+   "print_run": 300,
+   "name": "Café en Goya",
+   "your_value": 13.0
+  },
+  {
    "id": 579,
    "kind": "card",
    "ref": "MAL-02",
@@ -349,7 +371,7 @@
    "your_value": 27.5
   }
  ],
- "collection_value": 589.1,
+ "collection_value": 613.1,
  "album": {
   "pages": [
    {
@@ -371,7 +393,7 @@
    {
     "set": "LAT",
     "name": "La Latina",
-    "have": 7,
+    "have": 8,
     "of": 10,
     "complete": false,
     "master": false
@@ -379,7 +401,7 @@
    {
     "set": "SAL",
     "name": "Salamanca",
-    "have": 4,
+    "have": 5,
     "of": 10,
     "complete": false,
     "master": false
@@ -393,26 +415,26 @@
     "master": false
    }
   ],
-  "filled": 24,
+  "filled": 26,
   "slots": 50
  },
- "tick": 196,
+ "tick": 227,
  "tick_seconds": 30.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 10.66,
-  "negotiating": 10.66,
-  "market": 0.0,
+  "score": 15.59,
+  "negotiating": 10.78,
+  "market": 4.8,
   "neg_points": 0.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.02,
-  "bench_efficiency": null,
-  "bench_points": null,
-  "bench_venue": null,
+  "ladder_points": 0.056,
+  "bench_efficiency": 0.899,
+  "bench_points": 0.5,
+  "bench_venue": "v09",
   "level": 2,
-  "album_filled": 24,
+  "album_filled": 26,
   "album_slots": 50,
   "pages_complete": 0,
   "rarest": {
@@ -423,16 +445,39 @@
    "rarity": "rare"
   },
   "luck": -21.8,
-  "deals": 10,
+  "deals": 12,
   "badges": [],
   "adjustments": [],
   "frozen": false,
-  "venue": null,
+  "venue": "v09",
   "luck_private": -37.7,
   "rank": 11
  },
- "venue": null,
- "open_threads": [
-  375
- ]
+ "venue": {
+  "venue": "v09",
+  "name": "Puesto de Team 3",
+  "owner": "t03",
+  "owner_name": "Team 3",
+  "status": "open",
+  "fee_bps": 300,
+  "fee_per_card": 0,
+  "rules": {
+   "mechanism": "auto"
+  },
+  "bond": 0,
+  "starter": true,
+  "trades": 0,
+  "volume": 0,
+  "fees": 0,
+  "traders": 0,
+  "value_created": 0.0,
+  "pairs": 0,
+  "pending_fee": null,
+  "suspension_reason": "",
+  "house": false,
+  "description": "Starter stall: auto-matching, no bond. Opening your own venue replaces it.",
+  "opened_tick": 201
+ },
+ "open_threads": [],
+ "starter_broker_key": "[redacted]"
 }

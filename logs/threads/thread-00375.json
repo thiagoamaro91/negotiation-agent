@@ -9,10 +9,272 @@
    "card": "LAT-02"
   }
  },
- "status": "open",
+ "status": "deal",
  "created_tick": 196,
- "messages": [],
+ "messages": [
+  {
+   "id": 2517,
+   "tick": 197,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 4 P for it?",
+   "offer": {
+    "id": 3342,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "expires_tick": 201,
+    "created_tick": 197,
+    "final": false
+   }
+  },
+  {
+   "id": 2516,
+   "tick": 197,
+   "sender": "abuela",
+   "text": "¡Hola, cariño! Come, sit a moment. Have you eaten? This one here, Puesto del Rastro, is a pretty card — twelve P for you. My Sunday morning price, hijo. Take your time looking, there is no hurry with me.",
+   "offer": {
+    "id": 3341,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "want": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 201,
+    "created_tick": 197,
+    "final": false
+   }
+  },
+  {
+   "id": 2525,
+   "tick": 198,
+   "sender": "abuela",
+   "text": "Look, 10 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 3354,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "want": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 202,
+    "created_tick": 198,
+    "final": false
+   }
+  },
+  {
+   "id": 2527,
+   "tick": 198,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 5 P?",
+   "offer": {
+    "id": 3356,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 5,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "expires_tick": 202,
+    "created_tick": 198,
+    "final": false
+   }
+  },
+  {
+   "id": 2535,
+   "tick": 199,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 6 P.",
+   "offer": {
+    "id": 3367,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 6,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "expires_tick": 203,
+    "created_tick": 199,
+    "final": false
+   }
+  },
+  {
+   "id": 2533,
+   "tick": 199,
+   "sender": "abuela",
+   "text": "Ay, hijo, young collectors are my favourite people. Nine P, and I will not haggle more, I get tired. And a little advice, cariño: a full page is worth much more than loose cards — swap your duplicates with the other niños!",
+   "offer": {
+    "id": 3365,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "want": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 203,
+    "created_tick": 199,
+    "final": false
+   }
+  },
+  {
+   "id": 2540,
+   "tick": 200,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 9 P.",
+   "offer": {
+    "id": 3373,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "want": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 204,
+    "created_tick": 200,
+    "final": false
+   }
+  },
+  {
+   "id": 2541,
+   "tick": 200,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 7 P, por favor?",
+   "offer": {
+    "id": 3374,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 375,
+    "status": "cancelled",
+    "give": {
+     "cash": 7,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "expires_tick": 204,
+    "created_tick": 200,
+    "final": false
+   }
+  },
+  {
+   "id": 2544,
+   "tick": 201,
+   "sender": "abuela",
+   "text": "Ay, your grandmother's album — that warms me, hijo. Eight P, and that is my last word. If it is too much, no hard feelings, we stay friends and you come back next Sunday. But eight P, or I keep the card. ¿Vale, cariño?",
+   "offer": {
+    "id": 3384,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 375,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-02"
+     ]
+    },
+    "want": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 205,
+    "created_tick": 201,
+    "final": true
+   }
+  }
+ ],
  "standing_offers": [],
- "item": null,
+ "item": "Puesto del Rastro",
  "closed_reason": null
 }
