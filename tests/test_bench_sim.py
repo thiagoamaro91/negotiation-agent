@@ -156,6 +156,33 @@ class MaxPairs(unittest.TestCase):
         self.assertGreater(row["mp_win"] + row["mp_loss"], 0)  # it does play differently from the stall
 
 
+class MaxWeight(unittest.TestCase):
+    """maxweight, the review's second candidate: valid plans only, the best estimated-surplus matching."""
+
+    def test_plans_respect_quotes_fees_runs_and_reuse(self):
+        rng = random.Random("maxweight")
+        n = 0
+        for _ in range(800):
+            book = MaxPairs.book([rng.randint(10, 60) for _ in range(rng.randint(0, 6))],
+                                 [rng.randint(10, 60) for _ in range(rng.randint(0, 6))],
+                                 *rng.choice(((0, 0), (150, 1), (500, 2))))
+            plan = bs.maxweight_plan(book)
+            self.assertEqual(bs.brk.guard(plan, book)[1], [], (book, plan))
+            n += len(plan)
+        self.assertGreater(n, 500)
+
+    def test_the_reviewers_book(self):
+        # asks 50, 65; bids 70, 55: the stall takes 70 x 50; maxweight's estimated surplus prefers both pairs
+        book = MaxPairs.book([50, 65], [70, 55])
+        self.assertEqual(sorted(m[:2] for m in bs.maxweight_plan(book)), [("b5-0", "b5-3"), ("b5-1", "b5-2")])
+
+    def test_candidate_rows_are_reproducible_and_clean(self):
+        a = bs.candidate_row("hard", bs.scenario("hard"), bs.CANDIDATES["maxweight"], 10, "unseen")
+        b = bs.candidate_row("hard", bs.scenario("hard"), bs.CANDIDATES["maxweight"], 10, "unseen")
+        self.assertEqual(a, b)
+        self.assertEqual(a["bad"], 0)
+
+
 class Replay(unittest.TestCase):
     """bench_sim replay: a recorded run that nothing matched, replayed against a plan, matches what the simulator
     gives that plan on the same session (quotes do not react to the broker, so the paths are the whole truth)."""

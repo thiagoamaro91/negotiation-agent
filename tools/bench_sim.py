@@ -11,6 +11,7 @@ broker meets Saturday's sessions; every session is one sample in the table.
     python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl --seeds 500   # after a real session
     python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl --seeds 500 --runs b53   # one session
     python3 tools/bench_sim.py replay --log logs/broker/2026-10-03.jsonl --run b36   # a run nothing matched
+    python3 tools/bench_sim.py candidate --policy maxweight --scenarios hard,standard --refit-runs all,b36
 
 Assumptions (each one is a knob of a scenario below; `--scenarios all` sweeps the ones that matter):
   A1 Traders. A session has N traders (10; 12 in the hard test), each a buyer or a seller of one unit with a true
@@ -231,6 +232,65 @@ def maxpairs_plan(book: dict, skip=()) -> list:
     for asks, bids in brk.bench_quotes(book, skip).values():
         plan += maxpairs_run(asks, bids, book)
     return plan
+
+
+def maxweight_plan(book: dict, skip=(), shade: float = 0.15) -> list:
+    """Second candidate from the review of maxpairs: per bench run, the max-weight matching over the pairs whose
+    quotes cross now, a pair's weight being its estimated true surplus under a firm-shade prior,
+    bid / (1 - shade) - ask * (1 - shade); positive pairs only; each pair at its midpoint (fee counted)."""
+    plan = []
+    for asks, bids in brk.bench_quotes(book, skip).values():
+        def w(i, j):
+            (qa, _), (qb, _) = asks[i], bids[j]
+            if qb < qa or brk.price_for(book, qa, qb) is None:
+                return None
+            v = qb / (1 - shade) - qa * (1 - shade)
+            return v if v > 0 else None
+        for i, j in brk.best_matching(len(asks), len(bids), w):
+            plan.append((asks[i][1], bids[j][1], brk.price_for(book, asks[i][0], bids[j][0])))
+    return plan
+
+
+CANDIDATES = {"maxpairs": lambda book: maxpairs_plan(book), "maxweight": lambda book: maxweight_plan(book)}
+
+
+def candidate_row(name: str, sc: dict, plan, seeds: int, prefix: str) -> dict:
+    """candidate - stall on `seeds` x DAY sessions drawn from seeds "<prefix>:<name>:<seed>" (a prefix other than
+    the table's empty one gives seeds the table never saw). bad counts matches the engine refused."""
+    diffs, bad = [], 0
+    for seed in range(seeds):
+        rng = random.Random(f"{prefix}:{name}:{seed}" if prefix else f"{name}:{seed}")
+        for k in range(DAY):
+            traders = make_session(rng, sc, run=f"b{k + 1}")
+            best = best_gain(traders)
+            if best <= 1e-9:
+                continue
+            st = simulate(traders, sc, lambda b, t: bench_plan(b), t0=100 * k)["gain"]
+            r = simulate(traders, sc, lambda b, t: plan(b), t0=100 * k)
+            bad += r["refused"]
+            diffs.append((r["gain"] - st) / best)
+    n = len(diffs)
+    se = statistics.pstdev(diffs) / math.sqrt(n) if n > 1 else 0.0
+    m = statistics.fmean(diffs) if n else 0.0
+    return {"scenario": name, "n": n, "diff": m, "se": se, "z": m / se if se else 0.0, "bad": bad}
+
+
+def cmd_candidate(args) -> int:
+    plan = CANDIDATES[args.policy]
+    jobs = [(nm, {**scenario(nm)}) for nm in [x.strip() for x in args.scenarios.split(",") if x.strip()]]
+    for runs in [x.strip() for x in (args.refit_runs or "").split(",") if x.strip()]:
+        recorded = read_runs(Path(args.log))
+        pick = recorded if runs == "all" else {r: recorded[r] for r in runs.split("+")}
+        jobs.append((f"refit {runs}", {**BASE, **fit(pick)[1], "name": "fitted"}))
+    print(f"{args.policy} - stall, {args.seeds} seeds x {DAY} sessions, seed prefix {args.prefix!r}")
+    print("| scenario | sessions | diff | SE | z | bad |")
+    print("|---|---|---|---|---|---|")
+    bad = 0
+    for nm, sc in jobs:
+        r = candidate_row(nm, sc, plan, args.seeds, args.prefix)
+        bad += r["bad"]
+        print(f"| {nm} | {r['n']} | {r['diff']:+.4f} | {r['se']:.4f} | {r['z']:+.1f} | {r['bad']} |", flush=True)
+    return 1 if bad else 0
 
 
 def offer(tr: dict, oid: str, q: int, sc: dict, t0: int = 0) -> dict:
@@ -690,6 +750,13 @@ def main(argv=None) -> int:
     f.add_argument("--seeds", type=int, default=0, help="also run stall vs ours on the fitted scenario")
     f.add_argument("--runs", default=None, help="fit only these bench runs, e.g. b53 or b53,b70 (default: all)")
     f.add_argument("--json", default=None, help="also write the fit and the row here")
+    c = sub.add_parser("candidate", help="one candidate policy minus the stall, paired, on fresh seeds")
+    c.add_argument("--policy", choices=sorted(CANDIDATES), default="maxweight")
+    c.add_argument("--seeds", type=int, default=1000)
+    c.add_argument("--prefix", default="unseen", help="seed prefix; '' reuses the table's seeds")
+    c.add_argument("--scenarios", default="hard,standard")
+    c.add_argument("--log", default="logs/broker/2026-10-03.jsonl")
+    c.add_argument("--refit-runs", default="", help="also scenarios fitted to recorded runs: all,b36,b53+b70,...")
     rp = sub.add_parser("replay", help="replay a recorded run that nothing matched: stall vs maxpairs on its paths")
     rp.add_argument("--log", required=True)
     rp.add_argument("--run", required=True, help="a bench run with no match on record, e.g. b36")
@@ -702,7 +769,8 @@ def main(argv=None) -> int:
         for nm, d in SCENARIOS.items():
             print(f"{nm:<20} {d or '(the base mix)'}")
         return 0
-    return {"table": cmd_table, "show": cmd_show, "refit": cmd_refit, "replay": cmd_replay}[args.mode](args)
+    return {"table": cmd_table, "show": cmd_show, "refit": cmd_refit, "replay": cmd_replay,
+            "candidate": cmd_candidate}[args.mode](args)
 
 
 if __name__ == "__main__":
