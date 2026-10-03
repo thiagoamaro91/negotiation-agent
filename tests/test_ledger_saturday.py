@@ -424,6 +424,15 @@ class Grants(unittest.TestCase):
         both = ledger.build(feed((5, "schedule.fired", {"action": "grant_all", "note": "x", "cash": 400}),
                                  (5, "announcement", payday)))
         self.assertEqual([both[t]["cash"] for t in TEAMS], [800, 800, 800])
+        unreadable = ledger.build(feed((5, "schedule.fired", {"action": "grant_all", "note": "Payday in Madrid"}),
+                                       (5, "announcement", payday)))  # no cash we can read: the words count
+        self.assertEqual([unreadable[t]["cash"] for t in TEAMS], [800, 800, 800])
+        for order in ((5, 6), (6, 5)):  # t01's 400 P came as a gift too, before or after the words: counted once
+            rows = sorted([(5, "announcement", payday),
+                           (5, "gift.given", {"team": "t01", "cash": 400, "cards": [], "reason": "payday"})],
+                          key=lambda r: order[r[1] == "gift.given"])
+            once = ledger.build(feed(*rows))
+            self.assertEqual([once[t]["cash"] for t in TEAMS], [800, 800, 800], order)
         words = ledger.build(feed((5, "announcement", {"text": "Play resumes now."}),
                                   (5, "venue.announcement", payday)))  # a team's own venue cannot pay anyone
         self.assertEqual([words[t]["cash"] for t in TEAMS], [400, 400, 400])
