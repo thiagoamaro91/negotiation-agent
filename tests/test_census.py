@@ -1,6 +1,7 @@
 """tools/census.py: end of the id space, backoff and retry, resume, top-up merge, the per-team summary, the key
 fallback that never shows the key, redaction of errors, and the Market Test start check. Offline: a fake transport
 is injected, the real network and the machine's key are blocked. Run: python3 -m unittest discover tests"""
+import datetime
 import json
 import sys
 import tempfile
@@ -492,7 +493,7 @@ class TestSilenceReview(Base):
         # every 2 min meanwhile, and nothing is sent from 2 min before the opening
         opens = T0 + 600
         clock = {"tick": 1445, "doors": "closed", "t_hours": 13.363, "tick_seconds": 30.0,
-                 "next_opens": census.datetime.datetime.fromtimestamp(opens).astimezone().isoformat()}
+                 "next_opens": datetime.datetime.fromtimestamp(opens).astimezone().isoformat()}
         server = Server(deck(range(1, 2000)), clock=clock)
         code, lines = self.walk(server)
         self.assertEqual(code, 3)
@@ -516,6 +517,14 @@ class TestSilenceReview(Base):
         self.assertEqual(server.calls_between(T0 + 280, T0 + 1000), [])
         self.assertGreater(max(t for _, _, t in server.calls), T0 + 1000)   # the walk went on after it
 
+    def test_2_a_retried_card_reads_the_status_again_first(self):
+        # a 429 with Retry-After 200 on id 3: the status (2 min old by then) is read again before the retry
+        server = Server(deck(range(1, 6)), script={3: [(429, {"Retry-After": "200"}, b"")]})
+        self.assertEqual(self.walk(server)[0], 0)
+        urls = [u for u, _, _ in server.calls]
+        first, retry = [k for k, u in enumerate(urls) if u.endswith("/api/cards/3")]
+        self.assertIn(URL + "/api/clock", urls[first + 1:retry])
+
     def test_3_cached_window_refuses_with_zero_requests(self):
         (self.out / census.STATUS_FILE).write_text(json.dumps({"windows": [[T0 - 60, T0 + 600]]}))
         server = Server(deck(range(1, 4)))
@@ -531,7 +540,7 @@ class TestSilenceReview(Base):
         sched = {"upcoming": [
             {"at_hours": 13.363, "action": "day_closes", "wall": "x"},
             {"at_hours": 13.363, "action": "day_opens", "params": {"tick_seconds": 15.0},
-             "wall": census.datetime.datetime.fromtimestamp(sun9).astimezone().isoformat()},
+             "wall": datetime.datetime.fromtimestamp(sun9).astimezone().isoformat()},
             {"at_hours": 14.65, "action": "bench", "params": {"ticks": 16}}]}
         self.walk(Server(deck(range(1, 6)), schedule=sched))
         [base] = list(self.out.glob("cards-*-t*.json"))
