@@ -3,8 +3,10 @@
 Everyone starts with 400 P (kit/RULES.md). From there the public feed shows every move of cash:
 - dealer settlements (packs and cards bought from or sold to a dealer, at the settled price);
 - team-to-team settlements (the buyer pays the price; the fee is paid by whoever accepted, i.e. the team that did not
-  post the matching listing; when that cannot be told, by the buyer). El Rastro keeps its fee; a fee charged on a
-  team's own venue goes to that venue's owner;
+  post the matching listing; with an ask and a bid both standing, the settled price tells which one was taken; when
+  that cannot be told, the buyer). El Rastro keeps its fee; a fee charged on a team's own venue goes to that venue's
+  owner. A package (cards both ways plus cash) is read from the listing that was accepted: its maker paid the cash
+  if the listing gave cash, was paid if it asked for cash, and the other side paid the fee;
 - venue openings (a 250 P bond + 20 P; the free starter stalls of Saturday tick 201 cost nothing, "bond": 0 and
   "starter": true), bond refunds on venue.closed ("refund"), cash gifts and the organisers' grants. A grant's cash
   comes from the event, else from the schedule entry with the same note, else from the note itself ("150 primas":
@@ -15,7 +17,8 @@ Wherever two consecutive events are more than a tick apart, build() fills the ho
 GAP_SOURCES (logs/feed-vm/feed.jsonl), matched by event id.
 
 Checked against our own account: Team 3's rebuilt cash equals the real one at every row of logs/score.jsonl from
-tick 33 to tick 630 (Friday and Saturday). `--json` carries that comparison as "check_history".
+tick 33 to tick 630 (Friday and Saturday), and at every live /api/me reading of Saturday afternoon (ticks 767-1041,
+the Mini's score.view.log). `--json` carries that comparison as "check_history".
 
 Cards are only partly visible: a team's starting hand (11 commons, 3 uncommons, 1 rare) and its pack pulls stay
 hidden until it lists, sells or trades them, so "known cards" is a lower bound.
@@ -89,18 +92,55 @@ def fill_gaps(events: list, sources: tuple = GAP_SOURCES) -> list:
 
 
 def listings(events: list) -> dict:
-    """Who posted what, to tell the acceptor of a settlement: ('ask', asset id) and ('bid', card ref) -> [(maker, price, tick)]."""
+    """Who posted what, to tell the acceptor of a settlement: ('ask', asset id) and ('bid', card ref) -> [(maker, price, tick)];
+    ('give', asset id) -> [(maker, give cash, want cash, tick, ids of every asset the listing gives)] for packages."""
     out = collections.defaultdict(list)
     for e in events:
         o = e["payload"].get("offer")
         if e["type"] != "offer.listed" or not isinstance(o, dict):
             continue
-        for a in (o.get("give") or {}).get("assets") or []:
-            if isinstance(a, dict):
-                out[("ask", a["id"])].append((o.get("maker"), (o.get("want") or {}).get("cash"), e["tick"]))
-        for ref in vi.card_types(o.get("want") or {}):
-            out[("bid", ref)].append((o.get("maker"), (o.get("give") or {}).get("cash"), e["tick"]))
+        give, want = o.get("give") or {}, o.get("want") or {}
+        assets = [a for a in give.get("assets") or [] if isinstance(a, dict)]
+        ids = frozenset(a.get("id") for a in assets)
+        for a in assets:
+            out[("ask", a["id"])].append((o.get("maker"), want.get("cash"), e["tick"]))
+            out[("give", a["id"])].append((o.get("maker"), give.get("cash") or 0, want.get("cash") or 0, e["tick"], ids))
+        for ref in vi.card_types(want):
+            out[("bid", ref)].append((o.get("maker"), give.get("cash"), e["tick"]))
     return out
+
+
+def acceptor_of(posted: dict, first: dict, buyer: str, seller: str, price: int, tick: int) -> str:
+    """Who accepted a one-way trade, and so paid the fee: the buyer if it took the seller's ask, the seller if it sold
+    into the buyer's bid. With both on the board, the settled price tells which one was taken (t16 sold LAT-09 into
+    our 88 P bid at tick 724 while its own ask stood at 135); otherwise the ask wins, and with neither, the buyer."""
+    asks = [(m, pr) for m, pr, tk in posted.get(("ask", first.get("id")), []) if tk <= tick]
+    bids = [(m, pr) for m, pr, tk in posted.get(("bid", first.get("ref")), []) if tk <= tick and m == buyer]
+    ask = asks[-1] if asks and asks[-1][0] == seller else None
+    bid = bids[-1] if bids else None
+    if ask and bid and bid[1] == price and ask[1] != price:
+        return seller
+    if ask:
+        return buyer
+    return seller if bid else buyer
+
+
+def package_deal(posted: dict, items: list, tick: int) -> tuple | None:
+    """A settlement with cards going both ways (a package: e.g. our 38 P + four cards for t07's LAV-10 at tick 844).
+    The accepted listing is the latest one whose maker gave cards that all moved in this settlement; its maker is
+    (maker, the other side, give cash, want cash), or None when no listing matches."""
+    sent = collections.defaultdict(set)
+    for i in items:
+        sent[i.get("frm")].add(i.get("id"))
+    best = None
+    for i in items:
+        for m, give_cash, want_cash, tk, ids in posted.get(("give", i.get("id")), []):
+            if tk <= tick and m == i.get("frm") and ids <= sent[m] and (best is None or tk > best[3]):
+                best = (m, give_cash, want_cash, tk)
+    if best is None:
+        return None
+    other = next((i.get("to") for i in items if i.get("frm") == best[0]), None)
+    return best[0], other, best[1], best[2]
 
 
 def grant_cash(schedule: dict | None, payload: dict) -> int:
@@ -151,6 +191,19 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None, f
         led[team]["cash"] += delta
         led[team]["moves"].append({"tick": tick, "delta": delta, "what": what})
 
+    def pay_fee(p: dict, acceptor: str, refs: str, tick: int) -> None:
+        """The settlement's fee comes out of the acceptor's cash; on a team's own venue it goes to the owner."""
+        fee = p.get("fee") or 0
+        if not fee:
+            return
+        move(acceptor, tick, -fee, f"fee on {refs} (accepted)")
+        if acceptor in led:
+            led[acceptor]["fees"] += fee
+        owner = owners.get(p.get("venue")) if p.get("venue") not in HOUSE_VENUES else None
+        if owner in led:
+            move(owner, tick, fee, f"fee earned on {refs} at {p.get('venue')}")
+            led[owner]["fees_earned"] += fee
+
     for e in events:
         if upto is not None and e["tick"] > upto:
             break
@@ -179,41 +232,43 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None, f
             for i in items:
                 ins[i.get("to")].append(i)
             receivers = [x for x in ins if x in led]
-            if len(receivers) != 1:  # a swap both ways: cards move, cash direction unknown
+            if len(receivers) != 1:  # cards both ways: the accepted listing says who paid the cash and the fee
                 for i in items:
                     if i.get("to") in led:
                         led[i["to"]]["cards_in"][i.get("ref")] += 1
                     if i.get("frm") in led:
                         led[i["frm"]]["cards_out"][i.get("ref")] += 1
+                deal = package_deal(posted, items, t)
+                payer = None
+                if deal and price:
+                    maker, other, give_cash, want_cash = deal
+                    payer = maker if give_cash else other if want_cash else None
+                if payer is None:  # no matching listing, or no cash on it: cash direction unknown
+                    record(t)
+                    continue
+                payee = other if payer == maker else maker
+                got = ", ".join(i.get("ref") or "?" for i in items if i.get("to") == payer)
+                gave = ", ".join(i.get("ref") or "?" for i in items if i.get("frm") == payer)
+                move(payer, t, -price, f"bought {got} from {payee} for {price} P + {gave}")
+                move(payee, t, price, f"sold {got} to {payer} for {price} P + {gave}")
+                pay_fee(p, other, got, t)
+                for team, side in ((payer, "team_bought"), (payee, "team_sold")):
+                    if team in led:
+                        led[team][side] += price
+                        led[team]["trades"] += 1
                 record(t)
                 continue
             buyer = receivers[0]
             seller = next((i.get("frm") for i in items if i.get("frm") != buyer), None)
-            first = items[0]
-            ask_makers = [m for m, pr, tk in posted.get(("ask", first.get("id")), []) if tk <= t]
-            bid_makers = [m for m, pr, tk in posted.get(("bid", first.get("ref")), []) if tk <= t and m == buyer]
-            if ask_makers and ask_makers[-1] == seller:
-                acceptor = buyer
-            elif bid_makers:
-                acceptor = seller
-            else:
-                acceptor = buyer
+            acceptor = acceptor_of(posted, items[0], buyer, seller, price, t)
             refs = ", ".join(i.get("ref") or "?" for i in items)
             move(buyer, t, -price, f"bought {refs} from {seller}")
             move(seller, t, price, f"sold {refs} to {buyer}")
-            fee = p.get("fee") or 0
-            if fee:
-                move(acceptor, t, -fee, f"fee on {refs} (accepted)")
-                owner = owners.get(p.get("venue")) if p.get("venue") not in HOUSE_VENUES else None
-                if owner in led:
-                    move(owner, t, fee, f"fee earned on {refs} at {p.get('venue')}")
-                    led[owner]["fees_earned"] += fee
+            pay_fee(p, acceptor, refs, t)
             for team, side in ((buyer, "team_bought"), (seller, "team_sold")):
                 if team in led:
                     led[team][side] += price
                     led[team]["trades"] += 1
-            if acceptor in led:
-                led[acceptor]["fees"] += fee
             for i in items:
                 if buyer in led:
                     led[buyer]["cards_in"][i.get("ref")] += 1

@@ -71,6 +71,64 @@ class Venues(unittest.TestCase):
         self.assertEqual(led["t01"]["cash"], 420)
 
 
+def listed(offer_id, maker, give_cash=0, give_ids=(), want_cash=0, want_refs=(), to=None):
+    return {"offer": {"id": offer_id, "maker": maker, "to": to, "venue": "rastro", "status": "open",
+                      "give": {"cash": give_cash, "assets": [{"id": i, "kind": "card"} for i in give_ids], "types": []},
+                      "want": {"cash": want_cash, "assets": [], "types": [f"card:{r}" for r in want_refs]}}}
+
+
+def two_way(price, fee, *moves):
+    """A settlement with cards going both ways: moves are (asset id, ref, frm, to)."""
+    return {"venue": "rastro", "persona": None, "fee": fee, "price": price, "parties": sorted({m[2] for m in moves}),
+            "items": [{"id": i, "kind": "card", "ref": r, "frm": f, "to": t} for i, r, f, t in moves]}
+
+
+class Packages(unittest.TestCase):
+    """Cards both ways plus cash: the accepted listing says who paid (tick 844: our 38 P + four cards for LAV-10)."""
+
+    def test_the_maker_who_gives_cash_pays_it_and_the_acceptor_pays_the_fee(self):
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t03", give_cash=38, give_ids=(960, 581), want_refs=("LAV-10",))),
+            (2, "settlement", two_way(38, 7, (960, "RET-01", "t03", "t02"), (581, "RET-02", "t03", "t02"),
+                                      (490, "LAV-10", "t02", "t03")))))
+        self.assertEqual(led["t03"]["cash"], 400 - 38)
+        self.assertEqual(led["t02"]["cash"], 400 + 38 - 7)
+        self.assertEqual((led["t03"]["fees"], led["t02"]["fees"]), (0, 7))
+        self.assertEqual((led["t03"]["trades"], led["t02"]["trades"]), (1, 1))
+        self.assertEqual(led["t03"]["known_cards"], {"LAV-10": 1})
+
+    def test_the_maker_who_wants_cash_is_paid(self):
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t01", give_ids=(5,), want_cash=10, want_refs=("SAL-01",))),
+            (2, "settlement", two_way(10, 2, (5, "LAV-01", "t01", "t02"), (6, "SAL-01", "t02", "t01")))))
+        self.assertEqual(led["t01"]["cash"], 410)
+        self.assertEqual(led["t02"]["cash"], 400 - 10 - 2)
+
+    def test_without_a_matching_listing_the_cash_stays_put(self):
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t01", give_cash=10, give_ids=(5, 7), want_refs=("SAL-01",))),
+            (2, "settlement", two_way(10, 2, (5, "LAV-01", "t01", "t02"), (6, "SAL-01", "t02", "t01")))))
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 400))  # asset 7 never moved: not that listing
+
+
+class Acceptor(unittest.TestCase):
+    """An ask and a bid both standing: the settled price tells which one was taken, and so who pays the fee."""
+
+    def board(self, price):
+        return ledger.build(feed(
+            (1, "offer.listed", listed(1, "t03", give_cash=88, want_refs=("LAT-09",))),
+            (2, "offer.listed", listed(2, "t02", give_ids=(15,), want_cash=135)),
+            (3, "settlement", settlement("t02", "t03", "LAT-09", price, "rastro", fee=6, asset=15))))
+
+    def test_settled_at_the_bid_the_seller_accepted(self):
+        led = self.board(88)
+        self.assertEqual((led["t03"]["cash"], led["t02"]["cash"]), (400 - 88, 400 + 88 - 6))
+
+    def test_settled_at_the_ask_the_buyer_accepted(self):
+        led = self.board(135)
+        self.assertEqual((led["t03"]["cash"], led["t02"]["cash"]), (400 - 135 - 6, 400 + 135))
+
+
 class Grants(unittest.TestCase):
     SATURDAY = "El Retiro has arrived: a pack and the Saturday allowance (150 primas) for everyone"
     SUNDAY = "The Sunday allowance: 150 primas for everyone"
@@ -133,6 +191,12 @@ class RealFeed(unittest.TestCase):
     def test_no_team_goes_below_zero(self):
         for team, r in self.led.items():
             self.assertGreaterEqual(min(c for _, c in r["history"]), 0, team)
+
+    def test_our_cash_after_lat09_matches_the_live_reading(self):
+        # /api/me read by the Mini's live score at 16:38:00 (score.view.log) = tick 767 in the feed: 154 P. t16 sold
+        # LAT-09 into our 88 P bid at tick 724 while its own ask stood at 135, so the 6 P fee was t16's, not ours.
+        events = [e for e in load(ROOT / "logs" / "feed" / "feed.jsonl") if e["tick"] <= 767]
+        self.assertEqual(ledger.cash_at(ledger.build(events)["t03"]["history"], 767), 154)
 
 
 if __name__ == "__main__":
