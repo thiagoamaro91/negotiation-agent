@@ -18,6 +18,8 @@ Usage (from the repo root):
     python3 agent/abuela.py plan          # show what we would trade and our private values
     python3 agent/abuela.py run           # work through the plan, one conversation at a time
     python3 agent/abuela.py run --only LAV-07,sell:39
+    python3 agent/abuela.py run --only SAL-01 --reserve 200 --cap 10   # --cap only lowers our limit
+`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds).
 Only ONE process per team may talk to Abuela at a time (one open conversation per dealer).
 """
 from __future__ import annotations
@@ -37,6 +39,16 @@ from runlog import RunLog, save_thread  # noqa: E402
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
 DEALER = "abuela"
 CASH_RESERVE = 280          # keep the L2 venue bond (250 + 20) plus a little
+DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
+
+
+def duel_lock_fresh(path: Path = DUEL_LOCK) -> bool:
+    """True while the duel bot holds the team's accept slot (first token of the file = expiry, epoch seconds)."""
+    try:
+        return float(path.read_text().split()[0]) > time.time()
+    except (OSError, ValueError, IndexError):
+        return False
+
 ANCHOR_FRAC = 0.40          # first counter, as a share of her opening price (buying)
 SELL_ANCHOR_MULT = 2.2      # first ask, as a multiple of her opening bid (selling)
 STEP = 1                    # primas per round: small steps earn small steps, and run her patience out
@@ -206,7 +218,7 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 # ---------------------------------------------------------------- what to trade
 
-def build_plan(b: Bazaar, me: dict, only: list[str] | None) -> list[dict]:
+def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None = None) -> list[dict]:
     """Buys: cards Abuela sells (released commons/uncommons) that complete our best pages, ranked by value.
     Sells: our duplicate copies, which are worth only 25% to us."""
     catalog = b.catalog()
@@ -223,7 +235,8 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None) -> list[dict]:
             if c["rarity"] not in ("common", "uncommon") or c["id"] in held:
                 continue
             v = b.value(c["id"])["your_value"]
-            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"], "value": v})
+            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
+                         "value": min(v, cap) if cap else v, "private": v})   # --cap can only lower our limit
     buys.sort(key=lambda x: -(x["value"] - 0.8 * x["book"]))
     sells = []
     for ref, copies in held.items():
@@ -244,22 +257,32 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None) -> list[dict]:
 
 
 def main() -> None:
+    global CASH_RESERVE
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--only", default="", help="comma list of card refs and/or sell:<asset_id>")
     ap.add_argument("--max-deals", type=int, default=6)
+    ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
+    ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (only lowers our value)")
     args = ap.parse_args()
+    if args.cmd == "run" and duel_lock_fresh():
+        print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
+              "Not starting Abuela; try again after the duel wave.", flush=True)
+        return
+    CASH_RESERVE = args.reserve
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
-    plan = build_plan(b, me, only)
+    plan = build_plan(b, me, only, args.cap)
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
-        print(f"  {p['side']:4} {p['item']:7} value={p['value']:6.1f}  {p.get('name', '')}")
+        print(f"  {p['side']:4} {p['item']:7} value={p['value']:6.1f} private={p.get('private', p['value']):6.1f}"
+              f"  {p.get('name', '')}")
+    print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P) cap={args.cap}")
     if args.cmd == "plan":
         return
-    RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"),
+    RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
               plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]])
     done = 0
     for target in plan:
