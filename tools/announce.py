@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -160,28 +161,47 @@ def crossable(o: dict) -> bool:
     return sh is not None and sh[0] in ("ask", "bid")
 
 
-def take_order(o: dict) -> str | None:
-    """The order that meets a plain v20 ask or bid on the other side, as RULES.md writes it; None otherwise."""
+def take_order(o: dict, fee=(0, 0)) -> str | None:
+    """The order that meets a plain v20 ask or bid on the other side, as RULES.md writes it, with our venue's fee
+    counted (the buyer pays price + fee); None otherwise or when no whole price leaves room for the fee."""
     sh = shape(o)
     if sh is None or sh[0] == "swap":
         return None
     kind, ref, price = sh
     if kind == "ask":
-        return f'{{"venue": "{VENUE}", "give": {{"cash": {price}}}, "want": {{"cards": ["{ref}"]}}}}'
-    return f'{{"venue": "{VENUE}", "give": {{"assets": [<your {ref}>]}}, "want": {{"cash": {price}}}}}'
+        return f'{{"venue": "{VENUE}", "give": {{"cash": {price + fee_of(fee, price)}}}, "want": {{"cards": ["{ref}"]}}}}'
+    ask = next((p for p in range(price, 0, -1) if p + fee_of(fee, p) <= price), None)
+    if ask is None:
+        return None
+    return f'{{"venue": "{VENUE}", "give": {{"assets": [<your {ref}>]}}, "want": {{"cash": {ask}}}}}'
 
 
 def venue_name(v) -> str:
     return "El Rastro" if v in (None, "rastro") else str(v)
 
 
-def market_sides(offers: list) -> tuple[dict, dict]:
+def fee_of(fee, price: int) -> int:
+    """Our venue's fee on one card at `price`, rounded up, as the broker computes it. fee = (bps, P per card)."""
+    bps, per_card = fee or (0, 0)
+    return math.ceil((bps or 0) * price / 10000) + (per_card or 0)
+
+
+def fee_txt(fee) -> str:
+    bps, per_card = fee or (0, 0)
+    return f"{(bps or 0) / 100:g} % fee, {per_card or 0} P per card"
+
+
+def market_sides(offers: list, names: dict | None = None) -> tuple[dict, dict]:
     """Best bid and ask per card across the offers given (El Rastro's book plus other venues' live offers), with the
     offer id and venue: ({ref: (bid, id, venue)}, {ref: (ask, id, venue)}). Only plain asks and bids (shape); offers
-    on our venue and offers to one team are left out."""
+    on our venue, offers to one team and our own offers (by the feed's names or the maker) are left out: we cannot
+    trade on v20, so a pair with one of ours would point a team at a trade that cannot happen there."""
+    names = names or {}
     bids, asks = {}, {}
     for o in offers or []:
         if not isinstance(o, dict) or o.get("status", "open") != "open" or o.get("to") or o.get("venue") == VENUE:
+            continue
+        if OURS in (names.get(o.get("id")), o.get("maker")):
             continue
         sh = shape(o)
         v = o.get("venue") or "rastro"
@@ -195,25 +215,25 @@ def market_sides(offers: list) -> tuple[dict, dict]:
 def near_market_pairs(offers: list, names: dict, skip=()) -> list:
     """Cards whose best bid and best ask (market_sides) are at most NEAR_GAP apart and come from two different teams
     (or makers we cannot name), closest first: [(ref, (bid, id, venue), (ask, id, venue))]."""
-    bids, asks = market_sides(offers)
+    bids, asks = market_sides(offers, names)
     out = []
     for r, b in bids.items():
         a = asks.get(r)
         if a is None or r in skip or a[0] - b[0] > NEAR_GAP:
             continue
         nb, na = names.get(b[1]), names.get(a[1])
-        if nb is not None and nb == na:
+        if (nb is not None and nb == na) or OURS in (nb, na):
             continue
         out.append((r, b, a))
     return sorted(out, key=lambda x: (x[2][0] - x[1][0], -x[1][0]))
 
 
 def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISSING, venue_offers=(),
-               names: dict | None = None) -> str:
+               names: dict | None = None, fee=(0, 0)) -> str:
     """One announcement, at most MAX_CHARS. `offers`: open offers off our venue (El Rastro's book, other venues' live
     offers); `venue_offers`: v20's live offers; `names`: {offer id: team} from the feed. variant 0: v20's book first;
-    1: the crossable pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
-    `exclude` never appear."""
+    1: the near pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
+    `exclude` never appear. `fee`: v20's (bps, P per card), counted in every order and every "crosses" claim."""
     skip = set(exclude or ())
     names = names or {}
     live = [o for o in venue_offers or [] if not refs(o) & skip]
@@ -221,12 +241,12 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     book = ""
     if shown:
         first = shown[0][0]
-        order = next((take_order(o) for o, _ in shown if crossable(o) and take_order(o)), None)
+        order = next((take_order(o, fee) for o, _ in shown if crossable(o) and take_order(o, fee)), None)
         book = (f"Live on La Celestina ({VENUE}) now: " + "; ".join(d for _, d in shown) + ". "
                 + f"Take one directly: POST /api/offers/{first.get('id', '<id>')}/accept (any offer id above). "
                 + (f"Or post the other side of a cash offer on venue \"{VENUE}\", e.g. {order}, and our broker "
                    f"crosses it the same tick. " if order else "")
-                + "0 % fee, 0 P per card. ")
+                + f"{fee_txt(fee)}. ")
     pairs = near_market_pairs(offers, names, skip)
 
     def who(oid, fallback):
@@ -234,17 +254,19 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
         return w if w and w != OURS else fallback
 
     def pair_txt(r, b, a):
+        gap = a[0] + fee_of(fee, a[0]) - b[0]  # what the bid lacks to cover the ask plus v20's fee
+        state = "they already cross on v20's terms" if gap <= 0 else f"{gap} P apart on v20's terms"
         return (f"{r}: {who(a[1], 'a seller')} asks {a[0]} P on {venue_name(a[2])} (offer {a[1]}), "
-                f"{who(b[1], 'a buyer')} bids {b[0]} P on {venue_name(b[2])} (offer {b[1]})")
+                f"{who(b[1], 'a buyer')} bids {b[0]} P on {venue_name(b[2])} (offer {b[1]}), {state}")
 
     pairs_txt = ""
     if pairs:
-        pairs_txt = ("Buyer and seller a few P apart, nobody crossing them: "
+        pairs_txt = ("Buyer and seller close, nobody crossing them: "
                      + "; ".join(pair_txt(*p) for p in pairs[:3])
-                     + f". Post both sides on venue \"{VENUE}\": no fee (El Rastro's taker pays 5 % + 1 P a card), "
-                       f"and our broker matches them at the midpoint the tick they meet. ")
-    pitch = (f"La Celestina ({VENUE}): 0 % fee, 0 P per card; our broker crosses every bid and ask card by card, any "
-             f"copy, the tick they meet.")
+                     + f". On venue \"{VENUE}\" ({fee_txt(fee)}; El Rastro's taker pays 5 % + 1 P a card) our broker "
+                       f"matches a bid and an ask the tick the bid covers the ask plus the fee, at the midpoint. ")
+    pitch = (f"La Celestina ({VENUE}): {fee_txt(fee)}; our broker crosses a bid and an ask card by card, any copy, the "
+             f"tick the bid covers the ask plus the fee.")
     tail = f" {link}" if link else ""
     v = variant % 3
     if v == 2:
@@ -321,11 +343,13 @@ def main(argv: list[str] | None = None) -> None:
             time.sleep(max(60.0, args.every_min * 60))
         variant = args.variant if args.variant is not None else next_variant()
         events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
-        venues = [v.get("venue") for v in get_json(f"{URL}/api/venues").get("venues", [])
-                  if isinstance(v, dict) and v.get("status") == "open" and v.get("venue")]
+        index = [v for v in get_json(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+        venues = [v.get("venue") for v in index if v.get("status") == "open" and v.get("venue")]
+        ours = next((v for v in index if v.get("venue") == VENUE), {})
+        fee = (ours.get("fee_bps") or 0, ours.get("fee_per_card") or 0)
         books = market_books(get_json, venues + [VENUE])
         offers = [o for v, book in books.items() if v != VENUE for o in book]
-        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), offer_makers(events))
+        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), offer_makers(events), fee)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         if args.cmd == "plan":
             print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")

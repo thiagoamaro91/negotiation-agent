@@ -554,6 +554,36 @@ class Public(unittest.TestCase):
         self.assertEqual(ok, [(11, 12, 12)])  # the 30 P bid is the seller's own maker
 
 
+class FeeBearing(unittest.TestCase):
+    """A venue that charges a fee (Codex on #44): a pair that crosses on quotes but not after the fee is never sent,
+    and every match leaves room for the fee, for public offers and for the bench."""
+
+    def offer(self, oid, maker, side, quote):
+        if side == "sell":
+            return {"id": oid, "maker": maker, "give": {"cash": 0, "assets": [{"kind": "card", "ref": "LAV-03",
+                    "id": oid}], "types": []}, "want": {"cash": quote, "assets": [], "types": []}}
+        return {"id": oid, "maker": maker, "give": {"cash": quote, "assets": [], "types": []},
+                "want": {"cash": 0, "assets": [], "types": ["card:LAV-03"]}}
+
+    def test_public_pairs_respect_the_fee(self):
+        tight = book_of([], [self.offer(1, "pA", "sell", 10), self.offer(2, "pB", "buy", 11)], fee_bps=500, fee_card=1)
+        self.assertEqual(brk.plan_book(tight, 1, None)[0], [])          # 10 + 1 + 1 = 12 > 11: not sent
+        room = book_of([], [self.offer(1, "pA", "sell", 10), self.offer(2, "pB", "buy", 13)], fee_bps=500, fee_card=1)
+        ok, bad, _ = brk.plan_book(room, 1, None)
+        self.assertEqual((ok, bad), (public_plan(room), []))
+        (sell, buy, price), = ok
+        self.assertTrue(10 <= price and price + brk.fee_of(room, price) <= 13)
+
+    def test_bench_pairs_respect_the_fee(self):
+        book = book_of([seller("b1-1", 10, maker="bench"), buyer("b1-2", 12, maker="bench"),
+                        seller("b1-3", 20, maker="bench"), buyer("b1-4", 21, maker="bench")], fee_bps=1000, fee_card=1)
+        ok, bad, _ = brk.plan_book(book, 1, None)
+        self.assertEqual(bad, [])
+        self.assertEqual(ok, [("b1-1", "b1-4", 15)])                    # midpoint 15: 15 + 2 + 1 = 18 <= 21
+        for sell, buy, price in ok:
+            self.assertLessEqual(price + brk.fee_of(book, price), 21)
+
+
 class Estimates(unittest.TestCase):
     prior = brk.patience_prior()
 
