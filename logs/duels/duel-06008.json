@@ -1,0 +1,57 @@
+{
+ "duel": 6008,
+ "session": 3,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.74,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 93,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 1321,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 9297,
+  "price": 108,
+  "tick": 1317,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 8930,
+  "price": 90,
+  "tick": 1308,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1308,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 122 P, delivery day 10.",
+   "price": 122,
+   "days": 10
+  },
+  {
+   "tick": 1308,
+   "from": "Rival Oro",
+   "text": "90 P con entrega el día 0 y cerramos ahora.",
+   "price": 90,
+   "days": 0
+  },
+  {
+   "tick": 1317,
+   "from": "you",
+   "text": "Last word from me: 108 P, delivery day 10.",
+   "price": 108,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

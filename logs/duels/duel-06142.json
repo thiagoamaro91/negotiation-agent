@@ -1,0 +1,101 @@
+{
+ "duel": 6142,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.24,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 76,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1381,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10896,
+  "price": 79,
+  "tick": 1378,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1367,
+   "from": "Rival Sol",
+   "text": "We can do 62 P, delivery on day 0. Thank you for the talk.",
+   "price": 62,
+   "days": 0
+  },
+  {
+   "tick": 1368,
+   "from": "Rival Sol",
+   "text": "68 P, delivery on day 0 works well for us.",
+   "price": 68,
+   "days": 0
+  },
+  {
+   "tick": 1369,
+   "from": "Rival Sol",
+   "text": "Our offer is 69 P, delivery on day 0.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 1370,
+   "from": "Rival Sol",
+   "text": "Let's meet at 71 P, delivery on day 0, fair for both.",
+   "price": 71,
+   "days": 0
+  },
+  {
+   "tick": 1371,
+   "from": "Rival Sol",
+   "text": "72 P, delivery on day 0, and we close now.",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1373,
+   "from": "Rival Sol",
+   "text": "We move to 75 P, delivery on day 0.",
+   "price": 75,
+   "days": 0
+  },
+  {
+   "tick": 1374,
+   "from": "Rival Sol",
+   "text": "We can do 76 P, delivery on day 0. Thank you for the talk.",
+   "price": 76,
+   "days": 0
+  },
+  {
+   "tick": 1375,
+   "from": "Rival Sol",
+   "text": "77 P, delivery on day 0 works well for us.",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 1377,
+   "from": "Rival Sol",
+   "text": "Our offer is 78 P, delivery on day 0.",
+   "price": 78,
+   "days": 0
+  },
+  {
+   "tick": 1378,
+   "from": "Rival Sol",
+   "text": "Let's meet at 79 P, delivery on day 0, fair for both.",
+   "price": 79,
+   "days": 0
+  }
+ ],
+ "result": 3.0,
+ "price": 79,
+ "days": 0
+}

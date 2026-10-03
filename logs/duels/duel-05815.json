@@ -1,0 +1,108 @@
+{
+ "duel": 5815,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.62,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 180,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1298,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8331,
+  "price": 117,
+  "tick": 1292,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1282,
+   "from": "Rival Verde",
+   "text": "Hello! I can do 165 with delivery on day 10.",
+   "price": 165,
+   "days": 10
+  },
+  {
+   "tick": 1283,
+   "from": "Rival Verde",
+   "text": "Thanks for the reply. 132, delivery day 10.",
+   "price": 132,
+   "days": 10
+  },
+  {
+   "tick": 1284,
+   "from": "Rival Verde",
+   "text": "Let me move closer: 117, day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1285,
+   "from": "Rival Verde",
+   "text": "I'd like to close this: 117 with day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1286,
+   "from": "Rival Verde",
+   "text": "Meeting you halfway: 117, delivered day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1287,
+   "from": "Rival Verde",
+   "text": "Final stretch from me: 117, day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1288,
+   "from": "Rival Verde",
+   "text": "Hello! I can do 117 with delivery on day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1289,
+   "from": "Rival Verde",
+   "text": "Thanks for the reply. 117, delivery day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1290,
+   "from": "Rival Verde",
+   "text": "Let me move closer: 117, day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1291,
+   "from": "Rival Verde",
+   "text": "I'd like to close this: 117 with day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 1292,
+   "from": "Rival Verde",
+   "text": "Meeting you halfway: 117, delivered day 10.",
+   "price": 117,
+   "days": 10
+  }
+ ],
+ "result": 46.8,
+ "price": 117,
+ "days": 10
+}

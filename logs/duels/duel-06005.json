@@ -1,0 +1,59 @@
+{
+ "duel": 6005,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.71,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 76,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1317,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8925,
+  "price": 77,
+  "tick": 1307,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1301,
+   "from": "Rival Plata",
+   "text": "Hello, and thank you for meeting me. I would propose 63 P with delivery on day 0.",
+   "price": 63,
+   "days": 0
+  },
+  {
+   "tick": 1303,
+   "from": "Rival Plata",
+   "text": "I appreciate it, thank you. Could we close at 71 P, delivery on day 0, please?",
+   "price": 71,
+   "days": 0
+  },
+  {
+   "tick": 1305,
+   "from": "Rival Plata",
+   "text": "Fair enough, thank you. I will meet you partway: 74 P with delivery on day 0.",
+   "price": 74,
+   "days": 0
+  },
+  {
+   "tick": 1307,
+   "from": "Rival Plata",
+   "text": "Thank you, we are getting close. 77 P and delivery on day 0 works for me.",
+   "price": 77,
+   "days": 0
+  }
+ ],
+ "result": 1.0,
+ "price": 77,
+ "days": 0
+}

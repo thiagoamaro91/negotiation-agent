@@ -1,0 +1,22 @@
+{
+ "id": 1172,
+ "kind": "team",
+ "team": "t13",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 828,
+ "messages": [
+  {
+   "id": 7672,
+   "tick": 828,
+   "sender": "t13",
+   "text": "🎁 Team 3, we just GAVE you 1 P, no strings attached. Offer #12620 (on v11, 0% fee): we give 1 P, you give nothing. Collect it now: POST /api/offers/12620/accept with no assets; it settles next tick (open until tick 858). Don't trust us, check it: GET /api/feed (public, no key) shows event 42600, offer.listed #12620 from t13: give 1 P, want nothing, to t03. Why? El Club (v03) pays 1 P cashback to EACH side of every trade between two teams on it today, 0% fee, 0 P per card. Return the favour: trade your next card at El Club and get 1 P back on top. 🚨",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

@@ -1,0 +1,71 @@
+{
+ "duel": 5916,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.67,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 70,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1333,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 9378,
+  "price": 92,
+  "tick": 1320,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 9679,
+  "price": 88,
+  "tick": 1329,
+  "days": 5
+ },
+ "messages": [
+  {
+   "tick": 1320,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 92 P, delivery day 10.",
+   "price": 92,
+   "days": 10
+  },
+  {
+   "tick": 1326,
+   "from": "Rival Rojo",
+   "text": "Quick one: Retiro or Malasaña for a coffee? My offer is 73.",
+   "price": 73,
+   "days": 5
+  },
+  {
+   "tick": 1327,
+   "from": "Rival Rojo",
+   "text": "I just moved for you. 76, your turn to meet me.",
+   "price": 76,
+   "days": 5
+  },
+  {
+   "tick": 1328,
+   "from": "Rival Rojo",
+   "text": "Thanks, I appreciate the move. 76 works for me.",
+   "price": 76,
+   "days": 5
+  },
+  {
+   "tick": 1329,
+   "from": "Rival Rojo",
+   "text": "We're close. 88 and done?",
+   "price": 88,
+   "days": 5
+  }
+ ],
+ "result": 33.4,
+ "price": 88,
+ "days": 5
+}

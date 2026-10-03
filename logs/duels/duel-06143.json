@@ -1,0 +1,101 @@
+{
+ "duel": 6143,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 8.76,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 81,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 1382,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10909,
+  "price": 77,
+  "tick": 1379,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1368,
+   "from": "Rival Plata",
+   "text": "We can do 92 P, delivery on day 0. Thank you for the talk.",
+   "price": 92,
+   "days": 0
+  },
+  {
+   "tick": 1369,
+   "from": "Rival Plata",
+   "text": "87 P, delivery on day 0 works well for us.",
+   "price": 87,
+   "days": 0
+  },
+  {
+   "tick": 1370,
+   "from": "Rival Plata",
+   "text": "Our offer is 86 P, delivery on day 0.",
+   "price": 86,
+   "days": 0
+  },
+  {
+   "tick": 1371,
+   "from": "Rival Plata",
+   "text": "Let's meet at 84 P, delivery on day 0, fair for both.",
+   "price": 84,
+   "days": 0
+  },
+  {
+   "tick": 1372,
+   "from": "Rival Plata",
+   "text": "83 P, delivery on day 0, and we close now.",
+   "price": 83,
+   "days": 0
+  },
+  {
+   "tick": 1374,
+   "from": "Rival Plata",
+   "text": "We move to 81 P, delivery on day 0.",
+   "price": 81,
+   "days": 0
+  },
+  {
+   "tick": 1375,
+   "from": "Rival Plata",
+   "text": "We can do 80 P, delivery on day 0. Thank you for the talk.",
+   "price": 80,
+   "days": 0
+  },
+  {
+   "tick": 1376,
+   "from": "Rival Plata",
+   "text": "79 P, delivery on day 0 works well for us.",
+   "price": 79,
+   "days": 0
+  },
+  {
+   "tick": 1378,
+   "from": "Rival Plata",
+   "text": "Our offer is 78 P, delivery on day 0.",
+   "price": 78,
+   "days": 0
+  },
+  {
+   "tick": 1379,
+   "from": "Rival Plata",
+   "text": "Let's meet at 77 P, delivery on day 0, fair for both.",
+   "price": 77,
+   "days": 0
+  }
+ ],
+ "result": 4.0,
+ "price": 77,
+ "days": 0
+}

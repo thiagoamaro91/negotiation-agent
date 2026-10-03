@@ -1,0 +1,22 @@
+{
+ "id": 1676,
+ "kind": "team",
+ "team": "t10",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 1110,
+ "messages": [
+  {
+   "id": 10522,
+   "tick": 1110,
+   "sender": "t10",
+   "text": "Team 10 (venue v07, 0 % fee, no per-card charge). Not a trade request. You have been hunting LAT-02 and SAL-02. Team 9 lists them on El Rastro now: LAT-02 at 8 (offer 16446) and SAL-02 at 7 (offer 16451); there you pay 5 % + 1 P on top. Post public bids on v07 at those prices: we are asking Team 9 to list on v07 and our broker pairs you at the midpoint with no fee.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

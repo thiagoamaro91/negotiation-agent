@@ -1,0 +1,338 @@
+{
+ "id": 1801,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-11"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1201,
+ "messages": [
+  {
+   "id": 11126,
+   "tick": 1202,
+   "sender": "t03",
+   "text": "Buenas, Paco y Nando. For La Casa Encendida: 64 P, cash in hand.",
+   "offer": {
+    "id": 17798,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 64,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1206,
+    "created_tick": 1202,
+    "final": false
+   }
+  },
+  {
+   "id": 11122,
+   "tick": 1202,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Come, come, Paco has been saving this one — La Casa Encendida!\n\nNando: Beautiful, sí, the foil corner, look how she burns in the light!\n\nPaco: For you, friend, only 187. But quick, we pack up soon, eh?",
+   "offer": {
+    "id": 17794,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 187,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1206,
+    "created_tick": 1202,
+    "final": false
+   }
+  },
+  {
+   "id": 11136,
+   "tick": 1203,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 169 P.",
+   "offer": {
+    "id": 17810,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-10"
+     ]
+    },
+    "want": {
+     "cash": 169,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1207,
+    "created_tick": 1203,
+    "final": false
+   }
+  },
+  {
+   "id": 11139,
+   "tick": 1203,
+   "sender": "t03",
+   "text": "I move, you move: 85 P.",
+   "offer": {
+    "id": 17815,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 85,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1207,
+    "created_tick": 1203,
+    "final": false
+   }
+  },
+  {
+   "id": 11143,
+   "tick": 1204,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 159 P. They stopped printing this one yesterday.",
+   "offer": {
+    "id": 17821,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 159,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1208,
+    "created_tick": 1204,
+    "final": false
+   }
+  },
+  {
+   "id": 11159,
+   "tick": 1205,
+   "sender": "t03",
+   "text": "Honest step: 106 P for La Casa Encendida.",
+   "offer": {
+    "id": 17842,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 106,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1209,
+    "created_tick": 1205,
+    "final": false
+   }
+  },
+  {
+   "id": 11165,
+   "tick": 1206,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 150 P.",
+   "offer": {
+    "id": 17855,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 150,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1210,
+    "created_tick": 1206,
+    "final": false
+   }
+  },
+  {
+   "id": 11175,
+   "tick": 1206,
+   "sender": "t03",
+   "text": "127 P, and it has to be La Casa Encendida, the real one.",
+   "offer": {
+    "id": 17866,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 127,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1210,
+    "created_tick": 1206,
+    "final": false
+   }
+  },
+  {
+   "id": 11179,
+   "tick": 1207,
+   "sender": "picaros",
+   "text": "Paco: ¡El real, claro! We have only one, and she is hers — I mean yours, almost!\n\nNando: You walk fast, amigo, we respect that. 143 P and she goes in your bag before the van leaves.\n\nPaco: Say sí, the street is waiting.",
+   "offer": {
+    "id": 17870,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "want": {
+     "cash": 143,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1211,
+    "created_tick": 1207,
+    "final": false
+   }
+  },
+  {
+   "id": 11190,
+   "tick": 1207,
+   "sender": "t03",
+   "text": "Still serious: 128 P.",
+   "offer": {
+    "id": 17883,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 128,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1211,
+    "created_tick": 1207,
+    "final": false
+   }
+  },
+  {
+   "id": 11192,
+   "tick": 1208,
+   "sender": "picaros",
+   "text": "Paco: Amigo, one P at a time? We'll be grey before the van goes!\n\nNando: 135. Last word, hermano — the real Casa Encendida, in your hands now.\n\nPaco: We say sí or we fold the table and walk. No more dancing, eh? Decide.",
+   "offer": {
+    "id": 17885,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1801,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "want": {
+     "cash": 135,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1212,
+    "created_tick": 1208,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Casa Encendida",
+ "closed_reason": null
+}

@@ -1,0 +1,45 @@
+{
+ "duel": 6152,
+ "session": 3,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.11,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 91,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1399,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": {
+  "id": 11017,
+  "price": 106,
+  "tick": 1395,
+  "days": 10
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1386,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 119 P, delivery day 10.",
+   "price": 119,
+   "days": 10
+  },
+  {
+   "tick": 1395,
+   "from": "you",
+   "text": "Last word from me: 106 P, delivery day 10.",
+   "price": 106,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

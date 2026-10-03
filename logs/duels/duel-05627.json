@@ -1,0 +1,38 @@
+{
+ "duel": 5627,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.83,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 204,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 1255,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 6260,
+  "price": 147,
+  "tick": 1239,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1239,
+   "from": "Rival Oro",
+   "text": "I can do 147 P with delivery in 0 days. Every round costs us both, so let's close.",
+   "price": 147,
+   "days": 0
+  }
+ ],
+ "result": 57.0,
+ "price": 147,
+ "days": 0
+}

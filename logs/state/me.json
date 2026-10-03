@@ -1,14 +1,18 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 169,
- "level": 3,
+ "cash": 253,
+ "level": 5,
  "unlocked": [
   "abuela",
   "chato",
-  "pilar"
+  "pilar",
+  "picaros",
+  "banco"
  ],
- "badges": [],
+ "badges": [
+  "Sharp ear"
+ ],
  "frozen": false,
  "affinity": {
   "LAV": 1.6,
@@ -20,6 +24,17 @@
  },
  "assets": [
   {
+   "id": 15,
+   "kind": "card",
+   "ref": "LAT-09",
+   "serial": 1,
+   "rarity": "rare",
+   "set": "LAT",
+   "print_run": 30,
+   "name": "San Isidro",
+   "your_value": 149.9
+  },
+  {
    "id": 31,
    "kind": "card",
    "ref": "LAT-01",
@@ -28,7 +43,7 @@
    "set": "LAT",
    "print_run": 300,
    "name": "Caña en la Cava Baja",
-   "your_value": 11.0
+   "your_value": 83.9
   },
   {
    "id": 32,
@@ -39,7 +54,7 @@
    "set": "LAT",
    "print_run": 300,
    "name": "Mercado de la Cebada",
-   "your_value": 11.0
+   "your_value": 83.9
   },
   {
    "id": 33,
@@ -50,7 +65,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "Mural de la Esquina",
-   "your_value": 16.0
+   "your_value": 122.0
   },
   {
    "id": 34,
@@ -72,18 +87,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "Té Moruno",
-   "your_value": 4.0
-  },
-  {
-   "id": 36,
-   "kind": "card",
-   "ref": "MAL-01",
-   "serial": 2,
-   "rarity": "common",
-   "set": "MAL",
-   "print_run": 300,
-   "name": "Vinilo de la Movida",
-   "your_value": 7.0
+   "your_value": 122.0
   },
   {
    "id": 37,
@@ -94,7 +98,7 @@
    "set": "MAL",
    "print_run": 300,
    "name": "Plaza del Dos de Mayo",
-   "your_value": 0.7
+   "your_value": 7.0
   },
   {
    "id": 38,
@@ -105,7 +109,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "Bici de Reparto",
-   "your_value": 4.0
+   "your_value": 122.0
   },
   {
    "id": 39,
@@ -116,51 +120,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "La Corrala",
-   "your_value": 4.0
-  },
-  {
-   "id": 40,
-   "kind": "card",
-   "ref": "LAV-03",
-   "serial": 2,
-   "rarity": "common",
-   "set": "LAV",
-   "print_run": 300,
-   "name": "Té Moruno",
-   "your_value": 4.0
-  },
-  {
-   "id": 41,
-   "kind": "card",
-   "ref": "LAV-01",
-   "serial": 4,
-   "rarity": "common",
-   "set": "LAV",
-   "print_run": 300,
-   "name": "La Corrala",
-   "your_value": 4.0
-  },
-  {
-   "id": 42,
-   "kind": "card",
-   "ref": "MAL-06",
-   "serial": 1,
-   "rarity": "uncommon",
-   "set": "MAL",
-   "print_run": 90,
-   "name": "Tienda de Discos",
-   "your_value": 17.5
-  },
-  {
-   "id": 44,
-   "kind": "card",
-   "ref": "MAL-08",
-   "serial": 1,
-   "rarity": "uncommon",
-   "set": "MAL",
-   "print_run": 90,
-   "name": "La Vía Láctea",
-   "your_value": 17.5
+   "your_value": 122.0
   },
   {
    "id": 45,
@@ -171,7 +131,29 @@
    "set": "LAT",
    "print_run": 30,
    "name": "El Mesón de la Cava",
-   "your_value": 77.0
+   "your_value": 149.9
+  },
+  {
+   "id": 219,
+   "kind": "card",
+   "ref": "SAL-05",
+   "serial": 7,
+   "rarity": "common",
+   "set": "SAL",
+   "print_run": 300,
+   "name": "Taxi Blanco",
+   "your_value": 13.0
+  },
+  {
+   "id": 307,
+   "kind": "card",
+   "ref": "SAL-02",
+   "serial": 11,
+   "rarity": "common",
+   "set": "SAL",
+   "print_run": 300,
+   "name": "El Portero",
+   "your_value": 13.0
   },
   {
    "id": 339,
@@ -182,7 +164,7 @@
    "set": "LAV",
    "print_run": 90,
    "name": "La Tabacalera",
-   "your_value": 40.0
+   "your_value": 146.0
   },
   {
    "id": 352,
@@ -193,7 +175,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "El Frutero de Argumosa",
-   "your_value": 16.0
+   "your_value": 122.0
   },
   {
    "id": 364,
@@ -204,7 +186,7 @@
    "set": "LAV",
    "print_run": 90,
    "name": "Samosas de la Plaza",
-   "your_value": 40.0
+   "your_value": 146.0
   },
   {
    "id": 382,
@@ -215,7 +197,7 @@
    "set": "LAV",
    "print_run": 90,
    "name": "Teatro Valle-Inclán",
-   "your_value": 40.0
+   "your_value": 146.0
   },
   {
    "id": 392,
@@ -237,7 +219,7 @@
    "set": "LAT",
    "print_run": 300,
    "name": "Puesto del Rastro",
-   "your_value": 11.0
+   "your_value": 83.9
   },
   {
    "id": 413,
@@ -262,6 +244,17 @@
    "your_value": 32.5
   },
   {
+   "id": 490,
+   "kind": "card",
+   "ref": "LAV-10",
+   "serial": 4,
+   "rarity": "rare",
+   "set": "LAV",
+   "print_run": 30,
+   "name": "Fiesta de San Cayetano",
+   "your_value": 218.0
+  },
+  {
    "id": 491,
    "kind": "card",
    "ref": "LAT-06",
@@ -270,18 +263,7 @@
    "set": "LAT",
    "print_run": 90,
    "name": "La Chulapa",
-   "your_value": 27.5
-  },
-  {
-   "id": 499,
-   "kind": "card",
-   "ref": "LAV-05",
-   "serial": 18,
-   "rarity": "common",
-   "set": "LAV",
-   "print_run": 300,
-   "name": "Bici de Reparto",
-   "your_value": 4.0
+   "your_value": 100.4
   },
   {
    "id": 512,
@@ -292,7 +274,18 @@
    "set": "LAT",
    "print_run": 90,
    "name": "Vermut del Domingo",
-   "your_value": 27.5
+   "your_value": 100.4
+  },
+  {
+   "id": 525,
+   "kind": "card",
+   "ref": "LAT-03",
+   "serial": 13,
+   "rarity": "common",
+   "set": "LAT",
+   "print_run": 300,
+   "name": "Huevos Rotos",
+   "your_value": 83.9
   },
   {
    "id": 568,
@@ -306,17 +299,6 @@
    "your_value": 13.0
   },
   {
-   "id": 579,
-   "kind": "card",
-   "ref": "MAL-02",
-   "serial": 26,
-   "rarity": "common",
-   "set": "MAL",
-   "print_run": 300,
-   "name": "Plaza del Dos de Mayo",
-   "your_value": 0.7
-  },
-  {
    "id": 580,
    "kind": "card",
    "ref": "LAT-05",
@@ -325,18 +307,7 @@
    "set": "LAT",
    "print_run": 300,
    "name": "El Organillero",
-   "your_value": 11.0
-  },
-  {
-   "id": 581,
-   "kind": "card",
-   "ref": "RET-02",
-   "serial": 1,
-   "rarity": "common",
-   "set": "RET",
-   "print_run": 300,
-   "name": "La Castañera",
-   "your_value": 9.0
+   "your_value": 83.9
   },
   {
    "id": 594,
@@ -358,68 +329,73 @@
    "set": "LAT",
    "print_run": 90,
    "name": "Las Vistillas",
-   "your_value": 27.5
+   "your_value": 100.4
   },
   {
-   "id": 825,
-   "kind": "card",
-   "ref": "MAL-04",
-   "serial": 19,
-   "rarity": "common",
-   "set": "MAL",
-   "print_run": 300,
-   "name": "El Tatuador",
-   "your_value": 7.0
+   "id": 903,
+   "kind": "pack",
+   "ref": "sobre_barrio",
+   "serial": 63,
+   "name": "Neighbourhood pack",
+   "your_value": 17.1
   },
   {
-   "id": 826,
+   "id": 967,
    "kind": "card",
-   "ref": "MAL-02",
-   "serial": 32,
-   "rarity": "common",
-   "set": "MAL",
-   "print_run": 300,
-   "name": "Plaza del Dos de Mayo",
-   "your_value": 0.7
+   "ref": "LAV-09",
+   "serial": 9,
+   "rarity": "rare",
+   "set": "LAV",
+   "print_run": 30,
+   "name": "Cine Doré",
+   "your_value": 218.0
   },
   {
-   "id": 827,
-   "kind": "card",
-   "ref": "RET-06",
-   "serial": 12,
-   "rarity": "uncommon",
-   "set": "RET",
-   "print_run": 90,
-   "name": "La Rosaleda",
-   "your_value": 22.5
+   "id": 1012,
+   "kind": "pack",
+   "ref": "sobre_plata",
+   "serial": 23,
+   "name": "Silver pack",
+   "your_value": 105.0
   },
   {
-   "id": 828,
+   "id": 1140,
    "kind": "card",
-   "ref": "MAL-07",
-   "serial": 11,
-   "rarity": "uncommon",
-   "set": "MAL",
-   "print_run": 90,
-   "name": "Mercado de San Ildefonso",
-   "your_value": 17.5
+   "ref": "LAV-11",
+   "serial": 3,
+   "rarity": "epic",
+   "set": "LAV",
+   "print_run": 9,
+   "name": "La Casa Encendida",
+   "your_value": 288.0
+  },
+  {
+   "id": 1172,
+   "kind": "card",
+   "ref": "SAL-09",
+   "serial": 27,
+   "rarity": "rare",
+   "set": "SAL",
+   "print_run": 30,
+   "name": "El Marqués",
+   "your_value": 91.0
   }
  ],
- "collection_value": 659.5,
+ "collection_value": 1564.9,
  "album": {
   "pages": [
    {
     "set": "LAV",
     "name": "Lavapiés",
-    "have": 8,
+    "have": 10,
     "of": 10,
-    "complete": false,
+    "complete": true,
     "master": false
    },
    {
     "set": "MAL",
     "name": "Malasaña",
-    "have": 6,
+    "have": 1,
     "of": 10,
     "complete": false,
     "master": false
@@ -427,15 +403,15 @@
    {
     "set": "LAT",
     "name": "La Latina",
-    "have": 8,
+    "have": 10,
     "of": 10,
-    "complete": false,
+    "complete": true,
     "master": false
    },
    {
     "set": "SAL",
     "name": "Salamanca",
-    "have": 6,
+    "have": 9,
     "of": 10,
     "complete": false,
     "master": false
@@ -443,7 +419,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 2,
+    "have": 0,
     "of": 10,
     "complete": false,
     "master": false
@@ -452,40 +428,42 @@
   "filled": 30,
   "slots": 50
  },
- "tick": 630,
+ "tick": 1428,
  "tick_seconds": 30.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 20.48,
-  "negotiating": 16.86,
-  "market": 3.61,
-  "neg_points": 31.0,
+  "score": 29.81,
+  "negotiating": 23.73,
+  "market": 6.08,
+  "neg_points": 168.3,
   "mm_points": 0.0,
-  "duel_points": 16.24,
-  "ladder_points": 0.071,
-  "bench_efficiency": 0.449,
-  "bench_points": 0.241,
+  "duel_points": 43.37,
+  "ladder_points": 0.409,
+  "bench_efficiency": 0.693,
+  "bench_points": 0.406,
   "bench_venue": "v20",
-  "level": 3,
+  "level": 5,
   "album_filled": 30,
   "album_slots": 50,
-  "pages_complete": 0,
+  "pages_complete": 2,
   "rarest": {
-   "ref": "LAT-10",
-   "name": "El Mesón de la Cava",
-   "serial": 1,
-   "print_run": 30,
-   "rarity": "rare"
+   "ref": "LAV-11",
+   "name": "La Casa Encendida",
+   "serial": 3,
+   "print_run": 9,
+   "rarity": "epic"
   },
   "luck": -42.6,
-  "deals": 16,
-  "badges": [],
+  "deals": 32,
+  "badges": [
+   "Sharp ear"
+  ],
   "adjustments": [],
   "frozen": false,
   "venue": "v20",
   "luck_private": -70.0,
-  "rank": 16
+  "rank": 5
  },
  "venue": {
   "venue": "v20",
@@ -512,7 +490,5 @@
   "description": "Zero fees. Our broker crosses every matching bid and ask, card by card, every tick.",
   "opened_tick": 269
  },
- "open_threads": [
-  870
- ]
+ "open_threads": []
 }

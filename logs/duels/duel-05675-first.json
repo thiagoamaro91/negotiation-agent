@@ -1,0 +1,52 @@
+{
+ "duel": 5675,
+ "session": 3,
+ "status": "live",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.26,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 30,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 1255,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 6338,
+  "price": 35,
+  "tick": 1241,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1239,
+   "from": "Rival Luna",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 30,
+   "days": 0
+  },
+  {
+   "tick": 1240,
+   "from": "Rival Luna",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 32,
+   "days": 0
+  },
+  {
+   "tick": 1241,
+   "from": "Rival Luna",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 35,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

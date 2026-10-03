@@ -1,0 +1,52 @@
+{
+ "duel": 5994,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.62,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 91,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1353,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10199,
+  "price": 98,
+  "tick": 1344,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1338,
+   "from": "Rival Rojo",
+   "text": "Hello! I can offer 85 P. Delivery on day 0.",
+   "price": 85,
+   "days": 0
+  },
+  {
+   "tick": 1341,
+   "from": "Rival Rojo",
+   "text": "91 P, then. Delivery on day 0.",
+   "price": 91,
+   "days": 0
+  },
+  {
+   "tick": 1344,
+   "from": "Rival Rojo",
+   "text": "How about 98 P? Delivery on day 0.",
+   "price": 98,
+   "days": 0
+  }
+ ],
+ "result": 7.0,
+ "price": 98,
+ "days": 0
+}

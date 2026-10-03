@@ -1,0 +1,50 @@
+{
+ "duel": 5692,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.36,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 53,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1269,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 6968,
+  "price": 87,
+  "tick": 1257,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 6803,
+  "price": 42,
+  "tick": 1253,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1253,
+   "from": "Rival Sol",
+   "text": "Hello, and thank you so much for trading with us today — we'd be delighted to offer 42, with delivery on day 10 if that suits you. Our purse is a little tight this round, but we'd love to find something that works nicely for both teams.",
+   "price": 42,
+   "days": 10
+  },
+  {
+   "tick": 1257,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 87 P, delivery day 10.",
+   "price": 87,
+   "days": 10
+  }
+ ],
+ "result": 53.0,
+ "price": 87,
+ "days": 10
+}

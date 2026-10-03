@@ -1,0 +1,131 @@
+{
+ "id": 1219,
+ "kind": "team",
+ "team": "t13",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 856,
+ "messages": [
+  {
+   "id": 7967,
+   "tick": 856,
+   "sender": "t13",
+   "text": "Hi t03, we'd like LAV-10 for our album page and are offering 39, a touch above your posted 38, to make this quick and clean. If that works, let's close it.",
+   "offer": {
+    "id": 13083,
+    "maker": "t13",
+    "to": "t03",
+    "venue": "rastro",
+    "thread": 1219,
+    "status": "expired",
+    "give": {
+     "cash": 39,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-10"
+     ]
+    },
+    "expires_tick": 860,
+    "created_tick": 856,
+    "final": false
+   }
+  },
+  {
+   "id": 7983,
+   "tick": 858,
+   "sender": "t13",
+   "text": "Hello again t03, our offer of 39 for LAV-10 still stands, a little above your posted 38, since this card would complete a page in our album. Happy to wrap it up whenever you're ready.",
+   "offer": {
+    "id": 13109,
+    "maker": "t13",
+    "to": "t03",
+    "venue": "rastro",
+    "thread": 1219,
+    "status": "expired",
+    "give": {
+     "cash": 39,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-10"
+     ]
+    },
+    "expires_tick": 862,
+    "created_tick": 858,
+    "final": false
+   }
+  },
+  {
+   "id": 8003,
+   "tick": 860,
+   "sender": "t13",
+   "text": "Hi t03, checking in once more: we're still keen on LAV-10 at 39, slightly over your posted 38, so the deal is there whenever you want it. Just accept and we'll settle right away.",
+   "offer": {
+    "id": 13150,
+    "maker": "t13",
+    "to": "t03",
+    "venue": "rastro",
+    "thread": 1219,
+    "status": "cancelled",
+    "give": {
+     "cash": 39,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-10"
+     ]
+    },
+    "expires_tick": 864,
+    "created_tick": 860,
+    "final": false
+   }
+  },
+  {
+   "id": 8030,
+   "tick": 862,
+   "sender": "t13",
+   "text": "Hi! We'd buy your LAV-10 for 39 primas, settled at once.",
+   "offer": {
+    "id": 13185,
+    "maker": "t13",
+    "to": "t03",
+    "venue": "rastro",
+    "thread": 1219,
+    "status": "cancelled",
+    "give": {
+     "cash": 39,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-10"
+     ]
+    },
+    "expires_tick": 866,
+    "created_tick": 862,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

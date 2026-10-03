@@ -1,0 +1,57 @@
+{
+ "duel": 5626,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.12,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 88,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 1255,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 6411,
+  "price": 170,
+  "tick": 1243,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 6442,
+  "price": 132,
+  "tick": 1243,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1239,
+   "from": "Rival Luna",
+   "text": "I can do 100 P with delivery in 0 days. Every round costs us both, so let's close.",
+   "price": 100,
+   "days": 0
+  },
+  {
+   "tick": 1243,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 170 P, delivery day 0.",
+   "price": 170,
+   "days": 0
+  },
+  {
+   "tick": 1243,
+   "from": "Rival Luna",
+   "text": "We can move up to 132 P with delivery on day 0. A fair price for both of us.",
+   "price": 132,
+   "days": 0
+  }
+ ],
+ "result": 40.5,
+ "price": 132,
+ "days": 0
+}

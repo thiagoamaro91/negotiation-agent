@@ -1,0 +1,57 @@
+{
+ "duel": 6201,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.39,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 226,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 1391,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10920,
+  "price": 75,
+  "tick": 1380,
+  "days": 8
+ },
+ "rival_offer": {
+  "id": 10929,
+  "price": 155,
+  "tick": 1380,
+  "days": 9
+ },
+ "messages": [
+  {
+   "tick": 1376,
+   "from": "Rival Oro",
+   "text": "Rápido y justo: 202 P, día 8. ¿Qué día de entrega te va mejor? / Quick and fair: 202 P, day 8. Which delivery day suits you best?",
+   "price": 202,
+   "days": 8
+  },
+  {
+   "tick": 1380,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 75 P, delivery day 8.",
+   "price": 75,
+   "days": 8
+  },
+  {
+   "tick": 1380,
+   "from": "Rival Oro",
+   "text": "Parece que el día te importa: 155 P con día 9. / It seems the day matters to you: 155 P, day 9.",
+   "price": 155,
+   "days": 9
+  }
+ ],
+ "result": 37.2,
+ "price": 155,
+ "days": 9
+}

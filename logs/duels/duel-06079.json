@@ -1,0 +1,115 @@
+{
+ "duel": 6079,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.21,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 117,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 1365,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10553,
+  "price": 65,
+  "tick": 1361,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1349,
+   "from": "Rival Plata",
+   "text": "76 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 76,
+   "days": 10
+  },
+  {
+   "tick": 1350,
+   "from": "Rival Plata",
+   "text": "75 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 75,
+   "days": 10
+  },
+  {
+   "tick": 1351,
+   "from": "Rival Plata",
+   "text": "74 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 74,
+   "days": 10
+  },
+  {
+   "tick": 1352,
+   "from": "Rival Plata",
+   "text": "73 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 73,
+   "days": 10
+  },
+  {
+   "tick": 1353,
+   "from": "Rival Plata",
+   "text": "72 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 72,
+   "days": 10
+  },
+  {
+   "tick": 1354,
+   "from": "Rival Plata",
+   "text": "71 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 71,
+   "days": 10
+  },
+  {
+   "tick": 1355,
+   "from": "Rival Plata",
+   "text": "70 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 1356,
+   "from": "Rival Plata",
+   "text": "69 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 69,
+   "days": 10
+  },
+  {
+   "tick": 1357,
+   "from": "Rival Plata",
+   "text": "68 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 68,
+   "days": 10
+  },
+  {
+   "tick": 1358,
+   "from": "Rival Plata",
+   "text": "67 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 67,
+   "days": 10
+  },
+  {
+   "tick": 1359,
+   "from": "Rival Plata",
+   "text": "66 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 66,
+   "days": 10
+  },
+  {
+   "tick": 1361,
+   "from": "Rival Plata",
+   "text": "65 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 65,
+   "days": 10
+  }
+ ],
+ "result": 9.9,
+ "price": 65,
+ "days": 10
+}

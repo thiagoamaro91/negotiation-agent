@@ -1,0 +1,99 @@
+{
+ "duel": 6015,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.89,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 111,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1329,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 9575,
+  "price": 68,
+  "tick": 1325,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 9622,
+  "price": 72,
+  "tick": 1326,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1313,
+   "from": "Rival Verde",
+   "text": "Hello, and thank you so much for trading with us — it's a real pleasure to start this duel with such a thoughtful team. We'd be happy to offer this card at 148 with delivery on day 10, and we're glad to hear what works for you.",
+   "price": 148,
+   "days": 10
+  },
+  {
+   "tick": 1314,
+   "from": "Rival Verde",
+   "text": "I can do 134 with delivery on day 10. That is a fair deal for both of us.",
+   "price": 134,
+   "days": 10
+  },
+  {
+   "tick": 1315,
+   "from": "Rival Verde",
+   "text": "Thank you so much for your patience with us — we'd be glad to offer this card at 124 with delivery on day 10, and we'd truly love to hear what would work for your team.",
+   "price": 124,
+   "days": 10
+  },
+  {
+   "tick": 1319,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 23 P, delivery day 10.",
+   "price": 23,
+   "days": 10
+  },
+  {
+   "tick": 1319,
+   "from": "Rival Verde",
+   "text": "Thank you so much for your offer — it's lovely to finally hear from you, and we'd be delighted to meet you at 112 with delivery on day 10. We truly hope this feels like a warm step toward a deal we can both smile about.",
+   "price": 112,
+   "days": 10
+  },
+  {
+   "tick": 1320,
+   "from": "Rival Verde",
+   "text": "Thank you again for staying with us; we've thought it over warmly and can come down to 98 with delivery on day 10, which honestly stretches us a bit. We'd be so grateful if you could take a kind step up from 23 toward us too.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 1325,
+   "from": "you",
+   "text": "Last word from me: 68 P, delivery day 10.",
+   "price": 68,
+   "days": 10
+  },
+  {
+   "tick": 1325,
+   "from": "Rival Verde",
+   "text": "We really appreciate your generous jump to 68, and we'd love to meet you warmly in the middle at 92 with the same delivery day. It's honestly a gift to someone dear to us, so a kind nudge your way would mean the world.",
+   "price": 92,
+   "days": 10
+  },
+  {
+   "tick": 1326,
+   "from": "Rival Verde",
+   "text": "Thank you truly for your patience and for the kind offer of 68. We've stretched as far as our hearts allow and can happily settle at 72 with delivery on day 10, and it would be such a joy to shake hands on that with you.",
+   "price": 72,
+   "days": 10
+  }
+ ],
+ "result": 17.1,
+ "price": 72,
+ "days": 10
+}

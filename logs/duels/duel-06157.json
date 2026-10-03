@@ -1,0 +1,113 @@
+{
+ "duel": 6157,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.54,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 90,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 1399,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10973,
+  "price": 118,
+  "tick": 1386,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 11022,
+  "price": 117,
+  "tick": 1397,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1386,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 67,
+   "days": 0
+  },
+  {
+   "tick": 1386,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 118 P, delivery day 10.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 1389,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 81,
+   "days": 0
+  },
+  {
+   "tick": 1390,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 85,
+   "days": 0
+  },
+  {
+   "tick": 1391,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 90,
+   "days": 0
+  },
+  {
+   "tick": 1392,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 95,
+   "days": 0
+  },
+  {
+   "tick": 1393,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 99,
+   "days": 0
+  },
+  {
+   "tick": 1394,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 104,
+   "days": 0
+  },
+  {
+   "tick": 1395,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 108,
+   "days": 0
+  },
+  {
+   "tick": 1396,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 113,
+   "days": 0
+  },
+  {
+   "tick": 1397,
+   "from": "Rival Oro",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 117,
+   "days": 0
+  }
+ ],
+ "result": 24.8,
+ "price": 117,
+ "days": 0
+}

@@ -1,0 +1,502 @@
+{
+ "id": 1401,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    413
+   ]
+  }
+ },
+ "status": "closed",
+ "created_tick": 961,
+ "messages": [
+  {
+   "id": 9134,
+   "tick": 962,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 40 P.",
+   "offer": {
+    "id": 14711,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 40,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 966,
+    "created_tick": 962,
+    "final": false
+   }
+  },
+  {
+   "id": 9133,
+   "tick": 962,
+   "sender": "pilar",
+   "text": "Buenas tardes. A pleasure. I see you carry the Mercado de la Paz — a charming piece, Salamanca through and through. I shall offer you 25 pesetas for it. Shall we proceed?",
+   "offer": {
+    "id": 14710,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 966,
+    "created_tick": 962,
+    "final": false
+   }
+  },
+  {
+   "id": 9145,
+   "tick": 963,
+   "sender": "pilar",
+   "text": "Let us be civilised: 25 P.",
+   "offer": {
+    "id": 14724,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 967,
+    "created_tick": 963,
+    "final": false
+   }
+  },
+  {
+   "id": 9149,
+   "tick": 963,
+   "sender": "t03",
+   "text": "I move, you move. 39 P.",
+   "offer": {
+    "id": 14728,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 39,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 967,
+    "created_tick": 963,
+    "final": false
+   }
+  },
+  {
+   "id": 9160,
+   "tick": 964,
+   "sender": "t03",
+   "text": "Coming down: 38 P.",
+   "offer": {
+    "id": 14742,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 38,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 968,
+    "created_tick": 964,
+    "final": false
+   }
+  },
+  {
+   "id": 9155,
+   "tick": 964,
+   "sender": "pilar",
+   "text": "A gracious step, señor. I move as well: 26 pesetas. Modest, yes, but honest — I know this card to the last copy printed. Shall we shake hands and keep the afternoon pleasant?",
+   "offer": {
+    "id": 14737,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 968,
+    "created_tick": 964,
+    "final": false
+   }
+  },
+  {
+   "id": 9169,
+   "tick": 965,
+   "sender": "pilar",
+   "text": "I think 27 P is more appropriate.",
+   "offer": {
+    "id": 14755,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 27,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 969,
+    "created_tick": 965,
+    "final": false
+   }
+  },
+  {
+   "id": 9179,
+   "tick": 965,
+   "sender": "t03",
+   "text": "Fair is fair. 37 P.",
+   "offer": {
+    "id": 14765,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 37,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 969,
+    "created_tick": 965,
+    "final": false
+   }
+  },
+  {
+   "id": 9188,
+   "tick": 966,
+   "sender": "t03",
+   "text": "No theatre. 36 P and it is yours.",
+   "offer": {
+    "id": 14786,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 36,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 970,
+    "created_tick": 966,
+    "final": false
+   }
+  },
+  {
+   "id": 9183,
+   "tick": 966,
+   "sender": "pilar",
+   "text": "Fair is fair indeed — 28 pesetas. You descend one step, I ascend one; very courteous of us both. Mercado de la Paz belongs in my Salamanca album, señor, and I do pay properly for what I love.",
+   "offer": {
+    "id": 14781,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 28,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 970,
+    "created_tick": 966,
+    "final": false
+   }
+  },
+  {
+   "id": 9197,
+   "tick": 967,
+   "sender": "pilar",
+   "text": "Let us be civilised: 29 P.",
+   "offer": {
+    "id": 14799,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 971,
+    "created_tick": 967,
+    "final": false
+   }
+  },
+  {
+   "id": 9205,
+   "tick": 967,
+   "sender": "t03",
+   "text": "Another step down: 35 P.",
+   "offer": {
+    "id": 14807,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 35,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 971,
+    "created_tick": 967,
+    "final": false
+   }
+  },
+  {
+   "id": 9209,
+   "tick": 968,
+   "sender": "pilar",
+   "text": "Thirty pesetas, señor. That is my last word — I shall not move again. Refuse, and I close my album and wish you a pleasant afternoon elsewhere. Thirty, and the Mercado goes home to Salamanca.",
+   "offer": {
+    "id": 14815,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1401,
+    "status": "cancelled",
+    "give": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 413,
+       "kind": "card",
+       "ref": "SAL-07",
+       "serial": 8,
+       "rarity": "uncommon",
+       "set": "SAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 972,
+    "created_tick": 968,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Mercado de la Paz",
+ "closed_reason": null
+}

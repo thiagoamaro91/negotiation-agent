@@ -1,0 +1,25 @@
+{
+ "duel": 5979,
+ "session": 3,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.05,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 100,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1358,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,428 @@
+{
+ "id": 1387,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1001
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 954,
+ "messages": [
+  {
+   "id": 9047,
+   "tick": 955,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 16 P.",
+   "offer": {
+    "id": 14591,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 959,
+    "created_tick": 955,
+    "final": false
+   }
+  },
+  {
+   "id": 9045,
+   "tick": 955,
+   "sender": "picaros",
+   "text": "¡Eh, amigo! Paco here — and Nando, the handsome one. Come, come, look in the suitcase, quick! La Tabacalera, mint, barely breathed on. My abuela cried when I packed it. For you, friend, ten P. Ten! Before the man from Sevilla comes back with his wallet. ¿Sí?",
+   "offer": {
+    "id": 14589,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 959,
+    "created_tick": 955,
+    "final": false
+   }
+  },
+  {
+   "id": 9056,
+   "tick": 956,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 10 P.",
+   "offer": {
+    "id": 14606,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 960,
+    "created_tick": 956,
+    "final": false
+   }
+  },
+  {
+   "id": 9063,
+   "tick": 956,
+   "sender": "t03",
+   "text": "I move, you move. 15 P.",
+   "offer": {
+    "id": 14615,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 960,
+    "created_tick": 956,
+    "final": false
+   }
+  },
+  {
+   "id": 9078,
+   "tick": 957,
+   "sender": "t03",
+   "text": "Coming down: 14 P.",
+   "offer": {
+    "id": 14633,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 961,
+    "created_tick": 957,
+    "final": false
+   }
+  },
+  {
+   "id": 9074,
+   "tick": 957,
+   "sender": "picaros",
+   "text": "¡Ay, qué hombre! Nando, hold the suitcase, we close in a minute — the van is running, the man from Sevilla is already walking back. Eleven P, amigo, eleven! Paco says sí, Nando says sí, abuela says sí. Take it now or we are gone, ¡vámonos!",
+   "offer": {
+    "id": 14629,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 961,
+    "created_tick": 957,
+    "final": false
+   }
+  },
+  {
+   "id": 9086,
+   "tick": 958,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 11 P. The police... I mean, our taxi is waiting. Decide now!",
+   "offer": {
+    "id": 14642,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 962,
+    "created_tick": 958,
+    "final": false
+   }
+  },
+  {
+   "id": 9093,
+   "tick": 958,
+   "sender": "t03",
+   "text": "Fair is fair. 13 P.",
+   "offer": {
+    "id": 14649,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 962,
+    "created_tick": 958,
+    "final": false
+   }
+  },
+  {
+   "id": 9108,
+   "tick": 959,
+   "sender": "t03",
+   "text": "No theatre. 12 P and it is yours.",
+   "offer": {
+    "id": 14667,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 963,
+    "created_tick": 959,
+    "final": false
+   }
+  },
+  {
+   "id": 9100,
+   "tick": 959,
+   "sender": "picaros",
+   "text": "¡Trece! Nando, cover your ears. Amigo, listen — this is the last Tabacalera in all Madrid, I swear on abuela's soup. Nobody has another, not Sevilla, not Barcelona, nadie. Eleven P, the same eleven, and the taxi is already rolling. Hand, money, done. ¡Vámonos!",
+   "offer": {
+    "id": 14659,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 963,
+    "created_tick": 959,
+    "final": false
+   }
+  },
+  {
+   "id": 9111,
+   "tick": 960,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 11 P.",
+   "offer": {
+    "id": 14677,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1387,
+    "status": "settled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1001,
+       "kind": "card",
+       "ref": "LAV-06",
+       "serial": 21,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 964,
+    "created_tick": 960,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Tabacalera",
+ "closed_reason": null
+}

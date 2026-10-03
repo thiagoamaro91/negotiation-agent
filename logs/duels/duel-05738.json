@@ -1,0 +1,57 @@
+{
+ "duel": 5738,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.58,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 70,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1279,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 7345,
+  "price": 114,
+  "tick": 1267,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 7373,
+  "price": 74,
+  "tick": 1268,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1263,
+   "from": "Rival Sol",
+   "text": "Hola, Rival Oro, voy con prisa: 65 por Fiesta de San Cayetano y cerramos ya. Entrega inmediata.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1267,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 114 P, delivery day 10.",
+   "price": 114,
+   "days": 10
+  },
+  {
+   "tick": 1268,
+   "from": "Rival Sol",
+   "text": "74 y lo cerramos ahora. Entrega inmediata.",
+   "price": 74,
+   "days": 0
+  }
+ ],
+ "result": 3.7,
+ "price": 74,
+ "days": 0
+}

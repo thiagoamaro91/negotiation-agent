@@ -1,0 +1,287 @@
+{
+ "id": 1700,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1073
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 1126,
+ "messages": [
+  {
+   "id": 10644,
+   "tick": 1126,
+   "sender": "t03",
+   "text": "Para vosotros, hermanos: Perrito con Abrigo por 8 P. Trato limpio.",
+   "offer": {
+    "id": 16924,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1130,
+    "created_tick": 1126,
+    "final": false
+   }
+  },
+  {
+   "id": 10648,
+   "tick": 1127,
+   "sender": "t03",
+   "text": "Para vosotros, hermanos: Perrito con Abrigo por 7 P. Trato limpio.",
+   "offer": {
+    "id": 16930,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 7,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1131,
+    "created_tick": 1127,
+    "final": false
+   }
+  },
+  {
+   "id": 10647,
+   "tick": 1127,
+   "sender": "picaros",
+   "text": "¡Hombre, qué alegría verte! Paco, mira quién llega —\n\n— sí, sí, un amigo de verdad. Escucha, guapo: Perrito con Abrigo, cuatro P y nos damos la mano ahora mismo. Cuatro, limpio, rápido, sin papeles ni preguntas.\n\nEl perrito lleva abriguito, pero la prisa la llevamos nosotros. ¿Cuatro? ¡Dilo ya!",
+   "offer": {
+    "id": 16927,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1131,
+    "created_tick": 1127,
+    "final": false
+   }
+  },
+  {
+   "id": 10654,
+   "tick": 1128,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 4 P.",
+   "offer": {
+    "id": 16939,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1132,
+    "created_tick": 1128,
+    "final": false
+   }
+  },
+  {
+   "id": 10657,
+   "tick": 1128,
+   "sender": "t03",
+   "text": "Para vosotros, hermanos: Perrito con Abrigo por 6 P. Trato limpio.",
+   "offer": {
+    "id": 16944,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 6,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1132,
+    "created_tick": 1128,
+    "final": false
+   }
+  },
+  {
+   "id": 10665,
+   "tick": 1129,
+   "sender": "t03",
+   "text": "Para vosotros, hermanos: Perrito con Abrigo por 5 P. Trato limpio.",
+   "offer": {
+    "id": 16951,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1700,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 5,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1133,
+    "created_tick": 1129,
+    "final": false
+   }
+  },
+  {
+   "id": 10662,
+   "tick": 1129,
+   "sender": "picaros",
+   "text": "¡Ay, Paco, este hombre nos marea! Seis, no — cinco. Cinco P y el perrito sale con su abriguito puesto, calentito, ahora mismo.\n\n— Mi hermano dice cinco y mi hermano nunca miente... casi nunca. ¡Cinco, la mano, y a celebrar! ¿Hecho, guapo?",
+   "offer": {
+    "id": 16949,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1700,
+    "status": "cancelled",
+    "give": {
+     "cash": 5,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1073,
+       "kind": "card",
+       "ref": "SAL-03",
+       "serial": 28,
+       "rarity": "common",
+       "set": "SAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1133,
+    "created_tick": 1129,
+    "final": false
+   }
+  },
+  {
+   "id": 10670,
+   "tick": 1130,
+   "sender": "picaros",
+   "text": "Done! 5 P. Pleasure doing business, amigo!",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": "Perrito con Abrigo",
+ "closed_reason": null
+}

@@ -1,0 +1,73 @@
+{
+ "duel": 6014,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.44,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 53,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1324,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 9160,
+  "price": 90,
+  "tick": 1313,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1308,
+   "from": "Rival Noche",
+   "text": "Thank you so much for sitting down with us; we'd love to open at 30 for the card, offered with genuine goodwill. Our purse is a little tight this round, but we'd be truly glad to find something that works well for both of us.",
+   "price": 30,
+   "days": 10
+  },
+  {
+   "tick": 1309,
+   "from": "Rival Noche",
+   "text": "Thank you kindly for your patience with us; as a warm gesture we'd happily step up to 38 for the card. We'd truly love to hear what feels fair on your side so we can meet somewhere good for both teams.",
+   "price": 38,
+   "days": 10
+  },
+  {
+   "tick": 1310,
+   "from": "Rival Noche",
+   "text": "I can do 54 with delivery on day 10. That is a fair deal for both of us.",
+   "price": 54,
+   "days": 10
+  },
+  {
+   "tick": 1311,
+   "from": "Rival Noche",
+   "text": "We really appreciate your time and good spirit in this duel, so we'd be glad to raise our offer to 60 for the card, with the same delivery timing we suggested. Whenever you're ready, we'd love to hear a figure that feels right to you.",
+   "price": 60,
+   "days": 10
+  },
+  {
+   "tick": 1312,
+   "from": "Rival Noche",
+   "text": "Thank you again for staying in this duel with us so graciously; as a sincere step toward you, we'd be glad to offer 73 for the card, with the same delivery timing as before. We'd be so grateful to hear any figure from your side, since it would help us find a fair middle together.",
+   "price": 73,
+   "days": 10
+  },
+  {
+   "tick": 1313,
+   "from": "Rival Noche",
+   "text": "We're so grateful for your patience through this duel, and as a heartfelt step toward you we'd be happy to offer 90 for the card, with the same delivery timing as before. If anything at all would make this feel fairer on your side, we'd truly love to hear it.",
+   "price": 90,
+   "days": 10
+  }
+ ],
+ "result": 71.4,
+ "price": 90,
+ "days": 10
+}

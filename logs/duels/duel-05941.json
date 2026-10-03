@@ -1,0 +1,141 @@
+{
+ "duel": 5941,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.41,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 140,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1344,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 10074,
+  "price": 121,
+  "tick": 1340,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10079,
+  "price": 121,
+  "tick": 1340,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1328,
+   "from": "Rival Verde",
+   "text": "Hello! I can do 122 with delivery on day 10.",
+   "price": 122,
+   "days": 10
+  },
+  {
+   "tick": 1329,
+   "from": "Rival Verde",
+   "text": "Thanks for the reply. 107, delivery day 10.",
+   "price": 107,
+   "days": 10
+  },
+  {
+   "tick": 1330,
+   "from": "Rival Verde",
+   "text": "Let me move closer: 96, day 10.",
+   "price": 96,
+   "days": 10
+  },
+  {
+   "tick": 1331,
+   "from": "Rival Verde",
+   "text": "I'd like to close this: 88 with day 10.",
+   "price": 88,
+   "days": 10
+  },
+  {
+   "tick": 1332,
+   "from": "Rival Verde",
+   "text": "Meeting you halfway: 86, delivered day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1333,
+   "from": "Rival Verde",
+   "text": "Final stretch from me: 86, day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1334,
+   "from": "Rival Verde",
+   "text": "Hello! I can do 86 with delivery on day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1335,
+   "from": "Rival Verde",
+   "text": "Thanks for the reply. 86, delivery day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1336,
+   "from": "Rival Verde",
+   "text": "Let me move closer: 86, day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1336,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 86 P, delivery day 0.",
+   "price": 86,
+   "days": 0
+  },
+  {
+   "tick": 1337,
+   "from": "Rival Verde",
+   "text": "I'd like to close this: 86 with day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1338,
+   "from": "Rival Verde",
+   "text": "Meeting you halfway: 86, delivered day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1339,
+   "from": "Rival Verde",
+   "text": "Final stretch from me: 86, day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1340,
+   "from": "you",
+   "text": "Last word from me: 121 P, delivery day 0.",
+   "price": 121,
+   "days": 0
+  },
+  {
+   "tick": 1340,
+   "from": "Rival Verde",
+   "text": "Hello! I can do 121 with delivery on day 0.",
+   "price": 121,
+   "days": 0
+  }
+ ],
+ "result": 16.1,
+ "price": 121,
+ "days": 0
+}

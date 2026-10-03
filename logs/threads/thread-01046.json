@@ -1,0 +1,576 @@
+{
+ "id": 1046,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    42
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 755,
+ "messages": [
+  {
+   "id": 6944,
+   "tick": 756,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 28 P.",
+   "offer": {
+    "id": 11459,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 28,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 760,
+    "created_tick": 756,
+    "final": false
+   }
+  },
+  {
+   "id": 6941,
+   "tick": 756,
+   "sender": "pilar",
+   "text": "Buenas tardes. Qué gusto. You carry the Tienda de Discos — a charming little card, and I have a gap in my album. I offer you sixteen pesetas for it. Fair, and paid at once.",
+   "offer": {
+    "id": 11456,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 760,
+    "created_tick": 756,
+    "final": false
+   }
+  },
+  {
+   "id": 6954,
+   "tick": 757,
+   "sender": "pilar",
+   "text": "Let us be civilised: 16 P.",
+   "offer": {
+    "id": 11473,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 761,
+    "created_tick": 757,
+    "final": false
+   }
+  },
+  {
+   "id": 6959,
+   "tick": 757,
+   "sender": "t03",
+   "text": "I move, you move. 27 P.",
+   "offer": {
+    "id": 11478,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 27,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 761,
+    "created_tick": 757,
+    "final": false
+   }
+  },
+  {
+   "id": 6970,
+   "tick": 758,
+   "sender": "t03",
+   "text": "Coming down: 26 P.",
+   "offer": {
+    "id": 11495,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 762,
+    "created_tick": 758,
+    "final": false
+   }
+  },
+  {
+   "id": 6965,
+   "tick": 758,
+   "sender": "pilar",
+   "text": "A gentle correction, señor: I have already named my number, and I do not dance around it. Sixteen pesetas, in your hand this moment. The card is charming, but it is not a treasure.",
+   "offer": {
+    "id": 11490,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 762,
+    "created_tick": 758,
+    "final": false
+   }
+  },
+  {
+   "id": 6979,
+   "tick": 759,
+   "sender": "pilar",
+   "text": "I think 16 P is more appropriate.",
+   "offer": {
+    "id": 11507,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 763,
+    "created_tick": 759,
+    "final": false
+   }
+  },
+  {
+   "id": 6986,
+   "tick": 759,
+   "sender": "t03",
+   "text": "Fair is fair. 25 P.",
+   "offer": {
+    "id": 11515,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 763,
+    "created_tick": 759,
+    "final": false
+   }
+  },
+  {
+   "id": 6997,
+   "tick": 760,
+   "sender": "t03",
+   "text": "No theatre. 24 P and it is yours.",
+   "offer": {
+    "id": 11529,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 764,
+    "created_tick": 760,
+    "final": false
+   }
+  },
+  {
+   "id": 6992,
+   "tick": 760,
+   "sender": "pilar",
+   "text": "Twenty-five is a fantasy, señor. But I am not unkind: seventeen pesetas, paid this instant. That is me moving, as you asked. The card is pleasant, nothing more.",
+   "offer": {
+    "id": 11524,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 764,
+    "created_tick": 760,
+    "final": false
+   }
+  },
+  {
+   "id": 7002,
+   "tick": 761,
+   "sender": "pilar",
+   "text": "I think 17 P is more appropriate.",
+   "offer": {
+    "id": 11547,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 765,
+    "created_tick": 761,
+    "final": false
+   }
+  },
+  {
+   "id": 7009,
+   "tick": 761,
+   "sender": "t03",
+   "text": "Another step down: 23 P.",
+   "offer": {
+    "id": 11553,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 765,
+    "created_tick": 761,
+    "final": false
+   }
+  },
+  {
+   "id": 7020,
+   "tick": 762,
+   "sender": "t03",
+   "text": "22 P. Your turn.",
+   "offer": {
+    "id": 11576,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 766,
+    "created_tick": 762,
+    "final": false
+   }
+  },
+  {
+   "id": 7014,
+   "tick": 762,
+   "sender": "pilar",
+   "text": "Eighteen pesetas, señor. I step again, you see — though your steps grow smaller than mine. The Tienda de Discos is agreeable, but it is no jewel of Salamanca. Eighteen, in your hand, right now.",
+   "offer": {
+    "id": 11570,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "cancelled",
+    "give": {
+     "cash": 18,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 766,
+    "created_tick": 762,
+    "final": false
+   }
+  },
+  {
+   "id": 7029,
+   "tick": 763,
+   "sender": "pilar",
+   "text": "Let us be civilised: 18 P. That is my final word on the matter.",
+   "offer": {
+    "id": 11589,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 1046,
+    "status": "settled",
+    "give": {
+     "cash": 18,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 42,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 1,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 767,
+    "created_tick": 763,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Tienda de Discos",
+ "closed_reason": null
+}

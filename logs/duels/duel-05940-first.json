@@ -1,0 +1,38 @@
+{
+ "duel": 5940,
+ "session": 3,
+ "status": "live",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.7,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 40,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1311,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8442,
+  "price": 50,
+  "tick": 1295,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1295,
+   "from": "Rival Rojo",
+   "text": "Hello! I can do 50 with delivery on day 0.",
+   "price": 50,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,57 @@
+{
+ "duel": 5695,
+ "session": 3,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.49,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 145,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1277,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 7604,
+  "price": 125,
+  "tick": 1273,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 7228,
+  "price": 165,
+  "tick": 1264,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1264,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 111 P, delivery day 0.",
+   "price": 111,
+   "days": 0
+  },
+  {
+   "tick": 1264,
+   "from": "Rival Rojo",
+   "text": "165 P con entrega el día 10 y cerramos ahora.",
+   "price": 165,
+   "days": 10
+  },
+  {
+   "tick": 1273,
+   "from": "you",
+   "text": "Last word from me: 125 P, delivery day 0.",
+   "price": 125,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

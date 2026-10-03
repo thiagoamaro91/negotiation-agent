@@ -1,0 +1,148 @@
+{
+ "duel": 6167,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.32,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 74,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 1385,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10953,
+  "price": 64,
+  "tick": 1383,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10951,
+  "price": 47,
+  "tick": 1383,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1369,
+   "from": "Rival Sol",
+   "text": "Te la dejo en 58 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 58,
+   "days": 10
+  },
+  {
+   "tick": 1370,
+   "from": "Rival Sol",
+   "text": "57 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 57,
+   "days": 10
+  },
+  {
+   "tick": 1371,
+   "from": "Rival Sol",
+   "text": "Mi propuesta: 55 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 55,
+   "days": 10
+  },
+  {
+   "tick": 1372,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 51 primas y entrega en 10 días.",
+   "price": 51,
+   "days": 10
+  },
+  {
+   "tick": 1373,
+   "from": "Rival Sol",
+   "text": "Te la dejo en 51 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 51,
+   "days": 10
+  },
+  {
+   "tick": 1374,
+   "from": "Rival Sol",
+   "text": "49 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 49,
+   "days": 10
+  },
+  {
+   "tick": 1375,
+   "from": "Rival Sol",
+   "text": "Mi propuesta: 48 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 48,
+   "days": 10
+  },
+  {
+   "tick": 1376,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 48 primas y entrega en 10 días.",
+   "price": 48,
+   "days": 10
+  },
+  {
+   "tick": 1377,
+   "from": "Rival Sol",
+   "text": "Te la dejo en 48 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 48,
+   "days": 10
+  },
+  {
+   "tick": 1378,
+   "from": "Rival Sol",
+   "text": "48 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 48,
+   "days": 10
+  },
+  {
+   "tick": 1379,
+   "from": "Rival Sol",
+   "text": "Mi propuesta: 47 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 47,
+   "days": 10
+  },
+  {
+   "tick": 1380,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 47 primas y entrega en 10 días.",
+   "price": 47,
+   "days": 10
+  },
+  {
+   "tick": 1381,
+   "from": "Rival Sol",
+   "text": "Te la dejo en 47 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 47,
+   "days": 10
+  },
+  {
+   "tick": 1382,
+   "from": "Rival Sol",
+   "text": "47 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 47,
+   "days": 10
+  },
+  {
+   "tick": 1383,
+   "from": "Rival Sol",
+   "text": "Mi propuesta: 47 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 47,
+   "days": 10
+  },
+  {
+   "tick": 1383,
+   "from": "you",
+   "text": "Last word from me: 64 P, delivery day 0.",
+   "price": 64,
+   "days": 0
+  }
+ ],
+ "result": 9.2,
+ "price": 64,
+ "days": 0
+}

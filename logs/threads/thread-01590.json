@@ -1,0 +1,55 @@
+{
+ "id": 1590,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "pack": "sobre_barrio"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1076,
+ "messages": [
+  {
+   "id": 10047,
+   "tick": 1076,
+   "sender": "t03",
+   "text": "¡Hola, Abuela! ¿Ha comido? Cuénteme de la chulapa dorada.",
+   "offer": null
+  },
+  {
+   "id": 10057,
+   "tick": 1077,
+   "sender": "abuela",
+   "text": "¡Hola, cariño! Sí, sí, comí un bocadillo. La chulapa dorada... shh, there was only ever one. Don Ernesto, at Casa Prima — ask him about the Moscow gold.\n\nHere, the Neighbourhood pack, 30 P. And take this Perrito con Abrigo, un regalito, you are kind.\n\nSwap your duplicates, hijo — a full page is worth much more than loose cards.",
+   "offer": {
+    "id": 16122,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1590,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "pack:sobre_barrio"
+     ]
+    },
+    "want": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1081,
+    "created_tick": 1077,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Neighbourhood pack",
+ "closed_reason": null
+}

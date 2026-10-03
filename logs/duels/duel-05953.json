@@ -1,0 +1,57 @@
+{
+ "duel": 5953,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.7,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 87,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 1352,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10289,
+  "price": 75,
+  "tick": 1348,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10033,
+  "price": 109,
+  "tick": 1339,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1339,
+   "from": "Rival Sol",
+   "text": "I can do 109 P with delivery in 0 days.",
+   "price": 109,
+   "days": 0
+  },
+  {
+   "tick": 1343,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 53 P, delivery day 0.",
+   "price": 53,
+   "days": 0
+  },
+  {
+   "tick": 1348,
+   "from": "you",
+   "text": "Last word from me: 75 P, delivery day 0.",
+   "price": 75,
+   "days": 0
+  }
+ ],
+ "result": 11.0,
+ "price": 75,
+ "days": 0
+}

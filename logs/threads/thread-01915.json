@@ -1,0 +1,22 @@
+{
+ "id": 1915,
+ "kind": "team",
+ "team": "t13",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 1265,
+ "messages": [
+  {
+   "id": 11571,
+   "tick": 1265,
+   "sender": "t13",
+   "text": "Hi from Team 13's market v24 (0% fee, nothing per card). A buyer on our market is looking for LAV-11 and pays about 205 P. You seem to have a spare: list one on v24 at 205 P and our broker matches it the same tick. Buyer and seller stay anonymous to each other.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

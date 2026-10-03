@@ -1,0 +1,134 @@
+{
+ "duel": 6166,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.35,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 53,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1383,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10853,
+  "price": 87,
+  "tick": 1375,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 10905,
+  "price": 69,
+  "tick": 1379,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1367,
+   "from": "Rival Rojo",
+   "text": "Te ofrezco 46 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 46,
+   "days": 0
+  },
+  {
+   "tick": 1368,
+   "from": "Rival Rojo",
+   "text": "51 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 51,
+   "days": 0
+  },
+  {
+   "tick": 1369,
+   "from": "Rival Rojo",
+   "text": "Mi propuesta: 55 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 55,
+   "days": 0
+  },
+  {
+   "tick": 1370,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 61 primas y entrega en 0 días. Dime si cerramos.",
+   "price": 61,
+   "days": 0
+  },
+  {
+   "tick": 1371,
+   "from": "Rival Rojo",
+   "text": "Te ofrezco 65 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1372,
+   "from": "Rival Rojo",
+   "text": "65 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1373,
+   "from": "Rival Rojo",
+   "text": "Mi propuesta: 65 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1374,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 65 primas y entrega en 0 días. Dime si cerramos.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1375,
+   "from": "Rival Rojo",
+   "text": "Te ofrezco 65 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1375,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 87 P, delivery day 10.",
+   "price": 87,
+   "days": 10
+  },
+  {
+   "tick": 1376,
+   "from": "Rival Rojo",
+   "text": "69 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 1377,
+   "from": "Rival Rojo",
+   "text": "Mi propuesta: 69 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 1378,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 69 primas y entrega en 0 días. Dime si cerramos.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 1379,
+   "from": "Rival Rojo",
+   "text": "Te ofrezco 69 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 69,
+   "days": 0
+  }
+ ],
+ "result": 14.7,
+ "price": 69,
+ "days": 0
+}

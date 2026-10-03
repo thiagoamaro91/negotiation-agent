@@ -1,0 +1,57 @@
+{
+ "duel": 6136,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.58,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 104,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1374,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10564,
+  "price": 183,
+  "tick": 1362,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10602,
+  "price": 129,
+  "tick": 1363,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1358,
+   "from": "Rival Sol",
+   "text": "We can offer 119 primas with delivery in 0 days, a fair price for a quick deal.",
+   "price": 119,
+   "days": 0
+  },
+  {
+   "tick": 1362,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 183 P, delivery day 0.",
+   "price": 183,
+   "days": 0
+  },
+  {
+   "tick": 1363,
+   "from": "Rival Sol",
+   "text": "Thanks! We can go up to 129 P with delivery on day 0. A fair price for both of us.",
+   "price": 129,
+   "days": 0
+  }
+ ],
+ "result": 23.0,
+ "price": 129,
+ "days": 0
+}

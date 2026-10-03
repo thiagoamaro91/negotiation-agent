@@ -1,0 +1,45 @@
+{
+ "duel": 6009,
+ "session": 3,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.99,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 203,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1337,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": {
+  "id": 9808,
+  "price": 175,
+  "tick": 1333,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1324,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 155 P, delivery day 0.",
+   "price": 155,
+   "days": 0
+  },
+  {
+   "tick": 1333,
+   "from": "you",
+   "text": "Last word from me: 175 P, delivery day 0.",
+   "price": 175,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

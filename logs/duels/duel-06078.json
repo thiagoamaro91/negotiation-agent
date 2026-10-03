@@ -1,0 +1,64 @@
+{
+ "duel": 6078,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.97,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 66,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1357,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10248,
+  "price": 108,
+  "tick": 1346,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 10175,
+  "price": 77,
+  "tick": 1343,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1341,
+   "from": "Rival Noche",
+   "text": "72 with delivery on day 0. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1342,
+   "from": "Rival Noche",
+   "text": "77 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 1343,
+   "from": "Rival Noche",
+   "text": "77 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 1346,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 108 P, delivery day 10.",
+   "price": 108,
+   "days": 10
+  }
+ ],
+ "result": 10.1,
+ "price": 77,
+ "days": 0
+}

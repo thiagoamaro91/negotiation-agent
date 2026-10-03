@@ -1,0 +1,85 @@
+{
+ "duel": 6100,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.81,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 82,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1368,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 10641,
+  "price": 95,
+  "tick": 1365,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 10645,
+  "price": 108,
+  "tick": 1365,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1354,
+   "from": "Rival Noche",
+   "text": "I can do 85 P with delivery on day 0, a clean and quick close today.}",
+   "price": 85,
+   "days": 0
+  },
+  {
+   "tick": 1358,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 134 P, delivery day 10.",
+   "price": 134,
+   "days": 10
+  },
+  {
+   "tick": 1358,
+   "from": "Rival Noche",
+   "text": "I can move to 92 P with delivery on day 0. Or, if you prefer, 55 P on day 10 - whichever suits you.}",
+   "price": 92,
+   "days": 0
+  },
+  {
+   "tick": 1361,
+   "from": "Rival Noche",
+   "text": "I can step to 98 P with delivery on day 0. That is a real move from me, and I would like you to come down substantially so we can close quickly.",
+   "price": 98,
+   "days": 0
+  },
+  {
+   "tick": 1364,
+   "from": "Rival Noche",
+   "text": "I can do 62 P, delivery on day 10.",
+   "price": 62,
+   "days": 10
+  },
+  {
+   "tick": 1365,
+   "from": "you",
+   "text": "Last word from me: 95 P, delivery day 10.",
+   "price": 95,
+   "days": 10
+  },
+  {
+   "tick": 1365,
+   "from": "Rival Noche",
+   "text": "I can step to 108 P with delivery on day 0. Or, if you prefer, 78 P on day 10. This is a serious move from me to close now, so please meet me.",
+   "price": 108,
+   "days": 0
+  }
+ ],
+ "result": 22.0,
+ "price": 108,
+ "days": 0
+}

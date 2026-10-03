@@ -1,0 +1,206 @@
+{
+ "id": 1074,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    826
+   ]
+  }
+ },
+ "status": "closed",
+ "created_tick": 769,
+ "messages": [
+  {
+   "id": 7136,
+   "tick": 770,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 7 P.",
+   "offer": {
+    "id": 11736,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1074,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 826,
+       "kind": "card",
+       "ref": "MAL-02",
+       "serial": 32,
+       "rarity": "common",
+       "set": "MAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 7,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 774,
+    "created_tick": 770,
+    "final": false
+   }
+  },
+  {
+   "id": 7135,
+   "tick": 770,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco here — and Nando! Come close, don't be shy. Look at this beauty: Plaza del Dos de Mayo, yours for 4 P. A gift, really.\n\nThe team next door was sniffing around it this morning... but we like your face better. Decide quick, eh? Quick, quick!",
+   "offer": {
+    "id": 11735,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1074,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 826,
+       "kind": "card",
+       "ref": "MAL-02",
+       "serial": 32,
+       "rarity": "common",
+       "set": "MAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 774,
+    "created_tick": 770,
+    "final": false
+   }
+  },
+  {
+   "id": 7145,
+   "tick": 771,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 4 P.",
+   "offer": {
+    "id": 11746,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1074,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 826,
+       "kind": "card",
+       "ref": "MAL-02",
+       "serial": 32,
+       "rarity": "common",
+       "set": "MAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 775,
+    "created_tick": 771,
+    "final": false
+   }
+  },
+  {
+   "id": 7148,
+   "tick": 771,
+   "sender": "t03",
+   "text": "I move, you move. 6 P.",
+   "offer": {
+    "id": 11749,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1074,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 826,
+       "kind": "card",
+       "ref": "MAL-02",
+       "serial": 32,
+       "rarity": "common",
+       "set": "MAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 6,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 775,
+    "created_tick": 771,
+    "final": false
+   }
+  },
+  {
+   "id": 7159,
+   "tick": 772,
+   "sender": "picaros",
+   "text": "¡Ay, amigo! Paco says six, Nando says — no. Four. Same as before, same as always. That's our last word, hermano, final, finito. You say no, we close the suitcase, we walk, we're gone down the street whistling.\n\nFour P. Yes or adiós?",
+   "offer": {
+    "id": 11776,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1074,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 826,
+       "kind": "card",
+       "ref": "MAL-02",
+       "serial": 32,
+       "rarity": "common",
+       "set": "MAL",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 776,
+    "created_tick": 772,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Plaza del Dos de Mayo",
+ "closed_reason": null
+}

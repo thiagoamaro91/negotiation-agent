@@ -1,0 +1,38 @@
+{
+ "duel": 5739,
+ "session": 3,
+ "status": "live",
+ "role": "buyer",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.52,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 126,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1286,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 7454,
+  "price": 133,
+  "tick": 1270,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1270,
+   "from": "Rival Luna",
+   "text": "Hola, Rival Noche, voy con prisa: Fiesta de San Cayetano por 133 y cerramos ya. Entrega en 10 días.",
+   "price": 133,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

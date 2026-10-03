@@ -1,0 +1,64 @@
+{
+ "duel": 5693,
+ "session": 3,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.29,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 101,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 1274,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 7158,
+  "price": 62,
+  "tick": 1262,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 7211,
+  "price": 104,
+  "tick": 1263,
+  "days": 5
+ },
+ "messages": [
+  {
+   "tick": 1258,
+   "from": "Rival Oro",
+   "text": "Hello, and thank you so much for sitting down with us — it's a real pleasure to trade with your team. We'd be delighted to offer this card at 139 with delivery on day 10, and we're happy to hear your thoughts.",
+   "price": 139,
+   "days": 10
+  },
+  {
+   "tick": 1262,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 62 P, delivery day 0.",
+   "price": 62,
+   "days": 0
+  },
+  {
+   "tick": 1262,
+   "from": "Rival Oro",
+   "text": "Thank you so much for your kind reply. We'd love to make this work for both of us, so we've come down to 115 with delivery on day 10. Your thoughts would be most welcome.",
+   "price": 115,
+   "days": 10
+  },
+  {
+   "tick": 1263,
+   "from": "Rival Oro",
+   "text": "Thank you again for your patience and good spirit — we'd truly love to find a middle ground, so we've come down to 104 and moved delivery up to day 5 to meet you closer to your timing. We'd be so grateful if you could take a kind step toward us as well.",
+   "price": 104,
+   "days": 5
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

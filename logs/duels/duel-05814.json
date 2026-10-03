@@ -1,0 +1,136 @@
+{
+ "duel": 5814,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.95,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 115,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1296,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8401,
+  "price": 171,
+  "tick": 1294,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1280,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 108 with delivery on day 0.",
+   "price": 108,
+   "days": 0
+  },
+  {
+   "tick": 1281,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 123, delivery day 0.",
+   "price": 123,
+   "days": 0
+  },
+  {
+   "tick": 1282,
+   "from": "Rival Sol",
+   "text": "Let me move closer: 135, day 0.",
+   "price": 135,
+   "days": 0
+  },
+  {
+   "tick": 1283,
+   "from": "Rival Sol",
+   "text": "I'd like to close this: 144 with day 0.",
+   "price": 144,
+   "days": 0
+  },
+  {
+   "tick": 1284,
+   "from": "Rival Sol",
+   "text": "Meeting you halfway: 150, delivered day 0.",
+   "price": 150,
+   "days": 0
+  },
+  {
+   "tick": 1285,
+   "from": "Rival Sol",
+   "text": "Final stretch from me: 155, day 0.",
+   "price": 155,
+   "days": 0
+  },
+  {
+   "tick": 1286,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 159 with delivery on day 0.",
+   "price": 159,
+   "days": 0
+  },
+  {
+   "tick": 1287,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 162, delivery day 0.",
+   "price": 162,
+   "days": 0
+  },
+  {
+   "tick": 1288,
+   "from": "Rival Sol",
+   "text": "Let me move closer: 164, day 0.",
+   "price": 164,
+   "days": 0
+  },
+  {
+   "tick": 1289,
+   "from": "Rival Sol",
+   "text": "I'd like to close this: 165 with day 0.",
+   "price": 165,
+   "days": 0
+  },
+  {
+   "tick": 1290,
+   "from": "Rival Sol",
+   "text": "Meeting you halfway: 166, delivered day 0.",
+   "price": 166,
+   "days": 0
+  },
+  {
+   "tick": 1291,
+   "from": "Rival Sol",
+   "text": "Final stretch from me: 167, day 0.",
+   "price": 167,
+   "days": 0
+  },
+  {
+   "tick": 1292,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 168 with delivery on day 0.",
+   "price": 168,
+   "days": 0
+  },
+  {
+   "tick": 1293,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 170, delivery day 0.",
+   "price": 170,
+   "days": 0
+  },
+  {
+   "tick": 1294,
+   "from": "Rival Sol",
+   "text": "Let me move closer: 171, day 0.",
+   "price": 171,
+   "days": 0
+  }
+ ],
+ "result": 56.0,
+ "price": 171,
+ "days": 0
+}

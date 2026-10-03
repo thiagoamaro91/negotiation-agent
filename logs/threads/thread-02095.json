@@ -1,0 +1,200 @@
+{
+ "id": 2095,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "SAL-09"
+  }
+ },
+ "status": "deal",
+ "created_tick": 1363,
+ "messages": [
+  {
+   "id": 12209,
+   "tick": 1364,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco here, that's Nando — come, come, look! El Marqués, genuine, beautiful, yours for 73 P. A steal, truly. But quick, eh? The poli— ah, the taxi, our taxi is running outside, motor going, driver shouting. Decide now, or we vanish!",
+   "offer": {
+    "id": 19517,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1368,
+    "created_tick": 1364,
+    "final": false
+   }
+  },
+  {
+   "id": 12212,
+   "tick": 1364,
+   "sender": "t03",
+   "text": "Buenas, Paco y Nando. For El Marqués: 50 P, cash in hand.",
+   "offer": {
+    "id": 19521,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2095,
+    "status": "cancelled",
+    "give": {
+     "cash": 50,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1368,
+    "created_tick": 1364,
+    "final": false
+   }
+  },
+  {
+   "id": 12222,
+   "tick": 1365,
+   "sender": "t03",
+   "text": "I move, you move: 54 P.",
+   "offer": {
+    "id": 19531,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2095,
+    "status": "cancelled",
+    "give": {
+     "cash": 54,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1369,
+    "created_tick": 1365,
+    "final": false
+   }
+  },
+  {
+   "id": 12221,
+   "tick": 1365,
+   "sender": "picaros",
+   "text": "¡Ay, cincuenta! Nando, did you hear? — I heard, hermano, my heart cracked! Amigo, fifty buys a sandwich, not a Marqués. Look at the gold leaf, the corners, perfecto. For you, because your face is honest: 63 P. Cash, now, and we run. The driver, he is honking already!",
+   "offer": {
+    "id": 19530,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-06"
+     ]
+    },
+    "want": {
+     "cash": 63,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1369,
+    "created_tick": 1365,
+    "final": false
+   }
+  },
+  {
+   "id": 12233,
+   "tick": 1366,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 57 P. Last offer, amigo! Then we are gone, eh?",
+   "offer": {
+    "id": 19545,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 57,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1370,
+    "created_tick": 1366,
+    "final": true
+   }
+  },
+  {
+   "id": 12240,
+   "tick": 1366,
+   "sender": "t03",
+   "text": "Done at 57 P for El Marqués, if it is the real SAL-09.",
+   "offer": {
+    "id": 19553,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2095,
+    "status": "settled",
+    "give": {
+     "cash": 57,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1370,
+    "created_tick": 1366,
+    "final": false
+   }
+  },
+  {
+   "id": 12246,
+   "tick": 1367,
+   "sender": "picaros",
+   "text": "Done! 57 P. Pleasure doing business, amigo!",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Marqués",
+ "closed_reason": null
+}

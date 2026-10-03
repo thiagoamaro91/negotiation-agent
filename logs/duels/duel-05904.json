@@ -1,0 +1,122 @@
+{
+ "duel": 5904,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.75,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 78,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1309,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8833,
+  "price": 92,
+  "tick": 1305,
+  "days": 5
+ },
+ "messages": [
+  {
+   "tick": 1293,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 79 P y 5 días.",
+   "price": 79,
+   "days": 5
+  },
+  {
+   "tick": 1294,
+   "from": "Rival Rojo",
+   "text": "Me muevo para acercarnos: 80 P con 5 días.",
+   "price": 80,
+   "days": 5
+  },
+  {
+   "tick": 1295,
+   "from": "Rival Rojo",
+   "text": "Yo ya me he movido. Propongo 81 P y 5 días.",
+   "price": 81,
+   "days": 5
+  },
+  {
+   "tick": 1296,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 82 P y 5 días.",
+   "price": 82,
+   "days": 5
+  },
+  {
+   "tick": 1297,
+   "from": "Rival Rojo",
+   "text": "Me muevo para acercarnos: 83 P con 5 días.",
+   "price": 83,
+   "days": 5
+  },
+  {
+   "tick": 1298,
+   "from": "Rival Rojo",
+   "text": "Yo ya me he movido. Propongo 85 P y 5 días.",
+   "price": 85,
+   "days": 5
+  },
+  {
+   "tick": 1299,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 86 P y 5 días.",
+   "price": 86,
+   "days": 5
+  },
+  {
+   "tick": 1300,
+   "from": "Rival Rojo",
+   "text": "Me muevo para acercarnos: 87 P con 5 días.",
+   "price": 87,
+   "days": 5
+  },
+  {
+   "tick": 1301,
+   "from": "Rival Rojo",
+   "text": "Yo ya me he movido. Propongo 88 P y 5 días.",
+   "price": 88,
+   "days": 5
+  },
+  {
+   "tick": 1302,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 89 P y 5 días.",
+   "price": 89,
+   "days": 5
+  },
+  {
+   "tick": 1303,
+   "from": "Rival Rojo",
+   "text": "Me muevo para acercarnos: 90 P con 5 días.",
+   "price": 90,
+   "days": 5
+  },
+  {
+   "tick": 1304,
+   "from": "Rival Rojo",
+   "text": "Yo ya me he movido. Propongo 91 P y 5 días.",
+   "price": 91,
+   "days": 5
+  },
+  {
+   "tick": 1305,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 92 P y 5 días.",
+   "price": 92,
+   "days": 5
+  }
+ ],
+ "result": 27.7,
+ "price": 92,
+ "days": 5
+}

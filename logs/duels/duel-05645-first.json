@@ -1,0 +1,52 @@
+{
+ "duel": 5645,
+ "session": 3,
+ "status": "live",
+ "role": "buyer",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.61,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 102,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1255,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 6322,
+  "price": 70,
+  "tick": 1241,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1239,
+   "from": "Rival Luna",
+   "text": "70 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 1240,
+   "from": "Rival Luna",
+   "text": "70 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 1241,
+   "from": "Rival Luna",
+   "text": "70 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 70,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,49 @@
+{
+ "id": 2004,
+ "kind": "team",
+ "team": "t03",
+ "with": "t01",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 1321,
+ "messages": [
+  {
+   "id": 11895,
+   "tick": 1321,
+   "sender": "t03",
+   "text": "Hola from Team 3. One sealed Silver pack (sobre_plata) for 124 P. The structured offer is attached: accept it as is and it settles next tick. El Chato lists the same pack at 150.",
+   "offer": {
+    "id": 19090,
+    "maker": "t03",
+    "to": "t01",
+    "venue": "rastro",
+    "thread": 2004,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1012,
+       "kind": "pack",
+       "ref": "sobre_plata",
+       "serial": 23
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 124,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1325,
+    "created_tick": 1321,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

@@ -1,0 +1,127 @@
+{
+ "duel": 5644,
+ "session": 3,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.34,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 64,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1255,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 6700,
+  "price": 74,
+  "tick": 1251,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 6827,
+  "price": 72,
+  "tick": 1254,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1239,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1240,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1241,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1242,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1243,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1244,
+   "from": "Rival Azul",
+   "text": "110 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 110,
+   "days": 10
+  },
+  {
+   "tick": 1245,
+   "from": "Rival Azul",
+   "text": "84 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 84,
+   "days": 10
+  },
+  {
+   "tick": 1246,
+   "from": "Rival Azul",
+   "text": "84 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 84,
+   "days": 10
+  },
+  {
+   "tick": 1250,
+   "from": "Rival Azul",
+   "text": "72 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1251,
+   "from": "you",
+   "text": "Last word from me: 74 P, delivery day 10.",
+   "price": 74,
+   "days": 10
+  },
+  {
+   "tick": 1251,
+   "from": "Rival Azul",
+   "text": "72 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1252,
+   "from": "Rival Azul",
+   "text": "72 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1254,
+   "from": "Rival Azul",
+   "text": "72 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 72,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

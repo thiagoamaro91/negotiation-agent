@@ -1,0 +1,136 @@
+{
+ "duel": 5940,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.7,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 40,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1311,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 8983,
+  "price": 79,
+  "tick": 1309,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1295,
+   "from": "Rival Rojo",
+   "text": "Hello! I can do 50 with delivery on day 0.",
+   "price": 50,
+   "days": 0
+  },
+  {
+   "tick": 1296,
+   "from": "Rival Rojo",
+   "text": "Thanks for the reply. 57, delivery day 0.",
+   "price": 57,
+   "days": 0
+  },
+  {
+   "tick": 1297,
+   "from": "Rival Rojo",
+   "text": "Let me move closer: 62, day 0.",
+   "price": 62,
+   "days": 0
+  },
+  {
+   "tick": 1298,
+   "from": "Rival Rojo",
+   "text": "I'd like to close this: 66 with day 0.",
+   "price": 66,
+   "days": 0
+  },
+  {
+   "tick": 1299,
+   "from": "Rival Rojo",
+   "text": "Meeting you halfway: 69, delivered day 0.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 1300,
+   "from": "Rival Rojo",
+   "text": "Final stretch from me: 71, day 0.",
+   "price": 71,
+   "days": 0
+  },
+  {
+   "tick": 1301,
+   "from": "Rival Rojo",
+   "text": "Hello! I can do 73 with delivery on day 0.",
+   "price": 73,
+   "days": 0
+  },
+  {
+   "tick": 1302,
+   "from": "Rival Rojo",
+   "text": "Thanks for the reply. 74, delivery day 0.",
+   "price": 74,
+   "days": 0
+  },
+  {
+   "tick": 1303,
+   "from": "Rival Rojo",
+   "text": "Let me move closer: 75, day 0.",
+   "price": 75,
+   "days": 0
+  },
+  {
+   "tick": 1304,
+   "from": "Rival Rojo",
+   "text": "I'd like to close this: 76 with day 0.",
+   "price": 76,
+   "days": 0
+  },
+  {
+   "tick": 1305,
+   "from": "Rival Rojo",
+   "text": "Meeting you halfway: 77, delivered day 0.",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 1306,
+   "from": "Rival Rojo",
+   "text": "Final stretch from me: 78, day 0.",
+   "price": 78,
+   "days": 0
+  },
+  {
+   "tick": 1307,
+   "from": "Rival Rojo",
+   "text": "Hello! I can do 79 with delivery on day 0.",
+   "price": 79,
+   "days": 0
+  },
+  {
+   "tick": 1308,
+   "from": "Rival Rojo",
+   "text": "Thanks for the reply. 79, delivery day 0.",
+   "price": 79,
+   "days": 0
+  },
+  {
+   "tick": 1309,
+   "from": "Rival Rojo",
+   "text": "Let me move closer: 79, day 0.",
+   "price": 79,
+   "days": 0
+  }
+ ],
+ "result": 39.0,
+ "price": 79,
+ "days": 0
+}

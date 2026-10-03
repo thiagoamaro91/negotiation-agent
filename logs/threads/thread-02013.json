@@ -1,0 +1,222 @@
+{
+ "id": 2013,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "SAL-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1325,
+ "messages": [
+  {
+   "id": 11925,
+   "tick": 1326,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco here — and Nando, the handsome one. You have the look of a collector, no? Then look fast: El Marqués, genuine, barely touched, straight from a baron's attic in Sevilla. Seventy-three pesetas and he's yours. Say yes before my brother remembers what he paid for it.",
+   "offer": {
+    "id": 19139,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1330,
+    "created_tick": 1326,
+    "final": false
+   }
+  },
+  {
+   "id": 11927,
+   "tick": 1326,
+   "sender": "t03",
+   "text": "Buenas, Paco y Nando. For El Marqués: 30 P, cash in hand.",
+   "offer": {
+    "id": 19146,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1330,
+    "created_tick": 1326,
+    "final": false
+   }
+  },
+  {
+   "id": 11931,
+   "tick": 1327,
+   "sender": "picaros",
+   "text": "¡Treinta! Nando, hold me, I'm wounded. For El Marqués? No, no — sixty-four, and that's because your face reminds me of our abuelo. Say yes quick, amigo, the policía— I mean, our taxi, is waiting outside with the motor running. Decide now or he drives away with your Marqués!",
+   "offer": {
+    "id": 19152,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 64,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1331,
+    "created_tick": 1327,
+    "final": false
+   }
+  },
+  {
+   "id": 11935,
+   "tick": 1327,
+   "sender": "t03",
+   "text": "I move, you move: 34 P.",
+   "offer": {
+    "id": 19161,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 34,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1331,
+    "created_tick": 1327,
+    "final": false
+   }
+  },
+  {
+   "id": 11938,
+   "tick": 1328,
+   "sender": "picaros",
+   "text": "¡Treinta y cuatro! Nando, pour me water, I'm fainting. Listen, amigo — fifty-nine. That's not a price, that's a gift wrapped in paper. Our abuelo sold his donkey for more, and the donkey was lame. Fifty-nine, cash, and the Marqués walks home with you tonight. ¡Rápido!",
+   "offer": {
+    "id": 19165,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-08"
+     ]
+    },
+    "want": {
+     "cash": 59,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1332,
+    "created_tick": 1328,
+    "final": false
+   }
+  },
+  {
+   "id": 11943,
+   "tick": 1328,
+   "sender": "t03",
+   "text": "Honest step: 38 P for El Marqués.",
+   "offer": {
+    "id": 19181,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 38,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1332,
+    "created_tick": 1328,
+    "final": false
+   }
+  },
+  {
+   "id": 11945,
+   "tick": 1329,
+   "sender": "picaros",
+   "text": "¡Treinta y ocho! Nando, close the suitcase, my heart cannot take it. Listen, amigo — cincuenta y cuatro. Fifty-four, and that is our last word, I swear on abuelo's lame donkey. No more dancing. Say sí now, or we take El Marqués and walk, and you watch us go.",
+   "offer": {
+    "id": 19184,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2013,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 54,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1333,
+    "created_tick": 1329,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Marqués",
+ "closed_reason": null
+}

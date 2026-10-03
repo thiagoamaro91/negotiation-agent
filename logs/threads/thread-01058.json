@@ -1,0 +1,28 @@
+{
+ "id": 1058,
+ "kind": "team",
+ "team": "t08",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {
+  "invite": {
+   "card": "SAL-02",
+   "venue": "v06",
+   "fee": 0
+  }
+ },
+ "status": "closed",
+ "created_tick": 761,
+ "messages": [
+  {
+   "id": 7025,
+   "tick": 762,
+   "sender": "t08",
+   "text": "Hola from Mercado Maravillas (v06): there is a seller for SAL-02 right now, close to your quote. Post it on v06: no fee at all (El Rastro charges one), and our broker crosses every pair that meets, each tick, at a price between both quotes.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

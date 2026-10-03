@@ -1,0 +1,45 @@
+{
+ "duel": 5978,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.25,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 40,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1347,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 9856,
+  "price": 53,
+  "tick": 1334,
+  "days": 5
+ },
+ "messages": [
+  {
+   "tick": 1331,
+   "from": "Rival Rojo",
+   "text": "Propuesta justa para cerrar pronto: 52 P y 5 días.",
+   "price": 52,
+   "days": 5
+  },
+  {
+   "tick": 1334,
+   "from": "Rival Rojo",
+   "text": "Me muevo para acercarnos: 53 P con 5 días.",
+   "price": 53,
+   "days": 5
+  }
+ ],
+ "result": 24.3,
+ "price": 53,
+ "days": 5
+}

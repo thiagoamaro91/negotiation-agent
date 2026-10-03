@@ -1,0 +1,78 @@
+{
+ "duel": 5909,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 8.91,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 96,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 1332,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 9650,
+  "price": 83,
+  "tick": 1328,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 9724,
+  "price": 88,
+  "tick": 1330,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1317,
+   "from": "Rival Sol",
+   "text": "Rápido y justo: 110 P, día 8. ¿Qué día de entrega te va mejor? / Quick and fair: 110 P, day 8. Which delivery day suits you best?",
+   "price": 110,
+   "days": 8
+  },
+  {
+   "tick": 1321,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 59 P, delivery day 0.",
+   "price": 59,
+   "days": 0
+  },
+  {
+   "tick": 1321,
+   "from": "Rival Sol",
+   "text": "Parece que el día te importa: 96 P con día 4. / It seems the day matters to you: 96 P, day 4.",
+   "price": 96,
+   "days": 4
+  },
+  {
+   "tick": 1328,
+   "from": "you",
+   "text": "Last word from me: 83 P, delivery day 0.",
+   "price": 83,
+   "days": 0
+  },
+  {
+   "tick": 1328,
+   "from": "Rival Sol",
+   "text": "Parece que el día te importa: 95 P con día 2. / It seems the day matters to you: 95 P, day 2.",
+   "price": 95,
+   "days": 2
+  },
+  {
+   "tick": 1330,
+   "from": "Rival Sol",
+   "text": "Mi mejor oferta: 88 P, día 0. / My best offer: 88 P, day 0.",
+   "price": 88,
+   "days": 0
+  }
+ ],
+ "result": 6.8,
+ "price": 88,
+ "days": 0
+}

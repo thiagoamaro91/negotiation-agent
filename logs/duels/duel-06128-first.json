@@ -1,0 +1,38 @@
+{
+ "duel": 6128,
+ "session": 3,
+ "status": "live",
+ "role": "seller",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.21,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 49,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1367,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10352,
+  "price": 29,
+  "tick": 1351,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1351,
+   "from": "Rival Noche",
+   "text": "Hola, Rival Rojo, voy con prisa: 29 por La Dama de Serrano y cerramos ya. Entrega inmediata.",
+   "price": 29,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

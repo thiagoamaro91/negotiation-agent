@@ -1,0 +1,38 @@
+{
+ "duel": 5788,
+ "session": 3,
+ "status": "live",
+ "role": "seller",
+ "item": "Plaza del Dos de Mayo",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.32,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 95,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1290,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 7622,
+  "price": 76,
+  "tick": 1274,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1274,
+   "from": "Rival Azul",
+   "text": "Te ofrezco 76 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 76,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

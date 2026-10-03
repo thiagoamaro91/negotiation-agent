@@ -1,0 +1,59 @@
+{
+ "duel": 5666,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.83,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 89,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1268,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 7030,
+  "price": 49,
+  "tick": 1258,
+  "days": 4
+ },
+ "messages": [
+  {
+   "tick": 1252,
+   "from": "Rival Verde",
+   "text": "Hello, and thank you for meeting me. I would propose 63 P with delivery on day 10.",
+   "price": 63,
+   "days": 10
+  },
+  {
+   "tick": 1254,
+   "from": "Rival Verde",
+   "text": "I appreciate it, thank you. Could we close at 48 P, delivery on day 8, please?",
+   "price": 48,
+   "days": 8
+  },
+  {
+   "tick": 1256,
+   "from": "Rival Verde",
+   "text": "Fair enough, thank you. I will meet you partway: 47 P with delivery on day 6.",
+   "price": 47,
+   "days": 6
+  },
+  {
+   "tick": 1258,
+   "from": "Rival Verde",
+   "text": "Thank you, we are getting close. 49 P and delivery on day 4 works for me.",
+   "price": 49,
+   "days": 4
+  }
+ ],
+ "result": 32.7,
+ "price": 49,
+ "days": 4
+}

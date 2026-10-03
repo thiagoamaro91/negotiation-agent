@@ -1,0 +1,48 @@
+{
+ "id": 1044,
+ "kind": "team",
+ "team": "t03",
+ "with": "t10",
+ "venue": "v02",
+ "topic": {
+  "buy": {
+   "card": "SAL-10"
+  }
+ },
+ "status": "closed",
+ "created_tick": 752,
+ "messages": [
+  {
+   "id": 6922,
+   "tick": 752,
+   "sender": "t03",
+   "text": "Hola Team 10. You have been offering us Salamanca cards, thanks. We would like your SAL-10 (Museo Lazaro Galdiano). Structured offer attached: 66 P cash for one copy, zero-fee venue, so you keep all of it. Happy to hear a counter.",
+   "offer": {
+    "id": 11423,
+    "maker": "t03",
+    "to": "t10",
+    "venue": "v02",
+    "thread": 1044,
+    "status": "cancelled",
+    "give": {
+     "cash": 66,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-10"
+     ]
+    },
+    "expires_tick": 756,
+    "created_tick": 752,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

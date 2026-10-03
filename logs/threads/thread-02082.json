@@ -1,0 +1,164 @@
+{
+ "id": 2082,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "SAL-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1360,
+ "messages": [
+  {
+   "id": 12166,
+   "tick": 1361,
+   "sender": "t03",
+   "text": "Buenas, Paco y Nando. For El Marqués: 44 P, cash in hand.",
+   "offer": {
+    "id": 19472,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2082,
+    "status": "cancelled",
+    "give": {
+     "cash": 44,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1365,
+    "created_tick": 1361,
+    "final": false
+   }
+  },
+  {
+   "id": 12161,
+   "tick": 1361,
+   "sender": "picaros",
+   "text": "¡Eh, amigo, qué ojo tienes! Paco, abre la maleta — ¡el de arriba!\n\nEl Marqués. Mírala, esquinas perfectas, casi no existe ya. Nando la guardó envuelta todo el viaje, ¿verdad?\n\nPara ti, ahora mismo, setenta y tres. Setenta y tres P y te vas feliz, hombre.",
+   "offer": {
+    "id": 19468,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2082,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1365,
+    "created_tick": 1361,
+    "final": false
+   }
+  },
+  {
+   "id": 12174,
+   "tick": 1362,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 66 P. This is the last one in all of Madrid, I swear.",
+   "offer": {
+    "id": 19481,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2082,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 66,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1366,
+    "created_tick": 1362,
+    "final": false
+   }
+  },
+  {
+   "id": 12182,
+   "tick": 1362,
+   "sender": "t03",
+   "text": "I move, you move: 49 P.",
+   "offer": {
+    "id": 19487,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2082,
+    "status": "cancelled",
+    "give": {
+     "cash": 49,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "expires_tick": 1366,
+    "created_tick": 1362,
+    "final": false
+   }
+  },
+  {
+   "id": 12186,
+   "tick": 1363,
+   "sender": "picaros",
+   "text": "¡Ay, Nando, this man squeezes like a lemon! Sixty-two. Sixty-two P and the Marqués goes home with you tonight.\n\nAnd listen, amigo — that is our last word. No more dancing. You say no, we close the maleta, we walk, and the Marqués walks with us.",
+   "offer": {
+    "id": 19493,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2082,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-09"
+     ]
+    },
+    "want": {
+     "cash": 62,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1367,
+    "created_tick": 1363,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Marqués",
+ "closed_reason": null
+}

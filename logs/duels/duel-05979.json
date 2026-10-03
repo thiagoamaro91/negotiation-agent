@@ -1,0 +1,85 @@
+{
+ "duel": 5979,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.05,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 100,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1358,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10358,
+  "price": 61,
+  "tick": 1351,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10423,
+  "price": 61,
+  "tick": 1354,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1343,
+   "from": "Rival Luna",
+   "text": "Propuesta justa para cerrar pronto: 80 P y 5 días.",
+   "price": 80,
+   "days": 5
+  },
+  {
+   "tick": 1344,
+   "from": "Rival Luna",
+   "text": "Me muevo para acercarnos: 77 P con 5 días.",
+   "price": 77,
+   "days": 5
+  },
+  {
+   "tick": 1345,
+   "from": "Rival Luna",
+   "text": "Yo ya me he movido. Propongo 76 P y 5 días.",
+   "price": 76,
+   "days": 5
+  },
+  {
+   "tick": 1350,
+   "from": "Rival Luna",
+   "text": "Propuesta justa para cerrar pronto: 65 P y 10 días.",
+   "price": 65,
+   "days": 10
+  },
+  {
+   "tick": 1351,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 61 P, delivery day 0.",
+   "price": 61,
+   "days": 0
+  },
+  {
+   "tick": 1351,
+   "from": "Rival Luna",
+   "text": "Me muevo para acercarnos: 63 P con 10 días.",
+   "price": 63,
+   "days": 10
+  },
+  {
+   "tick": 1354,
+   "from": "Rival Luna",
+   "text": "Yo ya me he movido. Propongo 61 P y 10 días.",
+   "price": 61,
+   "days": 10
+  }
+ ],
+ "result": 7.8,
+ "price": 61,
+ "days": 10
+}

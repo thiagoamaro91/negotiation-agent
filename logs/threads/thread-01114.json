@@ -1,0 +1,164 @@
+{
+ "id": 1114,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-09"
+  }
+ },
+ "status": "deal",
+ "created_tick": 792,
+ "messages": [
+  {
+   "id": 7336,
+   "tick": 793,
+   "sender": "t03",
+   "text": "Buenas, señores. For the LAV-09: 44 P, cash in hand.",
+   "offer": {
+    "id": 12087,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1114,
+    "status": "cancelled",
+    "give": {
+     "cash": 44,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "expires_tick": 797,
+    "created_tick": 793,
+    "final": false
+   }
+  },
+  {
+   "id": 7334,
+   "tick": 793,
+   "sender": "picaros",
+   "text": "¡Eh, amigo, come, come! Paco here, my brother Nando there — eyes like hawks, prices like gifts. Look at this beauty: Cine Doré, the real one, corners sharp as a knife. For you, today only, seventy-three. Tomorrow we are in Valencia and this card, poof, gone. ¿Sí?",
+   "offer": {
+    "id": 12085,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1114,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 797,
+    "created_tick": 793,
+    "final": false
+   }
+  },
+  {
+   "id": 7340,
+   "tick": 794,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 64 P.",
+   "offer": {
+    "id": 12102,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1114,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-07"
+     ]
+    },
+    "want": {
+     "cash": 64,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 798,
+    "created_tick": 794,
+    "final": false
+   }
+  },
+  {
+   "id": 7347,
+   "tick": 794,
+   "sender": "t03",
+   "text": "I move, you move: 47 P.",
+   "offer": {
+    "id": 12109,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1114,
+    "status": "cancelled",
+    "give": {
+     "cash": 47,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "expires_tick": 798,
+    "created_tick": 794,
+    "final": false
+   }
+  },
+  {
+   "id": 7353,
+   "tick": 795,
+   "sender": "picaros",
+   "text": "¡Ay, Nando, this man has a heart of stone! Paco is crying, truly. Listen — you move, we move, that was the deal, sí? Fifty-nine. Fifty-nine and we shake, you walk away with Cine Doré under your arm, and we eat bread tonight. ¿Hecho, amigo?",
+   "offer": {
+    "id": 12122,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1114,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "want": {
+     "cash": 59,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 799,
+    "created_tick": 795,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Cine Doré",
+ "closed_reason": null
+}

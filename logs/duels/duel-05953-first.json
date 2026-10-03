@@ -1,0 +1,25 @@
+{
+ "duel": 5953,
+ "session": 3,
+ "status": "live",
+ "role": "buyer",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.7,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 87,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 1352,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

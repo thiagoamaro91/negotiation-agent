@@ -1,0 +1,71 @@
+{
+ "duel": 5739,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.52,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 126,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1286,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 7931,
+  "price": 109,
+  "tick": 1282,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 7935,
+  "price": 115,
+  "tick": 1282,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1270,
+   "from": "Rival Luna",
+   "text": "Hola, Rival Noche, voy con prisa: Fiesta de San Cayetano por 133 y cerramos ya. Entrega en 10 días.",
+   "price": 133,
+   "days": 10
+  },
+  {
+   "tick": 1274,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 77 P, delivery day 0.",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 1275,
+   "from": "Rival Luna",
+   "text": "Venga, 124. Entrega en 10 días.",
+   "price": 124,
+   "days": 10
+  },
+  {
+   "tick": 1282,
+   "from": "you",
+   "text": "Last word from me: 109 P, delivery day 0.",
+   "price": 109,
+   "days": 0
+  },
+  {
+   "tick": 1282,
+   "from": "Rival Luna",
+   "text": "115, último paso. Entrega en 10 días.",
+   "price": 115,
+   "days": 10
+  }
+ ],
+ "result": 14.4,
+ "price": 109,
+ "days": 0
+}

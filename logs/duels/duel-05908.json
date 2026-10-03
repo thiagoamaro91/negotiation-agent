@@ -1,0 +1,78 @@
+{
+ "duel": 5908,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.91,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 77,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1313,
+ "decay_per_round": 0.08,
+ "rounds": 2,
+ "your_offer": {
+  "id": 8992,
+  "price": 89,
+  "tick": 1309,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 9063,
+  "price": 87,
+  "tick": 1311,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1298,
+   "from": "Rival Azul",
+   "text": "Rápido y justo: 68 P, día 3. ¿Qué día de entrega te va mejor? / Quick and fair: 68 P, day 3. Which delivery day suits you best?",
+   "price": 68,
+   "days": 3
+  },
+  {
+   "tick": 1302,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 126 P, delivery day 10.",
+   "price": 126,
+   "days": 10
+  },
+  {
+   "tick": 1302,
+   "from": "Rival Azul",
+   "text": "Parece que el día te importa: 58 P con día 7. / It seems the day matters to you: 58 P, day 7.",
+   "price": 58,
+   "days": 7
+  },
+  {
+   "tick": 1309,
+   "from": "you",
+   "text": "Last word from me: 89 P, delivery day 10.",
+   "price": 89,
+   "days": 10
+  },
+  {
+   "tick": 1309,
+   "from": "Rival Azul",
+   "text": "Parece que el día te importa: 59 P con día 6. / It seems the day matters to you: 59 P, day 6.",
+   "price": 59,
+   "days": 6
+  },
+  {
+   "tick": 1311,
+   "from": "Rival Azul",
+   "text": "Mi mejor oferta: 87 P, día 0. / My best offer: 87 P, day 0.",
+   "price": 87,
+   "days": 0
+  }
+ ],
+ "result": 8.5,
+ "price": 87,
+ "days": 0
+}

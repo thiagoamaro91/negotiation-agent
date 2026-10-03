@@ -1,0 +1,71 @@
+{
+ "duel": 5667,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.17,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 75,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1270,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 7307,
+  "price": 87,
+  "tick": 1266,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 7103,
+  "price": 102,
+  "tick": 1260,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1254,
+   "from": "Rival Azul",
+   "text": "Hello, and thank you for meeting me. I would propose 84 P with delivery on day 0.",
+   "price": 84,
+   "days": 0
+  },
+  {
+   "tick": 1256,
+   "from": "Rival Azul",
+   "text": "I appreciate it, thank you. Could we close at 94 P, delivery on day 0, please?",
+   "price": 94,
+   "days": 0
+  },
+  {
+   "tick": 1258,
+   "from": "Rival Azul",
+   "text": "Fair enough, thank you. I will meet you partway: 99 P with delivery on day 0.",
+   "price": 99,
+   "days": 0
+  },
+  {
+   "tick": 1260,
+   "from": "Rival Azul",
+   "text": "Thank you, we are getting close. 102 P and delivery on day 0 works for me.",
+   "price": 102,
+   "days": 0
+  },
+  {
+   "tick": 1266,
+   "from": "you",
+   "text": "Last word from me: 87 P, delivery day 10.",
+   "price": 87,
+   "days": 10
+  }
+ ],
+ "result": 49.4,
+ "price": 87,
+ "days": 10
+}

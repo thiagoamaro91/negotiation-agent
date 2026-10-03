@@ -1,0 +1,38 @@
+{
+ "duel": 6166,
+ "session": 3,
+ "status": "live",
+ "role": "seller",
+ "item": "El Frutero de Argumosa",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.35,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 53,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1383,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 10670,
+  "price": 46,
+  "tick": 1367,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1367,
+   "from": "Rival Rojo",
+   "text": "Te ofrezco 46 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 46,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

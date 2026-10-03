@@ -1,0 +1,78 @@
+{
+ "duel": 5787,
+ "session": 3,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.86,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 119,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 1304,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 8617,
+  "price": 103,
+  "tick": 1300,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 8667,
+  "price": 134,
+  "tick": 1301,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1289,
+   "from": "Rival Plata",
+   "text": "Hello! I can let it go for 148 P. Delivery on day 0.",
+   "price": 148,
+   "days": 0
+  },
+  {
+   "tick": 1292,
+   "from": "Rival Plata",
+   "text": "143 P, then. Delivery on day 0.",
+   "price": 143,
+   "days": 0
+  },
+  {
+   "tick": 1295,
+   "from": "Rival Plata",
+   "text": "How about 138 P? Delivery on day 0.",
+   "price": 138,
+   "days": 0
+  },
+  {
+   "tick": 1300,
+   "from": "you",
+   "text": "Last word from me: 103 P, delivery day 0.",
+   "price": 103,
+   "days": 0
+  },
+  {
+   "tick": 1300,
+   "from": "Rival Plata",
+   "text": "Final offer: 135 P. Happy to close now. Delivery on day 0.",
+   "price": 135,
+   "days": 0
+  },
+  {
+   "tick": 1301,
+   "from": "Rival Plata",
+   "text": "Last offer from my side: 134 P. Delivery on day 0.",
+   "price": 134,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

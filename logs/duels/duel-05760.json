@@ -1,0 +1,45 @@
+{
+ "duel": 5760,
+ "session": 3,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.92,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 87,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 1335,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": {
+  "id": 9749,
+  "price": 115,
+  "tick": 1331,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1322,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 128 P, delivery day 0.",
+   "price": 128,
+   "days": 0
+  },
+  {
+   "tick": 1331,
+   "from": "you",
+   "text": "Last word from me: 115 P, delivery day 0.",
+   "price": 115,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

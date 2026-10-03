@@ -1,0 +1,50 @@
+{
+ "duel": 5952,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Dama de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.86,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 99,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 1348,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 9885,
+  "price": 143,
+  "tick": 1335,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 9893,
+  "price": 138,
+  "tick": 1335,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1335,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 143 P, delivery day 0.",
+   "price": 143,
+   "days": 0
+  },
+  {
+   "tick": 1335,
+   "from": "Rival Verde",
+   "text": "I can do 138 P with delivery in 0 days.",
+   "price": 138,
+   "days": 0
+  }
+ ],
+ "result": 35.9,
+ "price": 138,
+ "days": 0
+}

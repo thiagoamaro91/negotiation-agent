@@ -1,0 +1,258 @@
+{
+ "id": 1890,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAV-11"
+  }
+ },
+ "status": "deal",
+ "created_tick": 1244,
+ "messages": [
+  {
+   "id": 11438,
+   "tick": 1245,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco here — and Nando, open the case!\n\nLa Casa Encendida, mira, the real one, still warm. For you: 187 P.\n\nAnd quick, eh — another team was sniffing round this very card minutes ago, offered us plenty more. We like your face better. But faces fade fast.",
+   "offer": {
+    "id": 18311,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 187,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1249,
+    "created_tick": 1245,
+    "final": false
+   }
+  },
+  {
+   "id": 11442,
+   "tick": 1245,
+   "sender": "t03",
+   "text": "Buenas, Paco y Nando. For La Casa Encendida: 110 P, cash in hand.",
+   "offer": {
+    "id": 18315,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 110,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1249,
+    "created_tick": 1245,
+    "final": false
+   }
+  },
+  {
+   "id": 11448,
+   "tick": 1246,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 174 P.",
+   "offer": {
+    "id": 18321,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 174,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1250,
+    "created_tick": 1246,
+    "final": false
+   }
+  },
+  {
+   "id": 11452,
+   "tick": 1246,
+   "sender": "t03",
+   "text": "I move, you move: 125 P.",
+   "offer": {
+    "id": 18327,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 125,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1250,
+    "created_tick": 1246,
+    "final": false
+   }
+  },
+  {
+   "id": 11460,
+   "tick": 1247,
+   "sender": "picaros",
+   "text": "¡Ay, Nando, hold me! The man moves like a dancer, and my heart it cannot take.\n\nLook — 167 P. That's us bleeding on the pavement, hermano, honest bleeding. Paco already promised mamá a dinner with this one.\n\nCash in hand, you said. Put it there before the other team comes back.",
+   "offer": {
+    "id": 18333,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-09"
+     ]
+    },
+    "want": {
+     "cash": 167,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1251,
+    "created_tick": 1247,
+    "final": false
+   }
+  },
+  {
+   "id": 11464,
+   "tick": 1247,
+   "sender": "t03",
+   "text": "Honest step: 140 P for La Casa Encendida.",
+   "offer": {
+    "id": 18337,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 140,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1251,
+    "created_tick": 1247,
+    "final": false
+   }
+  },
+  {
+   "id": 11470,
+   "tick": 1248,
+   "sender": "picaros",
+   "text": "¡Nando, he dances again! Paco's knees are gone.\n\n161 P, amigo. Mamá's dinner is now a sandwich, and I'll eat it standing. But your face, hombre — we like it too much.\n\nThe other team is circling the plaza. Hand me the cash, and the case closes happy.",
+   "offer": {
+    "id": 18345,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 1890,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "want": {
+     "cash": 161,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1252,
+    "created_tick": 1248,
+    "final": false
+   }
+  },
+  {
+   "id": 11473,
+   "tick": 1248,
+   "sender": "t03",
+   "text": "155 P, and it has to be La Casa Encendida, the real one.",
+   "offer": {
+    "id": 18350,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 1890,
+    "status": "settled",
+    "give": {
+     "cash": 155,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAV-11"
+     ]
+    },
+    "expires_tick": 1252,
+    "created_tick": 1248,
+    "final": false
+   }
+  },
+  {
+   "id": 11476,
+   "tick": 1249,
+   "sender": "picaros",
+   "text": "¡Hecho, hermano! 155 P — the real Casa Encendida, still warm, Nando wrap it before Paco cries.\n\nMamá eats a sandwich tonight, but your face, hombre, worth every point. Cash here, case closed, everybody happy.\n\nGo quick, eh — the other team is turning the corner. ¡Adiós, amigo!",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Casa Encendida",
+ "closed_reason": null
+}

@@ -1,0 +1,108 @@
+{
+ "duel": 5780,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.25,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 71,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 1281,
+ "decay_per_round": 0.08,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 7804,
+  "price": 97,
+  "tick": 1278,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1267,
+   "from": "Rival Oro",
+   "text": "We can do 89 P, delivery on day 0. Thank you for the talk.",
+   "price": 89,
+   "days": 0
+  },
+  {
+   "tick": 1268,
+   "from": "Rival Oro",
+   "text": "97 P, delivery on day 0 works well for us.",
+   "price": 97,
+   "days": 0
+  },
+  {
+   "tick": 1269,
+   "from": "Rival Oro",
+   "text": "Our offer is 99 P, delivery on day 0.",
+   "price": 99,
+   "days": 0
+  },
+  {
+   "tick": 1270,
+   "from": "Rival Oro",
+   "text": "Let's meet at 101 P, delivery on day 0, fair for both.",
+   "price": 101,
+   "days": 0
+  },
+  {
+   "tick": 1271,
+   "from": "Rival Oro",
+   "text": "84 P, delivery on day 10, and we close now.",
+   "price": 84,
+   "days": 10
+  },
+  {
+   "tick": 1273,
+   "from": "Rival Oro",
+   "text": "We move to 89 P, delivery on day 10.",
+   "price": 89,
+   "days": 10
+  },
+  {
+   "tick": 1274,
+   "from": "Rival Oro",
+   "text": "We can do 91 P, delivery on day 10. Thank you for the talk.",
+   "price": 91,
+   "days": 10
+  },
+  {
+   "tick": 1275,
+   "from": "Rival Oro",
+   "text": "93 P, delivery on day 10 works well for us.",
+   "price": 93,
+   "days": 10
+  },
+  {
+   "tick": 1276,
+   "from": "Rival Oro",
+   "text": "Our offer is 94 P, delivery on day 10.",
+   "price": 94,
+   "days": 10
+  },
+  {
+   "tick": 1277,
+   "from": "Rival Oro",
+   "text": "Let's meet at 95 P, delivery on day 10, fair for both.",
+   "price": 95,
+   "days": 10
+  },
+  {
+   "tick": 1278,
+   "from": "Rival Oro",
+   "text": "97 P, delivery on day 10, and we close now.",
+   "price": 97,
+   "days": 10
+  }
+ ],
+ "result": 58.5,
+ "price": 97,
+ "days": 10
+}

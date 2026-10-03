@@ -1,0 +1,338 @@
+{
+ "id": 1089,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "SAL-02"
+  }
+ },
+ "status": "deal",
+ "created_tick": 777,
+ "messages": [
+  {
+   "id": 7226,
+   "tick": 778,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 4 P for it?",
+   "offer": {
+    "id": 11870,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "expires_tick": 782,
+    "created_tick": 778,
+    "final": false
+   }
+  },
+  {
+   "id": 7222,
+   "tick": 778,
+   "sender": "abuela",
+   "text": "Ay, hola cariño! Come, sit a little. Have you eaten? Look, this one, El Portero — my favourite, the kids always want him. For you, twelve P. He has been waiting on my table for a good home, hijo.",
+   "offer": {
+    "id": 11866,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 782,
+    "created_tick": 778,
+    "final": false
+   }
+  },
+  {
+   "id": 7234,
+   "tick": 779,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 11 P. And take this, a little present from me: Barca del Estanque.",
+   "offer": {
+    "id": 11882,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 783,
+    "created_tick": 779,
+    "final": false
+   }
+  },
+  {
+   "id": 7239,
+   "tick": 779,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 5 P?",
+   "offer": {
+    "id": 11887,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 5,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "expires_tick": 783,
+    "created_tick": 779,
+    "final": false
+   }
+  },
+  {
+   "id": 7252,
+   "tick": 780,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 6 P.",
+   "offer": {
+    "id": 11902,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 6,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "expires_tick": 784,
+    "created_tick": 780,
+    "final": false
+   }
+  },
+  {
+   "id": 7244,
+   "tick": 780,
+   "sender": "abuela",
+   "text": "Ay, hijo, young collectors are my favourite — I was one too, once. Ten P, and El Portero is yours. And listen: swap your duplicates, a full page is worth much more than loose cards. Doña Pilar from Salamanca comes Saturday at eleven and pays very well.",
+   "offer": {
+    "id": 11895,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 784,
+    "created_tick": 780,
+    "final": false
+   }
+  },
+  {
+   "id": 7256,
+   "tick": 781,
+   "sender": "abuela",
+   "text": "Let's meet in the middle, cariño: 10 P. A little advice, cariño: a full page is worth much more than the loose cards. Swap your duplicates!",
+   "offer": {
+    "id": 11921,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 785,
+    "created_tick": 781,
+    "final": false
+   }
+  },
+  {
+   "id": 7261,
+   "tick": 781,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 7 P, por favor?",
+   "offer": {
+    "id": 11926,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 7,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "expires_tick": 785,
+    "created_tick": 781,
+    "final": false
+   }
+  },
+  {
+   "id": 7276,
+   "tick": 782,
+   "sender": "t03",
+   "text": "I would treasure it, Abuela. 8 P is what I can manage today.",
+   "offer": {
+    "id": 11947,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "expires_tick": 786,
+    "created_tick": 782,
+    "final": false
+   }
+  },
+  {
+   "id": 7268,
+   "tick": 782,
+   "sender": "abuela",
+   "text": "Ay, cariño, your abuela had an album? Then you know these cards want good hands. Ten P, hijo, and El Portero goes home with you. Bring me your duplicates next Sunday — a full page is worth much more than loose cards. Have you eaten today?",
+   "offer": {
+    "id": 11940,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 786,
+    "created_tick": 782,
+    "final": false
+   }
+  },
+  {
+   "id": 7281,
+   "tick": 783,
+   "sender": "abuela",
+   "text": "Look, 9 P. My grandchildren would pay more! Look, cariño, I can't go lower. This is my last offer.",
+   "offer": {
+    "id": 11965,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 1089,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:SAL-02"
+     ]
+    },
+    "want": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 787,
+    "created_tick": 783,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Portero",
+ "closed_reason": null
+}

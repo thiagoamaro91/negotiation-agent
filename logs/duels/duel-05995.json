@@ -1,0 +1,64 @@
+{
+ "duel": 5995,
+ "session": 3,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Vía Láctea",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.22,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 81,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 1359,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 10443,
+  "price": 70,
+  "tick": 1355,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 10333,
+  "price": 72,
+  "tick": 1350,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1344,
+   "from": "Rival Oro",
+   "text": "Hi there. 80 P and it is yours. Delivery on day 10.",
+   "price": 80,
+   "days": 10
+  },
+  {
+   "tick": 1347,
+   "from": "Rival Oro",
+   "text": "How about 76 P? Delivery on day 10.",
+   "price": 76,
+   "days": 10
+  },
+  {
+   "tick": 1350,
+   "from": "Rival Oro",
+   "text": "72 P, then. Delivery on day 10.",
+   "price": 72,
+   "days": 10
+  },
+  {
+   "tick": 1355,
+   "from": "you",
+   "text": "Last word from me: 70 P, delivery day 0.",
+   "price": 70,
+   "days": 0
+  }
+ ],
+ "result": 10.1,
+ "price": 70,
+ "days": 0
+}

@@ -1,0 +1,50 @@
+{
+ "duel": 5834,
+ "session": 3,
+ "status": "deal",
+ "role": "seller",
+ "item": "Fiesta de San Cayetano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.64,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 140,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1266,
+ "decay_per_round": 0.08,
+ "rounds": 1,
+ "your_offer": {
+  "id": 6970,
+  "price": 228,
+  "tick": 1257,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 6779,
+  "price": 180,
+  "tick": 1253,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1253,
+   "from": "Rival Rojo",
+   "text": "I can do 180 P with delivery in 0 days.",
+   "price": 180,
+   "days": 0
+  },
+  {
+   "tick": 1257,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 228 P, delivery day 10.",
+   "price": 228,
+   "days": 10
+  }
+ ],
+ "result": 36.8,
+ "price": 180,
+ "days": 0
+}
