@@ -6,7 +6,7 @@ Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on 
 
 ## Saturday night (before you sleep)
 
-1. Pull `main` on the Mini once the open pull requests are merged (the Mini also pulls after every merge, and never restarts a bot).
+1. Pull `main` on the Mini once the open pull requests are merged (an auto-pull may or may not be on there: compare the checkout with `origin/main` as in the pre-flight page; a pull restarts no bot).
 2. Clear every `todo` in `tools/factory_sunday.json`: `python3 tools/factory.py plan` prints each one under its command. The duel params file must exist: `plan` says `MISSING input file` and `up` refuses the duel until it does.
 3. Set `notify_cmd` to the Mini's Telegram notifier, so the watchdog can reach you.
 4. Stop Saturday's hand-started bots (the broker loop, gate scripts, desks) once the doors close, **by hand**: `ps -ax | grep -E 'broker_loop|pilar_gate|_gate.sh'`. The factory recognises a bot by its script name plus its mode (`broker.py run`, also `cd agent; python3 broker.py run`, `python3 -m agent.broker run`, and a `bash -c` loop around them). It never opens a file to look inside a script, so a restart loop kept in a script file is visible only while its child runs. `plan` lists what it sees, `up` refuses it, and a keeper never launches beside it. A shell that merely mentions the command (a grep) can also be flagged: check the pid it names.

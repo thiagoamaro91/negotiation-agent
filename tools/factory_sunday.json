@@ -30,8 +30,7 @@
       "log": "logs/broker/{date}.jsonl",
       "stale_ticks": 4,
       "bench_watch": true,
-      "note": "Reads its own key from ~/.bazaar/broker.env (--key-file default). The Market Tests (game hours 14.65 hard, 15.0, 17.0, 19.0, 21.0) come from the schedule; status alerts on any dropped match or no match in a test. --policy stall is the safe fallback: the stall's exact rule.",
-      "todo": "WP2: set the broker policy for the hard Market Test here once the broker-hard PR is merged (name and flags from its report); until then this stays on stall."
+      "note": "Reads its own key from ~/.bazaar/broker.env (--key-file default). The Market Tests (game hours 14.65 hard, 15.0, 17.0, 19.0, 21.0) come from the schedule; status alerts on any dropped match or no match in a test. --policy stall all day (decided Sunday morning: the maxpairs policy lost everywhere it was tested); it is the stall's exact rule."
     },
     {
       "name": "duel",

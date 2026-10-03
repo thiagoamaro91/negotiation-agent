@@ -1,12 +1,13 @@
 # Sunday pre-flight: 08:40 on the Mac Mini
 
-Ten checks, one line each, then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+Ten checks, one line each (check 1 also pulls when behind), then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/factory_sunday.json` (the line is in the handoff, section "What needs you"). Without it the watchdog still prints problems in its tmux window but sends nothing to your phone.
 
-1. **The Mini is on the `origin/main` head.** Expect the head named in the handoff, then `0`.
+1. **The Mini is on the `origin/main` head.** Expect the head named in the handoff, then `0`. Do not assume an auto-pull ran (Thiago's own doc says there is none; Hector says one was enabled): if the count is not `0`, pull, then rerun this check, check 2 and the self-test (expect `OK`). If the pull refuses because of local changes, say so in the team chat; do not reset.
    ```bash
    cd ~/bazaar && git fetch -q && git log -1 --format='%h %s' && git rev-list --count HEAD..origin/main
+   git pull --ff-only && python3 -m unittest tests.test_factory 2>&1 | tail -1
    ```
 2. **The config has nothing open.** Expect no output. (`OUTSIDE OPENING HOURS` next to `Scores freeze` is normal; next to `Final duels` it is not. Before 09:00 the wall-time column is indicative only: it anchors on a stale `day_opens` event, and the gates use game hours.)
    ```bash
