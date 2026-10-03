@@ -67,7 +67,9 @@ Strategy (all constants overridable from the command line):
   - Two issues: utility = price surplus minus our days cost. Delivery is linear in days, so we offer an extreme
     day. If days are cheap for us (10 x weight <= DAYS_CHEAP x limit) we give the rival the day they seem to want
     and ask the days cost back in price, plus a premium. If days are dear to us, we hold our best day and concede
-    on price. The pairL clamps apply to price-only sessions.
+    on price. The pairL clamps apply to price-only sessions. Our best day: --days-best (both roles, or per role:
+    buyer:0,seller:10), else a direction named in `days_meaning`, else the role default flipped by a negative weight.
+    Two-issue messages carry a top-level "days" and the "offer" (say_body).
   - --mirror (off, KILLED in its exact form): treat pairL as the rival's exact limit, ask a share of that pie
     (75% anchor, 55% floor, 30% last chance) and walk when it is empty.
   - Off by default, measured in docs/duel-lab/improvements.md (on in docs/duel-lab/duel-params-duels1-improved.json):
