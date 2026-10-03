@@ -543,8 +543,13 @@ def set_windows(pairs: list, cfg) -> None:
 
 def needs_slot(d: dict, cfg) -> bool:
     """Does this duel count toward the accept slots the deadline cluster needs? --slot-demand open (default): every
-    open duel. spoke: only duels whose rival has spoken (a rival that never spoke has no offer for us to accept)."""
-    return getattr(cfg, "slot_demand", "open") == "open" or rival_spoke(d)
+    open duel. spoke: only duels whose rival has spoken (a rival that never spoke has no offer for us to accept).
+    acceptable: only duels whose standing rival offer we would accept now (the others keep deadline-1 as retry)."""
+    mode = getattr(cfg, "slot_demand", "open")
+    if mode == "acceptable":
+        r = parse_offer(d.get("rival_offer"))
+        return r is not None and inside_limit(d, r[0]) and surplus(d, r[0], r[1], cfg.days_best) >= cfg.min_surplus
+    return mode == "open" or rival_spoke(d)
 
 
 def late_due(decisions: list, cfg) -> bool:
@@ -784,9 +789,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--last-share", type=float, default=LAST_SHARE,
                     help="price-only, pairL visible: the last chance at L + share x (pairL - L) instead of the "
                          "--last-r ratio (0: off)")
-    ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke"],
-                    help="which duels count toward the accept slots a deadline cluster needs: every open one, or only "
-                         "those whose rival has spoken")
+    ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke", "acceptable"],
+                    help="which duels count toward the accept slots a deadline cluster needs: every open one, those "
+                         "whose rival has spoken, or those with a rival offer we would accept now")
     ap.add_argument("--mirror", action="store_true",
                     help="KILLED hypothesis: take the paired limit as the rival's exact limit (keep off)")
     ap.add_argument("--until", default="", help="stop at this local wall time, HH:MM")

@@ -92,6 +92,18 @@ class SlotDemand(unittest.TestCase):
         duel.set_windows(pairs, cfg("--accept-any-ticks", "1", "--slot-demand", "spoke"))
         self.assertEqual(pairs[0][1].window, 1)
 
+    def test_acceptable_counts_only_duels_with_an_offer_we_would_take_now(self):
+        def spoke(did, price):
+            return live_duel(did, msgs=[{"tick": 105, "from": "Rival X", "price": price, "days": None, "text": ""}],
+                             offer={"id": did, "price": price, "tick": 105, "days": 0})
+        ds = [spoke(1, 120), spoke(3, 90), spoke(5, 101), live_duel(7)]    # we sell at cost 100
+        c = cfg("--slot-demand", "acceptable")
+        self.assertEqual([duel.needs_slot(d, c) for d in ds], [True, False, True, False])
+        self.assertEqual([duel.needs_slot(d, cfg("--slot-demand", "spoke")) for d in ds], [True, True, True, False])
+        pairs = [(d, duel.DuelState(d, 100, 16)) for d in ds]
+        duel.set_windows(pairs, cfg("--accept-any-ticks", "1", "--slot-demand", "acceptable"))
+        self.assertEqual(pairs[0][1].window, 2)
+
     def test_window_wait_counts_only_duels_that_can_need_the_slot(self):
         spoke = live_duel(1, msgs=[{"tick": 112, "from": "Rival X", "price": 130, "days": None, "text": ""}],
                           offer={"id": 1, "price": 130, "tick": 112, "days": 0})

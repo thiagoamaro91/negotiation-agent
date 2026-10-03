@@ -5,6 +5,6 @@
   "absent_last": true,
   "late_poll": 8,
   "late_ticks": 3,
-  "slot_demand": "spoke",
+  "slot_demand": "acceptable",
   "last_share": 0.3
 }
