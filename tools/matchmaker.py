@@ -8,6 +8,15 @@ venue within one to eight ticks of its listing, and what they took were cards of
 Latina, t04 Malasaña, t09 El Retiro). v20's 29 listings were overpriced asks that expired after ten ticks and swaps
 addressed to one team; none was a card someone was missing at a price near its trades.
 
+Explicit wants first, inferences second. A live bid or swap that asks for a card is a fact; that a team lacks a
+card is an inference (decks.py cannot name every card a team owns: starter and pack cards never shown, Workshop burns),
+so the matches come in four tiers, best first (build()): 1 a live want and a supplier we can name, 2 a live want, 3 a
+live ask and a team that APPEARS to be missing that card, 4 an inferred need with holders and no live offer. Tiers 1-3
+carry ONE action: the counterparty accepts that live offer (POST /api/offers/<id>/accept), wherever it is; when the
+match is already live elsewhere nothing pretends v20 is needed. Only tier 4 proposes orders on v20. A swap (give one
+card, want another) is accepted directly: our broker never crosses swaps. Within a tier: our venue, then El Rastro
+(nobody's market points), then other teams' venues (their points).
+
 What it computes, from public data only:
   - every team's page cards, from tools/decks.py (the deck rebuilt from asset ids in the feed), checked against the
     leaderboard's album count (`album_filled`, `pages_complete`): the pages it is one or two cards from completing,
@@ -18,8 +27,10 @@ What it computes, from public data only:
     range of team-to-team trades, and the dealers' measured closes on both sides (tools/price_index.py);
   - whether a live offer already exists on any venue (every open venue's public book plus El Rastro): an ask the
     buyer can accept, a bid of the buyer's a holder can accept;
-  - the proposal: the exact POST /api/offers body each side would post on v20 (0 % fee, our broker crosses a bid
-    and an ask at the midpoint), or the live offer id to accept elsewhere.
+  - the action (tiers 1-3: the live offer id, price, expiry and who should accept it) or the proposal (tier 4: the
+    exact POST /api/offers body each side would post on v20, 0 % fee, our broker crosses a bid and an ask at the
+    midpoint). Live offers expiring within MIN_TICKS_LEFT ticks, bids below what the dealers pay a holder and
+    lopsided swaps are never tier 1.
 
 What it never shows. Team 3 is never a buyer or a holder here: our holdings, values and the cards we lack stay in
 our private docs. Cards in --exclude (by default announce.MISSING, the cards Team 3 lacks) are dropped from every
@@ -63,6 +74,8 @@ SPARE_MIN = 2             # a team with this many named copies holds a spare
 LOW_MULT = 0.9            # ...or one copy of a set it values at most this much (value inference) and is not filling:
 FAR_PAGE = 3              # at least this many of that page's cards unnamed in its deck
 MIN_P = 0.15              # below this chance that the card is really missing, the match is left out
+MIN_TICKS_LEFT = 8        # a live offer expiring sooner than this (2 min at 15 s ticks) is not worth naming
+SWAP_RATIO = 0.8          # a swap is a fair offer when what it gives is worth at least this share of what it wants
 ACTIVE_TICKS = 240        # a team with a public move in the last 240 ticks (1 h at 15 s) is active
 IDLE_FACTOR = 0.3
 ORDER_TICKS = 240         # suggested expiry of the posted orders: one hour at Sunday's 15 s ticks (t15's v20 asks
@@ -297,19 +310,22 @@ def missing_odds(held: collections.Counter, pages: dict, album: tuple | None, ra
 # ---------------------------------------------------------------- books
 
 def offer_shape(o: dict):
-    """("ask", ref, price, asset id) | ("bid", ref, price, None) for a plain one-card cash offer, else None."""
+    """("ask", ref, price, asset id) | ("bid", ref, price, None) | ("swap", wanted ref, 0, (asset id, given ref)) for a
+    plain one-card offer, else None. A swap gives one card asset and wants one card type, no cash either way."""
     if not isinstance(o, dict):
         return None
     g, w = o.get("give") or {}, o.get("want") or {}
     if not isinstance(g, dict) or not isinstance(w, dict) or g.get("types") or w.get("assets"):
         return None
     ga, wt = g.get("assets") or [], w.get("types") or []
-    if len(ga) == 1 and isinstance(ga[0], dict) and ga[0].get("kind") == "card" and not wt and not g.get("cash") \
-            and isinstance(w.get("cash"), int) and w["cash"] > 0:
+    one = len(ga) == 1 and isinstance(ga[0], dict) and ga[0].get("kind") == "card"
+    one_type = len(wt) == 1 and isinstance(wt[0], str) and wt[0].startswith("card:")
+    if one and not wt and not g.get("cash") and isinstance(w.get("cash"), int) and w["cash"] > 0:
         return ("ask", ga[0].get("ref"), w["cash"], ga[0].get("id"))
-    if not ga and len(wt) == 1 and isinstance(wt[0], str) and wt[0].startswith("card:") and not w.get("cash") \
-            and isinstance(g.get("cash"), int) and g["cash"] > 0:
+    if not ga and one_type and not w.get("cash") and isinstance(g.get("cash"), int) and g["cash"] > 0:
         return ("bid", wt[0][5:], g["cash"], None)
+    if one and one_type and not g.get("cash") and not w.get("cash"):
+        return ("swap", wt[0][5:], 0, (ga[0].get("id"), ga[0].get("ref")))
     return None
 
 
@@ -340,6 +356,20 @@ def learn_pseudonyms(books: dict, names: dict) -> dict:
     return out
 
 
+def venue_owners(venues: list) -> dict:
+    out = {"rastro": "world"}
+    for v in venues or []:
+        if isinstance(v, dict) and v.get("venue"):
+            out[v["venue"]] = v.get("owner")
+    return out
+
+
+def venue_class(venue) -> int:
+    """0 = our venue (a trade there is market points for us), 1 = El Rastro (the house: nobody's points), 2 = another
+    team's venue (a trade there scores for that team)."""
+    return 0 if venue == VENUE else 1 if venue in (None, "rastro") else 2
+
+
 def venue_fees(venues: list) -> dict:
     out = {"rastro": (500, 1)}
     for v in venues or []:
@@ -353,14 +383,19 @@ def fee_of(fee, price: int) -> int:
     return math.ceil((bps or 0) * price / 10000) + (per_card or 0)
 
 
-def live_offers(books: dict, names: dict, fees: dict) -> dict:
-    """ref -> {"asks": [...], "bids": [...]} over every venue's open, undirected or directed, plain cash offers,
-    each {venue, offer, price, team, to, asset, fee}. Our venue's own book is included (a v20 order is the best news
-    of all). Team 3's offers, offers addressed to us and offers the feed cannot tie to a team are left out."""
-    out = collections.defaultdict(lambda: {"asks": [], "bids": []})
+def live_offers(books: dict, names: dict, fees: dict, now_tick: int | None = None,
+                min_left: int = MIN_TICKS_LEFT) -> dict:
+    """ref -> {"asks": [...], "bids": [...], "swaps": [...]} over every venue's open plain one-card offers (swaps under
+    the card they WANT), each {venue, offer, price, team, to, asset, fee, expires_tick} (+ gives for a swap). Our
+    venue's own book is included. Team 3's offers, offers addressed to us and offers the feed cannot tie to a team are
+    left out (an unnamed one could be ours), and so are offers that expire within `min_left` ticks of `now_tick`."""
+    out = collections.defaultdict(lambda: {"asks": [], "bids": [], "swaps": []})
     for venue, book in (books or {}).items():
         for o in book or []:
             if not isinstance(o, dict) or o.get("status", "open") != "open":
+                continue
+            exp = o.get("expires_tick")
+            if isinstance(now_tick, int) and isinstance(exp, int) and exp - now_tick < min_left:
                 continue
             sh = offer_shape(o)
             if sh is None or not isinstance(sh[1], str):
@@ -369,10 +404,12 @@ def live_offers(books: dict, names: dict, fees: dict) -> dict:
             if not (isinstance(team, str) and team[:1] == "t" and team[1:].isdigit()) or team == US \
                     or o.get("maker") == US or o.get("to") == US:
                 continue   # an offer the feed cannot name could be ours: never pointed at
-            row = {"venue": venue, "offer": o.get("id"), "price": sh[2], "team": team,
-                   "to": o.get("to"), "asset": sh[3], "fee": fee_of(fees.get(venue, (0, 0)), sh[2]),
+            row = {"venue": venue, "offer": o.get("id"), "price": sh[2], "team": team, "to": o.get("to"),
+                   "asset": sh[3] if sh[0] == "ask" else None, "fee": fee_of(fees.get(venue, (0, 0)), sh[2]),
                    "expires_tick": o.get("expires_tick")}
-            out[sh[1]]["asks" if sh[0] == "ask" else "bids"].append(row)
+            if sh[0] == "swap":
+                row.update(asset=sh[3][0], gives=sh[3][1], fee=fee_of(fees.get(venue, (0, 0)), 0))
+            out[sh[1]][sh[0] + "s"].append(row)
     for v in out.values():
         v["asks"].sort(key=lambda r: r["price"] + r["fee"])
         v["bids"].sort(key=lambda r: -r["price"])
@@ -441,16 +478,39 @@ def team_values(events: list, cat: dict) -> dict:
     return {t: model.summary(model.posterior(evs), evs)["expected"] for t, evs in by_team.items()}
 
 
+TIERS = {1: "live want, known supply", 2: "live want", 3: "live ask, inferred need", 4: "inferred need"}
+
+
+def accept_action(o: dict, side: str, who: list, names: dict, owners: dict | None = None) -> dict:
+    """The one action that completes a match: the counterparty accepts this live offer."""
+    act = {"offer": o["offer"], "venue": o["venue"], "venue_owner": (owners or {}).get(o["venue"]),
+           "venue_class": venue_class(o["venue"]), "side": side, "price": o.get("price"), "fee": o.get("fee"),
+           "expires_tick": o.get("expires_tick"), "maker": o["team"], "maker_name": names.get(o["team"], o["team"]),
+           "to": o.get("to"), "who": who, "who_names": [names.get(t, t) for t in who],
+           "call": f"POST /api/offers/{o['offer']}/accept"}
+    if side == "swap":
+        act["gives"] = o.get("gives")
+    return act
+
+
 def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict | None = None,
           venues: list | None = None, exclude=(), values: dict | None = None, now_tick: int | None = None,
           dprices: dict | None = None) -> dict:
-    """Every match: a rival team one or two cards from a page, the card, who holds a spare, the prices, the live
-    offers and the orders. Pure: the caller passes every input. Team 3 is never a buyer or a holder; cards in
-    `exclude` never appear."""
+    """Every match, best first. Explicit live wants come first, inferences second (Sol's review, Sunday 01:40):
+      tier 1  a live bid or swap that wants a card, and a known supplier (a live ask, or a team with a spare named in
+              public trades): the action is the supplier accepting that offer;
+      tier 2  a live bid or swap, no supplier we can name: the action is any holder accepting it;
+      tier 3  a live ask, and a team that APPEARS to be missing that card for a page (inferred): it accepts the ask;
+      tier 4  a team that APPEARS to be missing a page card (inferred), holders and dealers, no live offer: the v20
+              orders each side would post.
+    Within a tier, offers on our venue first, then El Rastro's, then other teams' venues, then the value at stake. Deck inferences are never facts: decks.py
+    leaves unknown ids and Workshop burns, so tier 3 and 4 carry p_missing and inferred=True. Pure: the caller
+    passes every input. Team 3 is never a buyer, a holder or a maker here; cards in `exclude` never appear."""
     events = dedupe(events)
     now_tick = now_tick if isinstance(now_tick, int) else (events[-1]["tick"] if events else 0)
     skip = set(exclude or ())
     info, pages = card_info(cat), page_cards(cat)
+    rarity_of = {r: i["rarity"] for r, i in info.items()}
     page_book = {s: sum(info[r]["book"] for r in refs) for s, refs in pages.items()}
     bonus = ((cat.get("values") or {}).get("page_bonus")) or PAGE_BONUS
     deck = decks.build(events, cat)
@@ -458,146 +518,223 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
     alb = albums(leaderboard)
     held = {t: holdings(d) for t, d in deck.items()}
     last = last_moves(events)
-    want = demand(events, now_tick - DEMAND_TICKS)
     trades = fairprice.cash_trades(events)
-    tindex = price_index.team_index(events, {r: i["rarity"] for r, i in info.items()})["all"]["rarity"]
+    tindex = price_index.team_index(events, rarity_of)["all"]["rarity"]
     if dprices is None:
         _, kind_of, kind_of_topic = price_index.card_kinds(cat)
         dprices = price_index.dealer_prices(events, kind_of, kind_of_topic)
     makers = learn_pseudonyms(books or {}, offer_makers(events))
-    live = live_offers(books or {}, makers, venue_fees(venues))
+    live = live_offers(books or {}, makers, venue_fees(venues), now_tick)
+    owners = venue_owners(venues)
     values = values or {}
-    matches, teams, withheld = [], {}, 0
+
+    def active(t):
+        return now_tick - last.get(t, -10**9) <= ACTIVE_TICKS
+
+    ctx = {}
+
+    def context(ref):
+        """Dealers, prices and the suggested price of one card (cached)."""
+        if ref not in ctx:
+            ci = info.get(ref) or {}
+            sells, buys = dealer_rows(dprices, ci.get("rarity"))
+            left = ci.get("left")
+            dealers = [{"dealer": d, "name": DEALER_NAMES.get(d, d), "sells": {k: r.get(k) for k in PRICE_FIELDS},
+                        "n": r.get("n")} for d, r in sells] if left is None or left > 0 else []
+            fair = fairprice.fair_price(list(reversed(trades.get(ref, []))))
+            trng = tindex.get(ci.get("rarity")) or {}
+            sell_floor = max((r.get("median") or 0 for _, r in buys), default=0) or None
+            buy_cap = min((r.get("median") or 10**9 for _, r in sells), default=None) if dealers else None
+            ctx[ref] = {"dealers": dealers, "dealer_left": left, "sell_floor": sell_floor, "price": suggest_price(
+                fair.get("price"), trng.get("median") or ci.get("book"), sell_floor, buy_cap),
+                "prices": {"fair": fair.get("price"), "fair_text": fair.get("text"), "team_range": fair.get("range"),
+                           "rarity_median": trng.get("median"),
+                           "dealer_sells": {d: r.get("median") for d, r in sells},
+                           "dealer_buys": {d: r.get("median") for d, r in buys}}}
+        return ctx[ref]
+
+    def suppliers(ref, need):
+        """Teams that can supply `ref` to team `need`: a live ask, a spare named in public trades (two or more copies),
+        or one copy of a set the holder values low and is not filling. Never `need`, never Team 3."""
+        set_ = (info.get(ref) or {}).get("set")
+        out = []
+        for other, h in held.items():
+            if other in (need, US) or h.get(ref, 0) <= 0:
+                continue
+            spare = h[ref] >= SPARE_MIN
+            far = sum(1 for r in pages.get(set_, []) if h.get(r, 0) <= 0) >= FAR_PAGE
+            low = (values.get(other) or {}).get(set_, 1.02) <= LOW_MULT
+            if not spare and not (far and low):
+                continue
+            ids = (deck[other].get("assets") or {}).get(ref) or []
+            out.append({"team": other, "name": names.get(other, other), "copies": h[ref], "spare": spare,
+                        "asset": ids[-1] if ids else None, "active": active(other)})
+        for a in (live.get(ref) or {}).get("asks", []):   # asking cash for it right now: holds it and sells it
+            if a["team"] in (need, US) or a.get("to") not in (None, need):
+                continue
+            row = next((x for x in out if x["team"] == a["team"]), None)
+            if row is None:
+                row = {"team": a["team"], "name": names.get(a["team"], a["team"]),
+                       "copies": held.get(a["team"], {}).get(ref, 1) or 1, "spare": False, "asset": a.get("asset"),
+                       "active": True}
+                out.append(row)
+            row["asking"] = {"price": a["price"], "venue": a["venue"], "offer": a["offer"]}
+        out.sort(key=lambda x: ("asking" not in x, not x["active"], x["asset"] is None, not x["spare"], -x["copies"],
+                                x["team"]))
+        return out
+
+    # inferred needs: pages one or two cards from complete
+    needs, teams, withheld = {}, {}, 0
     for team in sorted(deck):
         if team == US:
             continue
-        odds = missing_odds(held[team], pages, alb.get(team), {r: i["rarity"] for r, i in info.items()})
-        active = now_tick - last.get(team, -10**9) <= ACTIVE_TICKS
+        odds = missing_odds(held[team], pages, alb.get(team), rarity_of)
         near = near_pages(held[team], pages)
         teams[team] = {"name": names.get(team, team), "album": (alb.get(team) or (None, None))[0],
                        "pages_complete": (alb.get(team) or (None, None))[1], "named_page_cards": odds["named"],
-                       "unseen": odds["unseen"], "pages_exact": odds["pages_exact"], "active": active,
+                       "unseen": odds["unseen"], "pages_exact": odds["pages_exact"], "active": active(team),
                        "last_move_tick": last.get(team),
-                       "near_pages": [{"set": s, "have": h, "size": n, "missing": m} for s, h, n, m in near]}
-        for s, have, size, missing in near:
+                       "near_pages": [{"set": s_, "have": h, "size": n, "appears_missing": [r for r in m if r not in skip],
+                                       "p_missing": {r: odds["p"].get(r) for r in m if r not in skip}}
+                                      for s_, h, n, m in near]}
+        for s_, have, size, missing in near:
             for ref in missing:
                 if ref in skip:
                     withheld += 1
                     continue
-                ci = info.get(ref) or {}
-                rarity = ci.get("rarity")
-                p = odds["p"].get(ref, 0.5)
-                asked = want.get((team, ref), [])
-                if asked:
-                    p = max(p, 0.9)  # it asked for this very card lately
-                if p < MIN_P:
-                    continue
-                sellers = []
-                for other, h in held.items():
-                    if other in (team, US) or h.get(ref, 0) <= 0:
-                        continue
-                    spare = h[ref] >= SPARE_MIN
-                    far = sum(1 for r in pages[s] if h.get(r, 0) <= 0) >= FAR_PAGE
-                    low = (values.get(other) or {}).get(s, 1.02) <= LOW_MULT
-                    if not spare and not (far and low):
-                        continue
-                    ids = (deck[other].get("assets") or {}).get(ref) or []
-                    sellers.append({"team": other, "name": names.get(other, other), "copies": h[ref], "spare": spare,
-                                    "asset": ids[-1] if ids else None, "active": now_tick - last.get(other, -10**9)
-                                    <= ACTIVE_TICKS})
-                lv = live.get(ref) or {"asks": [], "bids": []}
-                for a in lv["asks"]:   # a team asking for cash for this card right now holds it and sells it
-                    if a["team"] in (team, US) or a.get("to") not in (None, team):
-                        continue
-                    row = next((x for x in sellers if x["team"] == a["team"]), None)
-                    if row is None:
-                        row = {"team": a["team"], "name": names.get(a["team"], a["team"]),
-                               "copies": held.get(a["team"], {}).get(ref, 1) or 1, "spare": False,
-                               "asset": a.get("asset"), "active": True}
-                        sellers.append(row)
-                    row["asking"] = {"price": a["price"], "venue": a["venue"], "offer": a["offer"]}
-                sellers.sort(key=lambda x: ("asking" not in x, not x["active"], x["asset"] is None, not x["spare"],
-                                            -x["copies"], x["team"]))
-                sells, buys = dealer_rows(dprices, rarity)
-                left = ci.get("left")
-                dealers = [{"dealer": d, "name": DEALER_NAMES.get(d, d), "sells": {k: r.get(k) for k in PRICE_FIELDS},
-                            "n": r.get("n")} for d, r in sells] if left is None or left > 0 else []
-                fair = fairprice.fair_price(list(reversed(trades.get(ref, []))))
-                trng = tindex.get(rarity) or {}
-                sell_floor = max((r.get("median") or 0 for _, r in buys), default=0) or None
-                buy_cap = min((r.get("median") or 10**9 for _, r in sells), default=None) if dealers else None
-                price = suggest_price(fair.get("price"), trng.get("median") or ci.get("book"), sell_floor, buy_cap)
-                mult = (values.get(team) or {}).get(s, 1.02)
-                gain = mult * (ci.get("book", 0) + bonus * page_book.get(s, 0) / len(missing))
-                feasible = 1.0 if (sellers or lv["asks"]) else (0.5 if dealers else 0.1)
-                score = p * feasible * (1.0 if active else IDLE_FACTOR) * gain
-                matches.append({
-                    "team": team, "team_name": names.get(team, team), "set": s, "set_name": ci.get("set_name"),
-                    "have": have, "size": size, "missing": missing, "card": ref, "card_name": ci.get("name"),
-                    "rarity": rarity, "p_missing": round(p, 2), "pages_exact": odds["pages_exact"],
-                    "buyer_active": active, "buyer_mult": round(mult, 2), "demand": asked[-3:],
-                    "holders": sellers[:4], "dealers": dealers, "dealer_left": left,
-                    "prices": {"fair": fair.get("price"), "fair_text": fair.get("text"), "team_range": fair.get("range"),
-                               "rarity_median": trng.get("median"),
-                               "dealer_sells": {d: r.get("median") for d, r in sells},
-                               "dealer_buys": {d: r.get("median") for d, r in buys}},
-                    "live": {"asks": lv["asks"][:3], "bids": [b for b in lv["bids"] if b["team"] == team][:3]},
-                    "price": price, "proposal": proposal(team, ref, price, sellers[:3], lv),
-                    "score": round(score, 1)})
-    matches.sort(key=lambda m: (-m["score"], m["team"], m["card"]))
+                pm = odds["p"].get(ref, 0.5)
+                if pm >= MIN_P:
+                    needs[(team, ref)] = {"set": s_, "have": have, "size": size, "missing": missing, "p": pm,
+                                          "pages_exact": odds["pages_exact"]}
+
+    def gain(team, ref):
+        ci, need = info.get(ref) or {}, needs.get((team, ref))
+        mult = (values.get(team) or {}).get(ci.get("set"), 1.02)
+        page = bonus * page_book.get(ci.get("set"), 0) / len(need["missing"]) if need else 0
+        return mult * (ci.get("book", 0) + page)
+
+    def entry(team, ref, tier, **kw):
+        ci, need, c = info.get(ref) or {}, needs.get((team, ref)), context(ref)
+        inferred = tier >= 3
+        e = {"tier": tier, "kind": TIERS[tier], "inferred": inferred, "team": team, "team_name": names.get(team, team),
+             "card": ref, "card_name": ci.get("name"), "rarity": ci.get("rarity"), "set": ci.get("set"),
+             "set_name": ci.get("set_name"), "buyer_active": active(team),
+             "p_missing": round(need["p"], 2) if (need and inferred) else None,
+             "page": {"have": need["have"], "size": need["size"],
+                      "appears_missing": [r for r in need["missing"] if r not in skip]} if need else None,
+             "holders": [], "dealers": c["dealers"], "dealer_left": c["dealer_left"], "prices": c["prices"],
+             "price": c["price"], "action": None, "proposal": None}
+        e.update(kw)
+        return e
+
+    matches, explicit = [], set()
+    for ref in sorted(live):
+        if ref in skip:
+            continue
+        best = {}
+        for side, rows in (("bid", live[ref]["bids"]), ("swap", live[ref]["swaps"])):
+            for w in rows:
+                k = (w["to"] is not None, venue_class(w["venue"]), -(w["price"] or 0))
+                if w["team"] not in best or k < best[w["team"]][0]:
+                    best[w["team"]] = (k, side, w)
+        for team, (_, side, w) in sorted(best.items()):
+            sup = suppliers(ref, team)
+            if w.get("to"):
+                sup = [x for x in sup if x["team"] == w["to"]]
+            who = [x["team"] for x in sup] or ([w["to"]] if w.get("to") else [])
+            if side == "bid":   # a bid below what the dealers pay a holder is no reason for a holder to sell
+                fair_offer = (w["price"] or 0) >= (context(ref)["sell_floor"] or 0)
+            else:               # a swap that gives much less book value than it asks for is no reason either
+                fair_offer = (info.get(w.get("gives")) or {}).get("book", 0) >= SWAP_RATIO * (info.get(ref) or {}).get("book", 0)
+            tier = 1 if (sup and fair_offer) else 2
+            score = (w["price"] or 0) + gain(team, ref) * (1.0 if active(team) else IDLE_FACTOR)
+            matches.append(entry(team, ref, tier, holders=sup[:4], action=accept_action(w, side, who, names, owners),
+                                 fair_offer=fair_offer, score=round(score, 1)))
+            explicit.add((team, ref))
+    for (team, ref), need in sorted(needs.items()):
+        if (team, ref) in explicit:
+            continue                       # its own live bid already says it, better than an inference
+        sup = suppliers(ref, team)
+        asks = [a for a in (live.get(ref) or {}).get("asks", []) if a["team"] != team and a.get("to") in (None, team)]
+        base = need["p"] * gain(team, ref) * (1.0 if active(team) else IDLE_FACTOR)
+        if asks:
+            a = sorted(asks, key=lambda r: (venue_class(r["venue"]), r["price"] + r["fee"]))[0]
+            matches.append(entry(team, ref, 3, holders=sup[:4], action=accept_action(a, "ask", [team], names, owners),
+                                 score=round(base, 1)))
+        elif sup or context(ref)["dealers"]:
+            price = context(ref)["price"]
+            matches.append(entry(team, ref, 4, holders=sup[:4], proposal=proposal(team, ref, price, sup[:3], None),
+                                 score=round(base * (1.0 if sup else 0.5), 1)))
+    matches.sort(key=lambda m: (m["tier"], venue_class((m["action"] or {}).get("venue", VENUE)), -m["score"],
+                                m["team"], m["card"]))
     for i, m in enumerate(matches, 1):
         m["rank"] = i
     return {"generated_at": round(time.time()), "tick": now_tick, "venue": VENUE, "matches": matches, "teams": teams,
-            "withheld": withheld, "rules": {"max_missing": MAX_MISSING, "spare_min": SPARE_MIN,
-                                            "active_ticks": ACTIVE_TICKS, "order_ticks": ORDER_TICKS}}
+            "withheld": withheld, "tiers": TIERS,
+            "rules": {"max_missing": MAX_MISSING, "spare_min": SPARE_MIN, "min_p": MIN_P, "active_ticks": ACTIVE_TICKS,
+                      "order_ticks": ORDER_TICKS}}
 
 
 # ---------------------------------------------------------------- output
 
-def who_holds(m: dict, n: int = 2) -> list:
-    """Public names of who can supply the card: teams with a spare (active first), then the dealers that sell it."""
-    out = [h["name"] for h in m.get("holders", [])[:n]]
-    out += [d["name"] for d in m.get("dealers", [])[:1]]
-    return out
+def action_text(m: dict) -> str:
+    a = m.get("action")
+    if not a:
+        return "—"
+    what = (f"{a['maker_name']} bids {a['price']} P" if a["side"] == "bid" else
+            f"{a['maker_name']} asks {a['price']} P" if a["side"] == "ask" else
+            f"{a['maker_name']} gives {a.get('gives')} for it")
+    who = ", ".join(a["who_names"]) or "any holder"
+    exp = f", until tick {a['expires_tick']}" if a.get("expires_tick") is not None else ""
+    return f"{what} on {a['venue']} #{a['offer']}{exp} -> {who} accepts"
 
 
 def report(res: dict, top: int = 15) -> str:
     lines = [f"# La Celestina matchmaker — tick {res['tick']}", "",
-             f"{len(res['matches'])} matches (a rival one or two cards from a page); {res['withheld']} withheld "
-             f"(cards in --exclude). Price = the card's fair price kept between the dealers' buy and sell closes.", "",
-             "| # | buyer | page | card | p missing | spare holders | dealers sell | price | live | score |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             f"{len(res['matches'])} matches; {res['withheld']} inferred needs withheld (cards in --exclude). Tiers: "
+             + "; ".join(f"{k} = {v}" for k, v in res.get("tiers", TIERS).items())
+             + ". Tiers 3-4 are inferences from public trades (\"appears to be missing\"), never facts.", "",
+             "| # | tier | team | card | need | suppliers | action / price | score |",
+             "|---|---|---|---|---|---|---|---|"]
     for m in res["matches"][:top]:
-        holders = ", ".join(f"{h['name']} ×{h['copies']}" + ("" if h["active"] else " (idle)") for h in m["holders"]) or "—"
-        dl = ", ".join(f"{d['name']} ~{d['sells'].get('median')}" for d in m["dealers"]) or "—"
-        live = "; ".join(f"ask {a['price']} on {a['venue']} #{a['offer']}" for a in m["live"]["asks"][:2])
-        live += ("; " if live and m["live"]["bids"] else "") + "; ".join(
-            f"its bid {b['price']} on {b['venue']} #{b['offer']}" for b in m["live"]["bids"][:2])
-        lines.append(f"| {m['rank']} | {m['team_name']}{'' if m['buyer_active'] else ' (idle)'} | {m['set']} "
-                     f"{m['have']}/{m['size']} | {m['card']} ({m['rarity']}) | {m['p_missing']:.2f} | {holders} | {dl} | "
-                     f"{m['price'] if m['price'] is not None else '—'} (fair {m['prices']['fair']}) | {live or '—'} | "
-                     f"{m['score']} |")
-    lines += ["", "## Orders for the top matches", ""]
-    for m in res["matches"][:min(top, 5)]:
-        pr = m["proposal"]
-        lines.append(f"**{m['team_name']} · {m['card']}** ({m['card_name']}), {m['set_name']} {m['have']}/{m['size']}")
-        if pr["buyer"]:
-            lines.append(f"- buyer posts: `POST /api/offers {json.dumps(pr['buyer']['post'])}`")
-        for s in pr["sellers"]:
-            lines.append(f"- {res['teams'].get(s['team'], {}).get('name', s['team'])} posts: "
-                         f"`POST /api/offers {json.dumps(s['post'])}`")
-        for a in pr["accept"]:
-            lines.append(f"- or accept offer #{a['offer']} on {a['venue']} ({a['side']} {a['price']} P + fee {a['fee']}): "
-                         f"`{a['call']}`")
+        sup = "; ".join(x for x in (
+            ", ".join(f"{h['name']} ×{h['copies']}" + (f" (asks {h['asking']['price']})" if h.get("asking") else "")
+                      + ("" if h["active"] else " (idle)") for h in m["holders"]),
+            ", ".join(f"{d['name']} ~{d['sells'].get('median')}" for d in m["dealers"][:2])) if x)
+        if m["inferred"]:
+            pg = m.get("page") or {}
+            need = f"appears to be missing (p {m['p_missing']:.2f}; {m['set']} {pg.get('have')}/{pg.get('size')})"
+        else:
+            need = "live " + (m["action"] or {}).get("side", "want")
+        act = action_text(m) if m["action"] else f"v20 bid {m['price']} P (fair {m['prices']['fair']})"
+        lines.append(f"| {m['rank']} | {m['tier']} | {m['team_name']}{'' if m['buyer_active'] else ' (idle)'} | "
+                     f"{m['card']} ({m['rarity']}) | {need} | {sup or '—'} | {act} | {m['score']} |")
+    lines += ["", "## The one action per top match", ""]
+    for m in res["matches"][:min(top, 6)]:
+        lines.append(f"**{m['team_name']} · {m['card']}** ({m['card_name']}), tier {m['tier']}: {m['kind']}")
+        a = m["action"]
+        if a:
+            lines.append(f"- {', '.join(a['who_names']) or 'any holder'}: `{a['call']}` ({a['side']} {a['price']} P "
+                         f"on {a['venue']}, fee {a['fee']}, open until tick {a.get('expires_tick')})")
+        pr = m.get("proposal") or {}
+        if pr.get("buyer"):
+            lines.append(f"- {m['team_name']} posts: `POST /api/offers {json.dumps(pr['buyer']['post'])}`")
+        for s_ in pr.get("sellers") or []:
+            lines.append(f"- {res['teams'].get(s_['team'], {}).get('name', s_['team'])} posts: "
+                         f"`POST /api/offers {json.dumps(s_['post'])}`")
         lines.append("")
-    lines += ["## Pages one or two cards from complete, per team", ""]
+    lines += ["## Pages that appear one or two cards from complete (inferred from public trades)", ""]
     for t, d in sorted(res["teams"].items()):
         if not d["near_pages"]:
             continue
-        pages = "; ".join(f"{p['set']} {p['have']}/{p['size']} lacks {', '.join(p['missing'])}" for p in d["near_pages"])
-        lines.append(f"- {d['name']} ({t}): album {d['album']}, pages {d['pages_complete']}, named page cards "
-                     f"{d['named_page_cards']}, unseen {d['unseen']}{', pages exact' if d['pages_exact'] else ''}"
-                     f"{'' if d['active'] else ', idle'}: {pages}")
+        pages = "; ".join(f"{p['set']} {p['have']}/{p['size']} appears to lack "
+                          + ", ".join(f"{r} (p {p['p_missing'].get(r)})" for r in p["appears_missing"]
+                                      if (p["p_missing"].get(r) or 0) >= MIN_P)
+                          for p in d["near_pages"] if any((p["p_missing"].get(r) or 0) >= MIN_P
+                                                          for r in p["appears_missing"]))
+        if pages:
+            lines.append(f"- {d['name']} ({t}): album {d['album']}, pages {d['pages_complete']}, named page cards "
+                         f"{d['named_page_cards']}, unseen {d['unseen']}{'' if d['active'] else ', idle'}: {pages}")
     return "\n".join(lines) + "\n"
 
 
@@ -725,16 +862,16 @@ def selftest() -> None:
     by = {(m["team"], m["card"]): m for m in res["matches"]}
     assert ("t01", "LAV-04") in by, res["matches"]
     m = by[("t01", "LAV-04")]
+    assert m["tier"] == 3 and m["inferred"], m                                  # a live ask, an inferred need
     assert [h["team"] for h in m["holders"]] == ["t02"], m["holders"]          # never t03, though it has two
-    assert m["p_missing"] == 1.0 and m["proposal"]["buyer"]["post"]["want"] == {"cards": ["LAV-04"]}
-    assert m["proposal"]["sellers"][0]["post"]["give"] == {"assets": [decks.STARTER + 2]}
-    assert m["proposal"]["accept"] and m["proposal"]["accept"][0]["offer"] == 1007
+    assert m["action"]["offer"] == 1007 and m["action"]["who"] == ["t01"], m["action"]
+    assert m["action"]["call"] == "POST /api/offers/1007/accept"
     assert all(m["team"] != US for m in res["matches"])
     assert not build(events, cat, lb, books, [], exclude=("LAV-04",), values={})["matches"]
     text = report(res)
     assert "Team 3" not in text and "t03" not in text, text
-    print(f"selftest ok: {len(res['matches'])} match, holder {m['holders'][0]['name']}, price {m['price']}, "
-          f"live offer #{m['proposal']['accept'][0]['offer']}")
+    print(f"selftest ok: {len(res['matches'])} match, tier {m['tier']}, holder {m['holders'][0]['name']}, "
+          f"action: {m['action']['who_names'][0]} accepts offer #{m['action']['offer']}")
 
 
 # ---------------------------------------------------------------- main

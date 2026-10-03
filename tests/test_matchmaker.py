@@ -43,10 +43,22 @@ def build(events, **kw):
     return mm.build(JOIN + events, kw.pop("catalog", cat()), kw.pop("lb", LB), kw.pop("books", {}), [], **kw)
 
 
+def bid_offer(oid, ref, cash, to=None, expires=None):
+    return {"id": oid, "maker": "mB", "status": "open", "to": to, "expires_tick": expires,
+            "give": {"cash": cash, "assets": [], "types": []}, "want": {"cash": 0, "assets": [], "types": [f"card:{ref}"]}}
+
+
+def named(oid, team, venue="rastro"):
+    """The feed's offer.listed that names the maker of a book offer."""
+    return ev(oid, 7, "offer.listed", offer={"id": oid, "maker": team, "venue": venue})
+
+
 class Matches(unittest.TestCase):
-    def test_a_team_one_card_from_a_page_gets_the_holder_of_a_spare_and_both_orders(self):
+    def test_an_inferred_need_with_a_spare_holder_gets_the_v20_orders_and_is_labelled_inferred(self):
         res = build(T01 + T02, values={})
         m = next(m for m in res["matches"] if (m["team"], m["card"]) == ("t01", "LAV-04"))
+        self.assertEqual((m["tier"], m["inferred"], m["action"]), (4, True, None))
+        self.assertIsNotNone(m["p_missing"])
         self.assertEqual([h["team"] for h in m["holders"]], ["t02"])
         price = m["price"]
         self.assertEqual(m["proposal"]["buyer"]["post"], {"venue": "v20", "give": {"cash": price},
@@ -55,21 +67,24 @@ class Matches(unittest.TestCase):
         self.assertEqual(m["proposal"]["sellers"][0]["post"]["want"], {"cash": price})
 
     def test_team_3_is_never_a_buyer(self):
-        # t03 holds LAV-01..03 by name too, so its LAV page lacks LAV-04 only: it must still not appear
+        # t03 holds LAV-01..03 by name too, so its LAV page lacks LAV-04 only; and it bids for LAV-04 live
         us = [ask(11, 5, "t03", 2 * N + 3, "LAV-01", 9), ask(12, 5, "t03", 2 * N + 4, "LAV-02", 9),
-              ask(13, 5, "t03", 2 * N + 5, "LAV-03", 9)]
-        res = build(us + T02, values={})
+              ask(13, 5, "t03", 2 * N + 5, "LAV-03", 9), named(77, "t03")]
+        res = build(us + T02, values={}, books={"rastro": [bid_offer(77, "LAV-04", 80)]})
         self.assertNotIn("t03", {m["team"] for m in res["matches"]})
         self.assertNotIn("t03", res["teams"])
 
     def test_team_3_is_never_a_holder_even_with_spares(self):
-        res = build(T01 + T03, values={})
+        res = build(T01 + T03 + [named(78, "t01")], values={}, books={"rastro": [bid_offer(78, "LAV-04", 80)]})
+        self.assertTrue(res["matches"])
         for m in res["matches"]:
             self.assertNotIn("t03", [h["team"] for h in m["holders"]])
-            self.assertFalse(m["proposal"]["sellers"])
+            self.assertNotIn("t03", (m["action"] or {}).get("who", []))
+            self.assertFalse((m["proposal"] or {}).get("sellers"))
 
-    def test_excluded_cards_never_appear(self):
-        res = build(T01 + T02, values={}, exclude=("LAV-04",))
+    def test_excluded_cards_never_appear_live_or_inferred(self):
+        res = build(T01 + T02 + [named(78, "t01")], values={}, exclude=("LAV-04",),
+                    books={"rastro": [bid_offer(78, "LAV-04", 80)]})
         self.assertEqual(res["matches"], [])
         self.assertEqual(res["withheld"], 1)
 
@@ -79,9 +94,67 @@ class Matches(unittest.TestCase):
         low = build(T01 + one, values={"t02": {"LAV": 0.5}})["matches"][0]["holders"]
         self.assertEqual([(h["team"], h["spare"]) for h in low], [("t02", False)])
 
-    def test_a_card_that_is_surely_held_is_no_match(self):
+    def test_a_card_that_is_surely_held_is_no_inferred_match(self):
         lb = {"teams": [{"team": "t01", "album_filled": 4, "pages_complete": 1}]}   # the fourth card is held, unseen
         self.assertEqual(build(T01 + T02, lb=lb, values={})["matches"], [])
+
+
+class LiveFirst(unittest.TestCase):
+    FLOOR = {"chato/buys/rare": {"low": 45, "median": 49, "high": 52, "n": 5}}
+
+    def test_a_live_bid_with_a_known_holder_is_tier_1_and_the_holder_accepting_it_is_the_action(self):
+        res = build(T01 + T02 + [named(78, "t01")], values={}, books={"rastro": [bid_offer(78, "LAV-04", 80)]})
+        m = res["matches"][0]
+        self.assertEqual((m["tier"], m["inferred"], m["p_missing"]), (1, False, None))
+        self.assertEqual((m["action"]["offer"], m["action"]["who"], m["action"]["side"]), (78, ["t02"], "bid"))
+        self.assertEqual(m["action"]["call"], "POST /api/offers/78/accept")
+        self.assertEqual(len([x for x in res["matches"] if (x["team"], x["card"]) == ("t01", "LAV-04")]), 1)
+
+    def test_a_fair_live_bid_with_no_supplier_we_can_name_is_tier_2_any_holder(self):
+        res = build(T01 + [named(78, "t01")], values={}, books={"rastro": [bid_offer(78, "LAV-04", 80)]})
+        m = res["matches"][0]
+        self.assertEqual((m["tier"], m["action"]["who"], m["holders"]), (2, [], []))
+
+    def test_a_bid_below_what_the_dealers_pay_is_only_tier_2(self):
+        books = {"rastro": [bid_offer(78, "LAV-04", 20)]}
+        res = build(T01 + T02 + [named(78, "t01")], values={}, books=books, dprices=self.FLOOR)
+        self.assertEqual(res["matches"][0]["tier"], 2)
+        res = build(T01 + T02 + [named(78, "t01")], values={}, books={"rastro": [bid_offer(78, "LAV-04", 50)]},
+                    dprices=self.FLOOR)
+        self.assertEqual(res["matches"][0]["tier"], 1)
+
+    def test_a_swap_is_accepted_directly_and_a_lopsided_one_is_only_tier_2(self):
+        def swap(oid, gives, aid):
+            return {"id": oid, "maker": "mS", "status": "open", "give": {"assets": [{"id": aid, "kind": "card",
+                                                                                     "ref": gives}]},
+                    "want": {"types": ["card:LAV-04"]}}
+        res = build(T01 + T02 + [named(79, "t01")], values={}, books={"v02": [swap(79, "LAV-01", 1)]})
+        m = res["matches"][0]
+        self.assertEqual((m["action"]["side"], m["action"]["gives"], m["tier"]), ("swap", "LAV-01", 2))
+        self.assertEqual(m["action"]["call"], "POST /api/offers/79/accept")
+
+    def test_offers_about_to_expire_are_never_named(self):
+        book = {"rastro": [bid_offer(78, "LAV-04", 80, expires=105)]}
+        live = mm.live_offers(book, {78: "t01"}, mm.venue_fees([]), now_tick=100)
+        self.assertEqual(live, {})
+        live = mm.live_offers(book, {78: "t01"}, mm.venue_fees([]), now_tick=90)
+        self.assertEqual([b["offer"] for b in live["LAV-04"]["bids"]], [78])
+
+    def test_within_a_tier_our_venue_comes_first_then_el_rastro_then_other_teams_venues(self):
+        t04 = [ev(14, 0, "team.joined", team="t04", name="Team 4")]
+        books = {"v07": [bid_offer(80, "LAV-04", 90)], "rastro": [bid_offer(81, "LAV-04", 85)],
+                 "v20": [bid_offer(82, "LAV-04", 70)]}
+        feed = T01 + T02 + t04 + [named(80, "t01", "v07"), named(81, "t04"), named(82, "t04", "v20")]
+        res = build(feed, values={}, books=books)
+        self.assertEqual([m["action"]["venue"] for m in res["matches"]], ["v20", "v07"])   # t04 on v20, t01 best
+        books = {"v07": [bid_offer(80, "LAV-04", 90)], "rastro": [bid_offer(81, "LAV-04", 85)]}
+        res = build(T01 + T02 + t04 + [named(80, "t01", "v07"), named(81, "t04")], values={}, books=books)
+        self.assertEqual([m["action"]["venue"] for m in res["matches"]], ["rastro", "v07"])
+
+    def test_a_live_ask_and_an_inferred_need_make_tier_3_for_the_buyer_to_accept(self):
+        events, catalog, lb, books = mm.sample()
+        m = mm.build(events, catalog, lb, books, [], values={})["matches"][0]
+        self.assertEqual((m["tier"], m["action"]["who"], m["action"]["offer"]), (3, ["t01"], 1007))
 
 
 class Odds(unittest.TestCase):
@@ -116,17 +189,18 @@ class Books(unittest.TestCase):
              "want": {"cash": 40}},
             {"id": 3, "maker": "mZ", "status": "open", "give": {"assets": [{"id": 7, "kind": "card", "ref": "LAV-04"}]},
              "want": {"cash": 30}}]}
-        live = mm.live_offers(book, {1: "t02", 3: "t03"}, mm.venue_fees([]))
+        book["rastro"].append({"id": 4, "maker": "mW", "status": "open", "to": "t03", "want": {"cash": 20},
+                               "give": {"assets": [{"id": 6, "kind": "card", "ref": "LAV-04"}]}})   # addressed to us
+        live = mm.live_offers(book, {1: "t02", 3: "t03", 4: "t02"}, mm.venue_fees([]))
         self.assertEqual([a["offer"] for a in live["LAV-04"]["asks"]], [1])
 
-    def test_a_live_ask_makes_its_maker_a_holder_and_an_accept_for_the_buyer(self):
+    def test_a_live_ask_makes_its_maker_a_holder(self):
         book = {"rastro": [{"id": 1007, "maker": "m2", "status": "open", "give": {
             "assets": [{"id": N + 1, "kind": "card", "ref": "LAV-04"}]}, "want": {"cash": 90}}]}
         res = build(T01 + [ask(7, 6, "t02", N + 1, "LAV-04", 90, oid=1007)], books=book, values={})
         m = res["matches"][0]
         self.assertEqual(m["holders"][0]["asking"], {"price": 90, "venue": "rastro", "offer": 1007})
-        self.assertEqual(m["proposal"]["accept"][0]["call"], "POST /api/offers/1007/accept")
-        self.assertEqual(m["proposal"]["accept"][0]["fee"], 6)      # El Rastro: 5 % + 1 P
+        self.assertEqual(m["action"]["fee"], 6)      # El Rastro: 5 % + 1 P
 
 
 class Price(unittest.TestCase):
