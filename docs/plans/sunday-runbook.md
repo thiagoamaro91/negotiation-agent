@@ -2,11 +2,11 @@
 
 Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
 
-**The dealer bots (Abuela, Chato, Pilar) are off by default and `up` does not start them**: `up` prints each as `off` with the reason. Their safety fixes live in pull request #35 (duel lock checked before every accept, pause-safe waits, distinct exit statuses). Until #35 is merged and deployed, run dealer steps by hand from the `manual` lines that `plan` prints, one dealer at a time, only while the clock runs, the doors are open and no duel wave is live. After #35, an operator may set a dealer's `"enabled": true` and run `up --yes`.
+**The dealer bots (Abuela, Chato, Pilar) are off by default and `up` does not start them**: `up` prints each as `off` with the reason: they are off by default until the operator sets the Sunday cash reserve floor and enables them. Until then, run dealer steps by hand from the `manual` lines that `plan` prints, one dealer at a time, only while the clock runs, the doors are open and no duel wave is live. To enable one, the operator sets that dealer's `"enabled": true` and runs `up --yes`.
 
 ## Saturday night (before you sleep)
 
-1. Pull `main` on the Mini once the open pull requests are merged. **Pull request #35 is the prerequisite for any automatic dealer run** (see above); Hector's duel rewrite is the other one.
+1. Pull `main` on the Mini once the open pull requests are merged. Pull request #35 (the dealer fixes) is merged; the dealers stay off by default until the operator sets the Sunday cash reserve floor and enables them (see above). Hector's duel rewrite is the other one.
 2. Clear every `todo` in `tools/factory_sunday.json`: `python3 tools/factory.py plan` prints each one under its command. The duel params file must exist: `plan` says `MISSING input file` and `up` refuses the duel until it does.
 3. Set `notify_cmd` to the Mini's Telegram notifier, so the watchdog can reach you.
 4. Stop Saturday's hand-started bots (the broker loop, gate scripts, desks) once the doors close, **by hand**: `ps -ax | grep -E 'broker_loop|pilar_gate|_gate.sh'`. The factory recognises a bot by its script name plus its mode (`broker.py run`, also `cd agent; python3 broker.py run`, `python3 -m agent.broker run`, and a `bash -c` loop around them). It never opens a file to look inside a script, so a restart loop kept in a script file is visible only while its child runs. `plan` lists what it sees, `up` refuses it, and a keeper never launches beside it. A shell that merely mentions the command (a grep) can also be flagged: check the pid it names.
@@ -40,7 +40,7 @@ Expected at 09:01:
 | feed | `RUNNING`, log a few seconds old |
 | broker | `RUNNING`, log under a minute old |
 | duel | `WAITING`, next duel wave at 18.650 h |
-| abuela, chato, pilar | `off` (pull request #35 first) |
+| abuela, chato, pilar | `off` (off by default until the operator sets the Sunday cash reserve floor and enables them) |
 | watchdog | `RUNNING` |
 
 At 09:05 check the leaderboard `rounds` to confirm Saturday's round still counts until Round 3 starts.
@@ -53,7 +53,7 @@ Wall times come from `plan`: the game clock stops during any pause, so every pau
 |---|---|---|
 | doors open (09:00) | Sunday opens, 15 s ticks | broker starts (feed and watchdog run from 08:55); dealers and duels keep waiting. No bot launches or restarts while the clock is paused |
 | 16.65 | Round 3 starts, Chamberí released | nothing yet: the ladder work waits for the cash |
-| 16.70 | 150 P allowance | dealers off: run the Abuela slots 1-3 and the Chato rare by hand from `plan`'s manual lines (or, after #35 and an explicit enable, they start one minute later) |
+| 16.70 | 150 P allowance | dealers off: run the Abuela slots 1-3 and the Chato rare by hand from `plan`'s manual lines (or, once the operator sets the Sunday cash reserve floor and enables them, they start one minute later) |
 | 17.00 | Market Test (16 ticks) | broker matches; watchdog checks dropped and matched |
 | 18.45 | 12 min before Duels III | no new dealer run from here: by hand too |
 | 18.48 | 10 min before Duels III | duel run starts: `--duel-ticks 12` from the schedule, `--late-poll 4`, `--until` closing time + 5 min |
@@ -85,7 +85,7 @@ The watchdog window runs `status --notify --every 60` and sends a message when t
 | `<name> log silent for N s` | bot alive but not logging for 4 ticks (broker) or 20 ticks (feed): hung call or frozen loop | `tmux kill-window -t factory:<name>` then `up --yes` |
 | `broker dropped N matches in Market Test bXX` | Saturday's b36 failure: the broker saw pairs and refused them | read the `why` of the last `dropped` line in `logs/broker/<date>.jsonl` and post it on the bus; a restart does not fix a policy bug |
 | `broker has no match in Market Test bXX after N ticks` | bench offers on our book, nothing sent | look at the broker window for `refused` or `send_error`; post it on the bus |
-| `<dealer> dealer run live while the clock is paused` | a dealer run is live across a pause | none with #35 merged (its waits are pause-safe); without it, watch the thread |
+| `<dealer> dealer run live while the clock is paused` | a dealer run is live across a pause | none: the dealer waits are pause-safe since pull request #35 |
 | `clock unreachable` | game server or network down | `curl -s https://bazaar.causaprima.ai/api/clock`; keepers wait on their own |
 
 At `up`, `REFUSE <name>: already running outside the factory (pid N)` means an old copy is still running: stop it, then run `up --yes` again.

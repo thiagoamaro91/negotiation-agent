@@ -12,7 +12,7 @@ per process). Before EVERY launch it re-reads the config (stops if the entry is 
 and checks the gates (doors open and clock running, explicit values only), the duel wave (inside opening hours),
 and that no copy of the bot runs outside the factory (argv only: script basename plus mode, in any path form). On
 exit: `service` restarts, `session` (duels) restarts while the duel window is open, `steps` (dealers, off by default
-until PR #35) moves on only after a deal or nothing-to-do line in the dealer's log and stops on any non-zero exit.
+until the operator sets the Sunday cash reserve floor and enables them) moves on only after a deal or nothing-to-do line in the dealer's log and stops on any non-zero exit.
 `up` fails closed on the bus: an unreadable board, a claim on another machine or a failed claim starts nothing
 (`--no-bus` is the operator's override when GitHub is down). It writes <name>.json (state) and <name>.out (output).
 

@@ -19,7 +19,7 @@
 - 21 more tests driving `up`, `keep`, `status` and the cache with the OS and network mocked; each failed on the reviewed head; 21 more mutations, all caught.
 
 ### Changed (second review of #34: less surface)
-- The dealer entries are off by default (pull request #35 first); `up` prints every `off` entry with its reason and `plan` prints the dealers' manual command lines.
+- The dealer entries are off by default until the operator sets the Sunday cash reserve floor and enables them; `up` prints every `off` entry with its reason and `plan` prints the dealers' manual command lines.
 - The process scanner decides from argv strings only and never opens a file (it used to read script files, which could include `.env`); it matches the script basename plus the mode token in any path form, `-m`, `--x=y`, or a `bash -c` loop.
 - `up` reads the bus board and refuses a process claimed on another machine; an unreadable board fails closed.
 - A dealer step is done only on a deal or a nothing-to-do line in its log; exit 0 without one is retried at the next open gate, `max_attempts` times (default 3), then reported.

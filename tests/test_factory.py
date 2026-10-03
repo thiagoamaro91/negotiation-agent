@@ -567,10 +567,10 @@ class Round3Dealers(Sandbox):
         self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar"})
         for p in dealers:
             self.assertIs(p.get("enabled"), False, p["name"])
-            self.assertIn("#35", p.get("note", ""), p["name"])
+            self.assertIn("reserve floor", p.get("note", ""), p["name"])
         _, out, started = self.up(f.CONFIG)
         for name in ("abuela", "chato", "pilar"):
-            self.assertRegex(out, rf"off +{name}: .*#35")
+            self.assertRegex(out, rf"off +{name}: .*reserve floor")
             self.assertFalse([c for c in started if f" keep {name} " in c[-1]])
 
     def test_exit_zero_without_a_marker_is_retried_then_reported(self):
