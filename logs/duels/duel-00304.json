@@ -1,0 +1,114 @@
+{
+ "duel": 304,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Mercado de Vallehermoso",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 81,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 192,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2292,
+  "price": 62,
+  "tick": 191,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 180,
+   "from": "Rival Noche",
+   "text": "I can do 183 P. Every round costs us both, so let's close.",
+   "price": 183,
+   "days": null
+  },
+  {
+   "tick": 181,
+   "from": "Rival Noche",
+   "text": "178 P works for me and we can close now.",
+   "price": 178,
+   "days": null
+  },
+  {
+   "tick": 182,
+   "from": "Rival Noche",
+   "text": "Meeting you closer: 171 P.",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 183,
+   "from": "Rival Noche",
+   "text": "A real step from me: 164 P.",
+   "price": 164,
+   "days": null
+  },
+  {
+   "tick": 184,
+   "from": "Rival Noche",
+   "text": "I can do 155 P. Every round costs us both, so let's close.",
+   "price": 155,
+   "days": null
+  },
+  {
+   "tick": 185,
+   "from": "Rival Noche",
+   "text": "145 P works for me and we can close now.",
+   "price": 145,
+   "days": null
+  },
+  {
+   "tick": 186,
+   "from": "Rival Noche",
+   "text": "Meeting you closer: 134 P.",
+   "price": 134,
+   "days": null
+  },
+  {
+   "tick": 187,
+   "from": "Rival Noche",
+   "text": "A real step from me: 122 P.",
+   "price": 122,
+   "days": null
+  },
+  {
+   "tick": 188,
+   "from": "Rival Noche",
+   "text": "I can do 109 P. Every round costs us both, so let's close.",
+   "price": 109,
+   "days": null
+  },
+  {
+   "tick": 189,
+   "from": "Rival Noche",
+   "text": "95 P works for me and we can close now.",
+   "price": 95,
+   "days": null
+  },
+  {
+   "tick": 190,
+   "from": "Rival Noche",
+   "text": "Meeting you closer: 79 P.",
+   "price": 79,
+   "days": null
+  },
+  {
+   "tick": 191,
+   "from": "Rival Noche",
+   "text": "A real step from me: 62 P.",
+   "price": 62,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

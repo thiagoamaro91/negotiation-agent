@@ -1,0 +1,93 @@
+{
+ "duel": 231,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Andén 0",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 94,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 168,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2016,
+  "price": 108,
+  "tick": 167,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 156,
+   "from": "Rival Sol",
+   "text": "Hello, we're interested in your card and would like to open at 42, which fits our budget for completing this album page. Happy to hear your thoughts and work toward a fair deal.",
+   "price": 42,
+   "days": null
+  },
+  {
+   "tick": 157,
+   "from": "Rival Sol",
+   "text": "We haven't heard a number from you yet, so we're stepping up to 46 to show good faith toward closing this album page. Let us know your price and we can find a fair middle.",
+   "price": 46,
+   "days": null
+  },
+  {
+   "tick": 158,
+   "from": "Rival Sol",
+   "text": "We've now moved twice without a counter from your side, so we're stepping up to 52 and would really like to hear your number. Share a price and we can settle this quickly and fairly.",
+   "price": 52,
+   "days": null
+  },
+  {
+   "tick": 159,
+   "from": "Rival Sol",
+   "text": "We're moving to 60, but after three steps from our side without any counter, we need a number from you before we go further. Name your price and let's see if we can close this album page.",
+   "price": 60,
+   "days": null
+  },
+  {
+   "tick": 163,
+   "from": "Rival Sol",
+   "text": "I can do 74. That is a fair deal for both of us.",
+   "price": 74,
+   "days": null
+  },
+  {
+   "tick": 164,
+   "from": "Rival Sol",
+   "text": "We'll step to 77, but we've now made every move in this negotiation without a single number from you. Before we go any further, we need to hear your price.",
+   "price": 77,
+   "days": null
+  },
+  {
+   "tick": 165,
+   "from": "Rival Sol",
+   "text": "We can move to 87, but this will be our last step until you put a price on the table. Give us a number and we'll work quickly to close this album page.",
+   "price": 87,
+   "days": null
+  },
+  {
+   "tick": 166,
+   "from": "Rival Sol",
+   "text": "I can do 103. That is a fair deal for both of us.",
+   "price": 103,
+   "days": null
+  },
+  {
+   "tick": 167,
+   "from": "Rival Sol",
+   "text": "We'll go to 108, but we've carried this whole negotiation alone and won't keep bidding against ourselves. Put your price on the table and we can close quickly.",
+   "price": 108,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,86 @@
+{
+ "duel": 197,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Taxi Blanco",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 82,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 192,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2290,
+  "price": 88,
+  "tick": 191,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 180,
+   "from": "Rival Noche",
+   "text": "We can do 74 P. Thank you for the talk.",
+   "price": 74,
+   "days": null
+  },
+  {
+   "tick": 182,
+   "from": "Rival Noche",
+   "text": "76 P works well for us.",
+   "price": 76,
+   "days": null
+  },
+  {
+   "tick": 184,
+   "from": "Rival Noche",
+   "text": "Our offer is 78 P.",
+   "price": 78,
+   "days": null
+  },
+  {
+   "tick": 186,
+   "from": "Rival Noche",
+   "text": "Let's meet at 80 P, fair for both.",
+   "price": 80,
+   "days": null
+  },
+  {
+   "tick": 188,
+   "from": "Rival Noche",
+   "text": "82 P, and we close now.",
+   "price": 82,
+   "days": null
+  },
+  {
+   "tick": 189,
+   "from": "Rival Noche",
+   "text": "We move to 84 P.",
+   "price": 84,
+   "days": null
+  },
+  {
+   "tick": 190,
+   "from": "Rival Noche",
+   "text": "We can do 86 P. Thank you for the talk.",
+   "price": 86,
+   "days": null
+  },
+  {
+   "tick": 191,
+   "from": "Rival Noche",
+   "text": "88 P works well for us.",
+   "price": 88,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

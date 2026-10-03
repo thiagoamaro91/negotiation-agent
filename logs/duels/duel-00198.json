@@ -1,0 +1,86 @@
+{
+ "duel": 198,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Taxi Blanco",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 117,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 192,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2291,
+  "price": 109,
+  "tick": 191,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 180,
+   "from": "Rival Verde",
+   "text": "We can do 123 P. Thank you for the talk.",
+   "price": 123,
+   "days": null
+  },
+  {
+   "tick": 182,
+   "from": "Rival Verde",
+   "text": "121 P works well for us.",
+   "price": 121,
+   "days": null
+  },
+  {
+   "tick": 184,
+   "from": "Rival Verde",
+   "text": "Our offer is 119 P.",
+   "price": 119,
+   "days": null
+  },
+  {
+   "tick": 186,
+   "from": "Rival Verde",
+   "text": "Let's meet at 117 P, fair for both.",
+   "price": 117,
+   "days": null
+  },
+  {
+   "tick": 188,
+   "from": "Rival Verde",
+   "text": "115 P, and we close now.",
+   "price": 115,
+   "days": null
+  },
+  {
+   "tick": 189,
+   "from": "Rival Verde",
+   "text": "We move to 113 P.",
+   "price": 113,
+   "days": null
+  },
+  {
+   "tick": 190,
+   "from": "Rival Verde",
+   "text": "We can do 111 P. Thank you for the talk.",
+   "price": 111,
+   "days": null
+  },
+  {
+   "tick": 191,
+   "from": "Rival Verde",
+   "text": "109 P works well for us.",
+   "price": 109,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

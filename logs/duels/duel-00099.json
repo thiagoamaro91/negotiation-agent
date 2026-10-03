@@ -1,7 +1,7 @@
 {
  "duel": 99,
  "session": 1,
- "status": "live",
+ "status": "no_deal",
  "role": "seller",
  "item": "Andén 0",
  "issues": [
@@ -22,9 +22,9 @@
   "days": 0
  },
  "rival_offer": {
-  "id": 1283,
-  "price": 154,
-  "tick": 146,
+  "id": 1649,
+  "price": 171,
+  "tick": 155,
   "days": 0
  },
  "messages": [
@@ -55,9 +55,72 @@
    "text": "I can move a little: 187.",
    "price": 187,
    "days": null
+  },
+  {
+   "tick": 147,
+   "from": "Rival Rojo",
+   "text": "170 P?",
+   "price": 170,
+   "days": null
+  },
+  {
+   "tick": 148,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 149,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 150,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 151,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 152,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 153,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 154,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
+  },
+  {
+   "tick": 155,
+   "from": "Rival Rojo",
+   "text": "171 P?",
+   "price": 171,
+   "days": null
   }
  ],
- "result": null,
+ "result": 0.0,
  "price": null,
  "days": null
 }

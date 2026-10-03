@@ -1,5 +1,5 @@
 {
- "duel": 139,
+ "duel": 249,
  "session": 1,
  "status": "no_deal",
  "role": "seller",
@@ -9,28 +9,15 @@
  ],
  "your_days_weight": null,
  "days_meaning": null,
- "your_limit": 79,
+ "your_limit": 72,
  "limit_meaning": "never sell below your cost",
- "rival": "Rival Plata",
- "deadline_tick": 156,
+ "rival": "Rival Noche",
+ "deadline_tick": 180,
  "decay_per_round": 0.06,
  "rounds": 0,
- "your_offer": {
-  "id": 1330,
-  "price": 115,
-  "tick": 146,
-  "days": 0
- },
+ "your_offer": null,
  "rival_offer": null,
- "messages": [
-  {
-   "tick": 146,
-   "from": "you",
-   "text": "Hello! I think 115 is a fair number.",
-   "price": 115,
-   "days": null
-  }
- ],
+ "messages": [],
  "result": 0.0,
  "price": null,
  "days": null

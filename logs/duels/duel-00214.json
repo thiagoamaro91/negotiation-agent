@@ -1,0 +1,58 @@
+{
+ "duel": 214,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "El Rastro al Amanecer",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 96,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 168,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 1801,
+  "price": 77,
+  "tick": 159,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 156,
+   "from": "Rival Luna",
+   "text": "Es una pieza que merece su precio: 80 primas. Pienso que es justo.",
+   "price": 80,
+   "days": null
+  },
+  {
+   "tick": 157,
+   "from": "Rival Luna",
+   "text": "Es una pieza que merece su precio: 79 primas. Pienso que es justo.",
+   "price": 79,
+   "days": null
+  },
+  {
+   "tick": 158,
+   "from": "Rival Luna",
+   "text": "Es una pieza que merece su precio: 78 primas. Pienso que es justo.",
+   "price": 78,
+   "days": null
+  },
+  {
+   "tick": 159,
+   "from": "Rival Luna",
+   "text": "Es una pieza que merece su precio: 77 primas. Pienso que es justo.",
+   "price": 77,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

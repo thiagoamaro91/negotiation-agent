@@ -1,0 +1,17 @@
+{"ts": "2026-10-03T09:43:46", "run": "20261003-094345-7771", "agent": "abuela", "event": "run_start", "operator": "claude-morning", "argv": ["run", "--only", "LAT-08", "--max-deals", "1", "--reserve", "200", "--cap", "26"], "cash": 383, "level": 2, "deals": 9, "reserve": 200, "cap": 26.0, "plan": [{"side": "buy", "item": "LAT-08", "asset_id": null, "value": 26.0}]}
+{"ts": "2026-10-03T09:43:46", "run": "20261003-094345-7771", "agent": "abuela", "event": "open", "thread": 362, "side": "buy", "item": "LAT-08", "value": 26.0, "welcome": false}
+{"ts": "2026-10-03T09:44:08", "run": "20261003-094345-7771", "agent": "abuela", "event": "her", "thread": 362, "price": 29, "final": false, "round": 1}
+{"ts": "2026-10-03T09:44:08", "run": "20261003-094345-7771", "agent": "abuela", "event": "say", "thread": 362, "price": 11, "her": 29}
+{"ts": "2026-10-03T09:44:37", "run": "20261003-094345-7771", "agent": "abuela", "event": "her", "thread": 362, "price": 26, "final": false, "round": 2}
+{"ts": "2026-10-03T09:44:37", "run": "20261003-094345-7771", "agent": "abuela", "event": "say", "thread": 362, "price": 12, "her": 26}
+{"ts": "2026-10-03T09:45:07", "run": "20261003-094345-7771", "agent": "abuela", "event": "her", "thread": 362, "price": 24, "final": false, "round": 3}
+{"ts": "2026-10-03T09:45:08", "run": "20261003-094345-7771", "agent": "abuela", "event": "say", "thread": 362, "price": 13, "her": 24}
+{"ts": "2026-10-03T09:45:37", "run": "20261003-094345-7771", "agent": "abuela", "event": "say", "thread": 362, "price": 14, "her": 24}
+{"ts": "2026-10-03T09:46:07", "run": "20261003-094345-7771", "agent": "abuela", "event": "her", "thread": 362, "price": 23, "final": false, "round": 5}
+{"ts": "2026-10-03T09:46:08", "run": "20261003-094345-7771", "agent": "abuela", "event": "say", "thread": 362, "price": 15, "her": 23}
+{"ts": "2026-10-03T09:46:37", "run": "20261003-094345-7771", "agent": "abuela", "event": "her", "thread": 362, "price": 22, "final": true, "round": 6}
+{"ts": "2026-10-03T09:46:38", "run": "20261003-094345-7771", "agent": "abuela", "event": "accept", "thread": 362, "price": 22, "why": "final"}
+{"ts": "2026-10-03T09:47:07", "run": "20261003-094345-7771", "agent": "abuela", "event": "result", "thread": 362, "status": "deal", "price": 22, "reason": null}
+{"ts": "2026-10-03T09:47:08", "run": "20261003-094345-7771", "agent": "abuela", "event": "run_end", "cash": 361, "level": 2, "unlocked": ["abuela", "chato"], "deals": 10, "ladder_points": 0.02, "score": 10.66, "rank": 11}
+{"ts": "2026-10-03T09:47:24", "run": "20261003-094723-d93d", "agent": "abuela", "event": "run_start", "operator": "claude-morning", "argv": ["run", "--only", "LAT-02", "--max-deals", "1", "--reserve", "200", "--cap", "9"], "cash": 361, "level": 2, "deals": 10, "reserve": 200, "cap": 9.0, "plan": [{"side": "buy", "item": "LAT-02", "asset_id": null, "value": 9.0}]}
+{"ts": "2026-10-03T09:47:24", "run": "20261003-094723-d93d", "agent": "abuela", "event": "open", "thread": 375, "side": "buy", "item": "LAT-02", "value": 9.0, "welcome": false}

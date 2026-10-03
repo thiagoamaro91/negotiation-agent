@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 205,
+ "cash": 361,
  "level": 2,
  "unlocked": [
   "abuela",
@@ -93,7 +93,7 @@
    "set": "MAL",
    "print_run": 300,
    "name": "Plaza del Dos de Mayo",
-   "your_value": 7.0
+   "your_value": 1.8
   },
   {
    "id": 38,
@@ -170,7 +170,7 @@
    "set": "MAL",
    "print_run": 90,
    "name": "La Vía Láctea",
-   "your_value": 4.4
+   "your_value": 17.5
   },
   {
    "id": 45,
@@ -294,17 +294,6 @@
    "your_value": 10.0
   },
   {
-   "id": 501,
-   "kind": "card",
-   "ref": "MAL-08",
-   "serial": 11,
-   "rarity": "uncommon",
-   "set": "MAL",
-   "print_run": 90,
-   "name": "La Vía Láctea",
-   "your_value": 4.4
-  },
-  {
    "id": 512,
    "kind": "card",
    "ref": "LAT-07",
@@ -314,9 +303,53 @@
    "print_run": 90,
    "name": "Vermut del Domingo",
    "your_value": 27.5
+  },
+  {
+   "id": 579,
+   "kind": "card",
+   "ref": "MAL-02",
+   "serial": 26,
+   "rarity": "common",
+   "set": "MAL",
+   "print_run": 300,
+   "name": "Plaza del Dos de Mayo",
+   "your_value": 1.8
+  },
+  {
+   "id": 580,
+   "kind": "card",
+   "ref": "LAT-05",
+   "serial": 18,
+   "rarity": "common",
+   "set": "LAT",
+   "print_run": 300,
+   "name": "El Organillero",
+   "your_value": 11.0
+  },
+  {
+   "id": 581,
+   "kind": "card",
+   "ref": "RET-02",
+   "serial": 1,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "La Castañera",
+   "your_value": 9.0
+  },
+  {
+   "id": 617,
+   "kind": "card",
+   "ref": "LAT-08",
+   "serial": 9,
+   "rarity": "uncommon",
+   "set": "LAT",
+   "print_run": 90,
+   "name": "Las Vistillas",
+   "your_value": 27.5
   }
  ],
- "collection_value": 544.2,
+ "collection_value": 589.1,
  "album": {
   "pages": [
    {
@@ -338,7 +371,7 @@
    {
     "set": "LAT",
     "name": "La Latina",
-    "have": 5,
+    "have": 7,
     "of": 10,
     "complete": false,
     "master": false
@@ -350,29 +383,37 @@
     "of": 10,
     "complete": false,
     "master": false
+   },
+   {
+    "set": "RET",
+    "name": "El Retiro",
+    "have": 1,
+    "of": 10,
+    "complete": false,
+    "master": false
    }
   ],
-  "filled": 21,
-  "slots": 40
+  "filled": 24,
+  "slots": 50
  },
- "tick": 146,
- "tick_seconds": 60.0,
+ "tick": 196,
+ "tick_seconds": 30.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 11.63,
-  "negotiating": 11.63,
+  "score": 10.66,
+  "negotiating": 10.66,
   "market": 0.0,
-  "neg_points": -4.9,
+  "neg_points": 0.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.081,
+  "ladder_points": 0.02,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 2,
-  "album_filled": 21,
-  "album_slots": 40,
+  "album_filled": 24,
+  "album_slots": 50,
   "pages_complete": 0,
   "rarest": {
    "ref": "LAT-10",
@@ -381,15 +422,17 @@
    "print_run": 30,
    "rarity": "rare"
   },
-  "luck": -18.0,
-  "deals": 8,
+  "luck": -21.8,
+  "deals": 10,
   "badges": [],
   "adjustments": [],
   "frozen": false,
   "venue": null,
-  "luck_private": -36.8,
-  "rank": 10
+  "luck_private": -37.7,
+  "rank": 11
  },
  "venue": null,
- "open_threads": []
+ "open_threads": [
+  375
+ ]
 }

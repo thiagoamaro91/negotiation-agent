@@ -1,7 +1,7 @@
 {
  "duel": 100,
  "session": 1,
- "status": "live",
+ "status": "no_deal",
  "role": "buyer",
  "item": "Andén 0",
  "issues": [
@@ -22,9 +22,9 @@
   "days": 0
  },
  "rival_offer": {
-  "id": 1285,
-  "price": 135,
-  "tick": 146,
+  "id": 1650,
+  "price": 120,
+  "tick": 155,
   "days": 0
  },
  "messages": [
@@ -55,9 +55,72 @@
    "text": "I can move a little: 98.",
    "price": 98,
    "days": null
+  },
+  {
+   "tick": 147,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 148,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 149,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 150,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 151,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 152,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 153,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 154,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 155,
+   "from": "Rival Luna",
+   "text": "120 P?",
+   "price": 120,
+   "days": null
   }
  ],
- "result": null,
+ "result": 0.0,
  "price": null,
  "days": null
 }

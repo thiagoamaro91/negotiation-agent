@@ -1,7 +1,7 @@
 {
  "duel": 103,
  "session": 1,
- "status": "live",
+ "status": "no_deal",
  "role": "seller",
  "item": "Plaza de Olavide",
  "issues": [
@@ -50,7 +50,7 @@
    "days": null
   }
  ],
- "result": null,
+ "result": 0.0,
  "price": null,
  "days": null
 }

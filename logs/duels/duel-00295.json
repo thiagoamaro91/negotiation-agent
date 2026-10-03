@@ -1,0 +1,86 @@
+{
+ "duel": 295,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Plaza de Olavide",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 114,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 180,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2173,
+  "price": 137,
+  "tick": 175,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 168,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 113. Thank you for your time.",
+   "price": 113,
+   "days": null
+  },
+  {
+   "tick": 169,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 121 works for me.",
+   "price": 121,
+   "days": null
+  },
+  {
+   "tick": 170,
+   "from": "Rival Sol",
+   "text": "Let me move closer: 127.",
+   "price": 127,
+   "days": null
+  },
+  {
+   "tick": 171,
+   "from": "Rival Sol",
+   "text": "I'd like to close this. My offer is 131.",
+   "price": 131,
+   "days": null
+  },
+  {
+   "tick": 172,
+   "from": "Rival Sol",
+   "text": "Meeting you halfway at 133, with thanks.",
+   "price": 133,
+   "days": null
+  },
+  {
+   "tick": 173,
+   "from": "Rival Sol",
+   "text": "Final stretch from me: 135.",
+   "price": 135,
+   "days": null
+  },
+  {
+   "tick": 174,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 136. Thank you for your time.",
+   "price": 136,
+   "days": null
+  },
+  {
+   "tick": 175,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 137 works for me.",
+   "price": 137,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

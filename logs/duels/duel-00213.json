@@ -1,0 +1,58 @@
+{
+ "duel": 213,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "El Rastro al Amanecer",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 103,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 168,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 1798,
+  "price": 106,
+  "tick": 159,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 156,
+   "from": "Rival Luna",
+   "text": "Puedo llegar a 96 primas. Dime si cerramos.",
+   "price": 96,
+   "days": null
+  },
+  {
+   "tick": 157,
+   "from": "Rival Luna",
+   "text": "Puedo llegar a 98 primas. Dime si cerramos.",
+   "price": 98,
+   "days": null
+  },
+  {
+   "tick": 158,
+   "from": "Rival Luna",
+   "text": "Puedo llegar a 101 primas. Dime si cerramos.",
+   "price": 101,
+   "days": null
+  },
+  {
+   "tick": 159,
+   "from": "Rival Luna",
+   "text": "Puedo llegar a 106 primas. Dime si cerramos.",
+   "price": 106,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

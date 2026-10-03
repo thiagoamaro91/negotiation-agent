@@ -1,0 +1,18 @@
+{
+ "id": 375,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "LAT-02"
+  }
+ },
+ "status": "open",
+ "created_tick": 196,
+ "messages": [],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}
