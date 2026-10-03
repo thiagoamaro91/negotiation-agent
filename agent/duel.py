@@ -132,6 +132,7 @@ LATE_POLL = 0.0                     # off. > 0: in a tick where an open duel has
 LATE_TICKS = 1                      # accept waits for a second read of the duels this many seconds before the tick ends
 LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the rest of the run
 SLOT_DEMAND = "open"                # duels that count toward the deadline cluster's accept slots: every open one
+ANCHOR_QUIET = False                # anchor only a rival that has posted nothing for more than STALL_TICKS ticks
 LAST_SHARE = 0.0                    # off. > 0: with pairL visible, the last chance keeps this share of the soft pie
 
 SELL_LINES = [
@@ -243,6 +244,13 @@ def rival_msgs(d: dict) -> list:
     name = d.get("rival")
     return [m for m in d.get("messages") or [] if isinstance(m, dict) and m.get("from") != "you"
             and (not name or m.get("from") == name)]
+
+
+def rival_quiet(d: dict, tick: int, cfg) -> bool:
+    """--anchor-quiet: the rival has posted nothing for more than STALL_TICKS ticks (it waits for us, like the
+    one-shot and reciprocal bots). A rival that keeps posting without moving toward us is not waiting for us."""
+    ticks = [m.get("tick") for m in rival_msgs(d) if isinstance(m.get("tick"), int)]
+    return not ticks or tick - max(ticks) > cfg.stall_ticks
 
 
 def rival_spoke(d: dict) -> bool:
@@ -487,7 +495,7 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
         kind = "last"
     elif budget >= 1 and not spoke and st.sent == 0 and elapsed >= absent_from:
         kind = "absent"
-    elif budget >= 2 and not window and stalled:
+    elif budget >= 2 and not window and stalled and (not getattr(cfg, "anchor_quiet", False) or rival_quiet(d, tick, cfg)):
         if not acceptable:
             kind = "anchor"
         else:
@@ -773,6 +781,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--last-share", type=float, default=LAST_SHARE,
                     help="price-only, pairL visible: the last chance at L + share x (pairL - L) instead of the "
                          "--last-r ratio (0: off)")
+    ap.add_argument("--anchor-quiet", action=argparse.BooleanOptionalAction, default=ANCHOR_QUIET,
+                    help="anchor only a rival that has posted nothing for more than --stall-ticks ticks, not one that "
+                         "keeps posting without moving toward us")
     ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke"],
                     help="which duels count toward the accept slots a deadline cluster needs: every open one, or only "
                          "those whose rival has spoken")
