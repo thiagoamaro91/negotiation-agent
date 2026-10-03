@@ -1,6 +1,14 @@
-# Judges' story, draft v1 (Team 3)
+# Judges' story, draft v2 (Team 3)
 
-Owner: Thiago. Status: draft for Thiago's read-aloud, Saturday 3 Oct. Internal: this file names numbers and sources for the team; the spoken script is the only part meant for judges.
+Owner: Thiago. Status: v2, Saturday 3 Oct 11:50 (v1 approved by Thiago in the pitch tab, PR #17). Internal: this file names numbers and sources for the team; the spoken script is the only part meant for judges.
+
+## What changed in v2
+
+- Privacy: no cap or cash-floor figures anywhere (steward's pass on PR #17).
+- Hook: "six of today's top eight" became "more than half of today's top eight": the board moved to 5 of 8 at 11:46.
+- New beat line: our own market, La Celestina, opened 10:23 (the market-making third of the score was missing from v1).
+- Section 9: ready-to-use Duels I lines, to swap in once the results are in (after ~13:35).
+- Evidence: two new screens (La Celestina panel now, live Duels panel from ~12:45).
 
 ## 1. What we know about judging
 
@@ -34,11 +42,11 @@ Built on the game's own rule ("words persuade, structure binds", `kit/RULES.md` 
 
 ## 3. The 3-minute script
 
-Spoken pace about 150 words a minute. Total 432 words, about 2:53 spoken, which leaves a few seconds of air. Times are cumulative.
+Spoken pace about 150 words a minute. Total 444 words, about 2:58 spoken, which leaves a few seconds of air. Times are cumulative.
 
 **0:00 to 0:25 · Hook (Idea)** · about 60 words
 
-> Before the doors opened on Friday, we did what any sales team does before a big deal. We researched every team in this room. Our threat map got six of today's top eight right. And it completely missed the team that led on Friday. So, lesson one: profiles are words. And in this game, words are cheap.
+> Before the doors opened on Friday, we did what any sales team does before a big deal. We researched every team in this room. Our threat map got more than half of today's top eight right. And it completely missed the team that led on Friday. So, lesson one: profiles are words. And in this game, words are cheap.
 
 **0:25 to 0:45 · The problem (Idea)** · about 55 words
 
@@ -46,15 +54,15 @@ Spoken pace about 150 words a minute. Total 432 words, about 2:53 spoken, which 
 
 **0:45 to 1:05 · Our answer (Idea)** · about 50 words
 
-> Our answer: give the AI the work, not the wallet. Claude did the work of a small trading firm: the research, the code, the reviews, the overnight analysis. But out in the market, no model output can move a single prima. Code decides every number. The words are packaging.
+> Our answer: give the AI the work, not the wallet. Claude did the work of a small trading firm: the research, the code, the reviews, the overnight analysis. But out in the market, no model output can move a single prima. Code decides every number.
 
 **1:05 to 2:05 · How it runs (Craft)** · about 150 words
 
-> Separate bots, one job each: the dealers, the public market, the duels. Always on, day and night.
+> Separate bots, one job each: the dealers, the public market, the duels. Always on, day and night. And this morning we opened our own market, La Celestina: it finds your missing card.
 >
 > First, we see everything. We record every public event from minute one. Friday alone: 3,770 events, every tick, no gaps.
 >
-> Then code sets the price. With Abuela, our bot is lovely, because she likes kindness. She opened at 29. We closed at 22.
+> Then code sets the price. With Abuela, our bot is lovely: she likes kindness. She opened at 29. We closed at 22.
 >
 > And code holds the line. El Chato wanted 90 for a rare we really wanted. Our ladder climbed in fixed steps and stopped at 84. He stayed at 90. No deal. Code doesn't get emotional about a card it wants. That's the hardest thing to teach a salesperson.
 >
@@ -86,11 +94,13 @@ Runner-up, if a judge asks for a market story: our MAL-08 spare sold at 28 P on 
 
 | # | Number | What it says | Source | Refresh? |
 |---|---|---|---|---|
-| 1 | **6 of today's top 8** | Pre-game threat map vs the board | vault `career/hackathon-madrid-2026/hackathon-madrid_competitor-map_v1.md` § (a) and (b), against `GET /api/leaderboard` read Sat 3 Oct around tick 250 | **Yes**, re-score within 10 minutes of going on; drop the line if it falls below 5 of 8 |
+| 1 | **More than half of today's top 8** (5 of 8 at 11:46, tick 430; 6 of 8 around tick 250) | Pre-game threat map vs the board | vault `career/hackathon-madrid-2026/hackathon-madrid_competitor-map_v1.md` § (a) and (b), against `GET /api/leaderboard` read Sat 3 Oct around tick 250 | **Yes**, re-score within 10 minutes of going on; say "more than half" at 5 or more, drop the line below 5 |
 | 2 | **3,770 events, no gaps** | We see the whole game | `logs/feed-vm/README.md` line 5; `docs/findings.md` (Friday night section) | No (Friday figure) |
 | 3 | **29 to 22**, and **84 vs 90** | Code sets the price and holds the line | `logs/threads/thread-00362.json` (Abuela LAT-08: asks 29, 26, 24, 24, 23, 22 final); `logs/chato/2026-10-03.jsonl`, `logs/threads/thread-00335.json` | No |
 | 4 | **8 of 8**, then **+11 % in simulation** | We learn from what we see | `docs/analysis-friday/README.md` line 9; `docs/duel-lab/improvements.md` lines 18 to 19 | Yes, swap in the live Duels I result if it is good |
 | 5 | **107 of 108** planted bugs caught; fix in **18 minutes** | Craft and control | `docs/plans/HANDOFF.md` lines 17 to 22 (#5 31/31, #8 5/5, #6 38/39, #7 18/18, #9 15/15); PR #11 and #12 `mergedAt` | No |
+
+La Celestina: our venue v20, "La Celestina · finds your missing card", board mechanism (our own broker matches), 0 % fee, opened tick 269 (Sat 10:23). Source: commit 98f4b72, `GET /api/venues`. It had 0 trades at 11:46: do not claim volume.
 
 Other numbers in the script: "0 of 12" duels (`docs/analysis-friday/README.md` line 9); "32 %", said as "about a third" (same line); "three people" (`CLAUDE.md`, first paragraph); 11 percent baseline is the safe file, not the defaults (+15 % against defaults, same `improvements.md` lines).
 
@@ -114,3 +124,14 @@ Other numbers in the script: "0 of 12" duels (`docs/analysis-friday/README.md` l
 - "Other teams are allowed to inject us". The rules only say injection against dealers is allowed; say "prompt injection is part of the game".
 - "The bot walked away" from El Chato (see anecdote 1).
 - "His final offer was 90". It was not marked final.
+
+## 9. Duels I swap-in (after ~13:35)
+
+Duels I (price only, one round-robin) starts about 12:00 and finishes around 13:35. When the results are in, replace the last two sentences of the "Then we learn" paragraph with one of these. Fill the brackets only from `GET /api/me` or `logs/duels/`, and add the source to section 6 row 4.
+
+- **If the live result is good:**
+  > So overnight Hector built a duel lab. In simulation it promised 11 percent more per duel. In this afternoon's live duels we took [X] percent of the pie, against [Y] for the field.
+- **If it is flat or worse:**
+  > So overnight Hector built a duel lab. In simulation it captures 11 percent more per duel. The live duels said we still had work to do, and that is what tonight is for.
+
+Either way, say "in simulation" next to the 11 percent.
