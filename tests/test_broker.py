@@ -430,6 +430,24 @@ class Offline(unittest.TestCase):
         self.assertEqual((body["fee_bps"], body["fee_per_card"], body["rules"]), (0, 0, {"mechanism": "board"}))
         self.assertEqual(set(body), {"name", "fee_bps", "fee_per_card", "rules", "description"})
 
+    def test_open_venue_key_file_is_private_and_never_overwritten(self):
+        import open_venue  # the helpers only: `run` itself is never executed here
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "sub" / "broker.env"
+            open_venue.write_key(f, FAKE_KEY)
+            self.assertEqual(f.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(f.parent.stat().st_mode & 0o777, 0o700)
+            self.assertEqual(brk.load_broker_key(f), FAKE_KEY)
+            with self.assertRaises(FileExistsError):
+                open_venue.write_key(f, "bk_other")
+            self.assertEqual(brk.load_broker_key(f), FAKE_KEY)
+
+    def test_open_venue_finds_the_venue_id(self):
+        import open_venue
+        self.assertEqual(open_venue.venue_id({"venue": "v05", "broker_key": "x"}), "v05")
+        self.assertEqual(open_venue.venue_id({"venue": {"venue": "v06", "name": "n"}}), "v06")
+        self.assertEqual(open_venue.venue_id({"id": "v07"}), "v07")
+
 
 if __name__ == "__main__":
     unittest.main()
