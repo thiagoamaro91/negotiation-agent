@@ -42,7 +42,7 @@ MAX_DEFER_TICKS = 60    # default for --max-defer-ticks: ticks an accept may wai
 
 ACCEPTED, DEFERRED, REFUSED = "accepted", "deferred", "refused"
 
-# exit statuses of `run`: 0 ok, 1 crash, 2 usage or --floor refusal, and these three
+# exit statuses of `run`: 0 ok, 1 crash, 2 usage or --floor refusal, and these five
 EXIT_RESERVE = 3        # every buy was skipped because cash is under the reserve
 EXIT_CLOSE_FAILED = 4   # a thread could not be closed: it still holds the dealer's only conversation slot
 EXIT_LOCK_TIMEOUT = 5   # the duel lock stayed fresh for --max-defer-ticks: the thread was closed without a deal

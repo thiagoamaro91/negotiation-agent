@@ -32,7 +32,7 @@ thread was closed without a deal; 6 when an accept went out but its settlement c
 stops: the trade may have happened); 7 when the game clock could not be confirmed for 5 waits in a row (the thread
 was closed). The status line is printed before the final account read, which is best effort.
 `--resume` skips the cash check for a new conversation: the thread is read and resolved inside its limit (a resumed
-buy whose earlier bid is above what may be spent now is closed).
+buy whose earlier bid is above what may be spent now, or with nothing spendable, is closed).
 The client never lets the SDK resend a write, counts a round only for a confirmed new tick, and waits through a paused
 clock with one line a minute (agent/dealer_client.py).
 
@@ -336,8 +336,9 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
                     return r
                 continue
             why = "final"
-        elif resumed and side == "buy" and ours is not None and ours > reservation:
-            # 1b) a resumed buy whose earlier bid is above what we may spend now (cash, reserve, --cap): withdraw it
+        elif resumed and side == "buy" and ((ours is not None and ours > reservation) or reservation < 1):
+            # 1b) a resumed buy whose earlier bid is above what we may spend now (cash, reserve, --cap), or with
+            #     nothing spendable at all: close it, never a new number above the limit (or at or below zero)
             r = close("resume_over_limit", "walked_by_us", ours=ours, reservation=reservation)
             if r:
                 return r

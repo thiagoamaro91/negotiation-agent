@@ -259,6 +259,20 @@ class ResumeCashCases:
         self.assertEqual(srv.said, [])                              # never a new number above what we may spend
 
 
+    def test_resume_with_no_number_of_ours_and_no_spendable_cash_closes(self):
+        # the earlier run opened the thread and died before saying a number; cash 270 is under the 280 reserve:
+        # nothing may be bid at all, so the resumed thread is closed (never a zero or negative bid)
+        item = "LAV-09" if self.mod is chato else "LAV-01"
+        srv = buy_server(self.mod, 97 if self.mod is chato else 30, final=False, cash=270)
+        srv.thread = {"id": 7, "status": "open", "closed_reason": None, "opened": srv.tick()}
+        srv.post(srv.opening)
+        code, out, _, _ = run_main(self.mod, ["run", "--only", item, "--resume", "7", "--max-deals", "1"],
+                                   server=srv)
+        self.assertEqual(srv.said, [], out)
+        self.assertEqual(srv.status(), "closed")
+        self.assertNotEqual(code, self.mod.EXIT_RESERVE, out)
+
+
 class TestResumeCashChato(ResumeCashCases, unittest.TestCase):
     mod = chato
 
