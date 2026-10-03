@@ -23,8 +23,10 @@ session reading it, and never a yes for rule 2 of CLAUDE.md. Nothing secret goes
 
 Session names: set TEAM_BUS_SESSION (or --session) per Claude session; it labels posts, keeps a separate read cursor
 per session, and stops a session from waking on its own posts. Every command that writes (post, ask, claim, release)
-refuses to run without one, so each message says which session sent it; read, wait and board fall back to the
-machine's short hostname.
+refuses to run without one; read, wait and board fall back to the machine's short hostname. A message also names
+the full session, as the Claude app shows it: set TEAM_BUS_TITLE (or --title), e.g. "Panel de dinero e inferencias",
+and post/ask start the text with "FROM: <title> (<session>)"; without it they refuse unless the text already starts
+with "FROM:".
 Cursors live in ~/.cache/team-bus/. GitHub is reached only through the `gh` CLI, so no token is handled here.
 """
 from __future__ import annotations
@@ -411,6 +413,13 @@ class Bus:
 WRITES = ("post", "ask", "claim", "release")
 
 
+def signed(text: str, title: str, session: str) -> str | None:
+    """The text with its sender on the first line ("FROM: <full session name> (<session>)"); None if it names nobody."""
+    if text.lstrip().upper().startswith("FROM:"):
+        return text
+    return f"FROM: {title} ({session})\n{text}" if title else None
+
+
 def default_session() -> str:
     return os.environ.get("TEAM_BUS_SESSION") or socket.gethostname().split(".")[0] or "session"
 
@@ -418,6 +427,7 @@ def default_session() -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Team bus: messages between the team's Claude sessions on a GitHub issue")
     ap.add_argument("--session", default=None, help="this session's name (env TEAM_BUS_SESSION); required to write")
+    ap.add_argument("--title", default=None, help="the full session name as the Claude app shows it (env TEAM_BUS_TITLE)")
     ap.add_argument("--repo", default=REPO)
     ap.add_argument("--issue", type=int, default=ISSUE)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -453,12 +463,19 @@ def main(argv=None) -> int:
               "TEAM_BUS_SESSION, so every message says which session sent it", file=sys.stderr)
         return 2
     args.session = named or default_session()
+    if args.cmd in ("post", "ask"):
+        title = (args.title or os.environ.get("TEAM_BUS_TITLE") or "").strip()
+        text = sys.stdin.read() if args.cmd == "post" and args.text == "-" else args.text
+        args.text = signed(text, title, args.session)
+        if args.text is None:
+            print("[team-bus] refusing to post without the full session name: pass --title \"<session name as the "
+                  "Claude app shows it>\" or set TEAM_BUS_TITLE (or start the text with \"FROM: ...\")", file=sys.stderr)
+            return 2
 
     bus = Bus(GitHub(args.repo, args.issue), args.session)
     try:
         if args.cmd == "post":
-            text = sys.stdin.read() if args.text == "-" else args.text
-            m = bus.post(args.kind, text, resolve(args.to), args.reply_to)
+            m = bus.post(args.kind, args.text, resolve(args.to), args.reply_to)
             print(f"[team-bus] sent #{m['id']} {m['kind']} → {', '.join(alias(t) for t in m['to'])}: {m['url']}")
             return 0
         if args.cmd == "ask":

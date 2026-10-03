@@ -233,13 +233,32 @@ class SessionName(unittest.TestCase):
                     self.assertEqual(bus.main(argv), 2, argv)
             with mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
                 with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
-                    bus.main(["--session", "hector-mac-brain", "post", "hi"])
+                    bus.main(["--session", "hector-mac-brain", "--title", "Panel de dinero e inferencias", "post", "hi"])
                 with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
                     bus.main(["read"])
-            with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "thiago-mini-market"}), \
+            with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "thiago-mini-market", "TEAM_BUS_TITLE": "Mini market"}), \
                     mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
                 with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
                     bus.main(["post", "hi"])
+
+    def test_a_post_names_the_full_session_on_its_first_line(self):
+        self.assertEqual(bus.signed("hi", "Panel de dinero e inferencias", "hector-mac-brain"),
+                         "FROM: Panel de dinero e inferencias (hector-mac-brain)\nhi")
+        self.assertEqual(bus.signed("FROM: thiago-air-f8 (conductor) | TO: hector\nok", "", "x"),
+                         "FROM: thiago-air-f8 (conductor) | TO: hector\nok")
+        self.assertIsNone(bus.signed("hi", "", "hector-mac-brain"))
+        from unittest import mock
+        with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "hector-mac-brain"}):
+            bus.os.environ.pop("TEAM_BUS_TITLE", None)
+            with mock.patch.object(bus, "GitHub", side_effect=AssertionError("must not reach GitHub")):
+                self.assertEqual(bus.main(["post", "hi"]), 2)
+                self.assertEqual(bus.main(["ask", "ok?", "--wait", "0"]), 2)
+            sent = []
+            with mock.patch.object(bus.Bus, "post", lambda self, kind, text, to, reply_to=None, extra=None:
+                                   sent.append(text) or {"id": 1, "kind": kind, "to": to, "url": "u"}), \
+                    mock.patch.object(bus, "GitHub", lambda repo, issue: None):
+                self.assertEqual(bus.main(["--title", "Panel de dinero e inferencias", "post", "hi"]), 0)
+            self.assertEqual(sent, ["FROM: Panel de dinero e inferencias (hector-mac-brain)\nhi"])
 
 
 class Board(unittest.TestCase):
