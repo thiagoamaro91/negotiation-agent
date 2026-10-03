@@ -34,6 +34,7 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `tools/run_brain.sh` | On the always-on VM: recorder + brain in tmux, restarted if they die |
 | `tools/concierge.py` | La Celestina concierge: a public, keyless wants / haves board (page + JSON API + `/llms.txt`) that routes other teams to post on our venue v20. No key, no model, never trades; `selftest`, `quote CARD` |
 | `tools/me_relay.py` | Run on ONE laptop that holds the key: pushes our account to the brain every 20 s (key fields scrubbed), so the plan sees pack pulls; the key never leaves the laptop |
+| `tools/bus.py` | Team bus: messages between the team's Claude sessions across accounts and machines, on [issue #25](https://github.com/thiagoamaro91/negotiation-agent/issues/25) (`post`, `ask`, `wait`, `read`), plus the who-runs-what board (`claim`, `release`, `board`). Uses the `gh` CLI; see *Team bus* in `CLAUDE.md` |
 | `tests/` | `python3 -m unittest discover tests`: the plan's pure rules (fee, copy values, ask and bid prices) |
 | `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo. `logs/public/` caches keyless reads (catalog, clock, schedule, dealers); `logs/plan/` is the live plan, not committed |
 
