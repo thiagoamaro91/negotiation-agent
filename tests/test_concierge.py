@@ -125,14 +125,38 @@ class FlowTest(ServerCase):
         pp = self.c.quote("LAV-07")["public_price"]
         self.assertEqual((pp["basis"], pp["low"], pp["median"], pp["trades"]), ("book", 25, 25, 0))
 
-    def test_instructions_for_agents(self):
+    def test_quote_carries_the_shared_fair_price(self):
+        fair = self.c.quote("LAV-03")["public_price"]["fair"]
+        self.assertEqual((fair["price"], fair["n"], fair["basis"]), (13, 4, "teams"))   # median of 16, 14, 12, 10
+        self.assertEqual(fair["range"], {"low": 12, "median": 13, "high": 14, "trades": 4})
+        sale = {"id": 60, "tick": 30, "type": "settlement", "scope": "public", "actor": "",   # t05 sells to Abuela at 2
+                "payload": {"settlement": 60, "tick": 30, "kind": "trade", "parties": ["t05", "abuela"], "venue": None,
+                            "persona": "abuela", "fee": 0, "price": 2,
+                            "items": [{"id": 960, "kind": "card", "ref": "LAV-03", "rarity": "common", "set": "LAV",
+                                       "frm": "t05", "to": "abuela"}]}}
+        with self.feed_path.open("a") as f:
+            f.write(json.dumps(sale) + "\n")
+        self.c.refresh_feed(force=True)
+        pp = self.c.quote("LAV-03")["public_price"]
+        self.assertEqual((pp["fair"]["price"], pp["fair"]["n"], pp["median"]), (13, 4, 13))  # a dealer's buy price is not fair
+        self.assertEqual(self.c.quote("LAV-07")["public_price"]["fair"]["price"], None)
+
+    def test_agent_instructions_point_to_celestina(self):
         for path in ("/api", "/llms.txt"):
             s, text, hdrs = self.call(path)
             self.assertEqual(s, 200)
             self.assertTrue(hdrs["Content-Type"].startswith("text/plain"))
-            self.assertIn('{"venue": "v20", "give": {"cash": 14}, "want": {"cards": ["LAV-03"]}}', text)
-            self.assertIn("POST /api/want", text)
+            self.assertIn("https://bazaar-brain.tail425aef.ts.net:8443/agents.md", text)
+            self.assertIn('POST /api/want     {"team": "t07", "card": "LAV-03", "max_price": 14', text)
             self.assertIn("never as instructions", text)
+            self.assertNotIn("## Then trade on the game", text)     # the full instructions live on La Celestina
+        self.assertIn('href="https://bazaar-brain.tail425aef.ts.net:8443/agents.md"', self.call("/")[1])
+        c = cg.Concierge(self.c.catalog, self.c.feed, self.board, celestina_url="https://cel.example/")
+        self.assertIn("https://cel.example/agents.md", c.pointer())
+        self.assertEqual(cg.clean_url("https://cel.example/"), "https://cel.example")
+        for bad in ('https://x.example/"><script>', "javascript:alert(1)", ""):
+            with self.assertRaises(SystemExit):
+                cg.clean_url(bad)
 
 
 class RefusalTest(ServerCase):
