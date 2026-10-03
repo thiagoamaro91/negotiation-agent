@@ -70,6 +70,13 @@ Strategy (all constants overridable from the command line):
     on price. The pairL clamps apply to price-only sessions.
   - --mirror (off, KILLED in its exact form): treat pairL as the rival's exact limit, ask a share of that pie
     (75% anchor, 55% floor, 30% last chance) and walk when it is empty.
+  - Off by default, measured in docs/duel-lab/improvements.md (on in docs/duel-lab/duel-params-duels1-improved.json):
+      * --late-poll S --late-ticks N: in a tick where an open duel has N or fewer ticks left, the tick's accept waits
+        for a second read of the duels S seconds before the tick ends (the rival's same-tick message is seen first).
+        A late read that fails moves the accept to the next tick's first read; two in a row switch it off;
+      * --slot-demand spoke|acceptable: only duels whose rival spoke / whose offer we would accept now count toward
+        the accept slots a deadline cluster needs;
+      * --last-share X: with pairL visible, the last chance at L + X (pairL - L) instead of the LAST_R ratio.
 
 Usage (from the repo root):
     python3 agent/duel.py watch --once --log-dir /tmp/x   # read-only: one pass, prints what it WOULD do
@@ -130,7 +137,7 @@ LOCK_PATH = ROOT / "results" / "duel.lock"
 LOCK_TICKS = 3                      # the lock expires this many ticks after its last refresh (a dead run frees it)
 LATE_POLL = 0.0                     # off. > 0: in a tick where an open duel has LATE_TICKS or fewer ticks left, every
 LATE_TICKS = 1                      # accept waits for a second read of the duels this many seconds before the tick ends
-LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the rest of the run
+LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the run
 SLOT_DEMAND = "open"                # duels that count toward the deadline cluster's accept slots: every open one
 LAST_SHARE = 0.0                    # off. > 0: with pairL visible, the last chance keeps this share of the soft pie
 
@@ -1306,7 +1313,8 @@ def simulate(mod, cfg, n_duels: int = 3000, seed: int = 7, kinds=ARCHETYPES, d1_
                     if dec["action"] != "accept" or x["refuse"][t]:
                         continue
                     rp = parse_offer(snap.get("rival_offer"))
-                    if rp is None or not inside_limit(x["d"], rp[0]) or surplus(x["d"], rp[0], None, "auto") < MIN_SURPLUS:
+                    if (rp is None or not inside_limit(x["d"], rp[0])
+                            or surplus(x["d"], rp[0], None, "auto") < MIN_SURPLUS):
                         out["violations"].append(f"late accept on {rp} vs limit {x['d']['your_limit']}")
                         continue
                     st.accepted_at = t

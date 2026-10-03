@@ -151,7 +151,8 @@ class ArenaLateRead(unittest.TestCase):
         base = json.loads((ROOT / "docs" / "duel-lab" / "duel-params-duels1-safe.json").read_text())
         on = arena.evaluate({**base, "late_poll": 8, "late_ticks": 3}, range(30), 1)
         self.assertTrue(all(r["inside"] for r in on if r["deal"]))
-        self.assertGreater(arena.summary(on)["all"]["mean"], arena.summary(arena.evaluate(base, range(30), 1))["all"]["mean"])
+        off = arena.evaluate(base, range(30), 1)
+        self.assertGreater(arena.summary(on)["all"]["mean"], arena.summary(off)["all"]["mean"])
 
     def test_if_every_late_read_fails_it_switches_itself_off(self):
         base = json.loads((ROOT / "docs" / "duel-lab" / "duel-params-duels1-safe.json").read_text())

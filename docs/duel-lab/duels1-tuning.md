@@ -5,6 +5,9 @@ Built 2026-10-03 03:00-03:45 with `tools/duel_arena.py` and `tools/duel_tune.py`
 
 ## Recommendation
 
+Update 05:00: [improvements.md](improvements.md) adds three code-level flags on top of the safe file
+(`duel-params-duels1-improved.json`, +0.040 per duel held-out); the safe file below stays the fallback.
+
 | file | what it changes from duel.py's defaults | load it |
 |---|---|---|
 | `docs/duel-lab/duel-params-duels1-safe.json` | silent rival: one offer at 20% of the clock (not 50%) keeping 75% of the soft pie (not 50%), plus the last chance to a rival that never spoke (free while it stays silent); early accept at 0.9 of the soft pie (not 0.85) | **Duels I, 11:15** |
