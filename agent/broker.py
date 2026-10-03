@@ -91,7 +91,8 @@ CLOCK_EVERY = 1.0       # seconds between clock reads (the broker key allows 5 r
 PENDING_TICKS = 2       # an offer we matched that still shows after this many ticks is planned again
 REFUSED_TICKS = 1       # a refused pair is not sent again until this many ticks have passed
 RUN_QUIET = 3           # a bench run is summarised in the log once none of its offers has shown for this many ticks
-ERROR_SLEEP = (1, 2, 4, 8, 15)  # seconds to wait after 1, 2, 3, ... read failures in a row
+ERROR_SLEEP = (0.5, 1, 2, 3, 5)  # seconds to wait after 1, 2, 3, ... read failures in a row (within a tick)
+HTTP_TIMEOUT = 5.0      # seconds per request
 
 
 def _num(x) -> bool:
@@ -671,7 +672,8 @@ class Desk:
 def cmd_run(args) -> None:
     key = load_broker_key(Path(args.key_file))
     watch = args.mode == "watch"
-    broker = (ReadOnlyBroker if watch else Broker)(URL, key, timeout=10.0, retries=2)
+    # short timeout, one retry: a hung read must not cost a whole 30 s tick (the loop reads again in half a second)
+    broker = (ReadOnlyBroker if watch else Broker)(URL, key, timeout=HTTP_TIMEOUT, retries=1)
     log = RunLog("broker")
     log.start(mode=args.mode, policy=args.policy, url=URL)
     desk = Desk(broker, log, args.policy, send=not watch)

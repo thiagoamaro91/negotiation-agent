@@ -8,6 +8,7 @@ broker meets Saturday's sessions; every session is one sample in the table.
     python3 tools/bench_sim.py table --seeds 2000 --scenarios all --procs 8 --json results/sweep.json
     python3 tools/bench_sim.py list                                     # every scenario and what it changes
     python3 tools/bench_sim.py show --scenario hard --seed 3            # one session, tick by tick
+    python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl --seeds 500   # after a real session
 
 Assumptions (each one is a knob of a scenario below; `--scenarios all` sweeps the ones that matter):
   A1 Traders. A session has N traders (10; 12 in the hard test), each a buyer or a seller of one unit with a true
@@ -359,6 +360,131 @@ def cmd_table(args) -> int:
     return 1 if bad else 0
 
 
+# ---------------------------------------------------------------- refit from a recorded session
+
+def read_runs(path: Path) -> dict:
+    """Bench offers' paths from a broker log (logs/broker/<date>.jsonl): run -> offer id -> side, quotes per tick,
+    first/last tick seen, the tick it was gone, shown expiry, and how it ended (ours: we matched it; engine: the
+    book's settlements name it, as on the free stall, where the engine crosses first; left: gone before the run's
+    end; end: on the book until the run ended). Game text is never read, only numbers and ids."""
+    runs, ours, settled, ticks = {}, set(), set(), []
+    for line in Path(path).read_text().splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(row, dict):
+            continue
+        if row.get("event") == "matched":
+            ours.update((row.get("sell"), row.get("buy")))
+        book, t = row.get("book"), row.get("tick")
+        if row.get("event") != "book" or not isinstance(book, dict) or not isinstance(t, (int, float)):
+            continue
+        ticks.append(t)
+        for st in book.get("settlements") or []:
+            if isinstance(st, dict):
+                settled.update(v for v in st.values() if isinstance(v, str) and "-" in v)
+        for o in book.get("bench_offers") or []:
+            try:
+                oid, ask, bid = o["id"], o["want"]["cash"], o["give"]["cash"]
+            except (KeyError, TypeError):
+                continue
+            side, q = ("sell", ask) if ask else ("buy", bid)
+            if not isinstance(q, (int, float)):
+                continue
+            rec = runs.setdefault(brk.run_of(oid), {}).setdefault(
+                oid, {"side": side, "quotes": [], "first": t, "last": t, "expires": None})
+            if rec["quotes"] and rec["quotes"][-1][0] == t:
+                rec["quotes"][-1] = (t, q)
+            else:
+                rec["quotes"].append((t, q))
+            rec["last"] = t
+            exp = next((o[k] for k in brk.EXPIRY_FIELDS if isinstance(o.get(k), (int, float))), None)
+            if exp is not None:
+                rec["expires"] = exp
+    ticks = sorted(set(ticks))
+    for offers in runs.values():
+        end = max(r["last"] for r in offers.values())
+        for oid, r in offers.items():
+            r["gone"] = next((t for t in ticks if t > r["last"]), None)
+            r["how"] = ("ours" if oid in ours else "engine" if oid in settled
+                        else "end" if r["last"] == end else "left")
+    return runs
+
+
+def fit(runs: dict) -> tuple:
+    """(what the session shows, scenario overrides that reproduce it). Rough by design: one session is ~10 traders."""
+    offers = [dict(r, run=run) for run, rs in runs.items() for r in rs.values()]
+    if not offers:
+        raise SystemExit("no bench offers in this log")
+    start = {run: min(r["first"] for r in rs.values()) for run, rs in runs.items()}
+    for r in offers:
+        r["arrive"] = r["first"] - start[r["run"]]
+        r["life"] = r["last"] - r["first"] + 1
+        q0, q1 = r["quotes"][0][1], r["quotes"][-1][1]
+        r["move"] = ((q1 - q0) if r["side"] == "buy" else (q0 - q1)) / max(1, q0)  # relaxation, as a share
+    seen3 = [r for r in offers if r["life"] >= 3]
+    firm = sum(r["move"] <= 0 for r in seen3) / len(seen3) if seen3 else None
+    relaxers = sorted(r["move"] for r in offers if r["move"] > 0)
+    leavers = sorted(r["life"] for r in offers if r["how"] == "left")
+    exps = [r for r in offers if r["expires"] is not None]
+    early = [r["expires"] - r["gone"] for r in exps if r["how"] == "left" and r["gone"] is not None]
+    buys = sorted(r["quotes"][-1][1] for r in offers if r["side"] == "buy")
+    sells = sorted(r["quotes"][-1][1] for r in offers if r["side"] == "sell")
+    nb, ns = sum(r["side"] == "buy" for r in offers), sum(r["side"] == "sell" for r in offers)
+    shows = {"runs": len(runs), "offers": len(offers), "buyers": nb, "sellers": ns,
+             "arrivals": sorted(r["arrive"] for r in offers), "leaver_lifetimes": leavers,
+             "ends": {h: sum(r["how"] == h for r in offers) for h in ("ours", "engine", "left", "end")},
+             "firm_share_of_3plus": firm, "relaxer_moves": [round(m, 3) for m in relaxers],
+             "buyer_quotes": buys, "seller_quotes": sells,
+             "expiries": {"shown": len(exps), "distinct": len({r["expires"] - start[r["run"]] for r in exps}),
+                          "leavers_ticks_early": early}}
+    sc = {"traders": max(2, round(len(offers) / len(runs))),
+          "sides": "balanced" if abs(nb - ns) <= len(runs) else "random"}
+    if relaxers:
+        sc["smax"] = round(min(0.6, max(0.05, 1.2 * relaxers[int(0.9 * (len(relaxers) - 1))])), 2)
+    if firm is not None:
+        sc["firm"] = round(firm, 2)
+    if leavers:
+        short = [x for x in leavers if x <= 5]
+        long_ = [x for x in leavers if x > 5]
+        sc["imp_share"] = round(len(short) / len(leavers), 2)
+        if short:
+            sc["imp"] = (min(short), max(short))
+        if long_:
+            sc["pat"] = (min(long_), max(16, max(long_)))
+    arr = shows["arrivals"]
+    sc.update({"arrive": "all0"} if max(arr) == 0 else {"arrive": "stagger", "arr_max": max(arr)})
+    if buys and sells:
+        top = 1 + sc.get("smax", 0.3) / 2
+        sc["buy"] = (round(buys[0], 1), round(buys[-1] * top, 1))
+        sc["sell"] = (round(sells[0] / top, 1), round(sells[-1], 1))
+    if not exps:
+        sc["expiry"] = "none"
+    elif shows["expiries"]["distinct"] <= 1:
+        sc["expiry"] = "end"
+    elif not early or max(early) <= 0:
+        sc["expiry"] = "exact"
+    else:
+        sc.update({"expiry": "early", "early_max": max(early)})
+    return shows, sc
+
+
+def cmd_refit(args) -> int:
+    shows, sc = fit(read_runs(Path(args.log)))
+    print("what the recorded session shows:")
+    for k, v in shows.items():
+        print(f"  {k}: {v}")
+    print("\nscenario overrides that reproduce it (on top of the base mix):")
+    print(f"  {json.dumps(sc)}")
+    if args.seeds:
+        SCENARIOS["fitted"] = sc
+        rows = [run_scenario(("fitted", args.seeds, None, None))]
+        print()
+        print(fmt_table(rows))
+    return 0
+
+
 def cmd_show(args) -> int:
     sc = scenario(args.scenario)
     traders = make_session(random.Random(f"{args.scenario}:{args.seed}"), sc)
@@ -389,6 +515,9 @@ def main(argv=None) -> int:
     t.add_argument("--json", default=None, help="also write the rows here (results/ is not committed)")
     t.add_argument("--params", default=None, help="BenchPolicy overrides as JSON, e.g. '{\"future\": 0.5}'")
     sub.add_parser("list", help="the scenarios")
+    f = sub.add_parser("refit", help="fit the scenario knobs to a recorded session (logs/broker/<date>.jsonl)")
+    f.add_argument("--log", required=True)
+    f.add_argument("--seeds", type=int, default=0, help="also run stall vs ours on the fitted scenario")
     s = sub.add_parser("show", help="one session, tick by tick")
     s.add_argument("--scenario", default="standard")
     s.add_argument("--seed", type=int, default=0)
@@ -398,7 +527,7 @@ def main(argv=None) -> int:
         for nm, d in SCENARIOS.items():
             print(f"{nm:<20} {d or '(the base mix)'}")
         return 0
-    return cmd_table(args) if args.mode == "table" else cmd_show(args)
+    return {"table": cmd_table, "show": cmd_show, "refit": cmd_refit}[args.mode](args)
 
 
 if __name__ == "__main__":
