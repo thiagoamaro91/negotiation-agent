@@ -36,9 +36,9 @@ Strategy (all constants overridable from the command line):
       * in the endgame window: any offer strictly inside our limit (>= MIN_SURPLUS). The window is
         max(ACCEPT_ANY_TICKS, our open duels whose deadlines are within NEAR_TICKS of this one), because the team
         gets one accept per tick: N duels sharing a deadline need N ticks. The slot is taken at once when the rival
-        has stopped moving or the window's slots are tight (duels in their window >= ticks left - 1); a lone duel
-        whose rival is still conceding waits to deadline-2 and keeps deadline-1 as the retry tick
-        (--no-window-wait takes the slot at the first window tick);
+        has stopped moving or the window's slots are tight (duels in their window >= ticks left - WINDOW_RETRY); a
+        lone duel whose rival is still conceding waits to deadline-2 and keeps deadline-1 as the retry tick
+        (--window-retry 0 waits to deadline-1, no retry; --no-window-wait takes the slot at the first window tick);
       * several acceptable in one tick: biggest surplus first, unless a duel's urgency (ticks left minus its rank
         in that surplus queue) is below 1: then the most urgent one goes first, so no duel loses its slot;
       * before any send, instead of sending, when the rival's offer already beats the number we would send less
@@ -67,7 +67,9 @@ Strategy (all constants overridable from the command line):
   - Two issues: utility = price surplus minus our days cost. Delivery is linear in days, so we offer an extreme
     day. If days are cheap for us (10 x weight <= DAYS_CHEAP x limit) we give the rival the day they seem to want
     and ask the days cost back in price, plus a premium. If days are dear to us, we hold our best day and concede
-    on price. The pairL clamps apply to price-only sessions.
+    on price. The pairL clamps apply to price-only sessions. Our best day: --days-best (both roles, or per role:
+    buyer:0,seller:10), else a direction named in `days_meaning`, else the role default flipped by a negative weight.
+    Two-issue messages carry a top-level "days" and the "offer" (say_body).
   - --mirror (off, KILLED in its exact form): treat pairL as the rival's exact limit, ask a share of that pie
     (75% anchor, 55% floor, 30% last chance) and walk when it is empty.
   - Off by default, measured in docs/duel-lab/improvements.md (on in docs/duel-lab/duel-params-duels1-improved.json):
@@ -77,6 +79,22 @@ Strategy (all constants overridable from the command line):
       * --slot-demand spoke|acceptable: only duels whose rival spoke / whose offer we would accept now count toward
         the accept slots a deadline cluster needs;
       * --last-share X: with pairL visible, the last chance at L + X (pairL - L) instead of the LAST_R ratio.
+  - Off by default, measured in docs/duel-lab/duels2-params.md ("Duels II fixes"):
+      * --hold-while-conceding (F1) --hold-ticks N --[no-]hold-counter: a window accept on an offer that improved on
+        the rival's previous one, while the rival is still moving and N or more ticks are left, waits for deadline-1
+        (the last tick whose accept settled in Duels I, 3/3), if the slots of the duels that need one still fit
+        (otherwise the existing allocation decides and the lower-surplus duels accept earlier, as without it). A
+        repeated number ends the wait. While it waits it counters one rung up the ratio schedule (a round) if that
+        number beats the offer by more than the round, else it waits in silence (always with --no-hold-counter);
+      * --silent-last-margin M (F2): the last chance to a rival that never spoke at L x (1 + M) (buyer L x (1 - M))
+        instead of the LAST_R ratio (needs --absent-last to reach a silent rival at all);
+      * --open-rung K (F3): the anchor opens at rung K of the ratio schedule instead of RATIOS[0]; in two-issue
+        duels it already names both issues (our price, and the day the rival wants when days are cheap for us).
+  - Accept path (default on, docs/duel-lab/duels2-params.md "Accept-path review"): the duel is re-read just before
+    the POST and the accept goes only if the rival's offer has the same id and terms, or changed to terms at least as
+    good for us (then those are taken); otherwise the next acceptable duel of the tick gets the accept. The accept
+    endpoint cannot name the offer, so a replacement between that re-read and the POST is accepted as it stands: the
+    response's price/days are checked and an `accept_mismatch` line is logged if they differ.
 
 Usage (from the repo root):
     python3 agent/duel.py watch --once --log-dir /tmp/x   # read-only: one pass, prints what it WOULD do
@@ -99,6 +117,7 @@ import json
 import math
 import os
 import random
+import re
 import sys
 import time
 from pathlib import Path
@@ -140,6 +159,12 @@ LATE_TICKS = 1                      # accept waits for a second read of the duel
 LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the run
 SLOT_DEMAND = "open"                # duels that count toward the deadline cluster's accept slots: every open one
 LAST_SHARE = 0.0                    # off. > 0: with pairL visible, the last chance keeps this share of the soft pie
+HOLD_WHILE_CONCEDING = False        # off. F1: a window accept waits for deadline-1 while the rival is still conceding
+HOLD_TICKS = 2                      # ... only while at least this many ticks are left (deadline-1 accepts)
+HOLD_COUNTER = True                 # ... and counters one rung while it waits (False: waits in silence, no round)
+SILENT_LAST_MARGIN = 0.0            # off. F2: last chance to a rival that never spoke at L x (1 +- margin)
+OPEN_RUNG = 0                       # F3: the anchor opens at this rung of the ratio schedule (0: RATIOS[0])
+WINDOW_RETRY = 1                    # window wait keeps this many ticks before the deadline as retry (0: deadline-1)
 
 SELL_LINES = [
     "Hola. This one is in perfect condition. {offer}.",
@@ -194,41 +219,133 @@ def two_issues(d: dict) -> bool:
     return "days" in (d.get("issues") or [])
 
 
+ROBUST = ";robust"   # appended to cfg.days_best by make_cfg until --days-confirmed: see days_unconfirmed
+
+
+def role_days_best(override, role) -> str:
+    """--days-best for this duel's role: "auto", "0" or "10" (both roles), or per role, "buyer:0,seller:10" (a role
+    left out is "auto")."""
+    override = str(override or "auto").split(";")[0].strip()
+    if override in ("auto", "0", "10"):
+        return override
+    for part in override.split(","):
+        k, _, v = part.partition(":")
+        if k.strip() == role and v.strip() in ("0", "10"):
+            return v.strip()
+    return "auto"
+
+
+def days_best_ok(override) -> bool:
+    override = str(override or "auto").split(";")[0].strip()
+    if override in ("auto", "0", "10"):
+        return True
+    parts = [x.partition(":") for x in override.split(",")]
+    return bool(parts) and all(k.strip() in ("buyer", "seller") and sep and v.strip() in ("0", "10", "auto")
+                               for k, sep, v in parts)
+
+
+_LATER = re.compile(r"\b(later|late|delay\w*|more time|longer|wait\w*)\b")
+_EARLIER = re.compile(r"\b(earlier|early|sooner|soon|rush\w*|faster|quicker|quickly)\b")
+_DOWN = re.compile(r"\b(reduc\w*|lower\w*|less|decreas\w*|cuts?|shrink\w*|drops?|falls?|deduct\w*|subtract\w*)\b")
+_UP = re.compile(r"\b(increas\w*|rais\w*|adds?|more|grows?|boost\w*)\b")
+_GOOD_THING = re.compile(r"\b(payoffs?|values?|profits?|utility|scores?|surplus|worth|gains?|points?|rewards?|"
+                         r"benefits?|earnings?)\b")
+_BAD_THING = re.compile(r"\b(cost\w*|penalt\w*|fees?|charg\w*|loss\w*|fines?)\b")
+_GOOD = re.compile(r"\b(sav\w*|earn\w*|gain\w*|bonus|better|cheaper|want\w*|prefer\w*)\b")
+_BAD = re.compile(r"\b(cost\w*|penal\w*|los\w*|worse|charg\w*|fees?|fines?)\b")
+
+
+def _days_effect(m: str) -> int:
+    """+1 if the sentence says the direction is good for us, -1 bad, 0 unclear. What goes up or down decides first:
+    "reduces your payoff" is bad, "reduces your cost" is good, "raises your cost" is bad. Without such a pair, plain
+    words: saves / better / want (good), costs / penalty / loses (bad). Mixed signals: 0."""
+    verbs = [v for v, rx in ((1, _UP), (-1, _DOWN)) if rx.search(m)]
+    things = [t for t, rx in ((1, _GOOD_THING), (-1, _BAD_THING)) if rx.search(m)]
+    signs = {v * t for v in verbs for t in things}
+    if signs:
+        return signs.pop() if len(signs) == 1 else 0
+    good, bad = bool(_GOOD.search(m)), bool(_BAD.search(m))
+    return 0 if good == bad else (1 if good else -1)
+
+
+def days_direction(meaning) -> tuple[int | None, bool]:
+    """(the best day `days_meaning` states, ambiguous). A direction statement needs one direction (later / delay /
+    more time, or earlier / sooner / rush) and one clear effect (_days_effect): "each day later reduces your payoff"
+    means early is best, "each day later reduces your cost" late is best. No direction word: (None, False), the
+    caller falls back to the role default and the weight's sign. Both directions, or no clear effect: (None, True).
+    Until --days-confirmed this only feeds the log (days_read): two-issue decisions run robust (days_unconfirmed)."""
+    m = str(meaning or "").lower()
+    later, earlier = bool(_LATER.search(m)), bool(_EARLIER.search(m))
+    if not later and not earlier:
+        return None, False
+    if later and earlier:
+        return None, True
+    effect = _days_effect(m)
+    if effect == 0:
+        return None, True
+    if effect > 0:
+        return (10 if later else 0), False
+    return (0 if later else 10), False
+
+
+def days_reading(d: dict, override: str = "auto") -> str:
+    """How days_profile chose our best day, for the duel_new log line: override, named, ambiguous, sign or default."""
+    if role_days_best(override, d.get("role")) in ("0", "10"):
+        return "override"
+    named, ambiguous = days_direction(d.get("days_meaning"))
+    if named is not None:
+        return "named"
+    if ambiguous:
+        return "ambiguous"
+    try:
+        return "sign" if float(d.get("your_days_weight") or 0) < 0 else "default"
+    except (TypeError, ValueError):
+        return "default"
+
+
 def days_profile(d: dict, override: str = "auto") -> tuple[int, float]:
     """(our best delivery day, primas we lose per day away from it). Linear in days.
 
     The sign convention was not visible on Friday (price-only practice). Order of evidence:
-    --days-best override, a negative weight (flips the role default), keywords in `days_meaning`, role default
-    (buyer wants it early, seller wants it late). `days_meaning` is logged raw on first sight so a human can set
-    --days-best before a scored session if this guess is wrong.
+    --days-best override (for both roles, or per role: "buyer:0,seller:10"), a direction statement in
+    `days_meaning` (days_direction), then the role default (buyer wants it early, seller wants it late) flipped by a
+    negative weight. The sign flip applies only when `days_meaning` named no direction: a server that both names the
+    direction and signs the weight must not have it flipped twice. An ambiguous `days_meaning` keeps the role default,
+    unflipped, and the run loop logs `days_ambiguous` (set --days-best per role). `days_meaning` is logged raw on
+    first sight so a human can set --days-best before a scored session if this guess is wrong.
     """
     w = d.get("your_days_weight")
     try:
         w = float(w) if w is not None else 0.0
     except (TypeError, ValueError):
         w = 0.0
+    override = role_days_best(override, d.get("role"))
     if override in ("0", "10"):
         return int(override), abs(w)
     best = 0 if d.get("role") == "buyer" else 10
-    meaning = (d.get("days_meaning") or "").lower()
-    late_bad = any(k in meaning for k in ("each day later", "per day later", "later costs", "every day of delay",
-                                          "delay costs", "sooner is better", "earlier is better", "you want it early",
-                                          "you want it soon"))
-    early_bad = any(k in meaning for k in ("each day earlier", "per day earlier", "earlier costs", "rush costs",
-                                           "later is better", "more time is better", "you want it late"))
-    if late_bad and not early_bad:
-        best = 0
-    elif early_bad and not late_bad:
-        best = 10
-    if w < 0:
+    named, ambiguous = days_direction(d.get("days_meaning"))
+    if named is not None:
+        return named, abs(w)
+    if not ambiguous and w < 0:
         best = 10 - best
     return best, abs(w)
+
+
+def days_unconfirmed(d: dict, override) -> bool:
+    """Robust mode: a two-issue duel whose role has no confirmed best day (make_cfg tags cfg.days_best with ROBUST
+    unless --days-confirmed; an explicit --days-best for the role confirms it). The server's wording has never been
+    seen, so until a human confirms it every days cost is taken at its worst over both hypotheses (best day 0 or 10):
+    an accept or a proposal then clears MIN_SURPLUS whichever way the wording was meant."""
+    return (ROBUST in str(override or "") and two_issues(d)
+            and role_days_best(override, d.get("role")) not in ("0", "10"))
 
 
 def days_cost(d: dict, days: int | None, override: str) -> float:
     if not two_issues(d) or days is None:
         return 0.0
     best, w = days_profile(d, override)
+    if days_unconfirmed(d, override):
+        return w * max(int(days), 10 - int(days))   # the worse of best day 0 and best day 10
     return w * abs(int(days) - best)
 
 
@@ -281,6 +398,19 @@ def last_move_tick(d: dict, override: str = "auto") -> int | None:
     return mv
 
 
+def rival_improved(d: dict, override: str = "auto") -> bool:
+    """--hold-while-conceding: did the rival's last priced message improve (for us) on its previous one? A repeated
+    number, a step back or a single message is not an improvement."""
+    us = []
+    for m in rival_msgs(d):
+        p = m.get("price")
+        if not isinstance(p, (int, float)) or isinstance(p, bool):
+            continue
+        days = m.get("days") if two_issues(d) else None
+        us.append(surplus(d, int(p), int(days) if isinstance(days, (int, float)) else None, override))
+    return len(us) >= 2 and us[-1] > us[-2]
+
+
 # ---------------------------------------------------------------- our numbers
 
 def price_at(d: dict, r: float) -> int:
@@ -308,6 +438,13 @@ def mirror_limit(d: dict, every: list) -> int | None:
     return None
 
 
+def pair_trusted(cfg) -> bool:
+    """EARLY_SHARE above 1 switches the paired limit off everywhere: the early accept, the thin test, the soft-pie
+    "instead" accept, the anchor / last-chance caps, ABSENT_SHARE and LAST_SHARE (Duels I: pairs no longer share a
+    rival, and their limits are unrelated)."""
+    return getattr(cfg, "early_share", EARLY_SHARE) <= 1
+
+
 def mirror_pie(d: dict, rival_limit: int | None) -> int | None:
     """The pie if rival_limit were the rival's limit (positive = a zone of agreement)."""
     if rival_limit is None:
@@ -328,11 +465,12 @@ def _interp(xs: list, pos: float, geometric: bool = False) -> float:
 
 
 def planned_offer(d: dict, pos: float, cfg, rival: tuple[int, int | None] | None, last: bool,
-                  rival_limit: int | None = None) -> tuple[int, int | None]:
+                  rival_limit: int | None = None, base: int | None = None) -> tuple[int, int | None]:
     """Our (price, days) at a position on the ratio schedule (0 = anchor, top = floor; fractions interpolate).
-    Price-only duels return days=None."""
+    Price-only duels return days=None. `base` replaces the ratio's price (--silent-last-margin)."""
     r = cfg.last_r if last else _interp(cfg.ratios, pos, geometric=True)
-    base = price_at(d, r)
+    if base is None:
+        base = price_at(d, r)
     pie = mirror_pie(d, rival_limit)
     if pie is not None and pie >= 2 and not two_issues(d):
         # --mirror: ask for a share of the known pie instead of a ratio (never beyond the rival's limit)
@@ -345,10 +483,13 @@ def planned_offer(d: dict, pos: float, cfg, rival: tuple[int, int | None] | None
         return min(lim - 1, int(math.floor(lim - share * pie))), None
     if not two_issues(d):
         return base, None
+    if days_unconfirmed(d, cfg.days_best):
+        return robust_offer(d, pos, cfg, rival, last, base)
     best, w = days_profile(d, cfg.days_best)
     far = 10 - best                                 # the day we assume the rival wants
-    if rival and rival[1] is not None and rival[1] != best:
-        far = rival[1]                              # they told us, in structure, which day they want
+    if rival and rival[1] is not None:
+        far = rival[1]                              # they told us, in structure, which day they want (our best day
+                                                    # too: then we offer it, with no premium)
     cheap = 10 * w <= cfg.days_cheap * d["your_limit"]
     if not cheap or far == best:
         return base, best
@@ -361,28 +502,58 @@ def planned_offer(d: dict, pos: float, cfg, rival: tuple[int, int | None] | None
     return p, far
 
 
+def robust_offer(d: dict, pos: float, cfg, rival, last: bool, base: int) -> tuple[int, int]:
+    """Robust mode (days_unconfirmed): a (price, day) that clears MIN_SURPLUS whether our best day is 0 or 10. The
+    rival's structured day when days are cheap for us and its worst-case days cost, plus the premium, still clears;
+    otherwise day 5, the smallest worst-case days cost (5 x weight), asked back in price. decide() never sends a
+    two-issue number that does not clear."""
+    _, w = days_profile(d, cfg.days_best)
+    seller = d["role"] == "seller"
+
+    def priced(extra: int) -> int:
+        return base + extra if seller else max(1, base - extra)
+    if rival and rival[1] is not None and 10 * w <= cfg.days_cheap * d["your_limit"]:
+        far = int(rival[1])
+        top = max(1, len(cfg.ratios) - 1)
+        prem = cfg.days_premium[-1] if last else _interp(cfg.days_premium, pos * (len(cfg.days_premium) - 1) / top)
+        p = priced(int(math.ceil(w * max(far, 10 - far) * (1 + prem))))
+        if inside_limit(d, p) and surplus(d, p, far, cfg.days_best) >= cfg.min_surplus:
+            return p, far
+    return priced(int(math.ceil(w * 5))), 5
+
+
 def our_number(d: dict, st: "DuelState", cfg, rival, kind: str) -> tuple[int, int | None]:
-    """Our (price, days) for a message of this kind: "anchor", "absent" or "last".
+    """Our (price, days) for a message of this kind: "anchor", "absent", "last" or "counter" (--hold-while-conceding).
 
     Price-only with pairL visible (and --mirror off): the anchor and the last chance never ask beyond
     PAIR_SELL x pairL (seller) / PAIR_BUY x pairL (buyer); the absent-rival offer sits at L + ABSENT_SHARE x
     (pairL - L). Then: never retreat from a number we already sent, and clamp inside our limit (MIN_SURPLUS).
     """
     top = len(cfg.ratios) - 1
+    open_rung = min(max(0, int(getattr(cfg, "open_rung", 0))), top)
+    silent_last = kind == "last" and getattr(cfg, "silent_last_margin", 0) > 0 and not rival_spoke(d)
     if kind == "anchor":
-        p, days = planned_offer(d, 0, cfg, rival, False, st.rival_limit)
+        p, days = planned_offer(d, open_rung, cfg, rival, False, st.rival_limit)
     elif kind == "absent":
         p, days = planned_offer(d, top, cfg, rival, False, st.rival_limit)
+    elif kind == "counter":   # --hold-while-conceding: one rung past the last one we sent
+        pos = open_rung + st.sent
+        p, days = planned_offer(d, min(pos, top), cfg, rival, pos > top, st.rival_limit)
+    elif silent_last:         # --silent-last-margin: L x (1 + margin), buyer L x (1 - margin)
+        lim, m = d["your_limit"], cfg.silent_last_margin
+        base = (max(lim + 1, int(math.ceil(lim * (1 + m) - 1e-9))) if d["role"] == "seller"
+                else min(lim - 1, int(math.floor(lim * (1 - m) + 1e-9))))
+        p, days = planned_offer(d, top, cfg, rival, True, st.rival_limit, base=base)
     else:
         p, days = planned_offer(d, top, cfg, rival, True, st.rival_limit)
     if two_issues(d):
         return p, days
-    lim, pl, seller = d["your_limit"], st.pair_l, d["role"] == "seller"
+    lim, pl, seller = d["your_limit"], (st.pair_l if pair_trusted(cfg) else None), d["role"] == "seller"
     if pl is not None and st.rival_limit is None:
         if kind == "absent":
             mid = lim + cfg.absent_share * (pl - lim)
             p = int(math.ceil(mid)) if seller else int(math.floor(mid))
-        elif kind == "last" and getattr(cfg, "last_share", 0) > 0:   # --last-share: a share of the soft pie
+        elif kind == "last" and getattr(cfg, "last_share", 0) > 0 and not silent_last:   # --last-share
             mid = lim + cfg.last_share * (pl - lim)
             p = min(int(math.ceil(mid)), int(math.floor(cfg.pair_sell * pl))) if seller else \
                 max(int(math.floor(mid)), int(math.ceil(cfg.pair_buy * pl)))
@@ -399,18 +570,57 @@ def our_number(d: dict, st: "DuelState", cfg, rival, kind: str) -> tuple[int, in
 
 # ---------------------------------------------------------------- one decision per duel per tick
 
+def _int(x) -> int | None:
+    return x if isinstance(x, int) and not isinstance(x, bool) else None
+
+
+def duel_problem(d: dict) -> str | None:
+    """Why this duel cannot be played (logged and skipped, never allowed to abort the tick), or None."""
+    if _int(d.get("duel")) is None:
+        return "no duel id"
+    if _int(d.get("deadline_tick")) is None:
+        return "no deadline_tick"
+    if not isinstance(d.get("your_limit"), (int, float)) or isinstance(d.get("your_limit"), bool):
+        return "no your_limit"
+    if d.get("role") not in ("buyer", "seller"):
+        return "no role"
+    return None
+
+
+def duel_span(d: dict, tick: int, duel_ticks: int, born: bool = False) -> tuple[int, int]:
+    """(start tick, length) of a duel. In order: an explicit start field (start_tick / started_tick), an explicit
+    length field (ticks / duel_ticks / total_ticks); born=True (the run loop read the previous tick and this duel was
+    not there) means it started at this tick; otherwise DUEL_TICKS, never shorter than what the deadline and the
+    duel's own messages show. A run restarted mid-duel therefore never restarts the duel's clock: on Sunday (12-tick
+    duels) set duel_ticks 12."""
+    dl = int(d["deadline_tick"])
+    for k in ("start_tick", "started_tick"):
+        v = _int(d.get(k))
+        if v is not None and v < dl:
+            return v, dl - v
+    for k in ("ticks", "duel_ticks", "total_ticks"):
+        v = _int(d.get(k))
+        if v is not None and v >= 1:
+            return dl - v, v
+    if born:
+        total = max(1, dl - tick)
+    else:
+        ticks = [m.get("tick") for m in d.get("messages") or [] if isinstance(m, dict) and _int(m.get("tick"))]
+        total = max(1, duel_ticks, dl - tick, *(dl - t for t in ticks))
+    return dl - total, total
+
+
 class DuelState:
-    def __init__(self, d: dict, tick: int, duel_ticks: int):
+    def __init__(self, d: dict, tick: int, duel_ticks: int, born: bool = False):
         self.id = d["duel"]
-        # a duel lasts duel_ticks; joining mid-way we only know the deadline, so never assume it is shorter
-        self.total = max(1, duel_ticks, d["deadline_tick"] - tick)
-        self.start = d["deadline_tick"] - self.total
+        self.start, self.total = duel_span(d, tick, duel_ticks, born)
         self.step = None            # kind of the message we last sent (anchor / absent / last)
         self.sent = 0               # messages we have sent in this duel
         self.last_sent: tuple | None = None
         self.last_sent_tick: int | None = None
         self.rival_id_at_send = None
         self.accepted_at: int | None = None
+        self.accepted_terms: tuple | None = None   # (price, days) we approved when we accepted (settled_mismatch)
         self.dumped = False
         self.last_rival = None
         self.window: int | None = None        # accept window for this tick (set by set_windows)
@@ -457,7 +667,7 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
     mv = last_move_tick(d, cfg.days_best)
     moving = spoke and mv is not None and tick - mv <= cfg.stall_ticks
     stalled = spoke and not moving
-    pie = soft_pie(d, st.pair_l)
+    pie = soft_pie(d, st.pair_l if pair_trusted(cfg) else None)
     acc_window = left <= max(cfg.accept_any_ticks, st.window or 0)   # accepting: grows with the deadline cluster
     window = left <= cfg.accept_any_ticks                             # talking: no new anchor in the last ticks
     last = left <= cfg.last_chance_ticks
@@ -481,6 +691,8 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
             return {**out, "action": "accept", "kind": "early",
                     "why": f"early: surplus {rs:.0f} >= {cfg.early_share} x soft pie {pie}"}
         if acc_window:
+            if getattr(cfg, "hold_while_conceding", False):   # read by allocate (F1)
+                out["conceding"] = moving and rival_improved(d, cfg.days_best)
             return {**out, "action": "accept", "kind": "window", "why": f"endgame ({left} ticks left), inside limit"}
 
     hard = mirror_pie(d, st.rival_limit)
@@ -525,6 +737,8 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
 
     p, days = our_number(d, st, cfg, rival, kind)
     out.update(next=p, next_days=days, step=kind)
+    if two_issues(d) and surplus(d, p, days, cfg.days_best) < cfg.min_surplus:
+        return {**out, "action": "hold", "why": f"no ({p}, day {days}) clears our limit under both day readings"}
     if st.last_sent == (p, days):
         return {**out, "action": "hold", "why": f"our number {p} stands ({kind}; resending would cost a round)"}
     if acceptable:
@@ -566,34 +780,209 @@ def late_due(decisions: list, cfg) -> bool:
         x[1].accepted_at is None and 1 <= x[2]["left"] <= cfg.late_ticks for x in decisions)
 
 
+def acceptable_offer(d: dict, offer, cfg) -> bool:
+    """The hard checks on an offer's terms: both issues named when the duel has two, inside our limit, worth at least
+    MIN_SURPLUS to us."""
+    if offer is None or (two_issues(d) and offer[1] is None):
+        return False
+    return inside_limit(d, offer[0]) and surplus(d, offer[0], offer[1], cfg.days_best) >= cfg.min_surplus
+
+
+def _fits(xs: list, start: int) -> bool:
+    """Can every duel in xs get its own accept tick, from `start` ticks from now, before its deadline?"""
+    lefts = sorted(max(1, x[2]["left"]) for x in xs)
+    return all(left > start + i for i, left in enumerate(lefts))
+
+
+def slot_plan(xs: list) -> list:
+    """The order for the one accept per tick. Keep the biggest surpluses that can all still get a tick (greedy by
+    surplus with a feasibility check: the most value that fits); of those, accept now the biggest whose taking now
+    leaves the others feasible from the next tick; then the other kept ones, by surplus; the ones that do not fit
+    go last. (1,30) (3,20) (2,10) (3,5) as (ticks left, surplus): 30 now, then 10, then 20; 5 dropped."""
+    queue = sorted(xs, key=lambda x: (-x[2].get("rival_surplus", 0), x[2]["left"]))
+    keep, drop = [], []
+    for x in queue:
+        (keep if _fits(keep + [x], 0) else drop).append(x)
+    if not keep:
+        return drop
+    first = next(x for x in keep if _fits([y for y in keep if y is not x], 1))
+    return [first] + [x for x in keep if x is not first] + drop
+
+
+def accept_candidates(decisions: list) -> list:
+    """Every duel that could take the tick's one accept: the one allocate chose, then the ones it held for the one
+    accept per tick (slot_rank). Empty when allocate chose none (for example when the accept waits for the late
+    read). try_accepts re-plans (slot_plan) after each candidate it has to skip."""
+    chosen = [x for x in decisions if x[2]["action"] == "accept"]
+    if not chosen:
+        return []
+    return chosen + sorted((x for x in decisions if x[2]["action"] == "hold" and x[2].get("slot_rank")),
+                           key=lambda x: x[2]["slot_rank"])
+
+
+def fresh_check(d: dict, fresh: dict | None, cfg) -> tuple[str, tuple | None]:
+    """The duel re-read just before the accept, against the one we decided on.
+    ("same", terms): same offer id and terms. ("better", terms): the rival replaced its offer with terms still
+    acceptable and at least as good for us (take them: a rival that posted this tick cannot post again before the tick
+    ends). ("changed", None): anything else (gone, finished, worse): no accept on this duel this tick."""
+    approved = parse_offer(d.get("rival_offer"))
+    if fresh is None or fresh.get("status", "live") != "live" or approved is None:
+        return "changed", None
+    now = parse_offer(fresh.get("rival_offer"))
+    if now is None or not acceptable_offer(fresh, now, cfg):
+        return "changed", None
+    if offer_id(fresh.get("rival_offer")) == offer_id(d.get("rival_offer")) and now == approved:
+        return "same", now
+    if surplus(fresh, now[0], now[1], cfg.days_best) >= surplus(d, approved[0], approved[1], cfg.days_best):
+        return "better", now
+    return "changed", None
+
+
+def post_accept(b, did: int, deadline: float | None = None):
+    """POST /api/duels/{id}/accept exactly once. The kit's client repeats a rate-limited request after a pause, which
+    can land in the next tick on this tick's approval: here its retries are 0 for the call and its timeout is capped
+    to the time left before `deadline`. A refused accept (rate_limited included) raises; the next tick re-reads and
+    decides again."""
+    saved = {k: getattr(b, k) for k in ("retries", "timeout") if hasattr(b, k)}
+    try:
+        if "retries" in saved:
+            b.retries = 0
+        if "timeout" in saved and deadline is not None:
+            b.timeout = max(0.5, min(float(saved["timeout"]), deadline - time.time()))
+        return b.duel_accept(did)
+    finally:
+        for k, v in saved.items():
+            setattr(b, k, v)
+
+
+def refresh_candidates(remaining: list, views: dict, cfg) -> list:
+    """After a re-read (the full list), every remaining candidate takes its fresh offer: gone, finished or no longer
+    acceptable drops it; a changed but acceptable offer is revalued, so the next plan uses what the rivals offer now."""
+    out = []
+    for d, st, dec in remaining:
+        fv = views.get(d["duel"])
+        if fv is None or fv.get("status", "live") != "live":
+            continue
+        now = parse_offer(fv.get("rival_offer"))
+        if offer_id(fv.get("rival_offer")) == offer_id(d.get("rival_offer")) and now == parse_offer(d.get("rival_offer")):
+            out.append((d, st, dec))
+        elif acceptable_offer(fv, now, cfg):
+            out.append((fv, st, {**dec, "rival": now,
+                                 "rival_surplus": round(surplus(fv, now[0], now[1], cfg.days_best), 2)}))
+    return out
+
+
+def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = None, report: dict | None = None,
+                **tag) -> bool:
+    """POST the tick's one accept to the candidate slot_plan puts first, if its re-read still shows its offer (or a
+    better one). A candidate whose offer changed for the worse is dropped and the plan is made again on the rest, so
+    one rival's move never wastes the tick's slot nor lets a duel expire that the plan could keep. A refusal or a
+    failed read ends the tick's accepts, and so does `deadline` (epoch seconds: no re-read or POST after it, so an
+    accept never lands in the next tick). The accept endpoint cannot name the offer, so a replacement between the
+    re-read and the POST is accepted as it stands: the response is checked and logged as `accept_mismatch`. The POST
+    goes once (post_accept). Returns True when an accept went out; `report["why"]` says how it ended: accepted,
+    skipped (every offer changed), read, refused or budget.
+    Every re-read refreshes all remaining candidates (refresh_candidates) before the next plan."""
+    report = report if report is not None else {}
+    report["why"] = "skipped"
+    remaining = list(cands)
+    while remaining:
+        d, st, dec = slot_plan(remaining)[0]
+        remaining = [x for x in remaining if x[0] is not d]
+        did = d["duel"]
+        row = {k: dec.get(k) for k in ("left", "rival", "rival_surplus", "pair_l", "soft_pie", "moving", "why")}
+        if deadline is not None and time.time() >= deadline:
+            run.event("accept_budget", duel=did, why="tick almost over: no re-read", **tag)
+            report["why"] = "budget"
+            return False
+        try:
+            views = {x.get("duel"): x for x in b.duels().get("duels", []) if isinstance(x, dict)}
+        except BazaarError as e:
+            run.event("error", where="reread", duel=did, code=e.code, msg=e.message, **tag)
+            report["why"] = "read"
+            return False
+        fresh = views.get(did)
+        remaining = refresh_candidates(remaining, views, cfg)
+        verdict, terms = fresh_check(d, fresh, cfg)
+        if verdict == "changed":
+            run.event("accept_skipped", duel=did, why="rival offer changed", now=fresh and fresh.get("rival_offer"),
+                      **tag)
+            continue
+        if deadline is not None and time.time() >= deadline:
+            run.event("accept_budget", duel=did, why="tick almost over: no POST", **tag)
+            report["why"] = "budget"
+            return False
+        try:
+            resp = post_accept(b, did, deadline)
+        except BazaarError as e:
+            run.event("refused", duel=did, action="accept", code=e.code, msg=e.message, extra=e.extra, **tag)
+            report["why"] = "refused"
+            return False
+        st.accepted_at, st.accepted_terms = tick, (terms[0], terms[1] if two_issues(fresh) else None)
+        run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, taken=verdict,
+                  terms=list(terms), resp=resp, **tag, **row)
+        if isinstance(resp, dict):
+            rp, rd = resp.get("price"), resp.get("days")
+            if (isinstance(rp, (int, float)) and int(rp) != terms[0]) or \
+                    (two_issues(fresh) and isinstance(rd, (int, float)) and int(rd) != terms[1]):
+                days = int(rd) if two_issues(fresh) and isinstance(rd, (int, float)) else terms[1]
+                run.event("accept_mismatch", duel=did, approved=list(terms), accepted={"price": rp, "days": rd},
+                          surplus=round(surplus(fresh, int(rp if isinstance(rp, (int, float)) else terms[0]), days,
+                                                cfg.days_best), 2), **tag)
+        report["why"] = "accepted"
+        return True
+    return False
+
+
 def allocate(decisions: list, cfg, late: bool = False) -> list:
     """One accept per team per tick.
 
     A window accept waits while its rival is still conceding and the window has a spare slot (duels inside their
     window with this deadline or earlier < ticks left - 1): a lone duel then takes deadline-2 and keeps deadline-1
-    as the retry. Of the rest, the biggest surplus goes first, unless some duel's urgency (ticks left minus its
-    rank in that surplus queue) is below 1: then the most urgent goes first, so no duel loses its slot.
+    as the retry. Of the rest, slot_plan keeps the biggest surpluses that can all still get a tick, and the
+    biggest of those goes first unless taking it now would cost another kept duel its tick.
     --late-poll: in a tick that gets a second read (late_due), the first read accepts nothing; the late read
-    (late=True) decides again on fresh duels and takes the slot."""
+    (late=True) decides again on fresh duels and takes the slot.
+    --hold-while-conceding (F1): before all that, a window accept on a rival still conceding waits for deadline-1
+    when the slots fit without its retry tick (duels in their window with this deadline or earlier < ticks left), and
+    counters one rung while it waits if that number beats the offer by more than a round.
+    The duels held by the one accept per tick get "slot_rank" (1 = next in line): if the chosen duel's re-read shows
+    its offer changed for the worse, the run loop gives the tick's accept to the next one (accept_candidates)."""
+    demand = [x for x in decisions
+              if x[1].accepted_at is None and 1 <= x[2]["left"] <= max(cfg.accept_any_ticks, x[1].window or 0)
+              and needs_slot(x[0], cfg)]
+    if getattr(cfg, "hold_while_conceding", False):
+        for d, st, dec in decisions:
+            if (dec["action"] != "accept" or dec.get("kind") != "window" or not dec.get("conceding")
+                    or dec["left"] < cfg.hold_ticks):
+                continue
+            tight = sum(1 for x in demand if x[0]["deadline_tick"] <= d["deadline_tick"])
+            if tight >= dec["left"]:
+                continue   # the slots would not fit: the allocation below decides, as without the flag
+            dec["action"] = "hold"
+            dec["why"] = f"rival still conceding: waiting for deadline-1 ({tight} duel(s) need a slot)"
+            if getattr(cfg, "hold_counter", True) and st.sent < cfg.max_msgs:
+                p, days = our_number(d, st, cfg, dec.get("rival"), "counter")
+                bar = surplus(d, p, days, cfg.days_best) * (1 - float(d.get("decay_per_round") or 0.06))
+                if st.last_sent != (p, days) and inside_limit(d, p) and bar > dec.get("rival_surplus", 0):
+                    dec.update(action="say", price=p, days=days, step="counter", next=p, next_days=days,
+                               why=f"rival still conceding: counter one rung ({p}) and wait for deadline-1")
     if getattr(cfg, "window_wait", True):
-        demand = [x for x in decisions
-                  if x[1].accepted_at is None and 1 <= x[2]["left"] <= max(cfg.accept_any_ticks, x[1].window or 0)
-                  and needs_slot(x[0], cfg)]
         for d, st, dec in decisions:
             if dec["action"] != "accept" or dec.get("kind") != "window" or not dec.get("moving"):
                 continue
             tight = sum(1 for x in demand if x[0]["deadline_tick"] <= d["deadline_tick"])
-            if tight < dec["left"] - 1:
+            if tight < dec["left"] - getattr(cfg, "window_retry", 1):
                 dec["action"] = "hold"
                 dec["why"] = f"window: rival still conceding, waiting one tick ({tight} duel(s) need a slot)"
     queue = [x for x in decisions if x[2]["action"] == "accept"]
-    queue.sort(key=lambda x: (-x[2].get("rival_surplus", 0), x[2]["left"]))
     if queue:
-        urgency = [(x[2]["left"] - rank, rank) for rank, x in enumerate(queue)]
-        first = min(range(len(queue)), key=lambda i: urgency[i]) if min(urgency)[0] < 1 else 0
-        for i, x in enumerate(queue):
-            if i != first:
+        # slot_plan: the most value that still fits the ticks left, the biggest first unless that costs a kept duel
+        # its tick (it used to win on urgency alone: surpluses 50 and 5 on the same last tick took the 5)
+        for rank, x in enumerate(slot_plan(queue)):
+            if rank:
                 x[2]["action"] = "hold"
+                x[2]["slot_rank"] = rank
                 x[2]["why"] = "acceptable, but one accept per tick: re-checked next tick"
     if not late and late_due(decisions, cfg):
         for x in queue:
@@ -601,6 +990,24 @@ def allocate(decisions: list, cfg, late: bool = False) -> list:
                 x[2]["action"], x[2]["late"] = "hold", True
                 x[2]["why"] = f"accept waits for the late read, {cfg.late_poll:g} s before the tick ends"
     return decisions
+
+
+def say_body(text: str, price: int, days: int | None) -> dict:
+    """The body of POST /api/duels/{id}/messages. RULES: in a two-issue session both sides send {"text", "price",
+    "days"} (or both inside "offer"), and a priced message without days is refused (missing_days). The kit's
+    duel_say sends "price" and "offer" but no top-level "days", so two-issue messages carry all three, consistent."""
+    body = {"text": text, "price": int(price)}
+    if days is not None:
+        body["days"] = int(days)
+        body["offer"] = {"price": int(price), "days": int(days)}
+    return body
+
+
+def post_say(b, did: int, text: str, price: int, days: int | None) -> dict:
+    """Send one message: price-only through the kit's duel_say, two-issue with say_body (a top-level days too)."""
+    if days is None:
+        return b.duel_say(did, text, price=price)
+    return b._call("POST", f"/api/duels/{int(did)}/messages", say_body(text, price, days))
 
 
 def words(d: dict, n_sent: int, price: int, days: int | None, last: bool = False) -> str:
@@ -662,6 +1069,18 @@ def mirror_evidence(d: dict, every: list) -> dict:
     return {"mirror_rival_limit": ml, "rival_prices": theirs, "rival_crossed_mirror": crossed}
 
 
+def settled_mismatch(d: dict, st: "DuelState", override: str = "auto") -> dict | None:
+    """A finished duel that settled on other terms than the ones we approved when we accepted (the accept endpoint
+    cannot name the offer): the alarm fields, else None."""
+    if st is None or st.accepted_terms is None or d.get("status") != "deal":
+        return None
+    p, days = d.get("price"), d.get("days") if two_issues(d) else None
+    if p is None or (int(p), None if days is None else int(days)) == st.accepted_terms:
+        return None
+    return {"approved": list(st.accepted_terms), "settled": {"price": p, "days": days},
+            "surplus": round(surplus(d, int(p), None if days is None else int(days), override), 2)}
+
+
 def surplus_share_note(d: dict) -> dict:
     """What we can say about a finished duel from our side alone."""
     p = d.get("price")
@@ -718,7 +1137,7 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: flo
     pairs = []
     for d in every:
         st = states.get(d.get("duel"))
-        if d.get("status") != "live" or st is None:
+        if d.get("status") != "live" or st is None or duel_problem(d):
             continue
         if d.get("rival_offer") != st.last_rival:   # what the late read is for: logged so Saturday can measure it
             st.last_rival = d.get("rival_offer")
@@ -729,29 +1148,22 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: flo
         pairs.append((d, st))
     set_windows(pairs, cfg)
     decisions = allocate([(d, st, decide(d, st, tick, cfg)) for d, st in pairs], cfg, late=True)
-    for d, st, dec in decisions:
-        if dec["action"] != "accept":
-            continue
-        did = d["duel"]
+    cands = accept_candidates(decisions)
+    if cands:
+        d, st, dec = cands[0]
         row = {k: dec.get(k) for k in ("left", "rival", "rival_surplus", "pair_l", "soft_pie", "moving", "why")}
         if not inside_limit(d, dec["rival"][0]):  # cannot happen by construction; never accept it
-            run.event("bug_skip", duel=did, action="accept", rival=dec["rival"], limit=d["your_limit"])
-            continue
-        if not sending:
-            run.event("would_accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, late=True, **row)
-            continue
-        try:
-            fresh = next((x for x in b.duels().get("duels", []) if x.get("duel") == did), None)
-            if fresh is None or offer_id(fresh.get("rival_offer")) != offer_id(d.get("rival_offer")):
-                run.event("accept_skipped", duel=did, why="rival offer changed", late=True,
-                          now=fresh and fresh.get("rival_offer"))
-                continue
-            resp = b.duel_accept(did)
-            st.accepted_at = tick
-            run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, late=True, resp=resp,
+            run.event("bug_skip", duel=d["duel"], action="accept", rival=dec["rival"], limit=d["your_limit"])
+        elif not sending:
+            run.event("would_accept", duel=d["duel"], role=d["role"], limit=d["your_limit"], tick=tick, late=True,
                       **row)
-        except BazaarError as e:
-            run.event("refused", duel=did, action="accept", late=True, code=e.code, msg=e.message, extra=e.extra)
+        else:
+            rep = {}
+            try_accepts(b, run, cands, tick, cfg, deadline=tick_end - 0.5, report=rep, late=True)
+            if rep["why"] in ("read", "refused", "budget"):
+                # no accept went out for lack of time or a read / refusal: the next tick's first read accepts
+                run.event("late_failed", tick=tick, why=rep["why"])
+                return False
     return True
 
 
@@ -783,12 +1195,20 @@ def build_parser() -> argparse.ArgumentParser:
                     help="also send the last chance to a rival that never spoke (free: no round while it is silent)")
     ap.add_argument("--no-window-wait", dest="window_wait", action="store_false",
                     help="take the accept slot at the first window tick even when the rival is still conceding")
+    ap.add_argument("--window-retry", type=int, default=WINDOW_RETRY,
+                    help="window wait keeps this many ticks before the deadline as retry: 1 takes a lone duel at "
+                         "deadline-2, 0 at deadline-1 (no retry if that accept fails)")
     ap.add_argument("--mirror-shares", default=_csv(MIRROR_SHARES))
     ap.add_argument("--mirror-last-share", type=float, default=MIRROR_LAST_SHARE)
     ap.add_argument("--days-cheap", type=float, default=DAYS_CHEAP)
     ap.add_argument("--days-premium", default=_csv(DAYS_PREMIUM))
-    ap.add_argument("--days-best", default="auto", choices=["auto", "0", "10"],
-                    help="override our preferred delivery day if days_meaning shows the guess is wrong")
+    ap.add_argument("--days-best", default="auto",
+                    help="override our preferred delivery day if days_meaning shows the guess is wrong: 0 or 10 for "
+                         "both roles, or per role, e.g. buyer:0,seller:10")
+    ap.add_argument("--days-confirmed", action=argparse.BooleanOptionalAction, default=False,
+                    help="the delivery-day direction is confirmed from the first buyer and seller duel_new lines: "
+                         "use the configured / parsed best day. Without it (or a per-role --days-best), two-issue "
+                         "decisions are robust: they clear our limit with best day 0 AND best day 10")
     ap.add_argument("--duel-ticks", type=int, default=DEFAULT_DUEL_TICKS)
     ap.add_argument("--post-gap", type=float, default=POST_GAP)
     ap.add_argument("--lock-ticks", type=int, default=LOCK_TICKS)
@@ -802,6 +1222,16 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke", "acceptable"],
                     help="which duels count toward the accept slots a deadline cluster needs: every open one, those "
                          "whose rival has spoken, or those with a rival offer we would accept now")
+    ap.add_argument("--hold-while-conceding", action=argparse.BooleanOptionalAction, default=HOLD_WHILE_CONCEDING,
+                    help="F1: a window accept on a rival still conceding waits for deadline-1 (if the slots fit)")
+    ap.add_argument("--hold-ticks", type=int, default=HOLD_TICKS,
+                    help="F1: wait only while at least this many ticks are left (2: accept at deadline-1)")
+    ap.add_argument("--hold-counter", action=argparse.BooleanOptionalAction, default=HOLD_COUNTER,
+                    help="F1: counter one rung while waiting, when it beats the offer by more than a round")
+    ap.add_argument("--silent-last-margin", type=float, default=SILENT_LAST_MARGIN,
+                    help="F2: last chance to a rival that never spoke at L x (1 + M), buyer L x (1 - M) (0: off)")
+    ap.add_argument("--open-rung", type=int, default=OPEN_RUNG,
+                    help="F3: the anchor opens at this rung of --ratios (0: the first ratio)")
     ap.add_argument("--mirror", action="store_true",
                     help="KILLED hypothesis: take the paired limit as the rival's exact limit (keep off)")
     ap.add_argument("--until", default="", help="stop at this local wall time, HH:MM")
@@ -849,6 +1279,13 @@ def make_cfg(argv: list):
         sys.exit("--mirror-shares and --days-premium need at least one value")
     if cfg.late_poll < 0 or cfg.late_ticks < 1:
         sys.exit("--late-poll must be >= 0 (0: off) and --late-ticks >= 1")
+    if not days_best_ok(cfg.days_best):
+        sys.exit("--days-best must be auto, 0, 10 or per role like buyer:0,seller:10")
+    cfg.days_best = str(cfg.days_best).split(";")[0].strip() + ("" if cfg.days_confirmed else ROBUST)
+    if cfg.window_retry < 0:
+        sys.exit("--window-retry must be >= 0")
+    if cfg.hold_ticks < 1 or not 0 <= cfg.silent_last_margin < 1 or cfg.open_rung < 0:
+        sys.exit("--hold-ticks must be >= 1, --silent-last-margin in [0, 1), --open-rung >= 0")
     return cfg
 
 
@@ -881,6 +1318,8 @@ def main() -> None:
 
     states: dict[int, DuelState] = {}
     finished: set[int] = set()
+    bad_seen: set = set()   # duels skipped as malformed (logged once each)
+    last_read = None        # tick of the last pass that read the duels: a duel new in the next tick was born in it
     last_tick = None
     late_failed = False     # --late-poll: last tick's late read did not happen, so this tick accepts in its first read
     late_fails = 0          # late reads failed in a row
@@ -915,6 +1354,7 @@ def main() -> None:
                 except BazaarError as e:
                     run.event("error", where="duels", code=e.code, msg=e.message)
                     continue
+                follows, last_read = last_read is not None and tick - last_read == 1, tick
                 live = [d for d in every if d.get("status") == "live"]
                 if sending:  # the accept slot is ours while any duel is live
                     if live:
@@ -935,6 +1375,9 @@ def main() -> None:
                                   days=d.get("days"), rounds=d.get("rounds"), rival=d.get("rival"),
                                   **surplus_share_note(d), **mirror_evidence(d, every))
                         write_json(log_dir / "duels" / f"duel-{int(did):05d}.json", d)
+                        alarm = settled_mismatch(d, states.get(did), cfg.days_best)
+                        if alarm:
+                            run.event("accept_mismatch", duel=did, where="settled", **alarm)
 
                 if not live:
                     idle += 1
@@ -947,16 +1390,30 @@ def main() -> None:
 
                 decisions = []
                 for d in live:
+                    why_bad = duel_problem(d)
+                    if why_bad:   # one malformed duel is skipped, never allowed to abort the tick
+                        key = d.get("duel") if _int(d.get("duel")) is not None else repr(d)[:80]
+                        if key not in bad_seen:
+                            bad_seen.add(key)
+                            run.event("bad_duel", duel=d.get("duel"), why=why_bad, keys=sorted(d)[:30])
+                        continue
                     did = d["duel"]
                     st = states.get(did)
                     if st is None:
-                        st = states[did] = DuelState(d, tick, cfg.duel_ticks)
+                        st = states[did] = DuelState(d, tick, cfg.duel_ticks, born=follows)
+                        best, wgt = days_profile(d, cfg.days_best) if two_issues(d) else (None, None)
                         run.event("duel_new", duel=did, role=d.get("role"), item=d.get("item"),
                                   limit=d.get("your_limit"), issues=d.get("issues"),
                                   days_weight=d.get("your_days_weight"), days_meaning=d.get("days_meaning"),
+                                  days_best=best, days_read=days_reading(d, cfg.days_best) if two_issues(d) else None,
+                                  days_robust=days_unconfirmed(d, cfg.days_best),
                                   rival=d.get("rival"), deadline=d.get("deadline_tick"),
-                                  decay=d.get("decay_per_round"), total_ticks=st.total,
-                                  pair_limit=mirror_limit(d, every), mirror_used=cfg.mirror)
+                                  decay=d.get("decay_per_round"), total_ticks=st.total, start_tick=st.start,
+                                  born=follows, pair_limit=mirror_limit(d, every), mirror_used=cfg.mirror)
+                        if two_issues(d) and days_reading(d, cfg.days_best) == "ambiguous":
+                            run.event("days_ambiguous", duel=did, role=d.get("role"),
+                                      days_meaning=d.get("days_meaning"), days_weight=d.get("your_days_weight"),
+                                      using=best, fix="restart with --days-best buyer:N,seller:N")
                     if not st.dumped and (d.get("rival_offer") is not None or d.get("messages")
                                           or d.get("days_meaning") is not None):
                         st.dumped = True  # first sight of the parts we had not seen: keep the raw object
@@ -992,22 +1449,7 @@ def main() -> None:
                             run.event("would_accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, **row)
                             continue
                         # re-read just before accepting: the server accepts the standing offer, whatever it is by then
-                        try:
-                            fresh = next((x for x in b.duels().get("duels", []) if x.get("duel") == did), None)
-                        except BazaarError as e:
-                            run.event("error", where="reread", duel=did, code=e.code, msg=e.message)
-                            continue
-                        if fresh is None or offer_id(fresh.get("rival_offer")) != offer_id(d.get("rival_offer")):
-                            run.event("accept_skipped", duel=did, why="rival offer changed",
-                                      now=fresh and fresh.get("rival_offer"))
-                            continue
-                        try:
-                            resp = b.duel_accept(did)
-                            st.accepted_at = tick
-                            run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, resp=resp,
-                                      **row)
-                        except BazaarError as e:
-                            run.event("refused", duel=did, action="accept", code=e.code, msg=e.message, extra=e.extra)
+                        try_accepts(b, run, accept_candidates(decisions), tick, cfg, deadline=tick_end - 0.5)
                         time.sleep(cfg.post_gap)
                         continue
                     # say
@@ -1023,7 +1465,7 @@ def main() -> None:
                         record_say(st, dec, d, tick)
                         continue
                     try:
-                        resp = b.duel_say(did, text, price=price, days=days)
+                        resp = post_say(b, did, text, price, days)
                         record_say(st, dec, d, tick)
                         run.event("say", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, price=price,
                                   days=days, resp=redact(resp),
