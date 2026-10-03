@@ -71,6 +71,10 @@ DESK_LOCK = threading.Lock()
 LAST_DESK_PUSH = [0.0]
 DESK_FILE = OUT / "desks.json"
 TEAM_LIVE = vi.ROOT / "logs" / "state" / "team_live.json"   # tools/team_relay.py's last bundle
+SCORE_FIELDS = ("score", "rank", "negotiating", "market", "neg_points", "duel_points", "ladder_points",
+                "bench_efficiency", "deals", "pages_complete", "album_filled", "cash", "tick")
+SET_FIELD = re.compile(r"set_[A-Z]{3}")   # live-score page counts per set (set_LAV ...)
+SET_ID = re.compile(r"[A-Z]{3}")
 TEAM_MAX_BYTES = 1_000_000
 TEAM_STALE_SECONDS = 180    # the relay sends every 20 s; older than this and the page says so
 DECISIONS_ON_TAPE = 40      # our latest decisions merged into the market tape
@@ -247,11 +251,18 @@ def valid_team(body, received: float | None = None) -> dict | None:
         if desk:
             at = d.get("epoch") if finite(d.get("epoch")) else d.get("_mtime")
             desks.append({**desk, "at": at if finite(at) else None})
+    if isinstance(me, dict):  # only numbers where numbers go: the page renders these
+        me = {**me, "affinity": {k: v for k, v in (me.get("affinity") or {}).items()
+                                 if isinstance(k, str) and SET_ID.fullmatch(k) and finite(v)}
+              if isinstance(me.get("affinity"), dict) else me.get("affinity")}
+    prev = st.get("prev") if isinstance(st, dict) else None
+    st = {"prev": {k: v for k, v in prev.items() if (k in SCORE_FIELDS or SET_FIELD.fullmatch(str(k))) and finite(v)}} \
+        if isinstance(prev, dict) else None
     return {"kind": "team", "at": body["at"] if finite(body.get("at")) else None,
             "received": received if finite(received) else time.time(),
             "files": {str(k)[:80]: v for k, v in (body.get("files") or {}).items() if finite(v)}
             if isinstance(body.get("files"), dict) else {},
-            "me": me if valid_account(me) else None, "score_state": st if isinstance(st, dict) else None,
+            "me": me if valid_account(me) else None, "score_state": st,
             "decisions": rows("decisions", 400), "score_rows": rows("score_rows", 200), "desks": desks}
 
 
