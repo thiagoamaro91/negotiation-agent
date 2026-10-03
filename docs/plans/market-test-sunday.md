@@ -63,6 +63,31 @@ Across all 48 simulator scenarios (`--scenarios all`), maxpairs is worse beyond 
 
 Recorded books b53 to b104 cannot be replayed this way, because our matches cut the paths short. On those books the stall was already maximal in every state, so maxpairs would have sent exactly the same matches as recorded. All 6 states where the two differ are in b36.
 
+## Second candidate: maxweight (independent review)
+
+A reviewer pointed out a counterexample: maximising the count is not maximising surplus. Asks 50 and 65, bids 70 and 55, true values 80 and 55, costs 50 and 65, everyone firm and present for one tick. The stall makes 70×50 and gains 30. Two pairs gain 20.
+
+So a second candidate was tested. `maxweight` is a max-weight matching over the pairs that cross now, with pair weight = bid/(1-0.15) - ask×(1-0.15). That is the estimated true surplus under the policy's own firm-shade prior; only positive pairs count. It ran on **unseen seeds** (prefix `unseen:`, 1,000 seeds × 4 sessions), with `bad_match` 0. The script is a scratch file and is not in the repo. Results, maxweight − stall:
+
+| scenario | sessions | Δ | SE | z |
+|---|---|---|---|---|
+| hard | 4000 | -0.0011 | 0.0007 | -1.5 |
+| standard | 3999 | -0.0034 | 0.0006 | -5.5 |
+| firm_100 | 4000 | +0.0060 | 0.0008 | +7.1 |
+| all_impatient | 3999 | -0.0020 | 0.0006 | -3.3 |
+| short_patience | 3998 | -0.0038 | 0.0007 | -5.7 |
+| wide_overlap | 3997 | -0.0035 | 0.0006 | -6.0 |
+| thin_overlap | 4000 | +0.0023 | 0.0005 | +4.4 |
+| arrive_all0 | 3999 | +0.0076 | 0.0007 | +10.1 |
+| arrive_late | 3996 | -0.0039 | 0.0007 | -5.6 |
+| shade_40 | 4000 | -0.0005 | 0.0006 | -0.8 |
+| concede_late | 3994 | -0.0015 | 0.0007 | -2.2 |
+| refit pooled / b36 / b53 / b70 / b88 / b104 | 4000 each | -0.0054 / -0.0094 / -0.0065 / -0.0081 / -0.0064 / -0.0048 | 0.0006 | -9.4 to -15.6 |
+
+Under the same rule, maxweight does not ship either. It does not beat the stall on hard (it is -1.5 SE), and it is worse beyond noise on `standard` and on every real-session refit. It wins only when everyone is firm or everyone arrives at tick 0.
+
+**Settlement stress (not simulated).** The simulator settles a match inside the tick it is sent. If the real venue settles on the next tick, a match sent at tick t to a trader who leaves at t can be lost. That hits any policy that pairs more marginal, about-to-leave traders harder than the stall, so it would only widen the gap against both candidates. The exception fallback cannot catch a policy that is valid but economically worse; only the decision rule above can, and it says stall.
+
 ## Why it loses
 
 The stall stops at the first pair where the next-best bid is below the next-best ask, which is the competitive cut on quotes. Every extra pair maxpairs adds therefore comes from traders whose quotes say they should not trade (bid_k < ask_k). They gain on true limits only when shading exceeds that gap:
