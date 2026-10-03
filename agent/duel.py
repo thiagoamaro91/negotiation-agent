@@ -488,6 +488,7 @@ class DuelState:
         self.last_sent_tick: int | None = None
         self.rival_id_at_send = None
         self.accepted_at: int | None = None
+        self.accepted_terms: tuple | None = None   # (price, days) we approved when we accepted (settled_mismatch)
         self.dumped = False
         self.last_rival = None
         self.window: int | None = None        # accept window for this tick (set by set_windows)
@@ -705,7 +706,7 @@ def try_accepts(b, run, cands: list, tick: int, cfg, **tag) -> bool:
         except BazaarError as e:
             run.event("refused", duel=did, action="accept", code=e.code, msg=e.message, extra=e.extra, **tag)
             return False
-        st.accepted_at = tick
+        st.accepted_at, st.accepted_terms = tick, (terms[0], terms[1] if two_issues(fresh) else None)
         run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, taken=verdict,
                   terms=list(terms), resp=resp, **tag, **row)
         if isinstance(resp, dict):
@@ -864,6 +865,18 @@ def mirror_evidence(d: dict, every: list) -> dict:
               if m.get("from") == d.get("rival") and isinstance(m.get("price"), (int, float))]
     crossed = [p for p in theirs if (p > ml if d.get("role") == "seller" else p < ml)]
     return {"mirror_rival_limit": ml, "rival_prices": theirs, "rival_crossed_mirror": crossed}
+
+
+def settled_mismatch(d: dict, st: "DuelState") -> dict | None:
+    """A finished duel that settled on other terms than the ones we approved when we accepted (the accept endpoint
+    cannot name the offer): the alarm fields, else None."""
+    if st is None or st.accepted_terms is None or d.get("status") != "deal":
+        return None
+    p, days = d.get("price"), d.get("days") if two_issues(d) else None
+    if p is None or (int(p), None if days is None else int(days)) == st.accepted_terms:
+        return None
+    return {"approved": list(st.accepted_terms), "settled": {"price": p, "days": days},
+            "surplus": round(surplus(d, int(p), None if days is None else int(days), "auto"), 2)}
 
 
 def surplus_share_note(d: dict) -> dict:
@@ -1147,6 +1160,9 @@ def main() -> None:
                                   days=d.get("days"), rounds=d.get("rounds"), rival=d.get("rival"),
                                   **surplus_share_note(d), **mirror_evidence(d, every))
                         write_json(log_dir / "duels" / f"duel-{int(did):05d}.json", d)
+                        alarm = settled_mismatch(d, states.get(did))
+                        if alarm:
+                            run.event("accept_mismatch", duel=did, where="settled", **alarm)
 
                 if not live:
                     idle += 1

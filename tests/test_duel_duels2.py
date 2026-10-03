@@ -149,9 +149,19 @@ class AcceptRace(unittest.TestCase):
         self.assertEqual(mism[0]["approved"], [90, 0])
         self.assertEqual(mism[0]["surplus"], -29.0)
 
+    def test_settled_terms_other_than_the_approved_ones_raise_the_alarm(self):
+        d = two_issue_duel()
+        b = FakeB([d], before_accept=replace(1, 99, 10, 8))
+        st = duel.DuelState(d, 100, 16)
+        duel.try_accepts(b, Log(), [(d, st, {"action": "accept", "left": 2})], 114, cfg())
+        self.assertEqual(st.accepted_terms, (90, 0))
+        done = {**d, "status": "deal", "price": 99, "days": 10}
+        self.assertEqual(duel.settled_mismatch(done, st)["surplus"], -29.0)
+        self.assertIsNone(duel.settled_mismatch({**d, "status": "deal", "price": 90, "days": 0}, st))
+
     def test_terms_are_compared_not_only_the_offer_id(self):
         d = two_issue_duel()
-        b = FakeB([d], script={1: replace(1, 90, 10, 7)})          # same id, the day moved: 10 - 30 < 0
+        b = FakeB([d], script={1: replace(1, 95, 0, 7)})           # same id, worse terms (still acceptable)
         sent, _ = self.go(b, [d])
         self.assertFalse(sent)
         self.assertEqual(b.accepted, [])
