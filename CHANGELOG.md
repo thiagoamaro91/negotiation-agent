@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026-10-03] Ledger: Saturday cash
+
+### Fixed
+- `tools/ledger.py` rebuilds every team's cash on Saturday's feed again (Team 3 was 350 P short at tick 630, 14 of 18 teams below zero): the free starter stalls of tick 201 (`bond: 0`, `starter: true`) no longer cost 270 P; the Saturday allowance (150 P, fired at tick 165 with no cash field and gone from the schedule) is read from its note; Friday's recording hole (ticks 49-118) is filled by id from `logs/feed-vm`. Also pays bond refunds on `venue.closed` and fees charged on a team venue to its owner (new keys `refunds`, `fees_earned`; neither has happened yet), counts every card of a multi-card dealer lot, and `--json` adds `check_history` (rebuilt vs every row of `score.jsonl`) and `gaps`. Team 3 now matches its real cash at all 10 snapshots from tick 33 to 630, and no team is below zero.
+- `tests/test_ledger_saturday.py`: 12 tests (starter stall, replaced stall, refund, fee earned, grant from note and from schedule, hole fill and no fill, the committed feed against every snapshot, no negative cash); 9 fail on the old ledger.
+
 ## [2026-10-03] Sunday factory
 
 ### Added
