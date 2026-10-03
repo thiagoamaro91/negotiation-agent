@@ -1,6 +1,41 @@
-# Duels II parameters (Saturday ~18:30)
+# Duels II parameters (Saturday ~20:33)
 
-Duels II: price and delivery day, 68 duels per team (every other team twice, once per role), 16 ticks each, up to 6 at once, decay 0.08 per round. At game hour 11.65, about 18:30 Madrid if the clock keeps its pace (check `GET /api/schedule`).
+## Deploy on the Mini (copy-paste)
+
+Duels II starts at game hour 11.65, **about 20:33 Madrid** (checked at 15:35: one game hour = one real hour; Saturday closes at 23:00). Check `GET /api/schedule` before starting. Only ONE `run` process per team.
+
+**1. Update and start (any time before 20:33; the bot waits for the first duel):**
+
+```bash
+git checkout main && git pull          # PR #33 merged
+cp docs/duel-lab/duel-params-duels2-final.json results/duel-params.json
+python3 agent/duel.py selftest --n 300 --params results/duel-params.json   # must end with SELFTEST PASS
+python3 agent/duel.py watch --once --params results/duel-params.json       # read-only, one pass
+python3 agent/duel.py run --until 23:00 --params results/duel-params.json
+```
+
+This starts in **robust two-issue mode**: until the delivery-day direction is confirmed, the bot only accepts or proposes a (price, day) that clears our limit whether our best day is 0 or 10 (it proposes day 5 and asks the worst-case days cost back in price). It never takes a deal below our limit, whatever the server's wording means. In the arena robust mode costs 0.004 per duel (0.326 vs 0.330).
+
+**2. Check the first buyer AND the first seller duel** (the console prints every line; the file is `logs/duel/<today>.jsonl`):
+
+```bash
+grep -E '"event": "(duel_new|say|refused|days_ambiguous|bad_duel|accept_mismatch)"' logs/duel/$(date +%F).jsonl | head -20
+```
+
+- On `duel_new`, read the raw `days_meaning`, the sign of `days_weight`, and what the bot made of them: `days_best` (0 or 10), `days_read` (`named`: read from the sentence; `sign`: role default flipped by a negative weight; `default`: buyer 0, seller 10; `ambiguous`: also logged as `days_ambiguous`), and `days_robust=True`.
+- Work out the right best day **yourself** from the sentence: "each day later costs you" or "each day later reduces your payoff" means early is best (day 0); "each day later reduces your cost" or "each day later saves you" means late is best (day 10). The same logic applies to "earlier".
+- On the first `say` of each, check that no `refused` line follows. `missing_days`, `invalid` or any other 400 means the server rejects the message shape: **ctrl-c, post the `refused` line to the team, and do not restart until someone has looked**. A `rate_limited` or `wait_for_tick` refusal is harmless: the bot retries next tick.
+
+**3. Confirm the direction (after step 2, ideally within the first wave):**
+
+- If `days_best` is right for both roles: ctrl-c, then
+  `python3 agent/duel.py run --until 23:00 --params results/duel-params.json --days-confirmed`
+- If it is wrong for a role, or `days_read` is `ambiguous`: ctrl-c, then restart with the day you worked out for each role (this also confirms them; `--days-confirmed` is not needed):
+  `python3 agent/duel.py run --until 23:00 --params results/duel-params.json --days-best buyer:0,seller:10`
+- If you are not sure, **do not confirm**: robust mode is safe and cheap.
+- A restart is safe: the bot reads back from each duel what it already sent, and a duel in progress keeps its clock.
+
+Duels II: price and delivery day, 68 duels per team (every other team twice, once per role), 16 ticks each, up to 6 at once, decay 0.08 per round.
 
 ## Two files, one decision
 
@@ -58,6 +93,8 @@ Our utility in a two-issue duel is the price surplus minus our days cost, and th
 3. Otherwise the role default, **a buyer wants delivery early (day 0), a seller late (day 10)**, flipped by a negative `your_days_weight`. The flip only applies when `days_meaning` named no direction.
 4. An ambiguous `days_meaning` (both directions, or a direction with no clear effect) keeps the role default unflipped and logs `days_ambiguous`: set `--days-best` per role.
 
+**Until the direction is confirmed** (`--days-confirmed`, or `--days-best` for that role), this best day is only logged: decisions run in robust mode (Deploy, step 1).
+
 `days_meaning` is logged raw the first time a duel shows it, with `days_best` and `days_read` (override / named / ambiguous / sign / default) on the `duel_new` line. **Read the first Duels II duels' log lines** (operator step below).
 
 **What we offer:**
@@ -74,10 +111,10 @@ Superseded by "Duels II fixes" below: pull the branch first, then use `duel-para
 cp docs/duel-lab/duel-params-duels2-final.json results/duel-params.json
 python3 agent/duel.py selftest --n 300 --params results/duel-params.json
 python3 agent/duel.py watch --once --params results/duel-params.json
-python3 agent/duel.py run --until 21:00 --params results/duel-params.json
+python3 agent/duel.py run --until 23:00 --params results/duel-params.json
 ```
 
-68 duels at up to 6 at once over 16-tick duels is about 12 waves, roughly 1 h 40 min at 30 s ticks: `--until 21:00` leaves margin.
+68 duels at up to 6 at once over 16-tick duels is about 12 waves, roughly 1 h 40 min at 30 s ticks. With the start at ~20:33, `--until 23:00` (closing time) leaves margin.
 
 ## Duels II fixes (Saturday afternoon, after Duels I)
 
@@ -134,6 +171,11 @@ Default on (bug fixes, each with a test that fails on the old code):
 | two-issue payload (audit 3) | two-issue messages send `{"text", "price", "days", "offer": {"price", "days"}}`; the kit's `duel_say` sent no top-level `days`. Price-only messages are unchanged | |
 | rival names our best day (audit 4) | we offer that day with no premium | we offered the day neither side wanted, plus a premium |
 | settlement alarm (review item 6) | `accept_mismatch` on a settled duel is computed with the configured `--days-best` | with `buyer:10`, approved (90, 10) and settled (90, 0) reported +10 instead of -20 |
+| robust two-issue mode (re-review 1b) | until `--days-confirmed`, or an explicit `--days-best` for the role, every days cost is taken at its worst over best day 0 and best day 10 (`days_unconfirmed`). Accepts and proposals then clear MIN_SURPLUS under both readings (`robust_offer`: the rival's day when days are cheap and the worst case clears, else day 5 with its worst-case cost asked back in price), and `decide` never sends a two-issue number that does not clear. The parser now only feeds the log (`days_read`, `days_robust`) | the live wording has never been seen; a wrong reading can no longer produce a deal below our true limit (arena test with a misleading sentence: 0 losing deals robust, several when trusting the parse). Cost: 0.004 per duel in the arena |
+| direction wording (re-review 1a) | what goes up or down decides first: "reduces your payoff / value / score" is bad, "reduces your cost / penalty" is good, "raises your cost" is bad; plain words (saves, better / costs, loses) only without such a pair; mixed signals are ambiguous | the first parser read "each day later reduces your payoff" backwards: a buyer at 100 with weight 3 would accept (90, 10) as +10 when it is -20 |
+| one accept POST (re-review 2) | `post_accept`: the kit client's retries set to 0 and its timeout capped to the time left for that one call (kit/ untouched); a rate-limited accept is refused, and the next tick re-reads and decides again | two rate-limited answers pushed the third POST into the next tick, on the previous tick's approval |
+| late-pass failure (re-review 3) | a late pass that ends without an accept for lack of time, a failed read or a refusal returns False (`late_failed` line), so the next tick accepts in its first read | at 15 s ticks a slow read at D-2 deferred D-1 to another late read, and the duel could expire |
+| fresh revalue (re-review, can wait: fixed) | every re-read refreshes all remaining candidates (`refresh_candidates`) before the next plan | A unacceptable and B improved to 150 on the same re-read: the stale plan took C at 90 and let B expire |
 | deadline-1 for lone duels (audit 6) | documented and exposed as `--window-retry N` (default 1 = unchanged: a lone duel whose rival still concedes is taken at deadline-2, deadline-1 kept as retry; 0 = take it at deadline-1) | not used: realistic 0.329 vs 0.330, and 0.163 vs 0.221 if a deadline-1 accept fails |
 
 Off by default, measured above, **all killed** for Duels II:
@@ -146,26 +188,17 @@ Flags off leave `decide()` and every number we send unchanged: test `FlagsOff` h
 
 ### Operator step: the first Duels II duels (conductor)
 
-The two-issue path has never run on real data. As soon as the first duels appear:
-1. In `logs/duel/<date>.jsonl`, read the `duel_new` line of the **first buyer and the first seller**: the raw `days_meaning`, the sign of `days_weight`, and what the bot made of it, `days_best` and `days_read` (`named`: read from `days_meaning`; `sign`: role default flipped by a negative weight; `default`; `ambiguous`: role default, also logged as `days_ambiguous`). The role default is buyer day 0 (early), seller day 10 (late). Check `days_best` against the sentence by hand.
-2. Read the first `say` line of each: a `refused` with `missing_days` (or any 4xx) means the payload is wrong. Stop the run and call it out.
-3. If the best day is wrong for a role: ctrl-c, then restart with the explicit flag (it beats the params file), e.g. `python3 agent/duel.py run --until 21:00 --params results/duel-params.json --days-best buyer:10,seller:0`, or one role only: `--days-best seller:0`. A restart picks up the messages we already sent from the duel itself.
-4. Watch for `accept_mismatch` lines (an accept that settled on other terms than the ones approved).
+The two-issue path has never run on real data, so it starts robust. Steps 2 and 3 of "Deploy on the Mini" at the top. Also watch for `accept_mismatch` (an accept that settled on other terms than the ones approved), `bad_duel` (a malformed duel, skipped) and `late_failed` / `late_off` (late-read trouble) lines.
 
-### On the Mini (Duels II, ~18:30)
+### On the Mini (Duels II, ~20:33)
 
-```bash
-git pull   # this branch's agent/duel.py, once merged
-cp docs/duel-lab/duel-params-duels2-final.json results/duel-params.json
-python3 agent/duel.py selftest --n 300 --params results/duel-params.json
-python3 agent/duel.py watch --once --params results/duel-params.json
-python3 agent/duel.py run --until 21:00 --params results/duel-params.json
-```
+See "Deploy on the Mini" at the top of this file.
 
 ### Sunday note (Duels III and the Final: 15 s ticks, 12-tick duels)
 
 - Set `"duel_ticks": 12` and `"late_poll": 4` in the params file (8 s before the end of a 15 s tick is too early to see the rival's same-tick message). A running loop takes a new duel's length from the tick it appears in, but after a restart mid-duel it falls back to `duel_ticks` (unless the API shows a start or length field).
 - The late-read kill switch never re-enables: after 2 failed late reads in a row (`late_off` in the log) the run accepts in the first read only for the rest of the run. Restart the run to re-arm it.
 - `--idle-ticks 40` is 10 minutes at 15 s ticks: the run exits after 10 minutes without a live duel. Start a fresh run for the Final.
+- Each fresh run starts robust again: pass `--days-confirmed` (or the per-role `--days-best`) once the direction is known from Saturday.
 
 Reproduce the tables: `python3 tools/duel_arena.py --session 2 --sessions 150 --seed0 1200000 --slot-busy 0.03 --pair-seen 0 --weights duels1 --stress --params docs/duel-lab/duel-params-duels2-tuned-plus10.json --params docs/duel-lab/duel-params-duels2-final.json` (add a params file with a flag on to measure it).
