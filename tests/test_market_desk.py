@@ -391,7 +391,8 @@ class DeskLoop(unittest.TestCase):
         self.lines = []
         clock = FakePublic([]).clock()
         self.now = 1_000_000.0 + clock["tick"] * 30 + 25          # 25 s into the tick: second half
-        self.lease = Lease("market", state_dir=self.dir, now=lambda: self.now, log=MemLog())
+        self.lease = Lease("market", state_dir=self.dir, now=lambda: self.now, log=MemLog(),
+                           duel_lock=self.dir / "duel.lock")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -474,9 +475,19 @@ class DeskLoop(unittest.TestCase):
             md.PublicClient("http://127.0.0.1:9").get("/api/me")
         self.assertEqual(e.exception.code, "not_public")
 
+    def test_never_accepts_while_duel_lock_is_fresh(self):
+        (self.dir / "duel.lock").write_text(f"{self.now + 90:.1f}\n")
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
+        res = d.tick(d.public.clock())
+        self.assertIsNone(res["accept"])
+        self.assertIn("duel.lock", rec(res, 1)["reason"])
+        self.assertEqual(rec(res, 1)["action"], "defer")
+        self.assertEqual([w for w in k.writes if w[0] == "accept"], [])
+        self.assertTrue([w for w in k.writes if w[0] == "list"])   # bids go on: a filled bid is the seller's accept
+
     def test_run_yields_a_taken_accept(self):
         from lease import Lease
-        other = Lease("chato", state_dir=self.dir, now=lambda: self.now, log=MemLog())
+        other = Lease("chato", state_dir=self.dir, now=lambda: self.now, log=MemLog(), duel_lock=None)
         self.assertTrue(other.claim_accept(FakePublic([]).clock(), Lease.DEALER_FINAL))
         d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
         d.tick(d.public.clock())

@@ -20,7 +20,8 @@ Every tick, one pass:
      The accepting side pays the fee, so we pay it here. Never the only copy of a card on a protected page (LAV).
   4. One accept per tick for the whole team, so only the best-gain candidate is taken; the rest are logged as
      deferred. In `run` it goes through agent/lease.py at MARKET priority (after half the tick, never in a duel's
-     last ticks, never twice in a tick).
+     last ticks, never twice in a tick). Never while results/duel.lock is fresh (agent/duel.py holds the team's
+     accept slot while any of our duels is live): every candidate is then logged as deferred.
   5. BID: our own want-to-buy offers (give cash, want {"cards": [ref]}) on El Rastro only, for page cards we lack.
      The seller who accepts pays the fee, so our gain is value - bid. Price = an anchor from the observed prices
      (team trades for that card, else its set and rarity, else its rarity, else 80 % of book), raised by --bid-step
@@ -79,6 +80,7 @@ URL = "https://bazaar.causaprima.ai"
 HOME = "rastro"
 STATE = LOGS / "state"
 HEARTBEAT = STATE / "desk-market.json"
+DUEL_LOCK = ROOT / "results" / "duel.lock"   # agent/duel.py run: expiry (epoch seconds) while any duel is live
 ME_SNAPSHOT = STATE / "me.json"
 OFFERS_SNAPSHOT = STATE / "offers.json"
 FEED_FILES = [LOGS / "feed-vm" / "feed.jsonl", LOGS / "feed" / "feed.jsonl"]
@@ -651,7 +653,7 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             records.append({**rec, "kind": shape if shape != "other" else "skip", "card": None, "action": "skip",
                             "reason": f"structure: {shape} (not a one-card listing or bid)"})
 
-    # one accept per tick: the best gain; one per card
+    # one accept per tick: the best gain; one per card. Never while agent/duel.py holds results/duel.lock.
     cands.sort(key=lambda c: (-c["gain"], c.get("price") or 0, c.get("offer") or 0))
     accept, taken_refs = None, set()
     for c in cands:
@@ -659,7 +661,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             records.append({**c, "action": "skip", "reason": "a better offer on the same card"})
             continue
         taken_refs.add(c["card"])
-        if accept is None:
+        if snap.get("duel_lock"):
+            records.append({**c, "action": "defer", "reason": "results/duel.lock is fresh: the duel bot holds "
+                                                              "the team's accept slot"})
+        elif accept is None:
             accept = c
             note = ""
             if c["side"] == "buy" and (bidbook.get(c["card"]) or {}).get("offer") is not None:
@@ -1046,7 +1051,17 @@ class Desk:
         return {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
                 "me_id": acct["id"], "cash": acct["cash"] + shadow_cash,
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
-                "account_source": acct.get("source")}
+                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh()}
+
+    def duel_lock_fresh(self) -> bool:
+        """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
+        on: a seller filling our bid uses THEIR accept, not ours)."""
+        if self.lease is not None:
+            return self.lease.duel_lock_fresh()
+        try:
+            return float(DUEL_LOCK.read_text().split()[0]) > time.time()
+        except (OSError, ValueError, IndexError):
+            return False
 
     def sync_bids(self, snap: dict) -> None:
         """Our live bids. run: what /api/me/offers says (give cash, want one card, on our bid venue). watch: the

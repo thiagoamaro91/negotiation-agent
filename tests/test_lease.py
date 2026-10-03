@@ -59,6 +59,7 @@ class Base(unittest.TestCase):
         self.tmp.cleanup()
 
     def desk(self, name, **kw):
+        kw.setdefault("duel_lock", self.dir / "duel.lock")
         return Lease(name, state_dir=self.dir, now=self.ft, sleep=self.ft.sleep, log=self.log, **kw)
 
 
@@ -114,6 +115,23 @@ class Accept(Base):
             self.assertEqual(self.log.rows[-1]["why"], "duel_window")
             self.assertTrue(duel.claim_accept(c, Lease.DUEL, ticks_left=105 - tick), tick)
         self.assertTrue(market.claim_accept(self.ft.at(106, 0.9).clock(106), Lease.MARKET))         # window over
+
+    def test_duel_lock_from_duel_py(self):
+        duel, dealer, market = self.desk("duel"), self.desk("chato"), self.desk("market")
+        lock = self.dir / "duel.lock"
+        c = self.ft.at(110, 0.9).clock(110)
+        lock.write_text(f"{self.ft.t + 90:.1f}\n")         # duel.py: expiry 3 ticks ahead, epoch seconds
+        self.assertTrue(market.duel_lock_fresh())
+        self.assertFalse(dealer.claim_accept(c, Lease.DEALER_FINAL))
+        self.assertEqual(self.log.rows[-1]["why"], "duel_lock")
+        self.assertFalse(market.claim_accept(c, Lease.MARKET))
+        self.assertTrue(duel.claim_accept(c, Lease.DUEL, ticks_left=9))
+        c = self.ft.at(114, 0.9).clock(114)                 # 4 ticks later the lock has expired
+        self.assertFalse(market.duel_lock_fresh())
+        self.assertTrue(market.claim_accept(c, Lease.MARKET))
+        for junk in ("", "x\n"):
+            lock.write_text(junk)
+            self.assertFalse(market.duel_lock_fresh(), junk)
 
     def test_claims_expire_with_their_tick(self):
         a, b = self.desk("chato"), self.desk("market")
@@ -185,7 +203,7 @@ class Bucket(Base):
 def _desk_proc(name, state_dir, ticks, seed, barrier, out):
     rng = random.Random(seed)
     ft = FakeTime()
-    lz = Lease(name, state_dir=state_dir, now=ft, log=MemLog())
+    lz = Lease(name, state_dir=state_dir, now=ft, log=MemLog(), duel_lock=None)
     for tick in ticks:
         plan = {d: (rng.choice([Lease.DUEL, Lease.DEALER_FINAL, Lease.MARKET]), rng.randint(0, 9))
                 for d in ("p0", "p1", "p2")}   # every process draws the same plan for the tick
@@ -199,7 +217,7 @@ def _desk_proc(name, state_dir, ticks, seed, barrier, out):
 
 
 def _token_proc(state_dir, n, barrier, out):
-    lz = Lease("x", state_dir=state_dir, log=MemLog(), rate=50, burst=1)
+    lz = Lease("x", state_dir=state_dir, log=MemLog(), rate=50, burst=1, duel_lock=None)
     barrier.wait()
     first = None
     for _ in range(n):

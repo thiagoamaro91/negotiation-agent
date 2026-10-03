@@ -13,6 +13,10 @@ Rules (docs/plans/key-lease.md):
     refused while a better-ranked intent from another desk is live in the same tick.
   - Duel window: while any registered duel is within DUEL_WINDOW (3) ticks of its deadline (deadline - 3 <= tick <=
     deadline), nothing but DUEL may accept. The duel desk registers each deadline with register_duel().
+  - duel.lock (today's stopgap, honoured as is): while results/duel.lock is fresh (first token = expiry, epoch
+    seconds; agent/duel.py `run` rewrites it every tick while any of our duels is live and it expires LOCK_TICKS = 3
+    ticks after its last refresh), nothing but DUEL may claim the accept either (refusal `duel_lock`). So the lease
+    works with today's duel.py, which does not call the lease yet; duel_lock_fresh() is there for desks to check.
   - Listings: the per-tick limit from the clock's `limits` is split by quota (QUOTAS, out of QUOTA_BASE = 12, scaled
     to the limit in force); whatever no named desk owns is a spare pool any desk may use. Claim cancels too.
   - Requests: a shared token bucket at RATE (4) per second, one below the server's 5, so one desk's burst cannot make
@@ -42,6 +46,19 @@ repeated on the next tick):
     n = lease.claim_listings(clock, 2)          # how many of the 2 it may post or cancel this tick
     # before every keyed request (blocks until a token is free)
     lease.throttle()
+
+From the duel.lock stopgap to the lease (later, one agent at a time; the lease honours the lock meanwhile):
+  1. duel.py: keep write_lock()/clear_lock() for now; each tick also call lease.register_duel(clock, duel_id,
+     deadline_tick) for every live duel, and put lease.claim_accept(clock, Lease.DUEL, ticks_left=deadline - tick)
+     in front of each b.duel_accept() (it already sorts its duels most urgent first). The lock holds the slot for
+     the whole wave; the lease's window is the last 3 ticks of each duel. To keep the whole-wave hold without the
+     lock, build every Lease with duel_window=16 (the duel length).
+  2. chato.py: replace the start-up refusal (duel_lock_fresh) with lease.claim_accept(clock, Lease.DEALER_FINAL)
+     before accepting his final offer (Lease.OTHER for any other accept); a refusal means "try next tick".
+  3. rastro_seller.py: in Seller.accept(), replace `if self.lock_fresh()` with
+     `if not lease.claim_accept(clock, Lease.OTHER, ref=...)` (defer, as today); route kind == "offer" writes in
+     Seller.write() through lease.claim_listings(clock, 1) under the desk name "seller" (6 of the 12 per tick).
+  4. When all three call the lease, duel.py can stop writing results/duel.lock.
 """
 from __future__ import annotations
 
@@ -58,6 +75,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
 
 STATE_DIR = ROOT / "logs" / "state"
+DUEL_LOCK = ROOT / "results" / "duel.lock"   # agent/duel.py's stopgap accept-slot lock (expiry, epoch seconds)
 DUEL_WINDOW = 3            # ticks before a duel's deadline (inclusive) in which only duels may accept
 RATE = 4.0                 # shared requests per second (the server allows 5, bursts of 20)
 BURST = 4.0                # bucket size
@@ -88,7 +106,7 @@ class Lease:
 
     def __init__(self, desk: str, *, state_dir: Path | str | None = None, now=time.time, sleep=time.sleep,
                  log=None, rate: float = RATE, burst: float = BURST, quotas: dict | None = None,
-                 duel_window: int = DUEL_WINDOW):
+                 duel_window: int = DUEL_WINDOW, duel_lock: Path | str | None = DUEL_LOCK):
         self.desk = str(desk)
         self.dir = Path(state_dir) if state_dir else STATE_DIR
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -99,6 +117,7 @@ class Lease:
         self.rate, self.burst = float(rate), float(burst)
         self.quotas = dict(QUOTAS if quotas is None else quotas)
         self.duel_window = int(duel_window)
+        self.duel_lock = Path(duel_lock) if duel_lock else None
         self._log = log
 
     # ------------------------------------------------ plumbing
@@ -171,6 +190,15 @@ class Lease:
                 return
             (st.get("duels") or {}).pop(str(duel_id), None)
 
+    def duel_lock_fresh(self) -> bool:
+        """True while agent/duel.py holds results/duel.lock (read as chato.py and rastro_seller.py read it)."""
+        if self.duel_lock is None:
+            return False
+        try:
+            return float(self.duel_lock.read_text().split()[0]) > self.now()
+        except (OSError, ValueError, IndexError):
+            return False
+
     def _window(self, st: dict) -> list:
         t = st["tick"]
         return sorted(k for k, d in (st.get("duels") or {}).items() if int(d) - self.duel_window <= t <= int(d))
@@ -203,7 +231,7 @@ class Lease:
                 st["accept"] = {"desk": self.desk, "priority": int(priority), "ticks_left": ticks_left, "ref": ref,
                                 "at": self.now()}
                 (st.get("intents") or {}).pop(self.desk, None)
-            elif why in ("outranked", "first_half", "duel_window"):  # still wants it: let lower desks know
+            elif why in ("outranked", "first_half", "duel_window", "duel_lock"):  # still wants it: lower desks wait
                 st.setdefault("intents", {}).setdefault(self.desk, {"rank": list(self._rank(priority, ticks_left)),
                                                                     "ref": ref, "at": self.now()})
             holder = (st.get("accept") or {}).get("desk")
@@ -221,6 +249,8 @@ class Lease:
             return "taken"
         if priority != self.DUEL and self._window(st):
             return "duel_window"
+        if priority != self.DUEL and self.duel_lock_fresh():
+            return "duel_lock"
         if priority >= self.MARKET:
             elapsed = self.now() - float(st.get("tick_started") or 0)
             if elapsed < float(st.get("tick_seconds") or 30.0) / 2:
