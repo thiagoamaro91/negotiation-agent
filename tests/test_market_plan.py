@@ -153,6 +153,11 @@ class PlanOnTheCommittedFeed(unittest.TestCase):
         self.assertTrue(ps)
         self.assertLessEqual(max(ps), mp.P_CAP)
 
+    def test_one_teams_chance_includes_whether_it_notices_at_all(self):
+        buyers = [b["p"] for s in self.p["sells"] for b in s.get("likely_buyers", [])]
+        self.assertTrue(buyers)
+        self.assertLessEqual(max(buyers), mp.ATTENTION)  # was 1.0 for t04, t14, t07 on LAV-08 before the fix
+
 
 class PageBonus(unittest.TestCase):
     def test_off_unless_the_desk_confirms_it_read_at_plan_time(self):

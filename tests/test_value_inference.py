@@ -46,22 +46,23 @@ class Label(unittest.TestCase):
 
 class Reliability(unittest.TestCase):
     def test_bins_count_mean_and_observed(self):
-        rows = vi.reliability([(0.25, True), (0.35, False), (0.65, True), (0.62, False)])
+        rows = vi.reliability([(0.25, True), (0.35, False), (0.3, False), (0.65, True), (0.62, False)])
         by = {(b["lo"], b["hi"]): b for b in rows}
         self.assertEqual(by[(0.0, 0.3)]["n"], 1)
         self.assertEqual(by[(0.0, 0.3)]["observed"], 1.0)
+        self.assertEqual(by[(0.3, 0.4)]["n"], 2)   # a bin includes its lower edge
         self.assertEqual(by[(0.3, 0.4)]["observed"], 0.0)
         self.assertEqual(by[(0.6, 0.7)]["n"], 2)
         self.assertAlmostEqual(by[(0.6, 0.7)]["predicted"], 0.635)
         self.assertEqual(by[(0.6, 0.7)]["observed"], 0.5)
-        self.assertEqual(sum(b["n"] for b in rows), 4)
+        self.assertEqual(sum(b["n"] for b in rows), 5)
 
     def test_time_split_reports_the_naive_baseline_and_the_table(self):
         m = vi.Model(SETS, IN_PLAY, BOOK)
-        by_team = {"tA": [choose(1, "LAV-01"), choose(2, "LAV-02"), choose(3, "LAV-03")]}
+        by_team = {"tA": [choose(1, "LAV-01"), choose(2, "LAV-02"), choose(3, "MAL-01")]}
         r = m.time_split(by_team)
         self.assertEqual(r["n"], 3)
-        self.assertAlmostEqual(r["naive_hit"], 2 / 3)  # no past at the first choice, then 'repeat LAV' is right twice
+        self.assertAlmostEqual(r["naive_hit"], 1 / 3)  # no past at the first choice, 'repeat LAV' right once, then wrong
         self.assertEqual(len(r["reliability"]), len(vi.RELIABILITY_BINS) - 1)
         self.assertEqual(sum(b["n"] for b in r["reliability"]), 3)
         self.assertEqual(sum(v["n"] for v in r["by_label"].values()), 3)
