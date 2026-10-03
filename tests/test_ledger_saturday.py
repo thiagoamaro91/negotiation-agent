@@ -433,6 +433,12 @@ class Grants(unittest.TestCase):
                           key=lambda r: order[r[1] == "gift.given"])
             once = ledger.build(feed(*rows))
             self.assertEqual([once[t]["cash"] for t in TEAMS], [800, 800, 800], order)
+        later = ledger.build(feed((5, "announcement", payday),
+                                  (6, "gift.given", {"team": "t01", "cash": 400, "cards": [], "reason": "payday"})), upto=5)
+        self.assertEqual([later[t]["cash"] for t in TEAMS], [800, 800, 800])  # a gift after `upto` hides nothing
+        other = ledger.build(feed((5, "announcement", payday),
+                                  (5, "gift.given", {"team": "t01", "cash": 10, "cards": [], "reason": "a tip"})))
+        self.assertEqual([other[t]["cash"] for t in TEAMS], [810, 800, 800])  # a gift of another amount is extra money
         words = ledger.build(feed((5, "announcement", {"text": "Play resumes now."}),
                                   (5, "venue.announcement", payday)))  # a team's own venue cannot pay anyone
         self.assertEqual([words[t]["cash"] for t in TEAMS], [400, 400, 400])
