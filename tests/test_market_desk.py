@@ -432,6 +432,28 @@ class DeskLoop(unittest.TestCase):
         d.tick(d.public.clock())
         self.assertEqual(k.writes, [])
 
+    def test_run_decides_again_on_fresh_reads(self):
+        d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
+        calls = {"n": 0}
+        first = d.public.board
+
+        def board(vid):   # the listing is gone by the time the desk re-reads before accepting
+            calls["n"] += 1
+            return first(vid) if calls["n"] == 1 else {"offers": []}
+        d.public.board = board
+        d.tick(d.public.clock())
+        self.assertEqual([w for w in k.writes if w[0] == "accept"], [])
+
+    def test_read_only_clients_refuse_writes_before_the_network(self):
+        ro = md.ReadOnlyBazaar("http://127.0.0.1:9", "tk-test-only", wait_on_tick=False, retries=0)
+        for call in (lambda: ro.accept(1), lambda: ro.cancel(1), lambda: ro.list_offer({"cash": 1}, {"cards": ["LAV-09"]})):
+            with self.assertRaises(md.BazaarError) as e:
+                call()
+            self.assertEqual(e.exception.code, "read_only")
+        with self.assertRaises(md.BazaarError) as e:
+            md.PublicClient("http://127.0.0.1:9").get("/api/me")
+        self.assertEqual(e.exception.code, "not_public")
+
     def test_run_yields_a_taken_accept(self):
         from lease import Lease
         other = Lease("chato", state_dir=self.dir, now=lambda: self.now, log=MemLog())
