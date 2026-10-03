@@ -37,7 +37,7 @@ BOTS = (chato, abuela)
 # module globals that main() or a test may change; saved and restored around every test
 GLOBALS = ("CASH_RESERVE", "MAX_ROUNDS", "ANCHOR_ABS", "STEP", "MAX_BID", "RUN", "DEALER", "DEALER_NAME",
            "SELL_RARITIES", "DEALER_SELLS_CARDS", "SELL_ANCHOR_MULT", "SELL_ANCHOR_OVER_FLOOR", "SELL_ANCHOR_ABS",
-           "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread")
+           "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread", "RunLog")
 
 
 class NullRun:
@@ -84,9 +84,11 @@ class VirtualClock:
     100, paused between virtual seconds [pause_from, pause_to). While paused the tick is frozen and next_tick_in is
     `paused_next`."""
 
-    def __init__(self, pause_from=None, pause_to=None, tick_seconds=15.0, paused_next=5.0, doors_closed=()):
+    def __init__(self, pause_from=None, pause_to=None, tick_seconds=15.0, paused_next=5.0, doors_closed=(),
+                 frozen=None):
         self.now = 0.0
         self.pause_from, self.pause_to = pause_from, pause_to
+        self.frozen = frozen  # (from, to) virtual seconds in which the clock says running but its tick does not move
         self.ts, self.paused_next = tick_seconds, paused_next
         self.doors_closed = doors_closed  # (from, to) virtual seconds with doors closed and the clock running
         self.reads = 0
@@ -101,11 +103,12 @@ class VirtualClock:
         return self.pause_from is not None and self.pause_from <= self.now < self.pause_to
 
     def running_time(self):
-        if self.pause_from is None or self.now < self.pause_from:
-            return self.now
-        if self.now < self.pause_to:
-            return self.pause_from
-        return self.now - (self.pause_to - self.pause_from)
+        rt = self.now
+        for a, z in ((self.pause_from, self.pause_to), self.frozen or (None, None)):
+            if a is None or self.now < a:
+                continue
+            rt -= (min(self.now, z) - a)
+        return rt
 
     def tick(self):
         return 100 + int(self.running_time() // self.ts)
@@ -161,8 +164,8 @@ class FakeServer:
 
     def __init__(self, dealer="chato", side="sell", opening=16, replies=(), final=None, item="MAL-06", asset_id=42,
                  expiry=4, cash=1000, opening_final=False, pause=None, clock_down=None, tick_seconds=15.0,
-                 max_requests=5000, assets=(), cards=None, values=None):
-        self.vc = VirtualClock(*(pause or (None, None)), tick_seconds=tick_seconds)
+                 max_requests=5000, assets=(), cards=None, values=None, frozen=None):
+        self.vc = VirtualClock(*(pause or (None, None)), tick_seconds=tick_seconds, frozen=frozen)
         self.dealer, self.side, self.item, self.asset_id = dealer, side, item, asset_id
         self.opening, self.opening_final = opening, opening_final
         self.replies, self.final, self.expiry, self.cash = list(replies), final, expiry, cash
@@ -181,6 +184,7 @@ class FakeServer:
         self.inject = {k: [] for k in ("accept", "say", "close", "thread", "open", "me")}
         self.reply_delay = {}                 # our price -> ticks until the dealer answers (default 1)
         self.hooks = []                       # fn(server, tick), run after the dealer's own turn each tick
+        self.request_hooks = []               # fn(server, method, path), run before each request is handled
         self.lock_probe, self.lock_violations, self.first_accept_at = None, [], None
         self.requests, self.said, self.accepted, self.closes = [], [], [], []
         self.processed = self.vc.tick()
@@ -285,6 +289,8 @@ class FakeServer:
 
     def handle(self, method, path, query, body):
         self._process()
+        for h in self.request_hooks:
+            h(self, method, path)
         t = self.tick()
         self.requests.append((t, method, path))
         if len(self.requests) > self.max_requests:
@@ -480,6 +486,7 @@ def run_main(mod, argv, account_cls=None, lock=False, server=None):
     if account_cls is not None:
         mod.Bazaar = account_cls
     mod.load_env, mod.RUN, mod.save_thread = (lambda: None), run, (lambda *a, **k: None)
+    mod.RunLog = lambda *a, **k: run   # main() rebinds RUN = RunLog(dealer) for a non-default dealer: keep it fake
     mod.duel_lock_fresh = lock if callable(lock) else (lambda *a: lock)
     os.environ["BAZAAR_KEY"], os.environ["BAZAAR_URL"] = "test-dummy", "http://fake.invalid"
     sys.argv = [f"{mod.__name__}.py"] + list(argv)

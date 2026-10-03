@@ -45,6 +45,19 @@
 - The duel bot is checked for freshness while a scheduled wave is live; gates need explicit `doors` and `paused` values; notifications are deduplicated per incident.
 - 17 tests added or changed (14 failed on 21c5efa, 3 are controls); 16 more mutations, all caught.
 
+## [2026-10-03] Dealer bots: post-merge audit of #35 (afternoon)
+
+### Fixed
+- `agent/chato.py`, `agent/abuela.py`: the printed `--resume` command carries every limit and override of the run (`--cap`, `--reserve`, `--floor`, `--sell-anchor`, `--sell-step`, `--anchor`, `--step`, `--max-bid`, `--max-rounds`, `--max-defer-ticks`, `--dealer`, `--allow-single`, `--only`); following the old line could take an 80 the operator had capped at 50.
+- Both bots: an accept whose settlement cannot be confirmed (thread unreadable, or no confirmed tick) is `unsettled`: the plan stops with exit 6 and one line naming the thread, instead of counting nothing and starting more trades.
+- `agent/dealer_client.py`: `Rounds.wait` blocks until a tick is confirmed, so no decision or write follows an unconfirmed wait (no same-tick resend while the game is frozen, the max-bid stall counts ticks); after 5 unconfirmed waits in a row the thread is closed (`clock_lost`, exit 7, or exit 4 with the resume line if the close fails).
+- Both bots: the status line (exits 3 to 7) is printed before the final account read, which is best effort.
+- Review of #38: a confirmed tick clears the lost-clock state, so a clock that recovers while the clock_lost close is refused lets the bot read again and take an in-limit final instead of closing on it; the exit 6 line names the side and the card (and the copy for a sell).
+- Both bots: `--resume` is no longer skipped by the cash check for a new conversation; the thread is read and resolved inside its limit, and a resumed buy whose earlier bid is above what may be spent now, or with nothing spendable at all, is closed.
+
+### Tests
+- `tests/test_dealer_followup.py`: 27 tests, all failing on `main` before the fix (six of them added after reviews, each failing on the commit before its fix too). `tests/dealer_fakes.py`: a frozen-clock window and request hooks. `tests/test_dealer_loop.py`: the pause test's clock outage shortened to 200 s (under the new 5-wait bound). `run_main` now also fakes `RunLog`, which `main()` rebinds for a non-default dealer (a pilar run test had appended to the committed `logs/`; restored).
+
 ## [2026-10-03] Dealer bots: lunch fixes
 
 ### Fixed

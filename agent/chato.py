@@ -26,8 +26,13 @@ Only ONE process per team may talk to El Chato at a time (one open conversation 
 `run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds), and
 re-checks the lock before every accept: while it is fresh the accept waits a tick (no round spent).
 `run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it;
-4 when a thread could not be closed (one line with the --resume command: the dealer's only slot may still be held);
-5 when the duel lock stayed fresh for --max-defer-ticks (default 60) and the thread was closed without a deal.
+4 when a thread could not be closed (one line with the --resume command, carrying every limit of this run:
+the dealer's only slot may still be held); 5 when the duel lock stayed fresh for --max-defer-ticks (default 60) and the
+thread was closed without a deal; 6 when an accept went out but its settlement could not be confirmed (the plan
+stops: the trade may have happened); 7 when the game clock could not be confirmed for 5 waits in a row (the thread
+was closed). The status line is printed before the final account read, which is best effort.
+`--resume` skips the cash check for a new conversation: the thread is read and resolved inside its limit (a resumed
+buy whose earlier bid is above what may be spent now, or with nothing spendable, is closed).
 The client never lets the SDK resend a write, counts a round only for a confirmed new tick, and waits through a paused
 clock with one line a minute (agent/dealer_client.py).
 
@@ -63,9 +68,10 @@ sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import BazaarError  # noqa: E402
 # the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
-from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOSE_FAILED,  # noqa: E402,F401
-                           EXIT_LOCK_TIMEOUT, EXIT_RESERVE, MAX_DEFER_TICKS, Rounds, close_failed_line,
-                           guarded_accept, lock_timeout_line, reserve_line, try_close)
+from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOCK_LOST,  # noqa: E402,F401
+                           EXIT_CLOSE_FAILED, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS, MAX_FAILED_WAITS,
+                           Rounds, clock_lost_line, close_failed_line, command, flag_value, guarded_accept,
+                           lock_timeout_line, reserve_line, settle_trade, try_close, unsettled_line)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redacted (main() swaps it per --dealer)
@@ -226,7 +232,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
     if resume:
         # pick up a conversation an earlier process left open: our last number comes from the first good read
         tid = resume
-    else:
+    resumed = bool(resume)  # a resumed buy never goes on above what it may spend now (see below)
+    if not resume:
         try:
             th = b.open_thread(DEALER, topic=topic)
         except BazaarError as e:
@@ -249,6 +256,11 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         return None
 
     while True:
+        if rounds.lost:  # no tick could be confirmed for MAX_FAILED_WAITS waits: decide nothing, close
+            r = close("clock_lost", "clock_lost", waits=rounds.failed_waits, ours=ours, her=last_her)
+            if r:
+                return r
+            continue
         spent = rounds.spent()
         try:
             t = b.thread(tid)
@@ -324,6 +336,13 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
                     return r
                 continue
             why = "final"
+        elif resumed and side == "buy" and ((ours is not None and ours > reservation) or reservation < 1):
+            # 1b) a resumed buy whose earlier bid is above what we may spend now (cash, reserve, --cap), or with
+            #     nothing spendable at all: close it, never a new number above the limit (or at or below zero)
+            r = close("resume_over_limit", "walked_by_us", ours=ours, reservation=reservation)
+            if r:
+                return r
+            continue
         elif spent:
             # 2) the round budget is spent: never close on a standing offer inside our reservation
             if not good(her):
@@ -402,18 +421,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
 
 
 def settle(b: Bazaar, tid: int, price: int) -> dict:
-    t: dict = {}
-    for _ in range(4):  # it settles on the next tick
-        b.wait_tick()
-        try:
-            t = b.thread(tid)
-        except BazaarError as e:
-            log("read_refused", thread=tid, code=e.code, msg=e.message)
-            continue
-        if t.get("status") != "open":
-            break
-    log("result", thread=tid, status=t.get("status"), price=price, reason=t.get("closed_reason"))
-    return {"result": t.get("status"), "thread": tid, "price": price}
+    """It settles on the next tick; "unsettled" if that cannot be confirmed (the caller stops the plan)."""
+    return settle_trade(b, tid, price, log)
 
 
 # ---------------------------------------------------------------- what to trade
@@ -578,6 +587,23 @@ def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single:
     return out
 
 
+def resume_command(args: argparse.Namespace, target: dict, tid: int) -> str:
+    """The command that continues thread `tid` with every limit and override this run had, so following it can
+    never take a price this run was not allowed to take (--cap, --reserve, --floor, anchors, steps, --max-bid...)."""
+    spec = target["item"] if target["side"] == "buy" else f"sell:{target['asset_id']}"
+    flags = [] if args.dealer == DEFAULT_DEALER else ["--dealer", args.dealer]
+    flags += ["--only", spec]
+    if args.allow_single and target["side"] == "sell":
+        flags.append("--allow-single")
+    for name, v in (("--cap", args.cap), ("--reserve", args.reserve), ("--floor", args.floor),
+                    ("--sell-anchor", args.sell_anchor), ("--sell-step", args.sell_step), ("--anchor", args.anchor),
+                    ("--step", args.step), ("--max-bid", args.max_bid), ("--max-rounds", args.max_rounds),
+                    ("--max-defer-ticks", args.max_defer_ticks)):
+        if v is not None:
+            flags += [name, flag_value(v)]
+    return command("agent/chato.py", flags + ["--resume", tid])
+
+
 def on_wait(kind: str, clock: dict, waited: float) -> None:
     """Called by the client when a wait finds the game paused, the doors closed or the clock unreadable, then once a
     minute while it lasts: one line for the operator, one log event."""
@@ -659,20 +685,24 @@ def main() -> None:
               **({"dealer": DEALER, "allow_single": args.allow_single, "sell_anchor": SELL_ANCHOR_ABS,
                   "sell_step": SELL_STEP, "floor": args.floor} if extra else {}))
     done = 0
-    stop = None   # (exit status, the one line for the operator) when a thread ends in close_failed or lock_timeout
+    stop = None   # (exit status, the one line for the operator) when the plan must stop
     buys_reached, buys_short = 0, []
     need = max(5, ANCHOR_ABS or 0)   # the least a buy needs above the reserve: never open below --anchor
+    last_cash = me["cash"]
     for target in plan:
         if done >= args.max_deals:
             break
         me = b.me()
+        last_cash = me["cash"]
+        resuming = args.resume is not None and target is plan[0]
         if target["side"] == "buy":
             buys_reached += 1
-            if me["cash"] - CASH_RESERVE < need:
+            # the cash check is for a NEW conversation; a resumed one is read and resolved inside its limit
+            if not resuming and me["cash"] - CASH_RESERVE < need:
                 log("skip_cash", item=target["item"], cash=me["cash"], reserve=CASH_RESERVE, anchor=ANCHOR_ABS)
                 buys_short.append(target["item"])
                 continue   # e.g. before the grant: never open at a bid below --anchor and burn a dealer slot
-        r = negotiate(b, target, False, resume=args.resume if target is plan[0] else None)
+        r = negotiate(b, target, False, resume=args.resume if resuming else None)
         if r.get("thread"):
             try:
                 save_thread(b, r["thread"])  # full transcript, her words included
@@ -681,32 +711,43 @@ def main() -> None:
         if r.get("result") == "deal":
             done += 1
         if r.get("result") == "close_failed":  # the dealer's only conversation slot may still be held
-            spec = target["item"] if target["side"] == "buy" else f"sell:{target['asset_id']}"
-            cmd = (f"python3 agent/chato.py run{'' if DEALER == DEFAULT_DEALER else ' --dealer ' + DEALER} "
-                   f"--only {spec}{' --allow-single' if target.get('single') else ''} --resume {r['thread']}")
-            stop = (EXIT_CLOSE_FAILED, close_failed_line(r["thread"], DEALER_NAME, cmd))
+            stop = (EXIT_CLOSE_FAILED, close_failed_line(r["thread"], DEALER_NAME,
+                                                         resume_command(args, target, r["thread"])))
             log("stop", code="close_failed", thread=r["thread"])
             break
         if r.get("result") == "lock_timeout":
             stop = (EXIT_LOCK_TIMEOUT, lock_timeout_line(r["thread"], r.get("ticks", MAX_DEFER_TICKS)))
             log("stop", code="lock_timeout", thread=r["thread"])
             break
+        if r.get("result") == "unsettled":  # an accept went out and may have traded: start nothing else
+            stop = (EXIT_UNSETTLED, unsettled_line(r["thread"], r.get("price"), target["side"], target["item"],
+                                                   target.get("asset_id")))
+            log("stop", code="unsettled", thread=r["thread"])
+            break
+        if r.get("result") == "clock_lost":
+            stop = (EXIT_CLOCK_LOST, clock_lost_line(r["thread"], MAX_FAILED_WAITS))
+            log("stop", code="clock_lost", thread=r["thread"])
+            break
         if r.get("code") in ("persona_quota", "cooloff", "locked"):
             log("stop", code=r["code"])
             break
-    me = b.me()
-    blocked = not stop and buys_reached and len(buys_short) == buys_reached
-    if blocked:  # say it out loud instead of finishing silently with nothing done
-        log("reserve_blocks_buys", cash=me["cash"], reserve=CASH_RESERVE, need=need, items=buys_short)
-    s = me["score"]
-    RUN.end(cash=me["cash"], level=me["level"], unlocked=me["unlocked"], deals=s.get("deals"),
-            ladder_points=s.get("ladder_points"), score=s.get("score"), rank=s.get("rank"))
-    if stop:
+    if not stop and buys_reached and len(buys_short) == buys_reached:  # say it instead of finishing silently
+        stop = (EXIT_RESERVE, reserve_line(last_cash, CASH_RESERVE, need, len(buys_short)))
+        log("reserve_blocks_buys", cash=last_cash, reserve=CASH_RESERVE, need=need, items=buys_short)
+    if stop:  # the status line first: it must never depend on the account read below
         print(stop[1], flush=True)
+    try:  # best effort: a failing read or log here must not hide the status
+        me = b.me()
+        s = me["score"]
+        RUN.end(cash=me["cash"], level=me["level"], unlocked=me["unlocked"], deals=s.get("deals"),
+                ladder_points=s.get("ladder_points"), score=s.get("score"), rank=s.get("rank"))
+    except Exception as e:  # noqa: BLE001
+        try:
+            log("summary_failed", error=f"{type(e).__name__}: {e}")
+        except Exception:  # noqa: BLE001
+            pass
+    if stop:
         sys.exit(stop[0])
-    if blocked:
-        print(reserve_line(me["cash"], CASH_RESERVE, need, len(buys_short)), flush=True)
-        sys.exit(EXIT_RESERVE)
 
 
 if __name__ == "__main__":
