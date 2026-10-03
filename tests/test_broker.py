@@ -6,6 +6,7 @@ import os
 import random
 import sys
 import tempfile
+import time
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -536,6 +537,133 @@ class LiveLoop(unittest.TestCase):
         finally:
             if old is not None:
                 os.environ["BROKER_KEY"] = old
+
+
+class LocalVenue:
+    """A broker API on 127.0.0.1 for the pace tests: /api/clock, /api/broker/book, /api/broker/matches. delays: path
+    -> seconds to hold each request to that path, in order (later requests answer at once). Nothing leaves the
+    machine; stop() releases every held request."""
+
+    def __init__(self, book, delays=None):
+        import http.server
+        import threading
+        venue = self
+        self.book, self.delays, self.calls, self.release = book, {k: list(v) for k, v in (delays or {}).items()}, [], \
+            threading.Event()
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def answer(self, body):
+                path = self.path.split("?")[0]
+                venue.calls.append((self.command, path))
+                hold = venue.delays.get(path) or []
+                if hold:
+                    venue.release.wait(hold.pop(0))
+                raw = json.dumps(body).encode()
+                try:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+                except OSError:  # the client gave up on a held request
+                    pass
+
+            def do_GET(self):
+                self.answer({"tick": 5} if self.path.startswith("/api/clock") else venue.book)
+
+            def do_POST(self):
+                n = int(self.headers.get("Content-Length") or 0)
+                self.rfile.read(n)
+                self.answer({"id": 1, "status": "queued"})
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def stop(self):
+        self.release.set()
+        self.server.shutdown()
+        self.server.server_close()
+
+
+class Pace15s(unittest.TestCase):
+    """Sunday's ticks are 15 s and the hard Market Test's traders can stay a single tick: a hung read or a slow match
+    must cost the loop seconds, not the tick. Saturday's broker read with a 5 s timeout and one retry (10.5 s blind
+    on one bad read) and backed off up to 5 s."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def venue(self, delays):
+        v = LocalVenue(book_of([seller("b1-1", 20), buyer("b1-2", 30)]), delays)
+        self.addCleanup(v.stop)
+        return v
+
+    def test_the_worst_blind_stretch_leaves_most_of_a_15_s_tick(self):
+        c = brk.PacedClient(brk.Broker, "http://127.0.0.1:9", FAKE_KEY)  # nothing is sent: only the settings
+        hung = c.reader.timeout * (c.reader.retries + 1) + 0.5 * c.reader.retries  # one read, the SDK's retries
+        self.assertLessEqual(hung + max(brk.ERROR_SLEEP), 15 / 3)  # however many reads in a row fail
+        self.assertGreaterEqual(c.writer.timeout, c.reader.timeout)
+
+    def test_a_hung_read_costs_the_read_timeout_then_the_loop_reads_again(self):
+        venue = self.venue({"/api/broker/book": [30.0]})  # the first book read hangs; the next ones answer
+        with unittest.mock.patch.object(brk, "READ_TIMEOUT", 0.4):
+            client = brk.PacedClient(brk.Broker, venue.url, FAKE_KEY)
+        log = MemLog(Path(self.tmp.name) / "broker.jsonl")
+        desk = brk.Desk(client, log, "stall", heartbeat=Path(self.tmp.name) / "hb.json")
+        t0 = time.monotonic()
+        while not any(r["event"] == "matched" for r in log.rows) and time.monotonic() - t0 < 10:
+            time.sleep(desk.step())
+        took = time.monotonic() - t0
+        self.assertTrue(any(r["event"] == "matched" for r in log.rows))
+        self.assertEqual([r["event"] for r in log.rows].count("read_error"), 1)
+        self.assertLess(took, 0.4 + brk.ERROR_SLEEP[0] + 1.0)  # not the 5 s timeout, not a retry of the hung read
+        self.assertEqual(venue.calls.count(("GET", "/api/broker/book")), 2)
+
+    def test_run_and_watch_use_the_paced_client(self):
+        seen = {}
+
+        class StopDesk:
+            def __init__(self, client, log, policy, send=True):
+                seen[send] = client
+                self.counts = {}
+
+            def step(self):
+                raise KeyboardInterrupt
+
+        class Log:
+            path = None
+
+            def __init__(self, *a):
+                pass
+
+            def start(self, **k):
+                pass
+
+            def end(self, **k):
+                pass
+        with unittest.mock.patch.multiple(brk, Desk=StopDesk, RunLog=Log, load_broker_key=lambda f: FAKE_KEY), \
+                unittest.mock.patch("builtins.print"):
+            brk.main(["run", "--policy", "stall"])
+            brk.main(["watch"])
+        for send, cls in ((True, brk.Broker), (False, brk.ReadOnlyBroker)):
+            client = seen[send]
+            self.assertIsInstance(client, brk.PacedClient)
+            self.assertIs(type(client.reader), cls)
+            self.assertEqual((client.reader.timeout, client.reader.retries), (brk.READ_TIMEOUT, 0))
+            self.assertEqual(client.writer.timeout, brk.MATCH_TIMEOUT)
+
+    def test_a_match_slower_than_a_read_still_lands(self):
+        venue = self.venue({"/api/broker/matches": [0.7]})
+        with unittest.mock.patch.multiple(brk, READ_TIMEOUT=0.3, MATCH_TIMEOUT=1.5):
+            client = brk.PacedClient(brk.Broker, venue.url, FAKE_KEY)
+        self.assertEqual(client.match("b1-1", "b1-2", 25)["id"], 1)
+        self.assertEqual(venue.calls, [("POST", "/api/broker/matches")])
 
 
 class Public(unittest.TestCase):

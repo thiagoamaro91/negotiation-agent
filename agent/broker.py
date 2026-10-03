@@ -94,8 +94,13 @@ PENDING_TICKS = 2       # an offer we matched that still shows after this many t
 REFUSED_TICKS = 1       # a refused pair is not sent again until this many ticks have passed
 RUN_QUIET = 3           # a bench run is summarised in the log once none of its offers has shown for this many ticks
 ALARM_TICKS = 2         # bench offers crossing this many ticks with nothing of the bench accepted: bench_alarm
-ERROR_SLEEP = (0.5, 1, 2, 3, 5)  # seconds to wait after 1, 2, 3, ... read failures in a row (within a tick)
-HTTP_TIMEOUT = 5.0      # seconds per request
+ERROR_SLEEP = (0.25, 0.5, 1, 1, 2)  # seconds to wait after 1, 2, 3, ... read failures in a row: at 15 s ticks a
+                                    # server back from a hiccup is read again within 2 s (it was up to 5 s)
+READ_TIMEOUT = 3.0      # seconds per book or clock read, not retried inside the request (the loop reads again after
+                        # ERROR_SLEEP). Saturday's reads took ~0.15 s (44 loops per 30 s tick); 5 s with one retry
+                        # let one hung read blind the loop for 10.5 s, most of a 15 s tick
+MATCH_TIMEOUT = 5.0     # seconds per match: a slow write that lands late in the tick beats one given up on (the SDK
+                        # never repeats a POST after a network error; it retries one refused as rate_limited)
 
 
 def _num(x) -> bool:
@@ -558,6 +563,25 @@ class ReadOnlyBroker(Broker):
         return super()._call(method, path, body, query)
 
 
+class PacedClient:
+    """The live loop's client, paced for 15 s ticks: book and clock reads with READ_TIMEOUT and no retry inside the
+    request (a hung read costs READ_TIMEOUT + ERROR_SLEEP[0], then the loop reads again), matches with MATCH_TIMEOUT
+    and the SDK's one retry of a rate-limited request. `cls` is Broker, or ReadOnlyBroker for watch mode."""
+
+    def __init__(self, cls, url: str, key: str):
+        self.reader = cls(url, key, timeout=READ_TIMEOUT, retries=0)
+        self.writer = cls(url, key, timeout=MATCH_TIMEOUT, retries=1)
+
+    def book(self) -> dict:
+        return self.reader.book()
+
+    def clock(self) -> dict:
+        return self.reader.clock()
+
+    def match(self, sell, buy, price) -> dict:
+        return self.writer.match(sell, buy, price)
+
+
 class Desk:
     """One broker process. step() is one loop: read, plan when the book changed, send, log, heartbeat. The client
     only needs book(), clock() and match(): tests drive it with a fake one. send=False (watch) plans and logs what
@@ -751,8 +775,8 @@ class Desk:
 def cmd_run(args) -> None:
     key = load_broker_key(Path(args.key_file))
     watch = args.mode == "watch"
-    # short timeout, one retry: a hung read must not cost a whole 30 s tick (the loop reads again in half a second)
-    broker = (ReadOnlyBroker if watch else Broker)(URL, key, timeout=HTTP_TIMEOUT, retries=1)
+    # short read timeout, no retry inside a read: a hung read must not cost a 15 s tick (the loop reads again soon)
+    broker = PacedClient(ReadOnlyBroker if watch else Broker, URL, key)
     log = RunLog("broker")
     log.start(mode=args.mode, policy=args.policy, url=URL)
     desk = Desk(broker, log, args.policy, send=not watch)
