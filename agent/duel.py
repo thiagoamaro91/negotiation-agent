@@ -688,9 +688,20 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: flo
         if int(clock["tick"]) != tick:
             run.event("late_skipped", tick=tick, now=clock.get("tick"), why="tick over before the late read")
             return False
-        every = b.duels(done=True).get("duels", [])
     except Exception as e:  # noqa: BLE001  (network, shape): no late accept this tick
         run.event("error", where="late", tick=tick, kind=type(e).__name__, msg=str(e)[:200])
+        return False
+    every = None
+    for attempt in range(3):   # a slow or failed read is retried while 2 s of the tick remain
+        try:
+            every = b.duels(done=True).get("duels", [])
+            break
+        except Exception as e:  # noqa: BLE001
+            run.event("error", where="late", tick=tick, attempt=attempt, kind=type(e).__name__, msg=str(e)[:200])
+            if time.time() + 1.0 > tick_end - 2.0:
+                break
+            time.sleep(1.0)
+    if every is None:
         return False
     pairs = []
     for d in every:
