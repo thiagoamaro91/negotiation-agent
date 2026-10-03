@@ -14,6 +14,7 @@ import announce as an  # noqa: E402
 _ids = iter(range(1000, 10**6))
 REAL_TEAM_CLIENT = an.team_client
 _GUARDS = []
+_TMP = []
 
 
 def setUpModule():
@@ -23,7 +24,10 @@ def setUpModule():
 
     def no_network(*a, **k):
         raise AssertionError("a test tried to reach the network")
-    for g in (um.patch.object(an, "team_client", lambda: None), um.patch.object(an.urllib.request, "urlopen", no_network)):
+    import tempfile
+    _TMP.append(tempfile.TemporaryDirectory())
+    for g in (um.patch.object(an, "team_client", lambda: None), um.patch.object(an.urllib.request, "urlopen", no_network),
+              um.patch.object(an, "STATE", Path(_TMP[0].name) / "announce.json")):   # never the real state file
         g.start()
         _GUARDS.append(g)
 
@@ -31,6 +35,8 @@ def setUpModule():
 def tearDownModule():
     for g in _GUARDS:
         g.stop()
+    for d in _TMP:
+        d.cleanup()
 
 
 def ask(ref, cash, status="open", venue="rastro", maker=None, to=None, oid=None, asset=None):
@@ -346,7 +352,7 @@ class TestVariantTwoOnEvents(unittest.TestCase):
 
         def get_json(url):
             if url.endswith("/api/clock"):
-                return {"tick": state["tick"]}
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
             if url.endswith("/api/venues/v20/offers"):
                 return {"offers": state["v20"]}
             if url.endswith("/api/venues/rastro/offers"):
@@ -601,6 +607,89 @@ class TestSilenceGate(unittest.TestCase):
         self.assertEqual(g.status_at, 0.0)
 
 
+class TestGateMemory(unittest.TestCase):
+    """Codex at ab39a6a: the silence must not end early on a tick pause or when bench.started scrolls out of the feed;
+    the schedule's windows are installed before the feed read; any bad shape leaves the status unknown."""
+
+    @staticmethod
+    def api(state, schedule=None, feed=None, calls=None):
+        def get(url):
+            (calls if calls is not None else []).append(url)
+            if url.endswith("/api/schedule"):
+                return schedule(state) if callable(schedule) else (schedule or {"upcoming": []})
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"], "t_hours": state["t"], "tick_seconds": 30.0, "paused": state.get("paused")}
+            return feed(state) if callable(feed) else (feed or {"events": []})
+        return get
+
+    def test_a_paused_clock_keeps_a_running_session_silent(self):
+        state = {"now": 0.0, "tick": 105, "t": 10.0, "paused": True}
+        g = an.Gate(clock=lambda: state["now"])
+        feed = {"events": [{"type": "bench.started", "tick": 100, "payload": {"start_tick": 100, "ticks": 16}}]}
+        self.assertTrue(g.refresh(self.api(state, feed=feed)))
+        self.assertIsNotNone(g.quiet_end())
+        state["now"] = 2000.0                                    # 33 minutes later, the clock still at tick 105
+        g.expire()
+        self.assertFalse(g.refresh(self.api(state, feed=feed)))  # inside the silence: no read at all
+        self.assertIsNotNone(g.quiet_end())                      # the old window was not cut short ...
+        g.windows = [w for w in g.windows if w[1] > 2000.0]      # ... and a fresh placement keeps it running:
+        self.assertEqual(an.active_windows([{"type": "bench.started", "payload": {"start_tick": 100, "ticks": 16}}],
+                                           {"tick": 105, "tick_seconds": 30.0}, 2000.0)[0][1], 2000 + 11 * 30 + an.QUIET_TAIL_S)
+
+    def test_a_session_whose_bench_started_scrolled_out_is_still_known(self):
+        state = {"now": 0.0, "tick": 100, "t": 10.0}
+        g = an.Gate(clock=lambda: state["now"])
+        with_start = {"events": [{"type": "bench.started", "tick": 98, "payload": {"start_tick": 98, "ticks": 16}}]}
+        self.assertTrue(g.refresh(self.api(state, feed=with_start)))    # status known: a session is running
+        self.assertIsNotNone(g.quiet_end())                              # silent at once
+        state["now"], state["tick"] = 400.0, 100                         # paused; the event has scrolled out
+        g.windows = []                                                   # even with every window forgotten
+        g.expire()
+        g.refresh(self.api(state, feed={"events": []}))
+        self.assertIsNotNone(g.quiet_end())                              # the remembered session places it again
+
+    def test_a_scheduled_session_that_fired_is_placed_from_the_ticks(self):
+        state = {"now": 0.0, "tick": 100, "t": 10.0}
+        g = an.Gate(clock=lambda: state["now"])
+        sched = lambda st: {"upcoming": [{"at_hours": 10.5, "action": "bench", "params": {"ticks": 16}}]} \
+            if st["t"] < 10.5 else {"upcoming": []}
+        self.assertTrue(g.refresh(self.api(state, schedule=sched)))
+        state.update(now=1860.0, tick=162, t=10.5 + 60 / 3600)          # it fired a minute ago, no bench.started seen
+        g.windows, g.status_at = [], None
+        g.refresh(self.api(state, schedule=sched))
+        self.assertIn(160, g.sessions)                                   # start tick from the hours since it fired
+        self.assertIsNotNone(g.quiet_end())
+
+    def test_the_feed_is_not_read_when_the_schedule_already_says_silence(self):
+        state, calls = {"now": 0.0, "tick": 100, "t": 10.0}, []
+        g = an.Gate(clock=lambda: state["now"])
+        soon = {"upcoming": [{"at_hours": 10.0 + 60 / 3600, "action": "bench"}]}   # starts in 60 s: silent now
+        self.assertFalse(g.refresh(self.api(state, schedule=soon, calls=calls)))
+        self.assertFalse(any("/api/feed" in u for u in calls))
+
+    def test_bad_shapes_leave_the_status_unknown(self):
+        for schedule, clock_ok, feed in (([1, 2], True, None), ({"upcoming": "x"}, True, None),
+                                         (None, False, None), (None, True, {"events": [{"type": "bench.started",
+                                                                                         "payload": ["x"]}]})):
+            state = {"now": 0.0, "tick": 100, "t": 10.0}
+            g = an.Gate(clock=lambda: state["now"])
+            get = self.api(state, schedule=schedule, feed=feed)
+            if not clock_ok:
+                get = lambda url, _g=get: {"tick": "?"} if url.endswith("/api/clock") else _g(url)
+            self.assertFalse(g.refresh(get), (schedule, clock_ok, feed))
+            self.assertFalse(g.known())
+
+
+class TestStateFile(unittest.TestCase):
+    def test_the_variant_state_follows_a_patched_state_path(self):
+        import tempfile
+        import unittest.mock as um
+        with tempfile.TemporaryDirectory() as d, um.patch.object(an, "STATE", Path(d) / "s.json"):
+            an.save_variant(3)
+            self.assertEqual(an.next_variant(), 3)
+            self.assertTrue((Path(d) / "s.json").exists())
+
+
 class TestDeadline(unittest.TestCase):
     def test_a_persistent_feed_outage_after_the_posts_still_ends_the_run(self):
         state, posts, logged = {"now": 0.0, "tick": 100}, [], []
@@ -688,7 +777,7 @@ class TestCli(unittest.TestCase):
 
         def get_json(url):
             if url.endswith("/api/clock"):
-                return {"tick": state["tick"]}
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
             if url.endswith("/api/venues/v20/offers"):
                 return {"offers": state["v20"]}
             if "/api/feed" in url:
@@ -735,7 +824,7 @@ class TestCli(unittest.TestCase):
             state["prev"].append("schedule" if url.endswith("/api/schedule") else
                                  "clock" if url.endswith("/api/clock") else "other")
             if url.endswith("/api/clock"):
-                return {"tick": state["tick"]}
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
             if ("/api/feed" in url and not status_read) or url.endswith("/api/venues"):
                 raise TimeoutError("slow")                              # the composing reads fail
             if url.endswith("/api/venues/v20/offers"):

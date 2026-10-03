@@ -569,11 +569,18 @@ class Silenced(Exception):
 
 
 class Gate:
-    """Every request and every post asks the gate first (Codex BLOCKERs on #45: silence checked right before each
-    request and right before posting; no post while the Market Test status is unknown or stale)."""
+    """Every request and every post asks the gate first: silence checked right before each request and right before
+    posting; no post while the Market Test status is unknown or stale (Codex BLOCKERs on #45).
+
+    The gate remembers every Market Test it has seen, as (start tick, ticks): from bench.started in the feed (the
+    API's window and the recorded feed) and from scheduled sessions it saw coming that have since fired. Their
+    windows are placed from the clock's tick, so a paused clock keeps a running session silent, and a session whose
+    bench.started has scrolled out of the feed is still known. A later read never shortens a window already placed."""
 
     def __init__(self, manual=(), clock=None):
         self.manual, self.windows, self.status_at, self.tried_at = list(manual), list(manual), None, None
+        self.sessions = {}      # start tick -> ticks
+        self.expected = {}      # scheduled game hour -> ticks, until it fires
         self.clock = clock or (lambda: time.time())  # looked up at call time, so a patched clock is honoured
 
     def quiet_end(self):
@@ -586,6 +593,10 @@ class Gate:
     def known(self) -> bool:
         return self.status_at is not None and self.clock() - self.status_at <= STATUS_MAX_AGE_S
 
+    def expire(self) -> None:
+        """After a silence: nothing is done again before a fresh status read (a pause may have moved everything)."""
+        self.status_at = self.tried_at = None
+
     def due_refresh(self) -> bool:
         """Read the status again when it is 60 s from going stale, or STATUS_RETRY_S after a failed read."""
         now = self.clock()
@@ -593,8 +604,28 @@ class Gate:
             return False
         return self.tried_at is None or now - self.tried_at >= STATUS_RETRY_S
 
+    def _place(self, schedule, clock, at_clock) -> list:
+        tick, tick_s, t_now = int(clock["tick"]), float(clock["tick_seconds"]), float(clock["t_hours"])
+        upcoming = [e for e in (schedule or {}).get("upcoming") or [] if isinstance(e, dict)]
+        listed = set()
+        for e in upcoming:
+            at = e.get("at_hours")
+            if e.get("action") == "bench" and isinstance(at, (int, float)):
+                listed.add(at)
+                ticks = (e.get("params") or {}).get("ticks")
+                self.expected[at] = ticks if isinstance(ticks, int) and ticks > 0 else BENCH_TICKS
+        for at, ticks in list(self.expected.items()):
+            if at not in listed and at <= t_now:   # it fired: its start tick from the game hours since
+                self.sessions.setdefault(tick - round((t_now - at) * 3600 / tick_s), ticks)
+                del self.expected[at]
+        known = [{"type": "bench.started", "payload": {"start_tick": st, "ticks": n}} for st, n in self.sessions.items()]
+        kept = [w for w in self.windows if w[1] > at_clock]
+        placed = self.manual + quiet_windows(schedule, clock, at_clock) + active_windows(known, clock, at_clock) + kept
+        return sorted(set(placed))
+
     def refresh(self, get, extra_events=()) -> bool:
-        """Read the schedule, the clock and the feed (each request gated); True when the status is known again."""
+        """Read the schedule and the clock, place their windows at once, then read the feed for sessions already
+        running (each request gated); True when the status is known again. Any failure or bad shape: unknown."""
         self.tried_at = self.clock()
         try:
             self.check()
@@ -602,21 +633,22 @@ class Gate:
             self.check()
             clock = get(f"{URL}/api/clock")
             at_clock = self.clock()                    # the windows are placed from this instant, not later
-        except Silenced:
-            return False
-        except Exception as e:
-            print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
-            return False
-        try:  # sessions already running: the API's feed window, plus the recorded feed passed in
+            self.windows = self._place(schedule, clock, at_clock)   # installed before the feed read
             self.check()
             events = get(f"{URL}/api/feed?limit=1000").get("events", [])
+            for e in list(events) + list(extra_events):
+                if isinstance(e, dict) and e.get("type") == "bench.started":
+                    pl = e.get("payload") or {}
+                    st = pl.get("start_tick", e.get("tick"))
+                    n = pl.get("ticks")
+                    if isinstance(st, int):
+                        self.sessions.setdefault(st, n if isinstance(n, int) and n > 0 else BENCH_TICKS)
+            self.windows = self._place(schedule, clock, at_clock)
         except Silenced:
             return False
-        except Exception as e:  # without the feed a session already running cannot be ruled out: status unknown
+        except Exception as e:  # unreachable, slow or malformed: a running session cannot be ruled out
             print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
             return False
-        self.windows = (self.manual + quiet_windows(schedule, clock, at_clock)
-                        + active_windows(list(events) + list(extra_events), clock, at_clock))
         self.status_at = at_clock
         return True
 
@@ -643,14 +675,16 @@ def quiet_until(windows: list, now: float):
     return max(ends) if ends else None
 
 
-def next_variant(path: Path = STATE) -> int:
+def next_variant(path: Path | None = None) -> int:
+    path = path or STATE  # looked up at call time (a default bound at definition ignores a patched STATE)
     try:
         return int(json.loads(path.read_text()).get("next", 0))
     except (OSError, ValueError, AttributeError):
         return 0
 
 
-def save_variant(n: int, path: Path = STATE) -> None:
+def save_variant(n: int, path: Path | None = None) -> None:
+    path = path or STATE
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"next": n}))
@@ -793,6 +827,7 @@ def main(argv: list[str] | None = None) -> None:
                   flush=True)
             log.event("silence", until=round(end, 1))
             time.sleep(max(1.0, min(end, deadline) - time.time()))
+            gate.expire()
             continue
         if gate.due_refresh():
             gate.refresh(get_json, recorded_events(kinds=("bench.started",)))
