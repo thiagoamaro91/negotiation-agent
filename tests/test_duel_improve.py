@@ -253,13 +253,21 @@ class RunLoop(unittest.TestCase):
         self.assertLess(srv.accepts[0][1], 15)                # taken in a first read
         self.assertNotIn("late_off", out)
 
-    def test_two_failed_late_reads_in_a_row_turn_it_off(self):
-        # the risk the arena prices (LATE_FAIL): a late read that fails at deadline-1 loses that duel's accept
-        posts = [(t, 0.1, 95) for t in range(104, 115)] + [(115, 0.1, 120)]   # outside our cost until D-1
-        srv, out = self.play(posts, "--late-poll", "8", "--late-ticks", "3", fail_late=True)
-        self.assertIn("late_off", out)
-        self.assertIn("attempt=2", out)                       # each late read retried while the tick lasted
+    POOR = [(t, 0.1, 95) for t in range(104, 115)] + [(115, 0.1, 120)]   # outside our cost until D-1
+
+    def test_a_late_read_that_fails_at_deadline_minus_one_loses_that_accept(self):
+        # the risk the arena prices with LATE_FAIL
+        srv, out = self.play(self.POOR, "--late-poll", "8", "--late-ticks", "3", fail_late=True)
+        self.assertIn("attempt=2", out)                       # the read was retried while the tick lasted
         self.assertEqual(srv.accepts, [])
+
+    def test_two_failed_late_reads_in_a_row_turn_it_off(self):
+        # late reads fail at D-5 and D-3 (D-4 and D-2 fall back): off, so D-1 accepts in its first read (with the
+        # late read still on, D-1 would wait for a read that fails, and the deal would be lost)
+        srv, out = self.play(self.POOR, "--late-poll", "8", "--late-ticks", "5", fail_late=True)
+        self.assertIn("late_off tick=113", out)
+        self.assertEqual([(t, p) for t, _, p in srv.accepts], [(115, 120)])
+        self.assertLess(srv.accepts[0][1], 15)
 
     def test_a_late_read_that_fails_once_is_retried_in_the_same_tick(self):
         srv, _ = self.play(self.POSTS, "--late-poll", "8", "--late-ticks", "3", fail_late=1)
