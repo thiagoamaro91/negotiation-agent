@@ -94,6 +94,24 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
 .steps b { color: var(--ink); font-weight: 600; }
 .slot { display: inline-block; min-width: 2.6em; text-align: center; font: 600 10.5px var(--mono); padding: 1px 4px; border-radius: 4px; background: var(--panel2); margin-right: 2px; }
 .slot.on { color: var(--good); }
+.k.decision { color: var(--bg); background: var(--gold); }
+.why { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.35; margin-top: 2px; }
+.lanetag { font: 600 10px var(--mono); color: var(--gold); margin-right: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin-left: 8px; vertical-align: middle; }
+.seg button { font: 600 10.5px var(--mono); background: transparent; color: var(--muted); border: 0; padding: 3px 9px; cursor: pointer; letter-spacing: 0; text-transform: none; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.ok-t { color: var(--good); } .bad-t { color: var(--bad); }
+.pages { display: flex; flex-wrap: wrap; gap: 6px; }
+.pg { font: 600 11.5px var(--mono); padding: 4px 8px; border-radius: 6px; background: var(--panel2); display: inline-flex; gap: 6px; align-items: center; }
+.pg.full { color: var(--bg); background: var(--good); }
+.pg .bar { width: 46px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.pg .bar i { display: block; height: 100%; background: var(--gold); }
+.big { font-family: var(--display); font-stretch: 80%; font-size: 22px; font-weight: 900; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font: 600 11px var(--mono); color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+.order { font-family: var(--mono); font-size: 13px; }
+.order b { color: var(--ink); }
+svg.tcurve { width: 100%; height: 150px; display: block; }
 @media (max-width: 600px) {
   body { padding: 12px 16px 32px; }
   h1 { font-size: 24px; }
@@ -112,6 +130,27 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
 <div id="err" class="err"></div>
 <div class="kpis" id="kpis"></div>
 
+<div class="grid" id="usgrid">
+  <div class="panel">
+    <h2><span lang="en">Our team · real data</span><span lang="es">Nuestro equipo · datos reales</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="ussrc"></span></h2>
+    <div class="kpis" id="uskpis" style="margin:0"></div>
+    <div class="pages" id="pages"></div>
+    <div class="scroll"><table id="cards"></table></div>
+    <div id="deckcheck" class="note"></div>
+    <details><summary class="muted small" style="cursor:pointer"><span lang="en">Cash checks: rebuilt ledger vs real readings</span><span lang="es">Comprobación de caja: libro reconstruido frente a lecturas reales</span></summary>
+    <div class="scroll"><table id="checks"></table></div></details>
+    <p class="note"><span lang="en">From the key machine's own files, relayed without the key (tools/team_relay.py): cash and score from the live /api/me reader (every minute), cards from the last account snapshot plus our public deals since and the Workshop conversions our bots logged, values = book × our multiplier × the copy's share (2nd copy and later are worth less). Album = page slots ever filled (the game's count); held = what we hold now.</span><span lang="es">Sale de los ficheros de la máquina con la clave, enviados sin la clave (tools/team_relay.py): caja y puntos del lector de /api/me en vivo (cada minuto); cartas = la última foto de la cuenta más nuestros tratos públicos desde entonces y lo que nuestros bots apuntaron al convertir en El Taller; valores = libro × nuestro multiplicador × la parte de esa copia (la 2.ª copia y siguientes valen menos). Álbum = huecos de página que se han llenado alguna vez (lo que cuenta el juego); en mano = lo que tenemos ahora.</span></p>
+  </div>
+  <div class="panel">
+    <h2><span lang="en">Inference vs the truth</span><span lang="es">La inferencia frente a la verdad</span></h2>
+    <div id="truthhead"></div>
+    <svg class="tcurve" id="tcurve" viewBox="0 0 400 150" preserveAspectRatio="none" aria-label="Inference error on our own multipliers over the weekend"></svg>
+    <div class="legend"><span><i style="background:var(--good)"></i><span lang="en">pairs in the right order</span><span lang="es">parejas en el orden correcto</span></span><span><i style="background:var(--gold)"></i><span lang="en">prob. on our true favourite</span><span lang="es">prob. en nuestro favorito real</span></span><span><i style="background:var(--hot)"></i><span lang="en">mean error ×2</span><span lang="es">error medio ×2</span></span></div>
+    <div class="scroll"><table id="truthtab"></table></div>
+    <div id="truthnote" class="note"></div>
+  </div>
+</div>
+
 <div class="grid">
   <div class="panel">
     <h2><span lang="en">What to do</span><span lang="es">Qué hacer</span></h2>
@@ -128,9 +167,9 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
   </div>
   <div class="stack">
     <div class="panel">
-      <h2><span lang="en">Live market</span><span lang="es">Mercado en directo</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="tapecount"></span></h2>
+      <h2><span lang="en">Live market</span><span lang="es">Mercado en directo</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="tapecount"></span><span class="seg" role="group" aria-label="Tape filter"><button type="button" data-f="all" aria-pressed="true">all</button><button type="button" data-f="ours" aria-pressed="false">ours</button><button type="button" data-f="decision" aria-pressed="false">decisions</button></span></h2>
       <div class="tape" id="tape"></div>
-      <p class="note"><span lang="en">Every listing, bid and deal as it happens, with the real team behind each pseudonym. Green: we would gain taking it. Red: one of our own offers loses value.</span><span lang="es">Cada oferta, puja y trato al momento, con el equipo real detrás de cada seudónimo. Verde: ganaríamos aceptándolo. Rojo: una oferta nuestra pierde valor.</span></p>
+      <p class="note"><span lang="en">Every listing, bid and deal as it happens, with the real team behind each pseudonym. Green: we would gain taking it. Red: one of our own offers loses value. Gold DECISION rows: what our bots decided and why (decisions.jsonl on the key machine).</span><span lang="es">Cada oferta, puja y trato al momento, con el equipo real detrás de cada seudónimo. Verde: ganaríamos aceptándolo. Rojo: una oferta nuestra pierde valor. Filas doradas DECISION: lo que decidieron nuestros bots y por qué (decisions.jsonl de la máquina con la clave).</span></p>
     </div>
     <div class="panel">
       <h2><span lang="en">Desks</span><span lang="es">Mesas</span></h2>
@@ -149,7 +188,7 @@ button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline
   <div class="panel">
     <h2><span lang="en">Every team</span><span lang="es">Todos los equipos</span></h2>
     <div class="scroll"><table id="teams"></table></div>
-    <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start (exact for us). Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales (exacta para nosotros). Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
+    <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start: checked against every real reading for us; for the others ± marks fees the feed cannot attribute for sure, and a private cash event (a gift, an egg) would not show. Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales: comprobada con cada lectura real en nuestro caso; en los demás, ± marca comisiones que el feed no deja atribuir con seguridad, y un ingreso privado (un regalo, un huevo) no se vería. Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
   </div>
   <div class="stack">
     <div class="panel" id="detail"></div>
@@ -183,7 +222,12 @@ const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const L = (en, es) => `<span lang="en">${en}</span><span lang="es">${es}</span>`;
 const qs = location.search;
-let DATA = null, SEL = "t03";
+let DATA = null, SEL = "t03", TAPE_F = "all";
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  TAPE_F = b.dataset.f;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  if (DATA) renderTape(DATA.tape);
+}));
 function setLang(l) {
   document.documentElement.setAttribute("data-lang", l);
   document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.l === l)));
@@ -213,6 +257,76 @@ const SRC = { "measured": ["measured", "medido"], "measured (few)": ["few closes
 const src = s => L(...(SRC[s] || [esc(s), esc(s)]));
 const KIND = { common: ["common", "común"], uncommon: ["uncommon", "infrecuente"], rare: ["rare", "rara"] };
 const kind = k => k.startsWith("pack:") ? `${L("pack", "sobre")} ${esc(k.slice(5))}` : L(...(KIND[k] || [esc(k), esc(k)]));
+
+function renderTape(rows) {
+  const seen = new Set((window.__tapeIds || []));
+  const keep = r => TAPE_F === "all" || (TAPE_F === "ours" ? r.ours : r.kind === "decision");
+  $("tape").innerHTML = (rows || []).filter(keep).map(r => `<div class="tl${r.ours ? " ours" : ""}${seen.size && !seen.has(r.id) ? " fresh" : ""}"><span class="mono muted">${r.tick == null ? "—" : "t" + r.tick}</span><span class="k ${esc(r.kind)}">${r.kind === "decision" ? "decision" : esc(r.kind)}</span><span>` +
+    (r.kind === "decision" ? `<span class="lanetag">${esc(r.lane)}</span>${esc(r.text)}${r.result ? ` <span class="muted">→ ${esc(r.result)}</span>` : ""}${r.surplus != null ? ` <span class="${r.surplus >= 0 ? "opp" : "wrn"}">· ${r.surplus >= 0 ? "+" : ""}${r.surplus} P</span>` : ""}${r.why ? `<span class="why">${esc(r.why)}</span>` : ""}`
+      : `${esc(r.text)}${r.opportunity ? ` <span class="opp">· ${esc(r.opportunity)}</span>` : ""}${r.warning ? ` <span class="wrn">· ${esc(r.warning)}</span>` : ""}`) + `</span></div>`).join("")
+    || `<div class="muted small">${L("Nothing yet for this filter (decisions arrive with the team relay).", "Nada aún con este filtro (las decisiones llegan con el relay del equipo).")}</div>`;
+  window.__tapeIds = (rows || []).map(r => r.id);
+  const n = k => (rows || []).filter(k).length;
+  $("tapecount").textContent = `${n(r => r.opportunity)} opp · ${n(r => r.warning)} warn · ${n(r => r.kind === "decision")} dec`;
+}
+
+const RAR = { common: "C", uncommon: "U", rare: "R" };
+function renderUs(u, d) {
+  $("usgrid").hidden = !u;
+  if (!u) return;
+  const sc = u.score || {}, r = u.relay || {};
+  const last = (u.checks || []).filter(c => !c.ahead).slice(-1)[0];
+  $("ussrc").innerHTML = r.age_s == null ? L("no team relay yet: account snapshot only", "sin relay del equipo: solo la foto de la cuenta")
+    : `${L("relay", "relay")} ${ago(r.age_s)} · ${L("account", "cuenta")} t${u.account_tick} · ${L("live score", "puntos en vivo")} t${u.live_tick ?? "—"}${r.live_score_age_s != null ? ` (${L("file", "fichero")} <span class="${r.live_score_age_s > 300 ? "bad-t" : ""}">${ago(r.live_score_age_s)}</span>)` : ""}`;
+  const kp = [
+    [L("cash now", "caja ahora"), `${u.cash ?? "—"} P`, `${esc(u.cash_source)}${u.cash_stale ? ` <b class="bad-t">${L(`${u.cash_stale} ticks old`, `${u.cash_stale} ticks de retraso`)}</b>` : ""}` + (last ? ` · ${L("ledger", "libro")} ${last.rebuilt}/${last.cash} t${last.tick} <b class="${last.ok ? "ok-t" : "bad-t"}">${last.ok ? "✓" : "✗"}</b>` : "")],
+    [L("score · rank", "puntos · puesto"), `${sc.score ?? "—"} <span class="muted" style="font-size:18px">#${sc.rank ?? "—"}</span>`, `${L("negotiating", "negociación")} ${sc.negotiating ?? "—"} · ${L("market", "mercado")} ${sc.market ?? "—"}`],
+    [L("negotiation points", "puntos de negociación"), `${sc.neg_points ?? "—"}`, `${L("duels", "duelos")} ${sc.duel_points ?? "—"} · ${L("ladder", "escalera")} ${sc.ladder_points ?? "—"} · ${sc.deals ?? "—"} ${L("deals", "tratos")}`],
+    [L("cards held", "cartas en mano"), `${u.copies}`, `${(u.cards || []).length} ${L("different", "distintas")} · ${L("album", "álbum")} ${sc.album_filled ?? "—"} · ${L("pages", "páginas")} ${sc.pages_complete ?? "—"}`],
+  ];
+  $("uskpis").innerHTML = kp.map(([l, v, x]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${x}</span></div>`).join("");
+  $("pages").innerHTML = (u.pages || []).map(pg => { const album = pg.live ?? pg.held; return `<span class="pg${album >= pg.of ? " full" : ""}" title="${esc(L("missing now", "faltan ahora").replace(/<[^>]+>/g, ""))}: ${esc(pg.missing.join(", ") || "—")}">${esc(pg.set)} ×${pg.mult ?? "?"} <span class="bar"><i style="width:${Math.round(album / pg.of * 100)}%"></i></span>${album}/${pg.of}${pg.live != null && pg.live !== pg.held ? ` <span class="muted">(${L("held", "en mano")} ${pg.held})</span>` : ""}</span>`; }).join("");
+  const sets = (u.pages || []).map(x => x.set);
+  const cards = [...(u.cards || [])].sort((a, b) => sets.indexOf(a.set) - sets.indexOf(b.set) || a.ref.localeCompare(b.ref));
+  $("cards").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("copies", "copias")}</th><th>${L("our value", "nuestro valor")}</th><th>${L("book", "libro")}</th><th>${L("spares worth", "las repes valen")}</th></tr></thead><tbody>` +
+    cards.map(c => `<tr><td class="mono"><b>${esc(c.ref)}</b> <span class="tag">${RAR[c.rarity] || esc(c.rarity || "")}</span></td><td class="mono">${c.n}</td><td class="mono"><b>${c.values[0] ?? "—"}</b></td><td class="mono muted">${c.book}</td><td class="mono small">${c.values.slice(1).join(" · ") || "—"}</td></tr>`).join("") + `</tbody>`;
+  $("checks").innerHTML = `<thead><tr><th>tick</th><th>${L("source", "origen")}</th><th>${L("real", "real")}</th><th>${L("rebuilt", "reconstruida")}</th><th></th></tr></thead><tbody>` +
+    (u.checks || []).slice().reverse().map(c => `<tr><td class="mono">${c.tick}</td><td class="small">${esc(c.what)}</td><td class="mono">${c.cash}</td><td class="mono">${c.rebuilt}</td><td class="mono ${c.ahead ? "muted" : c.ok ? "ok-t" : "bad-t"}">${c.ahead ? L("feed behind", "feed atrás") : c.ok ? "✓" : `${c.rebuilt - c.cash > 0 ? "+" : ""}${c.rebuilt - c.cash}`}</td></tr>`).join("") + `</tbody>`;
+}
+
+function deckHtml(t) {
+  const k = t.deck;
+  if (!k) return "";
+  const named = Object.values(k.known).reduce((a, b) => a + b, 0), fl = Object.values(k.floating || {}).reduce((a, b) => a + b, 0);
+  const al = t.album || {};
+  return `<div><b>${L("Deck", "Mazo")}</b> <span class="mono">~${k.total}</span> <span class="muted small">${L(`${named} named · ${k.unknown_ids} owned, never shown · ${fl} without id · ${k.unplaced} pack cards unplaced${k.burned ? ` · −${k.burned} burned at the Workshop (unknown which)` : ""}`, `${named} con nombre · ${k.unknown_ids} suyas sin enseñar · ${fl} sin id · ${k.unplaced} de sobres sin ubicar${k.burned ? ` · −${k.burned} quemadas en El Taller (no se sabe cuáles)` : ""}`)}${al.album_filled != null ? ` · ${L("album", "álbum")} ${al.album_filled}/${al.album_slots ?? "?"}, ${al.pages_complete ?? 0} ${L("pages", "páginas")}` : ""}</span></div>` +
+    `<div class="chips">${Object.entries(k.known).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("")}${Object.entries(k.floating || {}).map(([r, n]) => `<span class="chip" title="${esc(L("got without an id (gift, egg, Workshop)", "recibida sin id (regalo, huevo, Taller)").replace(/<[^>]+>/g, ""))}">${esc(r)}${n > 1 ? " ×" + n : ""}*</span>`).join("")}${k.unknown_ids + k.unplaced ? `<span class="chip muted">+${k.unknown_ids + k.unplaced} ?</span>` : ""}</div>`;
+}
+
+function renderTruth(t) {
+  if (!t) { $("truthhead").innerHTML = `<p class="note">${L("Needs our account (the true multipliers).", "Necesita nuestra cuenta (los multiplicadores reales).")}</p>`; return; }
+  const n = t.now, p0 = t.prior;
+  const order = key => t.sets.slice().sort((a, b) => a[key] - b[key]).map(x => esc(x.set)).join(" > ");
+  $("truthhead").innerHTML =
+    `<div class="order">${L("Truth", "Verdad")}: <b>${order("rank_true")}</b></div><div class="order">${L("Inferred", "Deducido")}: <b>${order("rank_inferred")}</b> <span class="muted">${L(`from ${t.evidence} public moves of ours`, `con ${t.evidence} movimientos públicos nuestros`)}</span></div>` +
+    `<div class="kpis" style="margin:4px 0 0"><div class="kpi"><span class="l">${L("pairs in order", "parejas en orden")}</span><span class="v">${pct(n.pairs)}</span><span class="s">${L("prior", "a priori")} ${pct(p0.pairs)} · ${t.pairs_total} ${L("pairs", "parejas")}</span></div>` +
+    `<div class="kpi"><span class="l">${L("mean error", "error medio")}</span><span class="v">${n.mae.toFixed(2)}</span><span class="s">${L("prior", "a priori")} ${p0.mae.toFixed(2)} · ${L("per multiplier", "por multiplicador")}</span></div>` +
+    `<div class="kpi"><span class="l">${L("on our favourite", "en nuestro favorito")}</span><span class="v">${pct(n.p_fav)}</span><span class="s">${esc(t.favourite)} · ${L("prior", "a priori")} ${pct(p0.p_fav)} · ${n.fav_ok ? L("top pick right", "acierta el primero") : L("top pick wrong", "falla el primero")}</span></div></div>`;
+  const pts = t.curve || [];
+  if (pts.length >= 2) {
+    const W = 400, H = 150, x0 = pts[0].tick, x1 = pts[pts.length - 1].tick;
+    const X = v => 30 + (v - x0) / Math.max(1, x1 - x0) * (W - 40), Y = v => H - 18 - Math.max(0, Math.min(1, v)) * (H - 30);
+    const line = (k, f, col) => `<polyline points="${pts.map(q => `${X(q.tick).toFixed(1)},${Y(f(q[k])).toFixed(1)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2"/>`;
+    $("tcurve").innerHTML = [0, 0.5, 1].map(v => `<line x1="30" x2="${W - 10}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="2" y="${Y(v) + 4}" fill="var(--muted)" font-size="10" font-family="monospace">${v * 100}%</text>`).join("") +
+      line("pairs", v => v, "var(--good)") + line("p_fav", v => v, "var(--gold)") + line("mae", v => v * 2, "var(--hot)") +
+      `<text x="30" y="${H - 3}" fill="var(--muted)" font-size="10" font-family="monospace">tick ${x0}</text><text x="${W - 60}" y="${H - 3}" fill="var(--muted)" font-size="10" font-family="monospace">tick ${x1}</text>`;
+  }
+  $("truthtab").innerHTML = `<thead><tr><th>${L("set", "barrio")}</th><th>${L("true", "real")}</th><th>${L("inferred", "deducido")}</th><th>${L("prob. on the true one", "prob. en el real")}</th><th>${L("rank true → inferred", "puesto real → deducido")}</th></tr></thead><tbody>` +
+    t.sets.map(x => `<tr><td class="mono"><b>${esc(x.set)}</b></td><td class="mono">${x.true}</td><td><div class="cell" style="background:${heat(x.inferred)}">${x.inferred.toFixed(2)}</div></td><td class="mono">${pct(x.p_true)}</td><td class="mono ${x.rank_true === x.rank_inferred ? "ok-t" : "bad-t"}">${x.rank_true} → ${x.rank_inferred}</td></tr>`).join("") + `</tbody>`;
+  $("truthnote").innerHTML = L(
+    `We are the one team whose multipliers we know, so this is the model's exam: the same inference that reads the other 17 teams, run on our own public moves and replayed tick by tick. Read the other teams' columns with this error bar in mind: magnitudes ±${n.mae.toFixed(2)} on average, and a team that completes pages opportunistically (as we did with La Latina) can hide its true favourite.`,
+    `Somos el único equipo cuyos multiplicadores conocemos, así que esto es el examen del modelo: la misma inferencia que lee a los otros 17 equipos, aplicada a nuestros movimientos públicos y repetida tick a tick. Lee las columnas de los demás con este margen de error: ±${n.mae.toFixed(2)} de media en magnitudes, y un equipo que completa páginas por oportunidad (como hicimos con La Latina) puede esconder su favorito real.`);
+}
 
 function renderDealer(rows) {
   $("dealer").innerHTML = `<thead><tr><th>${L("deal", "trato")}</th><th>P</th><th>${L("share", "cuota")}</th><th>${L("price → share", "precio → cuota")}</th><th>${L("our best 3", "nuestros 3 mejores")}</th><th>${L("adds", "suma")}</th><th>${L("cards", "cromos")}</th></tr></thead><tbody>` +
@@ -271,25 +385,31 @@ function render(d) {
   $("pills").innerHTML = [
     `<span class="pill"><b>${st.events}</b> ${L("events stored", "eventos guardados")} · API ${st.api_window}</span>`,
     `<span class="pill ${m.hit > m.chance ? "ok" : "warn"}">${L("model", "modelo")} <b>${Math.round(m.hit * 100)}%</b> vs ${Math.round(m.chance * 100)}% ${L("chance", "azar")}</span>`,
-    `<span class="pill ${lc.ok ? "ok" : "warn"}">${L("ledger", "caja")} <b>${lc.ok ? "OK" : "check"}</b> ${lc.rebuilt ?? ""}/${lc.real ?? ""}</span>`,
-    `<span class="pill ${d.account && d.account.source.startsWith("relay") ? "ok" : "warn"}">${L("our account", "nuestra cuenta")} <b>${d.account ? esc(d.account.source) : "?"}</b> t${d.account ? d.account.tick : "?"}</span>`,
+    (() => { const c = ((d.us && d.us.checks) || []).filter(x => !x.ahead).slice(-1)[0]; const ok = c ? c.ok : lc.ok;
+      return `<span class="pill ${ok ? "ok" : "warn"}">${L("ledger", "caja")} <b>${ok ? "OK" : "check"}</b> ${c ? `${c.rebuilt}/${c.cash} t${c.tick}` : `${lc.rebuilt ?? ""}/${lc.real ?? ""}`}</span>`; })(),
+    (() => { const r = (d.us && d.us.relay) || {}; const ok = r.age_s != null && r.age_s < 120 && (r.live_score_age_s == null || r.live_score_age_s < 300);
+      return `<span class="pill ${ok ? "ok" : "warn"}">${L("team relay", "relay equipo")} <b>${r.age_s != null ? ago(r.age_s) : L("off", "apagado")}</b>${r.live_score_age_s != null ? ` · ${L("live score file", "fichero de puntos")} <b>${ago(r.live_score_age_s)}</b>` : ""}</span>`; })(),
+    `<span class="pill ${d.account && d.account.source !== "snapshot" ? "ok" : "warn"}">${L("our account", "nuestra cuenta")} <b>${d.account ? esc(d.account.source) : "?"}</b> t${d.account ? d.account.tick : "?"}</span>`,
     `<span class="pill">${d.compute_s}s</span>`,
   ].join("");
   const p = d.plan, h = p.horizons;
   const best = [...p.sells, ...p.buys.filter(b => b.funded)].sort((a, b) => b.ev - a.ev)[0];
   const lad = (p.dealer || []).find(r => r.adds > 0 && r.below_value);
   $("kpis").innerHTML = [
-    [L("our cash", "nuestra caja"), `${p.cash} P`, `${L("reserve", "reserva")} ${p.reserve} P · ${L("free", "libre")} ${p.free_cash} P`],
+    [L("our cash", "nuestra caja"), `${d.us && d.us.cash != null ? d.us.cash : p.cash} P`, `${d.us && d.us.cash_source === "live score" ? L("live", "en vivo") + " · " : ""}${L("plan uses", "el plan usa")} ${p.cash} P · ${L("reserve", "reserva")} ${p.reserve} P`],
     [L("now", "ahora"), h[0].label, `${L("weight", "peso")} ${h[0].weight}`],
     [L("next", "siguiente"), h[1] ? h[1].label : "—", h[1] ? `${L("weight", "peso")} ${h[1].weight}${h[1].grant ? ` · +${h[1].grant} P` : ""}` : ""],
     [L("best team trade", "mejor trato con equipo"), best ? esc(best.ref) : "—", best ? `${esc(best.action)} · ${best.price} P · +${best.ev} P` : ""],
     [L("best ladder deal", "mejor trato de escalera"), lad ? `${esc(lad.dealer)} ${lad.price}` : "—", lad ? `${kind(lad.kind)} · ~${pct(lad.share)} ${L("of range", "del rango")} · <span class="est">est.</span>` : ""],
   ].map(([l, v, s]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
   $("decisions").innerHTML = (p.decisions || []).map(x => `<div class="decision${x.startsWith("WARNING") ? " warn" : ""}">${esc(x)}</div>`).join("");
-  const seen = new Set((window.__tapeIds || []));
-  $("tape").innerHTML = (d.tape || []).map(r => `<div class="tl${r.ours ? " ours" : ""}${seen.size && !seen.has(r.id) ? " fresh" : ""}"><span class="mono muted">t${r.tick}</span><span class="k ${esc(r.kind)}">${esc(r.kind)}</span><span>${esc(r.text)}${r.opportunity ? ` <span class="opp">· ${esc(r.opportunity)}</span>` : ""}${r.warning ? ` <span class="wrn">· ${esc(r.warning)}</span>` : ""}</span></div>`).join("");
-  window.__tapeIds = (d.tape || []).map(r => r.id);
-  $("tapecount").textContent = `${(d.tape || []).filter(r => r.opportunity).length} opp · ${(d.tape || []).filter(r => r.warning).length} warn`;
+  renderTape(d.tape);
+  renderUs(d.us, d);
+  const dc = d.deck_check;
+  $("deckcheck").innerHTML = dc ? L(
+    `<b>Every team's deck</b> is rebuilt from public asset ids (starter blocks of 15, pack blocks, listings, trades). Checked on ours at tick ${dc.tick}: <b>${dc.rebuilt} cards rebuilt vs ${dc.real} real</b>, ${dc.ids_right} copies placed right, <b class="${dc.ids_wrong ? "bad-t" : "ok-t"}">${dc.ids_wrong} wrong</b>, ${dc.names_right}/${dc.named} names right. Click a team below to see its deck.`,
+    `<b>El mazo de cada equipo</b> se reconstruye con los ids públicos de las cartas (bloques iniciales de 15, bloques de sobres, ofertas, tratos). Comprobado con el nuestro en el tick ${dc.tick}: <b>${dc.rebuilt} cartas reconstruidas frente a ${dc.real} reales</b>, ${dc.ids_right} copias bien ubicadas, <b class="${dc.ids_wrong ? "bad-t" : "ok-t"}">${dc.ids_wrong} mal</b>, ${dc.names_right}/${dc.named} nombres bien. Pulsa un equipo abajo para ver su mazo.`) : "";
+  renderTruth(d.truth);
   $("sells").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")} <span class="est">est.</span></th><th>${L("expected", "esperado")}</th><th>${L("likely buyers", "compradores")} <span class="est">est.</span></th></tr></thead><tbody>` +
     p.sells.map(s => `<tr><td class="mono">${esc(s.ref)} <span class="tag">${s.copy === "spare" ? L("spare", "repe") : L("first", "única")}</span> <span class="muted small">${s.our_value}</span></td><td>${whenTag(s.action)} <span class="muted" style="font-size:11px">${esc(s.action.split(" ")[0])}</span></td><td class="mono">${s.price}</td><td class="mono">+${s.gain}</td><td>${chance(s.p)}</td><td class="mono"><b>+${s.ev}</b></td><td class="mono" style="font-size:12px">${(s.likely_buyers || []).map(b => `${esc(b.team)} ~${Math.round(b.p * 100)}%`).join(", ") || (s.counterparty ? esc(s.counterparty) : "")}</td></tr>`).join("") + `</tbody>`;
   $("buys").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")} <span class="est">est.</span></th><th>${L("expected", "esperado")}</th><th>${L("from", "de")}</th></tr></thead><tbody>` +
@@ -305,10 +425,10 @@ function render(d) {
     Object.entries(m.us).map(([s, v]) => `<tr><td class="mono">${esc(s)}</td><td class="mono">${v.inferred}</td><td class="mono">${v.true ?? "—"}</td></tr>`).join("") + `</tbody></table>`;
   $("assume").innerHTML = `<b>${L("Assumptions", "Supuestos")}</b><br>` + (p.assumptions || []).map(esc).join("<br>");
   const sets = d.in_play;
-  $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
-    d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}</td><td>${spark(t.cash_history)}</td>` +
+  $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>${L("cards", "cartas")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
+    d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}${t.cash_unsure ? ` <span class="muted" title="fees the feed cannot attribute for sure">±${t.cash_unsure}</span>` : ""}</td><td>${spark(t.cash_history)}</td>` +
       sets.map(s => `<td><div class="cell" style="background:${heat(t.expected[s])}">${t.expected[s].toFixed(2)}</div></td>`).join("") +
-      `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
+      `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono" title="named ${t.deck ? Object.values(t.deck.known).reduce((a, b) => a + b, 0) : 0}">${t.deck ? "~" + t.deck.total : "—"}</td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
   document.querySelectorAll("#teams tr.clickable").forEach(r => {
     const go = () => { SEL = r.dataset.team; render(DATA); };
     r.addEventListener("click", go);
@@ -316,10 +436,10 @@ function render(d) {
   });
   const t = d.teams.find(x => x.team === SEL) || d.teams[0];
   const mults = ["1.6", "1.3", "1.1", "0.9", "0.7", "0.5"];
-  $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P</h2>` +
+  $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P${t.cash_unsure ? ` ±${t.cash_unsure}` : ""}</h2>` +
     sets.map(s => `<div class="distrow"><span class="mono">${esc(s)}</span><div class="dbar">${mults.map(mm => { const pr = (t.dist[s] || {})[mm] || 0; return pr > 0.005 ? `<span title="${mm}: ${Math.round(pr * 100)}%" style="width:${(pr * 100).toFixed(1)}%;background:${heat(parseFloat(mm))}"></span>` : ""; }).join("")}</div><span class="mono">${t.expected[s].toFixed(2)}</span></div>`).join("") +
     `<p class="note">${L("probability of each multiplier, 1.6 (left) to 0.5", "probabilidad de cada multiplicador, de 1,6 (izquierda) a 0,5")}</p>` +
-    `<div><b>${L("Known cards", "Cartas conocidas")}</b> <span class="muted">(${L("lower bound", "mínimo")})</span></div><div class="chips">${Object.entries(t.known_cards || {}).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("") || `<span class="muted">—</span>`}</div>` +
+    deckHtml(t) +
     `<p class="note">${L(`Spent at dealers ${t.dealer_spent} P · bonds ${t.bonds} P · ${t.evidence} pieces of evidence, ${t.choices} independent choices · ${esc(t.confidence)}`, `Gastado en dealers ${t.dealer_spent} P · fianzas ${t.bonds} P · ${t.evidence} pruebas, ${t.choices} elecciones independientes · ${esc(t.confidence)}`)}</p>`;
 }
 

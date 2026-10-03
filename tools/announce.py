@@ -1,28 +1,40 @@
 """Announce La Celestina (v20) on the public feed: the only way other teams hear about our venue.
 
-Market points come from trades between OTHER teams on our venue (kit/RULES.md, "Your own market"). At tick 510 the
-five teams above the free stall's 7.5 all had one or two such trades (+2.3 to +5 each), and the venues that got them
-announce often with something useful inside: Gacela posts a radar of the most wanted cards, Maravillas points at bids
-and asks on El Rastro that nobody crosses. v20 had posted nothing.
+Market points come from trades between OTHER teams on our venue (kit/RULES.md, "Your own market"): each one added
++1.3 to +2 to the free stalls that got one (t17, t07, t14 on Saturday). v20 had none by 19:00 on Saturday, although
+t15 listed 16 asks on it at ticks 384-395: nobody heard of them, and t12 bought two of those very cards from t15 on
+t14's and t17's free stalls half an hour later. Our messages at the time led with El Rastro's open bids, which sends
+sellers to El Rastro.
 
-Each message is built from El Rastro's public book (keyless): the best open bids, and any card where the best bid
-already meets or nearly meets the best ask (El Rastro has no broker, so those pairs sit there; our broker crosses them
-the tick both are posted on v20). Three variants rotate so the feed does not see the same words twice in a row.
-Cards we are missing ourselves never appear (--exclude): a radar that points sellers of LAV-09 at v20, where we cannot
-buy, works against us. The link names what the public La Celestina page serves (a shortlist with fair prices and ready
-v20 orders); it never shows who holds which card.
+So a message now sells what is on v20 and what v20 would cross, all inside the text (other teams' agents read the feed;
+they do not open web pages):
+  - the live offers on v20, with the team that posted them (public: the feed's offer.listed names every maker), the
+    price and the offer id, and how to take one (accept it, or post the other side of a cash offer);
+  - El Rastro pairs a broker would cross, ask at or just above the bid (NEAR_GAP), with both teams and offer ids:
+    El Rastro has no broker and its taker pays 5 % + 1 P, so those pairs sit there; on v20 they meet at the midpoint;
+  - a short pitch.
+Three variants rotate the order so the feed does not see the same words twice in a row. Only public facts, no asks in
+return. Cards we are missing ourselves never appear (--exclude): pointing their sellers at v20, where we cannot buy,
+works against us. Offers addressed to one team (to: tXX) are left out: nobody else can take them.
 
     python3 tools/announce.py plan                       # prints the next message and the request; sends nothing
     python3 tools/announce.py run --yes                  # posts one message with the broker key
-    python3 tools/announce.py run --yes --every-min 15 --count 8
+    python3 tools/announce.py run --yes --every-min 12 --count 40
 
-`run` needs the broker key (BROKER_KEY, or ~/.bazaar/broker.env as agent/broker.py reads it): only the machine that
-runs the broker has it. The key is never printed or logged. Endpoint: POST /api/broker/announce {"text": ...}.
+Every offer named comes from the venues' current public books (GET /api/venues/<id>/offers), so nothing taken,
+cancelled or expired is advertised; the feed only names who posted each one: the API's last 1,000 events plus the
+recorded feed (logs/feed/feed.jsonl on the Mini), and each team's pseudonym per venue learnt from those names; in
+`run`, our own open offers come from GET /api/me/offers with the team key when the machine has one (read only), so
+they are never paired however old they are. Swaps are
+advertised as taken by accepting them (POST /api/offers/<id>/accept): our broker crosses cash asks and bids only.
+`plan` is keyless. `run` posts with the broker key (BROKER_KEY, or ~/.bazaar/broker.env as agent/broker.py reads it):
+only the machine that runs the broker has it. The key is never printed or logged. POST /api/broker/announce.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -37,9 +49,12 @@ sys.path.insert(0, str(ROOT / "agent"))
 URL = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai")
 KEY_FILE = Path.home() / ".bazaar" / "broker.env"
 VENUE = "v20"
-LINK = "https://bazaar-brain.tail425aef.ts.net:8443"
+LINK = None             # no web link by default: agents read the feed text, they do not open pages
 MAX_CHARS = 1200        # the server keeps 1,200 characters of a message
-NEAR_GAP = 2            # a bid within this many P of the ask counts as "almost crossing"
+NEAR_GAP = 3            # a bid within this many P of the ask counts as "almost crossing" (El Rastro's fee on a
+                        # 20 P card is 2 P; at 0 % the two sides can meet halfway)
+OURS = "t03"            # our own offers never appear: we cannot trade on our own venue anyway
+SHOW_OFFERS = 4         # live v20 offers named in one message
 # Cards Team 3 lacks (from /api/me at tick 556, after the silver pack): never advertised. Holdings are private, so
 # this cannot be derived keylessly; update it when we buy one, or pass --exclude.
 MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09", "SAL-10",
@@ -47,64 +62,294 @@ MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09",
 STATE = ROOT / "logs" / "state" / "announce.json"
 
 
-def rastro_book(offers: list) -> tuple[dict, dict]:
-    """Best bid and best ask per card on El Rastro: ({ref: bid}, {ref: ask}). A bid gives cash and wants a card (any
-    copy or a named asset); an ask gives exactly one card and wants cash. Swaps and bundles are skipped."""
+def shape(o: dict):
+    """The offer's complete shape, or None for anything we do not advertise:
+      ("ask", ref, price)   gives exactly one card asset, wants cash only;
+      ("bid", ref, price)   gives cash only, wants exactly one card type ("card:<ref>"), nothing else;
+      ("swap", give, want)  gives exactly one card asset, wants exactly one card type, no cash either side.
+    Any extra requirement (an asset id, a second type, a pack, cash on both sides) makes it None: a cash-only
+    description or a crossing promise would be false for it. Asks and bids are what public_plan crosses."""
+    if not isinstance(o, dict):
+        return None
+    g, w = o.get("give") or {}, o.get("want") or {}
+    if not isinstance(g, dict) or not isinstance(w, dict):
+        return None
+    g_assets, g_types = g.get("assets") or [], g.get("types") or []
+    w_assets, w_types = w.get("assets") or [], w.get("types") or []
+    g_cash, w_cash = g.get("cash") or 0, w.get("cash") or 0
+
+    def one_card(assets):
+        if len(assets) == 1 and isinstance(assets[0], dict) and assets[0].get("kind") == "card" and assets[0].get("ref"):
+            return assets[0]["ref"]
+        return None
+
+    def one_card_type(types):
+        if len(types) == 1 and isinstance(types[0], str) and types[0].startswith("card:") and len(types[0]) > 5:
+            return types[0][5:]
+        return None
+
+    def cash(x):
+        return isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0
+
+    if g_types or w_assets:
+        return None
+    gave, wanted = one_card(g_assets), one_card_type(w_types)
+    if gave and not g_cash and cash(w_cash) and not w_types:
+        return ("ask", gave, int(w_cash))
+    if wanted and not g_assets and cash(g_cash) and not w_cash:
+        return ("bid", wanted, int(g_cash))
+    if gave and wanted and not g_cash and not w_cash:
+        return ("swap", gave, wanted)
+    return None
+
+
+def refs(o: dict) -> set:
+    """Every card an offer names, for the exclusion list (a shape we do not advertise names none)."""
+    sh = shape(o)
+    if sh is None:
+        return set()
+    return {sh[1]} | ({sh[2]} if sh[0] == "swap" else set())
+
+
+def offer_makers(events: list) -> dict:
+    """{offer id: team} from the public feed's offer.listed events (every listing names its maker). El Rastro's own
+    book shows makers as pseudonyms; the feed is what ties an offer to a team."""
+    out = {}
+    for e in events or []:
+        if not isinstance(e, dict) or e.get("type") != "offer.listed":
+            continue
+        o = (e.get("payload") or {}).get("offer") or {}
+        who = o.get("maker") or e.get("actor")
+        if o.get("id") is not None and isinstance(who, str) and who.startswith("t"):
+            out[o["id"]] = who
+    return out
+
+
+FEED_FILE = ROOT / "logs" / "feed" / "feed.jsonl"   # the feed recorder's file on the machine that runs us (the Mini)
+
+
+def recorded_events(path: Path = FEED_FILE) -> list:
+    """offer.listed events from the recorded feed (tools/feed_recorder.py), so makers older than the API's
+    1,000-event window are known too. A missing file or a bad line costs nothing."""
+    out = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"offer.listed"' not in line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(e, dict) and e.get("type") == "offer.listed":
+                    out.append(e)
+    except OSError:
+        pass
+    return out
+
+
+def our_offer_ids(me_offers: dict) -> set:
+    """Ids of our own open offers from GET /api/me/offers. That list also holds offers other teams addressed to us:
+    only maker == OURS counts."""
+    return {o.get("id") for o in (me_offers or {}).get("offers") or []
+            if isinstance(o, dict) and o.get("maker") == OURS and o.get("id") is not None}
+
+
+def team_client():
+    """A read-only use of the team key, when the machine has one (BAZAAR_KEY in the environment or the repo's .env,
+    as the other bots load it): only GET /api/me/offers, to know our own offers for sure. None without a key. The key
+    is never printed or logged."""
+    key = os.environ.get("BAZAAR_KEY", "").strip()
+    if not key:
+        try:
+            for line in (ROOT / ".env").read_text().splitlines():
+                if line.strip().startswith("BAZAAR_KEY="):
+                    key = line.split("=", 1)[1].strip().strip('"').strip("'")
+        except OSError:
+            pass
+    if not key:
+        return None
+    from bazaar_sdk import Bazaar
+    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=1)
+
+
+def learn_pseudonyms(books: dict, names: dict) -> dict:
+    """Public books show makers as pseudonyms, one per team per venue (seen on Saturday: t06 has one on v07, another
+    on El Rastro, another on v02). An offer the feed names ties its pseudonym to the team on that venue; every other
+    offer with that pseudonym on that venue is then the same team's, however old. Returns names extended."""
+    out = dict(names or {})
+    for venue, book in (books or {}).items():
+        alias = {}
+        for o in book or []:
+            team, m = out.get(o.get("id")), o.get("maker")
+            if isinstance(team, str) and team[:1] == "t" and m and m != team:
+                alias[m] = team
+        for o in book or []:
+            m = o.get("maker")
+            if o.get("id") not in out and m in alias:
+                out[o["id"]] = alias[m]
+    return out
+
+
+def market_books(get, venues: list) -> dict:
+    """{venue: its open offers right now} from the public books (GET /api/venues/<id>/offers, keyless), El Rastro
+    included. A venue whose book cannot be read is left out of this message. The books are the truth: an offer that
+    was taken, cancelled or expired is simply not there (the feed only names who posted what)."""
+    out = {}
+    for v in dict.fromkeys(["rastro", *venues]):
+        try:
+            out[v] = [dict(o, venue=v) for o in get(f"{URL}/api/venues/{v}/offers").get("offers") or []
+                      if isinstance(o, dict)]
+        except Exception as e:  # one unreadable book costs that venue's lines, never the message
+            print(f"book of {v} unavailable ({type(e).__name__})", flush=True)
+    return out
+
+
+def describe(o: dict, names: dict | None = None) -> str | None:
+    """One offer in a few words: "t15 sells LAT-07 for 26 P (offer 9123)". None for shapes we do not advertise
+    (anything but a plain ask, bid or one-for-one swap), offers to one team, and our own."""
+    sh = shape(o)
+    if sh is None or o.get("to"):
+        return None
+    who = (names or {}).get(o.get("id")) or o.get("maker") or ""
+    if who == OURS:
+        return None
+    who = who if isinstance(who, str) and who[:1] == "t" and who[1:].isdigit() else "a team"
+    oid = f" (offer {o['id']})" if o.get("id") is not None else ""
+    kind, a, b = sh
+    if kind == "ask":
+        return f"{who} sells {a} for {b} P{oid}"
+    if kind == "bid":
+        return f"{who} buys {a} for {b} P{oid}"
+    return f"{who} swaps {a} for any {b}{oid}, taken by accepting it"
+
+
+def crossable(o: dict) -> bool:
+    """A plain card ask or bid: what our broker crosses (public_plan). Swaps are only taken by accepting them."""
+    sh = shape(o)
+    return sh is not None and sh[0] in ("ask", "bid")
+
+
+def take_order(o: dict, fee=(0, 0)) -> str | None:
+    """The order that meets a plain v20 ask or bid on the other side, as RULES.md writes it, with our venue's fee
+    counted (the buyer pays price + fee); None otherwise or when no whole price leaves room for the fee."""
+    sh = shape(o)
+    if sh is None or sh[0] == "swap":
+        return None
+    kind, ref, price = sh
+    if kind == "ask":
+        return f'{{"venue": "{VENUE}", "give": {{"cash": {price + fee_of(fee, price)}}}, "want": {{"cards": ["{ref}"]}}}}'
+    ask = next((p for p in range(price, 0, -1) if p + fee_of(fee, p) <= price), None)
+    if ask is None:
+        return None
+    return f'{{"venue": "{VENUE}", "give": {{"assets": [<your {ref}>]}}, "want": {{"cash": {ask}}}}}'
+
+
+def venue_name(v) -> str:
+    return "El Rastro" if v in (None, "rastro") else str(v)
+
+
+def fee_of(fee, price: int) -> int:
+    """Our venue's fee on one card at `price`, rounded up, as the broker computes it. fee = (bps, P per card)."""
+    bps, per_card = fee or (0, 0)
+    return math.ceil((bps or 0) * price / 10000) + (per_card or 0)
+
+
+def fee_txt(fee) -> str:
+    bps, per_card = fee or (0, 0)
+    return f"{(bps or 0) / 100:g} % fee, {per_card or 0} P per card"
+
+
+def market_sides(offers: list, names: dict | None = None) -> tuple[dict, dict]:
+    """Best bid and ask per card across the offers given (El Rastro's book plus other venues' live offers), with the
+    offer id and venue: ({ref: (bid, id, venue)}, {ref: (ask, id, venue)}). Only plain asks and bids (shape); offers
+    on our venue, offers to one team and our own offers (by the feed's names or the maker) are left out: we cannot
+    trade on v20, so a pair with one of ours would point a team at a trade that cannot happen there."""
+    names = names or {}
     bids, asks = {}, {}
     for o in offers or []:
-        if not isinstance(o, dict) or o.get("status", "open") != "open":
+        if not isinstance(o, dict) or o.get("status", "open") != "open" or o.get("to") or o.get("venue") == VENUE:
             continue
-        g, w = o.get("give") or {}, o.get("want") or {}
-        wanted = [t.split(":", 1)[1] for t in w.get("types") or [] if str(t).startswith("card:")]
-        wanted += [a.get("ref") for a in w.get("assets") or [] if a.get("ref")]
-        if g.get("cash") and not g.get("assets") and len(wanted) == 1 and not w.get("cash"):
-            ref = wanted[0]
-            bids[ref] = max(bids.get(ref, 0), int(g["cash"]))
-        elif len(g.get("assets") or []) == 1 and w.get("cash") and not wanted and not g.get("cash"):
-            ref = g["assets"][0].get("ref")
-            if ref:
-                asks[ref] = min(asks.get(ref, 10**9), int(w["cash"]))
+        if OURS in (names.get(o.get("id")), o.get("maker")):
+            continue
+        sh = shape(o)
+        v = o.get("venue") or "rastro"
+        if sh and sh[0] == "bid" and sh[2] > bids.get(sh[1], (0,))[0]:
+            bids[sh[1]] = (sh[2], o.get("id"), v)
+        elif sh and sh[0] == "ask" and sh[2] < asks.get(sh[1], (10**9,))[0]:
+            asks[sh[1]] = (sh[2], o.get("id"), v)
     return bids, asks
 
 
-def near_pairs(bids: dict, asks: dict, gap: int = NEAR_GAP) -> list:
-    """Cards whose best bid is within `gap` P of the best ask, closest first: [(ref, bid, ask)]."""
-    out = [(r, bids[r], asks[r]) for r in bids if r in asks and asks[r] - bids[r] <= gap]
-    return sorted(out, key=lambda x: (x[2] - x[1], -x[1]))
+def near_market_pairs(offers: list, names: dict, skip=()) -> list:
+    """Cards whose best bid and best ask (market_sides) are at most NEAR_GAP apart and come from two different teams
+    (or makers we cannot name), closest first: [(ref, (bid, id, venue), (ask, id, venue))]."""
+    bids, asks = market_sides(offers, names)
+    out = []
+    for r, b in bids.items():
+        a = asks.get(r)
+        if a is None or r in skip or a[0] - b[0] > NEAR_GAP:
+            continue
+        nb, na = names.get(b[1]), names.get(a[1])
+        if (nb is not None and nb == na) or OURS in (nb, na):
+            continue
+        out.append((r, b, a))
+    return sorted(out, key=lambda x: (x[2][0] - x[1][0], -x[1][0]))
 
 
-def top_bids(bids: dict, n: int = 4) -> list:
-    """The n highest open bids: [(ref, bid)]. Bids of 1-2 P are noise and left out."""
-    return sorted(((r, b) for r, b in bids.items() if b >= 3), key=lambda x: -x[1])[:n]
-
-
-def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISSING) -> str:
-    """One announcement, at most MAX_CHARS. variant 0: pitch + radar of bids; 1: the almost-crossing pairs (falls back
-    to 0 when there are none); 2: the "missing card" pitch in Spanish and English. Cards in `exclude` never appear."""
-    bids, asks = rastro_book(offers)
+def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISSING, venue_offers=(),
+               names: dict | None = None, fee=(0, 0)) -> str:
+    """One announcement, at most MAX_CHARS. `offers`: open offers off our venue (El Rastro's book, other venues' live
+    offers); `venue_offers`: v20's live offers; `names`: {offer id: team} from the feed. variant 0: v20's book first;
+    1: the near pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
+    `exclude` never appear. `fee`: v20's (bps, P per card), counted in every order and every "crosses" claim."""
     skip = set(exclude or ())
-    bids = {r: b for r, b in bids.items() if r not in skip}     # pairs need a bid, so asks need no filter
-    pairs, radar = near_pairs(bids, asks), top_bids(bids)
-    tail = f" Your shortlist with fair prices and ready v20 orders: {link}" if link else ""
-    radar_txt = ", ".join(f"{r} {b} P" for r, b in radar)
+    names = names or {}
+    live = [o for o in venue_offers or [] if not refs(o) & skip]
+    shown = [(o, d) for o in live for d in [describe(o, names)] if d][:SHOW_OFFERS]
+    book = ""
+    if shown:
+        first = shown[0][0]
+        order = next((take_order(o, fee) for o, _ in shown if crossable(o) and take_order(o, fee)), None)
+        book = (f"Live on La Celestina ({VENUE}) now: " + "; ".join(d for _, d in shown) + ". "
+                + f"Take one directly: POST /api/offers/{first.get('id', '<id>')}/accept (any offer id above). "
+                + (f"Or post the other side of a cash offer on venue \"{VENUE}\", e.g. {order}, and our broker "
+                   f"crosses it the same tick. " if order else "")
+                + f"{fee_txt(fee)}. ")
+    pairs = near_market_pairs(offers, names, skip)
+
+    def who(oid, fallback):
+        w = names.get(oid)
+        return w if w and w != OURS else fallback
+
+    def pair_txt(r, b, a):
+        gap = a[0] + fee_of(fee, a[0]) - b[0]  # what the bid lacks to cover the ask plus v20's fee
+        state = "they already cross on v20's terms" if gap <= 0 else f"{gap} P apart on v20's terms"
+        return (f"{r}: {who(a[1], 'a seller')} asks {a[0]} P on {venue_name(a[2])} (offer {a[1]}), "
+                f"{who(b[1], 'a buyer')} bids {b[0]} P on {venue_name(b[2])} (offer {b[1]}), {state}")
+
+    pairs_txt = ""
+    if pairs:
+        pairs_txt = ("Buyer and seller close, nobody crossing them: "
+                     + "; ".join(pair_txt(*p) for p in pairs[:3])
+                     + f". On venue \"{VENUE}\" ({fee_txt(fee)}; El Rastro's taker pays 5 % + 1 P a card) our broker "
+                       f"matches a bid and an ask the tick the bid covers the ask plus the fee, at the midpoint. ")
+    pitch = (f"La Celestina ({VENUE}): {fee_txt(fee)}; our broker crosses a bid and an ask card by card, any copy, the "
+             f"tick the bid covers the ask plus the fee.")
+    tail = f" {link}" if link else ""
     v = variant % 3
-    if v == 1 and pairs:
-        r, b, a = pairs[0]
-        more = "".join(f"; {r2}: ask {a2} P, bid {b2} P" for r2, b2, a2 in pairs[1:3])
-        text = (f"On El Rastro, {r}: a seller asks {a} P and a buyer bids {b} P, and nobody crosses them{more}. "
-                f"Post both on La Celestina (venue \"{VENUE}\"): our broker matches them the same tick, 0 % fee and "
-                f"0 P per card for both sides.{tail}")
-    elif v == 2:
-        text = ("Missing one card for a page? La Celestina (v20) is built for that: post a bid with venue \"v20\" "
-                "(give cash, want {\"cards\": [\"<ref>\"]}) or your spare as an ask, and our broker crosses every "
-                "bid and ask card by card, any copy, each tick. 0 % fee, 0 P per card. / ¿Te falta una carta? "
-                "Publica tu puja o tu repetida en v20 y la cruzamos en el mismo tick, sin comisión." + tail)
+    if v == 2:
+        text = ("Missing one card for a page? Post a bid on venue \"v20\" (give cash, want {\"cards\": [\"<ref>\"]}) "
+                "or your spare as an ask, and our broker crosses them card by card, any copy, each tick. 0 % fee, "
+                "0 P per card. / ¿Te falta una carta? Publica tu puja o tu repetida en v20 y la cruzamos en el mismo "
+                "tick, sin comisión. " + book)
+    elif v == 1 and pairs_txt:
+        text = pairs_txt + book
+    elif book or pairs_txt:
+        text = book + pairs_txt
     else:
-        lead = f"Open bids on El Rastro right now: {radar_txt}. " if radar else ""
-        text = (f"{lead}On El Rastro a bid waits until someone notices it and the taker pays 5 % + 1 P a card. "
-                f"La Celestina (v20): 0 % fee, 0 P per card, and our broker crosses every bid and ask the tick they "
-                f"meet. Post with venue \"{VENUE}\".{tail}")
-    return text[:MAX_CHARS]
+        text = "Selling a spare or hunting a card? " + pitch + f" Post with venue \"{VENUE}\"."
+    return (text.strip() + tail)[:MAX_CHARS]
 
 
 def next_variant(path: Path = STATE) -> int:
@@ -143,8 +388,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--yes", action="store_true", help="run only: really post")
     ap.add_argument("--variant", type=int, default=None, help="0, 1 or 2 (default: rotate)")
-    ap.add_argument("--no-link", action="store_true", help="leave out the La Celestina web link")
-    ap.add_argument("--link", default=LINK)
+    ap.add_argument("--no-link", action="store_true", help="leave out the web link (the default has none)")
+    ap.add_argument("--link", default=LINK, help="append this link (off by default: agents do not open pages)")
     ap.add_argument("--exclude", default=",".join(MISSING),
                     help="comma list of cards never advertised (default: the cards we lack)")
     ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between messages")
@@ -155,8 +400,9 @@ def main(argv: list[str] | None = None) -> None:
     exclude = tuple(x.strip() for x in args.exclude.split(",") if x.strip())
     if args.cmd == "run" and not args.yes:
         ap.error("run posts on the public feed: add --yes")
-    key = None
+    key, team = None, None
     if args.cmd == "run":
+        team = team_client()
         from broker import load_broker_key  # same key source as agent/broker.py
         key = load_broker_key(Path(args.key_file))
         from runlog import RunLog
@@ -166,8 +412,20 @@ def main(argv: list[str] | None = None) -> None:
         if i:
             time.sleep(max(60.0, args.every_min * 60))
         variant = args.variant if args.variant is not None else next_variant()
-        offers = get_json(f"{URL}/api/venues/rastro/offers").get("offers", [])
-        text = build_text(offers, variant, link, exclude)
+        events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
+        index = [v for v in get_json(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+        venues = [v.get("venue") for v in index if v.get("status") == "open" and v.get("venue")]
+        ours = next((v for v in index if v.get("venue") == VENUE), {})
+        fee = (ours.get("fee_bps") or 0, ours.get("fee_per_card") or 0)
+        books = market_books(get_json, venues + [VENUE])
+        offers = [o for v, book in books.items() if v != VENUE for o in book]
+        names = learn_pseudonyms(books, {**offer_makers(recorded_events()), **offer_makers(events)})
+        if team is not None:  # our own open offers, for sure: never paired, never named as anyone else's
+            try:
+                names.update({i: OURS for i in our_offer_ids(team.my_offers())})
+            except Exception as e:
+                print(f"our offers unavailable ({type(e).__name__}); feed names and pseudonyms only", flush=True)
+        text = build_text(offers, variant, link, exclude, books.get(VENUE, []), names, fee)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         if args.cmd == "plan":
             print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")

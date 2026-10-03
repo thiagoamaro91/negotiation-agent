@@ -93,6 +93,7 @@ CLOCK_EVERY = 1.0       # seconds between clock reads (the broker key allows 5 r
 PENDING_TICKS = 2       # an offer we matched that still shows after this many ticks is planned again
 REFUSED_TICKS = 1       # a refused pair is not sent again until this many ticks have passed
 RUN_QUIET = 3           # a bench run is summarised in the log once none of its offers has shown for this many ticks
+ALARM_TICKS = 2         # bench offers crossing this many ticks with nothing of the bench accepted: bench_alarm
 ERROR_SLEEP = (0.5, 1, 2, 3, 5)  # seconds to wait after 1, 2, 3, ... read failures in a row (within a tick)
 HTTP_TIMEOUT = 5.0      # seconds per request
 
@@ -112,8 +113,10 @@ def fee_of(book: dict, price: int) -> int:
     return math.ceil(bps * price / 10000) + per_card
 
 
-def price_for(book: dict, ask: int, bid: int):
-    """The midpoint, lowered until the buyer can also pay the fee; None when no whole price fits [ask, bid - fee]."""
+def price_for(book: dict, ask, bid):
+    """The midpoint, lowered until the buyer can also pay the fee; None when no whole price fits [ask, bid - fee].
+    Quotes that are not whole numbers are bounded to whole prices first (ask up, bid down)."""
+    ask, bid = math.ceil(ask), math.floor(bid)
     for p in range((ask + bid) // 2, ask - 1, -1):
         if p + fee_of(book, p) <= bid:
             return p
@@ -472,6 +475,27 @@ def guard(plan: list, book: dict) -> tuple:
     return ok, bad
 
 
+def stall_rule_plan(book: dict, skip=(), refused=None) -> list:
+    """The stall's rule within each bench run (stall_plan with the venue's fee), pairs in `refused` left out. What
+    the safety net sends and what the alarm looks for. A run's pairs never mix with another run's."""
+    return [m for m in stall_plan(book, skip, fees=True) if (m[0], m[1]) not in (refused or {})]
+
+
+def safety_net(book: dict, ok: list, bad: list, skip=(), refused=None) -> list:
+    """The Market Test must never score 0 because of our own checks. Saturday 11:50: the guard dropped all 15 bench
+    pairs as "same_maker" (every bench offer's maker is "bench"), the session counted 0 and the market fell by 1.9.
+    So when the guard dropped bench matches and let none through, the stall's rule (per run, fee counted) is sent as
+    it is: the server checks every match itself and a refused one costs nothing (refused pairs are not sent again,
+    as everywhere else). A policy that chose to wait sends nothing and drops nothing: the net stays off."""
+    bench_ids = {o.get("id") for o in book.get("bench_offers") or [] if isinstance(o, dict)}
+    if not bench_ids or any(m[0] in bench_ids for m in ok):
+        return []
+    if not any(isinstance(m, (list, tuple)) and m and m[0] in bench_ids for m, _ in bad):
+        return []
+    used = {x for m in ok for x in m[:2]}
+    return stall_rule_plan(book, set(skip) | used, refused)
+
+
 def plan_book(book: dict, tick: int, policy: BenchPolicy | None, refused: dict | None = None,
               skip=()) -> tuple:
     """Everything we would send for one state of the book: (matches, dropped, notes). policy None = the stall's
@@ -490,6 +514,10 @@ def plan_book(book: dict, tick: int, policy: BenchPolicy | None, refused: dict |
     plan = [m for m in bench + public
             if (m[0], m[1]) not in (refused or {}) and m[0] not in skip and m[1] not in skip]
     ok, bad = guard(plan, book)
+    net = safety_net(book, ok, bad, skip, refused)
+    if net:
+        notes["safety_net"] = len(net)
+        ok = ok + net
     return ok, bad, notes
 
 
@@ -554,6 +582,8 @@ class Desk:
         self.last_decision: dict = {}
         self.counts = {"sent": 0, "accepted": 0, "refused": 0, "dropped": 0}
         self.runs_logged: dict = {}  # bench run -> traders already summarised in the log
+        self.idle_since = None       # first tick bench offers crossed and nothing of the bench was accepted
+        self.alarm = None            # that tick, once the idle stretch reached ALARM_TICKS (heartbeat + one log line)
 
     def step(self) -> float:
         """One loop; returns how long to sleep before the next."""
@@ -598,18 +628,45 @@ class Desk:
         for m, why in dropped:
             self.counts["dropped"] += 1
             self.log.event("dropped", tick=tick, match=list(m), why=why)
+        if notes.get("safety_net"):
+            self.log.event("safety_net", tick=tick, matches=[list(m) for m in matches], dropped=len(dropped))
+        bench_ids = {o.get("id") for o in book.get("bench_offers") or [] if isinstance(o, dict)}
+        bench_accepted = False
         for sell, buy, price in matches:
-            self.send(sell, buy, price, tick)
+            if self.send(sell, buy, price, tick) and sell in bench_ids:
+                bench_accepted = True
+        self.watch_bench(book, tick, bench_accepted)
         self.last_decision = {"tick": tick, "matches": [list(m) for m in matches], "notes": notes,
                               "dropped": len(dropped)}
         self.end_runs(tick)
         self.beat("planned")
         return READ_EVERY
 
-    def send(self, sell, buy, price, tick) -> None:
+    def watch_bench(self, book: dict, tick, bench_accepted: bool) -> None:
+        """Alarm when bench offers have crossed for ALARM_TICKS ticks and nothing of the bench was accepted: whatever
+        the cause (a guard, refusals, a policy waiting too long), the session is slipping. Heartbeat field
+        bench_alarm = the tick it started; one log line per stretch. Check it before each session."""
+        try:
+            crossing = bool(stall_rule_plan(book, self.pending))
+        except Exception:  # never let the alarm cost the loop its heartbeat
+            crossing = False
+        if bench_accepted or not crossing:  # cleared even when the tick is unknown
+            self.idle_since = self.alarm = None
+            return
+        if tick is None:
+            return
+        if self.idle_since is None:
+            self.idle_since = tick
+        if self.alarm is None and tick - self.idle_since >= ALARM_TICKS:
+            self.alarm = self.idle_since
+            self.log.event("bench_alarm", tick=tick, since=self.idle_since,
+                           crossing=[list(m) for m in stall_rule_plan(book, self.pending)][:5])
+
+    def send(self, sell, buy, price, tick) -> bool:
+        """Send one match; True when the venue accepted it (watch mode: never)."""
         if not self.send_on:
             self.log.event("WOULD", tick=tick, sell=sell, buy=buy, price=price)
-            return
+            return False
         self.counts["sent"] += 1
         try:
             r = self.c.match(sell, buy, price)
@@ -620,18 +677,19 @@ class Desk:
                 self.policy.refused_pair(sell, buy, tick if tick is not None else 0)
             self.log.event("refused", tick=tick, sell=sell, buy=buy, price=price, code=e.code,
                            msg=(e.message or "")[:200], status=e.status)
-            return
+            return False
         except Exception as e:
             self.counts["refused"] += 1
             self.refused[(sell, buy)] = tick
             self.log.event("send_error", tick=tick, sell=sell, buy=buy, price=price, error=f"{type(e).__name__}"[:80])
-            return
+            return False
         self.counts["accepted"] += 1
         self.pending[sell] = self.pending[buy] = tick
         if self.policy is not None:
             self.policy.sent(sell, buy, tick if tick is not None else 0)
         self.log.event("matched", tick=tick, sell=sell, buy=buy, price=price,
                        result={k: v for k, v in (r or {}).items() if k in ("id", "status", "price", "tick", "settles")})
+        return True
 
     def record(self, book: dict, tick) -> None:
         """Every changed book, appended without printing (the training data for the next refit)."""
@@ -677,6 +735,7 @@ class Desk:
         hb = {"agent": "broker", "mode": self.mode, "policy": self.policy_name, "pid": os.getpid(), "tick": self.tick,
               "what": what, "time": time.strftime("%Y-%m-%dT%H:%M:%S"), "epoch": round(self.now(), 1),
               "reads": self.reads, "read_errors_in_a_row": self.errors, "last_decision": self.last_decision,
+              "bench_alarm": self.alarm,
               "learned": {"day": time.strftime("%Y-%m-%d"), "departed": self.tracker.departed,
                           "early": self.tracker.early},
               **self.counts}
