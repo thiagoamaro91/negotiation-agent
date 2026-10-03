@@ -70,6 +70,13 @@ Strategy (all constants overridable from the command line):
     on price. The pairL clamps apply to price-only sessions.
   - --mirror (off, KILLED in its exact form): treat pairL as the rival's exact limit, ask a share of that pie
     (75% anchor, 55% floor, 30% last chance) and walk when it is empty.
+  - Off by default, measured in docs/duel-lab/improvements.md (on in docs/duel-lab/duel-params-duels1-improved.json):
+      * --late-poll S --late-ticks N: in a tick where an open duel has N or fewer ticks left, the tick's accept waits
+        for a second read of the duels S seconds before the tick ends (the rival's same-tick message is seen first).
+        A late read that fails moves the accept to the next tick's first read; two in a row switch it off;
+      * --slot-demand spoke|acceptable: only duels whose rival spoke / whose offer we would accept now count toward
+        the accept slots a deadline cluster needs;
+      * --last-share X: with pairL visible, the last chance at L + X (pairL - L) instead of the LAST_R ratio.
 
 Usage (from the repo root):
     python3 agent/duel.py watch --once --log-dir /tmp/x   # read-only: one pass, prints what it WOULD do
@@ -128,6 +135,11 @@ DEFAULT_DUEL_TICKS = 16             # Duels I/II (practice 12, Duels III/Final 1
 POST_GAP = 0.25                     # seconds between POSTs (5 req/s per key)
 LOCK_PATH = ROOT / "results" / "duel.lock"
 LOCK_TICKS = 3                      # the lock expires this many ticks after its last refresh (a dead run frees it)
+LATE_POLL = 0.0                     # off. > 0: in a tick where an open duel has LATE_TICKS or fewer ticks left, every
+LATE_TICKS = 1                      # accept waits for a second read of the duels this many seconds before the tick ends
+LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the run
+SLOT_DEMAND = "open"                # duels that count toward the deadline cluster's accept slots: every open one
+LAST_SHARE = 0.0                    # off. > 0: with pairL visible, the last chance keeps this share of the soft pie
 
 SELL_LINES = [
     "Hola. This one is in perfect condition. {offer}.",
@@ -370,6 +382,10 @@ def our_number(d: dict, st: "DuelState", cfg, rival, kind: str) -> tuple[int, in
         if kind == "absent":
             mid = lim + cfg.absent_share * (pl - lim)
             p = int(math.ceil(mid)) if seller else int(math.floor(mid))
+        elif kind == "last" and getattr(cfg, "last_share", 0) > 0:   # --last-share: a share of the soft pie
+            mid = lim + cfg.last_share * (pl - lim)
+            p = min(int(math.ceil(mid)), int(math.floor(cfg.pair_sell * pl))) if seller else \
+                max(int(math.floor(mid)), int(math.ceil(cfg.pair_buy * pl)))
         elif seller:
             p = min(p, int(math.floor(cfg.pair_sell * pl)))
         else:
@@ -524,7 +540,7 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
 def set_windows(pairs: list, cfg) -> None:
     """Each duel's accept window this tick: max(ACCEPT_ANY_TICKS, our open duels whose deadline is within
     NEAR_TICKS of its own). The team has one accept per tick, so N duels ending together need N ticks."""
-    open_ = [(d, st) for d, st in pairs if st.accepted_at is None]
+    open_ = [(d, st) for d, st in pairs if st.accepted_at is None and needs_slot(d, cfg)]
     for d, st in pairs:
         near = 0
         if cfg.near_ticks >= 0:
@@ -532,16 +548,37 @@ def set_windows(pairs: list, cfg) -> None:
         st.window = max(cfg.accept_any_ticks, near)
 
 
-def allocate(decisions: list, cfg) -> list:
+def needs_slot(d: dict, cfg) -> bool:
+    """Does this duel count toward the accept slots the deadline cluster needs? --slot-demand open (default): every
+    open duel. spoke: only duels whose rival has spoken (a rival that never spoke has no offer for us to accept).
+    acceptable: only duels whose standing rival offer we would accept now (the others keep deadline-1 as retry)."""
+    mode = getattr(cfg, "slot_demand", "open")
+    if mode == "acceptable":
+        r = parse_offer(d.get("rival_offer"))
+        return r is not None and inside_limit(d, r[0]) and surplus(d, r[0], r[1], cfg.days_best) >= cfg.min_surplus
+    return mode == "open" or rival_spoke(d)
+
+
+def late_due(decisions: list, cfg) -> bool:
+    """--late-poll: this tick gets a second read, because one of our open duels has LATE_TICKS or fewer ticks left
+    (the rival's message of this tick, often its best one at deadline-1, lands after our first read)."""
+    return getattr(cfg, "late_poll", 0) > 0 and any(
+        x[1].accepted_at is None and 1 <= x[2]["left"] <= cfg.late_ticks for x in decisions)
+
+
+def allocate(decisions: list, cfg, late: bool = False) -> list:
     """One accept per team per tick.
 
     A window accept waits while its rival is still conceding and the window has a spare slot (duels inside their
     window with this deadline or earlier < ticks left - 1): a lone duel then takes deadline-2 and keeps deadline-1
     as the retry. Of the rest, the biggest surplus goes first, unless some duel's urgency (ticks left minus its
-    rank in that surplus queue) is below 1: then the most urgent goes first, so no duel loses its slot."""
+    rank in that surplus queue) is below 1: then the most urgent goes first, so no duel loses its slot.
+    --late-poll: in a tick that gets a second read (late_due), the first read accepts nothing; the late read
+    (late=True) decides again on fresh duels and takes the slot."""
     if getattr(cfg, "window_wait", True):
         demand = [x for x in decisions
-                  if x[1].accepted_at is None and 1 <= x[2]["left"] <= max(cfg.accept_any_ticks, x[1].window or 0)]
+                  if x[1].accepted_at is None and 1 <= x[2]["left"] <= max(cfg.accept_any_ticks, x[1].window or 0)
+                  and needs_slot(x[0], cfg)]
         for d, st, dec in decisions:
             if dec["action"] != "accept" or dec.get("kind") != "window" or not dec.get("moving"):
                 continue
@@ -558,6 +595,11 @@ def allocate(decisions: list, cfg) -> list:
             if i != first:
                 x[2]["action"] = "hold"
                 x[2]["why"] = "acceptable, but one accept per tick: re-checked next tick"
+    if not late and late_due(decisions, cfg):
+        for x in queue:
+            if x[2]["action"] == "accept":
+                x[2]["action"], x[2]["late"] = "hold", True
+                x[2]["why"] = f"accept waits for the late read, {cfg.late_poll:g} s before the tick ends"
     return decisions
 
 
@@ -633,6 +675,86 @@ def _csv(x) -> str:
     return ",".join(str(v) for v in x)
 
 
+def tick_left(clock: dict) -> float:
+    """Seconds until the next tick, never more than a whole tick (a bad next_tick_in must not oversleep the tick)."""
+    try:
+        ts = float(clock.get("tick_seconds") or 30.0)
+        return max(0.0, min(float(clock.get("next_tick_in", ts)), ts))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: float) -> bool:
+    """--late-poll: the tick's second read, LATE_POLL seconds before it ends. The rival's message of this tick (its
+    best one, at deadline-1, in 6/8 Friday duels) lands after our first read; reading again before accepting lets the
+    one accept of this tick take it. Accepts only: this tick's messages went out in the first read.
+    Returns False when the read did not happen (tick over, paused, network): the caller then accepts in the next
+    tick's first read, so one failed late read never holds accepts for two ticks."""
+    try:
+        clock = b.clock()
+        if int(clock["tick"]) != tick or clock.get("paused"):
+            run.event("late_skipped", tick=tick, now=clock.get("tick"), paused=clock.get("paused"))
+            return False
+        time.sleep(max(0.0, min(tick_end, time.time() + tick_left(clock)) - cfg.late_poll - time.time()))
+        clock = b.clock()
+        if int(clock["tick"]) != tick:
+            run.event("late_skipped", tick=tick, now=clock.get("tick"), why="tick over before the late read")
+            return False
+    except Exception as e:  # noqa: BLE001  (network, shape): no late accept this tick
+        run.event("error", where="late", tick=tick, kind=type(e).__name__, msg=str(e)[:200])
+        return False
+    every = None
+    for attempt in range(3):   # a slow or failed read is retried while 2 s of the tick remain
+        try:
+            every = b.duels(done=True).get("duels", [])
+            break
+        except Exception as e:  # noqa: BLE001
+            run.event("error", where="late", tick=tick, attempt=attempt, kind=type(e).__name__, msg=str(e)[:200])
+            if time.time() + 1.0 > tick_end - 2.0:
+                break
+            time.sleep(1.0)
+    if every is None:
+        return False
+    pairs = []
+    for d in every:
+        st = states.get(d.get("duel"))
+        if d.get("status") != "live" or st is None:
+            continue
+        if d.get("rival_offer") != st.last_rival:   # what the late read is for: logged so Saturday can measure it
+            st.last_rival = d.get("rival_offer")
+            run.event("rival", duel=d["duel"], offer=d.get("rival_offer"), rounds=d.get("rounds"), late=True)
+        st.pair_l = mirror_limit(d, every)
+        st.rival_limit = st.pair_l if cfg.mirror else None
+        sync_state(st, d)
+        pairs.append((d, st))
+    set_windows(pairs, cfg)
+    decisions = allocate([(d, st, decide(d, st, tick, cfg)) for d, st in pairs], cfg, late=True)
+    for d, st, dec in decisions:
+        if dec["action"] != "accept":
+            continue
+        did = d["duel"]
+        row = {k: dec.get(k) for k in ("left", "rival", "rival_surplus", "pair_l", "soft_pie", "moving", "why")}
+        if not inside_limit(d, dec["rival"][0]):  # cannot happen by construction; never accept it
+            run.event("bug_skip", duel=did, action="accept", rival=dec["rival"], limit=d["your_limit"])
+            continue
+        if not sending:
+            run.event("would_accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, late=True, **row)
+            continue
+        try:
+            fresh = next((x for x in b.duels().get("duels", []) if x.get("duel") == did), None)
+            if fresh is None or offer_id(fresh.get("rival_offer")) != offer_id(d.get("rival_offer")):
+                run.event("accept_skipped", duel=did, why="rival offer changed", late=True,
+                          now=fresh and fresh.get("rival_offer"))
+                continue
+            resp = b.duel_accept(did)
+            st.accepted_at = tick
+            run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, late=True, resp=resp,
+                      **row)
+        except BazaarError as e:
+            run.event("refused", duel=did, action="accept", late=True, code=e.code, msg=e.message, extra=e.extra)
+    return True
+
+
 # flags that are not tuning: never taken from a --params file
 NOT_PARAMS = {"cmd", "params", "until", "once", "log_dir", "n", "seed", "idle_ticks"}
 
@@ -670,6 +792,16 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--duel-ticks", type=int, default=DEFAULT_DUEL_TICKS)
     ap.add_argument("--post-gap", type=float, default=POST_GAP)
     ap.add_argument("--lock-ticks", type=int, default=LOCK_TICKS)
+    ap.add_argument("--late-poll", type=float, default=LATE_POLL,
+                    help="seconds before the tick ends for a second read of the duels in the last --late-ticks ticks "
+                         "of any open duel; that tick's accepts wait for it (0: off)")
+    ap.add_argument("--late-ticks", type=int, default=LATE_TICKS)
+    ap.add_argument("--last-share", type=float, default=LAST_SHARE,
+                    help="price-only, pairL visible: the last chance at L + share x (pairL - L) instead of the "
+                         "--last-r ratio (0: off)")
+    ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke", "acceptable"],
+                    help="which duels count toward the accept slots a deadline cluster needs: every open one, those "
+                         "whose rival has spoken, or those with a rival offer we would accept now")
     ap.add_argument("--mirror", action="store_true",
                     help="KILLED hypothesis: take the paired limit as the rival's exact limit (keep off)")
     ap.add_argument("--until", default="", help="stop at this local wall time, HH:MM")
@@ -715,6 +847,8 @@ def make_cfg(argv: list):
         sys.exit("--min-surplus must be >= 1 (0 would accept at our limit)")
     if not cfg.mirror_shares or not cfg.days_premium:
         sys.exit("--mirror-shares and --days-premium need at least one value")
+    if cfg.late_poll < 0 or cfg.late_ticks < 1:
+        sys.exit("--late-poll must be >= 0 (0: off) and --late-ticks >= 1")
     return cfg
 
 
@@ -748,6 +882,8 @@ def main() -> None:
     states: dict[int, DuelState] = {}
     finished: set[int] = set()
     last_tick = None
+    late_failed = False     # --late-poll: last tick's late read did not happen, so this tick accepts in its first read
+    late_fails = 0          # late reads failed in a row
     idle = 0
     seen_any = False
     passes = 0
@@ -772,6 +908,7 @@ def main() -> None:
                 continue
             passes += 1
             last_tick = tick
+            tick_end = time.time() + tick_left(clock)
             try:  # one bad shape or bug must never end an unattended run: log it and go to the next tick
                 try:
                     every = b.duels(done=True).get("duels", [])
@@ -837,7 +974,7 @@ def main() -> None:
                 set_windows(decisions, cfg)
                 decisions = [(d, st, decide(d, st, tick, cfg)) for d, st in decisions]
 
-                allocate(decisions, cfg)
+                allocate(decisions, cfg, late=late_failed)
 
                 for d, st, dec in decisions:
                     did = d["duel"]
@@ -895,6 +1032,21 @@ def main() -> None:
                         # 429 / wait_for_tick: skip this duel until the next tick, never retry-spam
                         run.event("refused", duel=did, action="say", code=e.code, msg=e.message, extra=e.extra)
                     time.sleep(cfg.post_gap)
+
+                if not cfg.once and not late_failed and late_due(decisions, cfg):
+                    try:
+                        late_ok = late_pass(b, run, cfg, states, tick, sending, tick_end)
+                    except Exception as e:  # noqa: BLE001  a crash in the late read is a FAILED late read: counted
+                        # toward late_off, and the next tick's first read accepts (no accept is held twice)
+                        run.event("error", where="late_pass", tick=tick, kind=type(e).__name__, msg=str(e)[:300])
+                        late_ok = False
+                    late_failed = not late_ok
+                    late_fails = late_fails + 1 if late_failed else 0
+                    if late_fails >= LATE_MAX_FAILS:
+                        cfg.late_poll = 0.0
+                        run.event("late_off", tick=tick, why=f"{late_fails} late reads failed in a row")
+                else:
+                    late_failed = False
 
                 # accepted duels that did not settle within two ticks are open again
                 for st in states.values():
@@ -1155,6 +1307,24 @@ def simulate(mod, cfg, n_duels: int = 3000, seed: int = 7, kinds=ARCHETYPES, d1_
             for x in live:
                 if x["open"] and x["phase"][t] == "post":
                     rival_turn(x, t)
+            if getattr(mod, "late_due", None) and mod.late_due(decisions, cfg):
+                # --late-poll: a second read after the rival's moves of this tick; it takes the tick's one accept
+                late = [(x, copy.deepcopy(x["d"])) for x in live if x["open"]]
+                for x, snap in late:
+                    mod.sync_state(x["st"], snap)
+                mod.set_windows([(snap, x["st"]) for x, snap in late], cfg)
+                again = mod.allocate([(snap, x["st"], mod.decide(snap, x["st"], t, cfg)) for x, snap in late], cfg,
+                                     late=True)
+                for (x, snap), (_, st, dec) in zip(late, again):
+                    if dec["action"] != "accept" or x["refuse"][t]:
+                        continue
+                    rp = parse_offer(snap.get("rival_offer"))
+                    if (rp is None or not inside_limit(x["d"], rp[0])
+                            or surplus(x["d"], rp[0], None, "auto") < MIN_SURPLUS):
+                        out["violations"].append(f"late accept on {rp} vs limit {x['d']['your_limit']}")
+                        continue
+                    st.accepted_at = t
+                    settle(x, rp[0], t, "us")
 
         for x in duels:
             s = stats[x["kind"]]
@@ -1259,12 +1429,15 @@ def selftest(cfg) -> int:
     def fake(left, rs, dl):
         st = DuelState({"duel": 1, "deadline_tick": dl}, dl - 16, 16)
         return ({"deadline_tick": dl}, st, {"action": "accept", "kind": "early", "left": left, "rival_surplus": rs})
-    q = allocate([fake(3, 10, 100), fake(3, 30, 100), fake(3, 20, 100)], cfg)
+    q = allocate([fake(3, 10, 100), fake(3, 30, 100), fake(3, 20, 100)], cfg, late=True)
     if [x[2]["action"] for x in q] != ["hold", "accept", "hold"]:
         bad.append("allocate: biggest surplus did not go first")
-    q = allocate([fake(5, 30, 100), fake(5, 20, 100), fake(1, 5, 96)], cfg)
+    q = allocate([fake(5, 30, 100), fake(5, 20, 100), fake(1, 5, 96)], cfg, late=True)
     if [x[2]["action"] for x in q] != ["hold", "hold", "accept"]:
         bad.append("allocate: the duel about to expire did not go first")
+    q = allocate([fake(5, 30, 100), fake(5, 20, 100), fake(1, 5, 96)], cfg)
+    if [x[2]["action"] for x in q] != (["hold"] * 3 if cfg.late_poll > 0 else ["hold", "hold", "accept"]):
+        bad.append("allocate: --late-poll did not move the last tick's accept to the late read")
     import tempfile
     with tempfile.TemporaryDirectory() as tmp:
         lp = Path(tmp) / "duel.lock"
