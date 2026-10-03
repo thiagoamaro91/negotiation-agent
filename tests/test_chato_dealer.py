@@ -306,21 +306,6 @@ class TestFloor(DealerCase):
         self.assertIn("below our private value 17.5", refused[0]["why"])
         self.assertEqual(chato.apply_floor(mal06, None), (mal06, []))   # no flag: floor stays 19.5
 
-    def test_below_value_ok_keeps_a_copy_under_its_value_and_only_then(self):
-        mal06 = [p for p in self.plan if p["asset_id"] == 42]              # private 17.5
-        kept, refused = chato.apply_floor(mal06, 17, below_value_ok=True)
-        self.assertEqual(refused, [])
-        self.assertEqual((kept[0]["value"], kept[0]["below_value"]), (17, True))
-        kept, refused = chato.apply_floor(mal06, 18, below_value_ok=True)  # at or above value: not marked
-        self.assertEqual((kept[0]["value"], "below_value" in kept[0]), (18, False))
-        self.assertEqual(chato.apply_floor(mal06, None, below_value_ok=True), (mal06, []))
-
-    def test_below_value_ok_needs_floor(self):
-        with self.assertRaises(SystemExit):
-            chato.parse_args(["plan", "--dealer", "pilar", "--below-value-ok"])
-        self.assertTrue(chato.parse_args(["plan", "--floor", "17", "--below-value-ok"]).below_value_ok)
-        self.assertFalse(chato.parse_args(["plan", "--floor", "17"]).below_value_ok)
-
     def test_floor_is_per_copy(self):
         kept, refused = chato.apply_floor(self.plan, 18)        # MAL-08 here is worth 49: never at 18
         self.assertEqual([p["asset_id"] for p in kept], [42])

@@ -34,9 +34,6 @@ nothing is ever auto-selected that way: without an explicit id the agent sells s
 --sell-anchor N (absolute first ask) and --sell-step N override the dealer's selling defaults; the floor still holds.
 --floor P replaces the default sell floor (private value + 2) with P for this run; a copy whose private value is above
 P (hard minimum ceil(private value)) is refused: plan shows it, run stops before opening any thread.
---below-value-ok (only with --floor) lifts that hard minimum: the ladder scores the share of the dealer's price range,
-and private values only score in trades with other teams (kit/RULES.md, Scoring), so a dealer sale below our value
-costs no points. Off by default.
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --floor 18 --max-deals 2
 """
 from __future__ import annotations
@@ -363,18 +360,15 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
     return plan
 
 
-def apply_floor(plan: list[dict], floor: int | None, below_value_ok: bool = False) -> tuple[list[dict], list[dict]]:
+def apply_floor(plan: list[dict], floor: int | None) -> tuple[list[dict], list[dict]]:
     """--floor P replaces the default sell floor (private value + 2) with P for this run. P below our private value of
-    a copy (hard minimum ceil(private)) is refused for that copy: it comes back in the second list and is never sold.
-    With below_value_ok (--below-value-ok) that copy is kept at P instead and marked below_value."""
+    a copy (hard minimum ceil(private)) is refused for that copy: it comes back in the second list and is never sold."""
     if floor is None:
         return plan, []
     kept, refused = [], []
     for p in plan:
         if p["side"] != "sell":
             kept.append(p)
-        elif int(floor) < math.ceil(p["private"]) and below_value_ok:
-            kept.append(dict(p, value=int(floor), floor_override=True, below_value=True))
         elif int(floor) < math.ceil(p["private"]):
             refused.append(dict(p, why=f"--floor {floor} is below our private value {p['private']} "
                                        f"(minimum {math.ceil(p['private'])})"))
@@ -417,9 +411,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--sell-step", type=int, default=None, help="primas per round when selling (default chato 2, pilar 4)")
     ap.add_argument("--floor", type=int, default=None,
                     help="sell floor in P for this run, replacing private value + 2; refused below ceil(private value)")
-    ap.add_argument("--below-value-ok", action="store_true",
-                    help="with --floor only: sell at the floor even below our private value (dealer deals score the "
-                         "dealer's range, not our value)")
     args = ap.parse_args(argv)
     if args.step < 1 or (args.anchor is not None and args.anchor < 1):
         ap.error("--step and --anchor must be >= 1")
@@ -427,8 +418,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ap.error("--sell-step and --sell-anchor must be >= 1")
     if args.floor is not None and args.floor < 1:
         ap.error("--floor must be >= 1")
-    if args.below_value_ok and args.floor is None:
-        ap.error("--below-value-ok needs --floor")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
     if args.allow_single and not listed_sell_ids(only):
         ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
@@ -479,7 +468,7 @@ def main() -> None:
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap, allow_single=args.allow_single)
-    plan, floor_refused = apply_floor(plan, args.floor, args.below_value_ok)
+    plan, floor_refused = apply_floor(plan, args.floor)
     CASH_RESERVE = args.reserve
     MAX_ROUNDS = args.max_rounds
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
