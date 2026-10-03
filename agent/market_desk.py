@@ -27,7 +27,24 @@ Every tick, one pass:
      (team trades for that card, else its set and rarity, else its rarity, else 80 % of book), raised by --bid-step
      every --bid-step-ticks without a fill, never above value - margin or the price caps. One bid per card, at most
      --bid-max live, their sum within cash - min cash. A bid is cancelled when the card arrives or the price is stale.
-  6. Every decision, taken or not, is one human line and one JSON record (logs/market/<date>.jsonl in watch/run);
+  6. SWAPS: one card for one card, no cash on either side (give {"assets": [id]}, want {"cards": [ref]}, which the
+     board shows as want.types ["card:REF"]). A spare is worth 25 % or 10 % of a first copy to us and a card we lack
+     100 %, so a swap creates value at our private values without spending cash: it is held to the buy margin and
+     the spend caps for its fee, never to --min-cash. The fee is paid by the side that accepts: 0 % of 0 P plus the
+     per-card fee for both cards (El Rastro 2 P; v03 at 1 % and 0 per card: 0 P).
+     FILL another team's swap (they give X, want Y) when
+        value(one more X) - value of our copy of Y - fee >= max(3, 10 % of value(X)),
+     we hold no X, Y is a spare (or a --sell-first-copies set) and never the only copy on a protected page, no
+     offer of ours on X or Y is settling, the fee is <= --swap-max-fee, and the per-partner cap allows it. Same
+     one-accept-per-tick ranking, lease, duel.lock and re-read before the accept as buys; we pass our copy's asset id.
+     POST our own: for each page card we lack worth >= --swap-min-value (most valuable first, live swaps keep their
+     place), the spare whose value to us is lowest, of the same rarity or higher, passing the same rule without a
+     fee (the side that accepts pays it); one swap per card asked, one copy per card given, at most --swap-max live,
+     on El Rastro (another team's venue only with --swap-team-venue), --swap-expires ticks, optionally addressed to a
+     public holder (--address-swaps). Never a card we bid for, buy or swap for this tick; never an asset that another
+     live offer of ours holds, nor one in rastro_seller's config (its sync would adopt a single-asset offer of ours
+     as its listing) unless --swap-seller-spares. Renewed, replaced and cancelled like bids.
+  7. Every decision, taken or not, is one human line and one JSON record (logs/market/<date>.jsonl in watch/run);
      a heartbeat goes to logs/state/desk-market.json.
 
 Why bids (another team suggested it publicly; weighed here on its merits, not because they said so): the side that
@@ -44,6 +61,7 @@ Modes:
     python3 agent/market_desk.py watch --keyless      # shadow without the key (e.g. on the VM, which never holds it)
     python3 agent/market_desk.py run --until 13:00    # live through the lease (needs the team's yes first)
     python3 agent/market_desk.py plan --sell-first-copies MAL --cap-hour 60 --min-cash 280   # caps are flags
+    python3 agent/market_desk.py plan --keyless --sell-first-copies MAL --address-swaps      # swap candidates
 Keyless mode knows our cards only as of the last tools/snapshot.py (plus public settlements; packs are not public):
 refresh logs/state/me.json and offers.json at 09:00. With the key it reads /api/me every tick and asks
 /api/me/value for the cards that come close to the rule (cached until our holdings change).
@@ -81,6 +99,7 @@ HOME = "rastro"
 STATE = LOGS / "state"
 HEARTBEAT = STATE / "desk-market.json"
 DUEL_LOCK = ROOT / "results" / "duel.lock"   # agent/duel.py run: expiry (epoch seconds) while any duel is live
+SELLER_CONFIG = ROOT / "agent" / "rastro_floors.json"   # rastro_seller.py's spares: our swaps leave them alone
 ME_SNAPSHOT = STATE / "me.json"
 OFFERS_SNAPSHOT = STATE / "offers.json"
 FEED_FILES = [LOGS / "feed-vm" / "feed.jsonl", LOGS / "feed" / "feed.jsonl"]
@@ -120,6 +139,17 @@ class Config:
     address_bids: bool = False          # address each bid to one team that holds the card (public settlements)
     page_bonus: bool = False            # offline value adds the page bonus to a page's last missing card
     price_window: int = 15              # last N observed trades in the price index
+    # swaps: one card for one card, no cash either way (docs in the module docstring, step 6)
+    swap_fill: bool = True              # accept other teams' swaps that pass the rule
+    swap_post: bool = True              # post our own swaps (a spare for a card we lack)
+    swap_venue: str = HOME              # another team's venue only with --swap-team-venue (it scores for its owner)
+    swap_max: int = 4                   # our live swaps at once
+    swap_expires: int = 30              # expires_in_ticks for our swaps
+    swap_min_value: float = 8.0         # do not ask a swap for cards worth less than this to us
+    swap_max_fee: int = 3               # max fee we pay to fill a swap (El Rastro: 1 P per card, 2 cards = 2 P)
+    address_swaps: bool = False         # address each swap to one team that holds the card (public settlements)
+    swap_any_rarity: bool = False       # offer a lower-rarity spare for a card (default: same rarity or higher)
+    swap_seller_spares: bool = False    # may offer copies in rastro_seller's config (it would adopt the offer)
 
 
 # ---------------------------------------------------------------- pure: fees, margins, structure
@@ -240,9 +270,86 @@ def check_bid(o: dict, me_id: str, our_assets: dict, tick: int | None = None) ->
     return {"ok": True, "reason": "bid_asset", "ref": our_assets[aid], "asset": aid, "price": price}
 
 
+SWAP_CARDS = 2   # a swap moves two cards (one each way); the per-card fee counts both, as (18 P, 2 cards) -> 3 did
+
+
+def swap_fee(venue_fee: tuple) -> int:
+    """Fee for a no-cash swap, paid by the side that accepts: 0 % of 0 P + the per-card fee x 2 cards
+    (El Rastro: 2 P; a team venue with no per-card fee, e.g. v03 at 1 %: 0 P)."""
+    return fee_for(0, venue_fee, SWAP_CARDS)
+
+
+def check_swap(o: dict, me_id: str, our_assets: dict, tick: int | None = None) -> dict:
+    """A swap we could fill: they give exactly one card (an asset with a card ref) and want exactly one card back,
+    either any copy (types ["card:REF"], or cards ["REF"] as it is posted) or one specific asset of ours; no cash on
+    either side and nothing else. Open, not ours, addressed to nobody or to us, not a conversation offer, not expired.
+    our_assets: {asset_id: ref}. "ref" is the card we would get, "want_ref" the card we would give."""
+    bad = {"ok": False, "ref": None, "asset": None, "want_ref": None, "want_asset": None}
+    if not isinstance(o, dict):
+        return {**bad, "reason": "not_an_offer"}
+    if o.get("status") != "open":
+        return {**bad, "reason": f"status_{o.get('status')}"}
+    if o.get("maker") == me_id:
+        return {**bad, "reason": "maker_is_us"}
+    if o.get("to") not in (None, "", me_id):
+        return {**bad, "reason": "addressed_elsewhere"}
+    if o.get("thread") is not None:
+        return {**bad, "reason": "conversation_offer"}
+    if tick is not None and isinstance(o.get("expires_tick"), int) and o["expires_tick"] <= tick:
+        return {**bad, "reason": "expired"}
+    want = o.get("want")
+    if isinstance(want, dict) and "cards" in want:   # the posted form; the board shows it as types ["card:REF"]
+        cards = want.get("cards")
+        if not isinstance(cards, list) or not all(isinstance(c, str) for c in cards):
+            return {**bad, "reason": "bad_shape"}
+        types = want.get("types") or []
+        if not isinstance(types, list):
+            return {**bad, "reason": "bad_shape"}
+        want = {**{k: v for k, v in want.items() if k != "cards"}, "types": types + [f"card:{c}" for c in cards]}
+    g, w = _side(o.get("give")), _side(want)
+    if g is None or w is None:
+        return {**bad, "reason": "bad_shape"}
+    if g[3] or w[3]:
+        return {**bad, "reason": f"unknown_{g[3] or w[3]}"}
+    gcash, gassets, gtypes, _ = g
+    wcash, wassets, wtypes, _ = w
+    if gcash or wcash:
+        return {**bad, "reason": "swap_with_cash"}
+    if gtypes:
+        return {**bad, "reason": "they_give_a_type"}
+    if len(gassets) != 1:
+        return {**bad, "reason": f"they_give_{len(gassets)}_assets"}
+    a = gassets[0]
+    if not isinstance(a, dict) or a.get("kind", "card") != "card" or not isinstance(a.get("ref"), str) \
+            or not REF_RE.match(a["ref"]) or not isinstance(a.get("id"), int):
+        return {**bad, "reason": "not_a_card"}
+    if len(wassets) + len(wtypes) != 1:
+        return {**bad, "reason": f"wants_{len(wassets) + len(wtypes)}_items"}
+    if wtypes:
+        t = wtypes[0]
+        if not isinstance(t, str) or not t.startswith("card:") or not REF_RE.match(t[5:]):
+            return {**bad, "reason": "wants_non_card"}
+        want_ref, want_asset = t[5:], None
+    else:
+        x = wassets[0]
+        want_asset = x.get("id") if isinstance(x, dict) else x
+        if not isinstance(want_asset, int) or isinstance(want_asset, bool) or want_asset not in our_assets:
+            return {**bad, "reason": "wants_asset_not_ours"}
+        want_ref = our_assets[want_asset]
+    if want_ref == a["ref"]:
+        return {**bad, "reason": "same_card"}
+    return {"ok": True, "reason": "swap_asset" if want_asset is not None else "swap_type", "ref": a["ref"],
+            "asset": a["id"], "want_ref": want_ref, "want_asset": want_asset, "rarity": a.get("rarity"),
+            "set": a.get("set") or a["ref"][:3], "serial": a.get("serial")}
+
+
 def classify(o: dict) -> str:
-    """Rough shape, for the log only: listing | bid | swap | other."""
-    g, w = _side((o or {}).get("give")), _side((o or {}).get("want"))
+    """Rough shape, for routing and the log: listing | bid | swap | other (each check_* then checks it exactly)."""
+    want = (o or {}).get("want")
+    if isinstance(want, dict) and isinstance(want.get("cards"), list) and isinstance(want.get("types") or [], list):
+        want = {**{k: v for k, v in want.items() if k != "cards"},
+                "types": list(want.get("types") or []) + [f"card:{c}" for c in want["cards"]]}
+    g, w = _side((o or {}).get("give")), _side(want)
     if g is None or w is None:
         return "other"
     if g[1] and not g[0] and w[0] and not (w[1] or w[2]):
@@ -432,8 +539,10 @@ class Tape:
         """Teams that, by public settlements and gifts, still hold a copy (starting hands and packs are not public)."""
         return sorted(t for t, n in (self.holds.get(ref) or {}).items() if n > 0 and t != exclude)
 
-    def last_receiver(self, ref: str, exclude: str = "") -> str | None:
+    def last_receiver(self, ref: str, exclude: str = "", among=None) -> str | None:
         own = set(self.owners(ref, exclude))
+        if among is not None:
+            own &= set(among)
         for r in reversed(self.settled):
             for i in r.get("items") or []:
                 if i.get("ref") == ref and i.get("to") in own:
@@ -462,7 +571,8 @@ class Ledger:
         self.rows.append(row)
 
     def spent(self, t_hours: float, window: float | None = 1.0) -> int:
-        return sum(int(r.get("cost") or 0) for r in self.rows if r.get("side") == "buy"
+        """Cash out on buys, filled bids and the fees of the swaps we filled."""
+        return sum(int(r.get("cost") or 0) for r in self.rows if r.get("side") in ("buy", "swap")
                    and (window is None or r.get("t_hours", 0) > t_hours - window))
 
     def partner_trades(self, partner: str, t_hours: float) -> int:
@@ -495,6 +605,24 @@ def buy_caps(cfg: Config, *, price: int, fee: int, info: dict, cash: int, ledger
     return None
 
 
+def swap_caps(cfg: Config, *, fee: int, cash: int, ledger: Ledger, t_hours: float, partner: str | None) -> str | None:
+    """The first cap filling a swap would break, or None. A swap moves no cash, only the fee: it is held to
+    --swap-max-fee and the spend caps, not to --min-cash (the cash floor is for buys and bids)."""
+    if fee > cfg.swap_max_fee:
+        return f"cap: swap fee {fee} > max {cfg.swap_max_fee}"
+    if fee > cash:
+        return f"cap: fee {fee} > cash {cash}"
+    h = ledger.spent(t_hours, 1.0)
+    if fee and h + fee > cfg.cap_hour:
+        return f"cap: hour spend {h}+{fee} > {cfg.cap_hour}"
+    d = ledger.spent(t_hours, None)
+    if fee and d + fee > cfg.cap_day:
+        return f"cap: day spend {d}+{fee} > {cfg.cap_day}"
+    if partner and ledger.partner_trades(partner, t_hours) >= cfg.partner_hour:
+        return f"cap: {cfg.partner_hour} trades with {partner} this game hour"
+    return None
+
+
 # ---------------------------------------------------------------- the decision (pure)
 
 def _num(x) -> str:
@@ -517,17 +645,30 @@ def line(d: dict) -> str:
         nums = (f"@ {d.get('price')} {where}{' to ' + d['to'] if d.get('to') else ''}: value {_num(d.get('value'))}, "
                 f"ceiling {d.get('ceiling')}, anchor {d.get('anchor')} ({d.get('price_basis')}), "
                 f"gain if filled {d['gain']:+.1f}" if d.get("gain") is not None else f"{where}")
+    elif k == "swap" and d.get("value") is not None and d.get("give_value") is not None:
+        mine = f"our {d.get('give_card')}" + (f" #{d['asset']}" if d.get("asset") else "")
+        nums = (f"for {mine} {where} from{who}: value {_num(d['value'])} - our copy {_num(d['give_value'])} - fee "
+                f"{d['fee']} = gain {d['gain']:+.1f} vs need {_num(d['need'])}")
+    elif k == "myswap" and d.get("give_card"):
+        nums = (f"give {d['give_card']} #{d.get('give_asset')} {where}{' to ' + d['to'] if d.get('to') else ''}: "
+                f"value {_num(d.get('value'))} - our copy {_num(d.get('give_value'))} = gain if filled "
+                f"{d['gain']:+.1f} vs need {_num(d.get('need'))}" if d.get("gain") is not None else f"{where}")
+    elif k == "swap":
+        nums = f"offer {d.get('offer')} {where}" + (f" for our {d['give_card']}" if d.get("give_card") else "")
     else:
         nums = f"offer {d.get('offer')} {where}"
     return f"{head} {nums} -> {d['action'].upper()}: {d['reason']}"
 
 
-def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, bidbook: dict | None = None) -> dict:
+def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, bidbook: dict | None = None,
+           swapbook: dict | None = None) -> dict:
     """One tick's decisions. Pure: reads the snapshot, returns records; sends nothing.
 
     snap: tick, t_hours, me_id, cash, holdings {ref: [asset dicts]}, venues {vid: {fee, owner, house}},
-          boards {vid: [offers]}, mine [our open/queued offers and offers addressed to us], released {set ids}.
-    bidbook: our live bids {ref: {offer, price, to, since, anchor}} (run: from /api/me/offers; watch: simulated)."""
+          boards {vid: [offers]}, mine [our open/queued offers and offers addressed to us], released {set ids},
+          reserved {asset ids rastro_seller's config may list} (optional).
+    bidbook: our live bids {ref: {offer, price, to, since, anchor}} (run: from /api/me/offers; watch: simulated).
+    swapbook: our live swaps {ref we ask: {offer, asset, give_card, to, since}} (same sources)."""
     tick, th, me = snap["tick"], float(snap.get("t_hours") or 0.0), snap["me_id"]
     cash = int(snap.get("cash") or 0)
     holdings = snap.get("holdings") or {}
@@ -535,6 +676,7 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
     valuer.set_counts(counts)
     venues = snap.get("venues") or {}
     bidbook = dict(bidbook or {})
+    swapbook = dict(swapbook or {})
     mine = [o for o in snap.get("mine") or [] if isinstance(o, dict)]
     my_ids = {o.get("id") for o in mine if o.get("maker") == me}
     our_assets = {a["id"]: r for r, lst in holdings.items() for a in lst if isinstance(a, dict) and "id" in a}
@@ -649,6 +791,45 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             else:
                 cands.append({**rec, "side": "sell", "asset": asset,
                               "cancel_listing": listed_assets.get(asset)})
+        elif shape == "swap" and cfg.swap_fill:
+            chk = check_swap(o, me, our_assets, tick)
+            rec.update(kind="swap", card=chk.get("ref"), give_card=chk.get("want_ref"))
+            if not chk["ok"]:
+                records.append({**rec, "action": "skip", "reason": f"structure: {chk['reason']}"})
+                continue
+            ref, yref = chk["ref"], chk["want_ref"]
+            info, yinfo = valuer.info(ref), valuer.info(yref)
+            fee = swap_fee(fee_of(vid))
+            k = counts.get(yref, 0)
+            rec.update(price=0, fee=fee, set=info["set"], rarity=info["rarity"], their_asset=chk["asset"], copies=k)
+            if counts.get(ref, 0) > 0:
+                records.append({**rec, "action": "skip", "reason": f"we hold {counts[ref]} of {ref}"})
+                continue
+            if k == 0:
+                records.append({**rec, "action": "skip", "reason": f"we hold no copy of {yref}"})
+                continue
+            vy, ysrc = valuer.copy(yref)
+            off = valuer.offline_more(ref)
+            if off - vy - fee < need_buy(off, cfg) - SERVER_SLACK and not valuer.completes_page(ref):
+                v, src = off, "offline"   # clearly short: no keyed request for it
+            else:
+                v, src = valuer.more(ref)
+            gain, need = round(v - vy - fee, 2), round(need_buy(v, cfg), 2)
+            rec.update(value=round(v, 2), value_src=src, give_value=round(vy, 2), give_value_src=ysrc, gain=gain,
+                       need=need)
+            asset, why = pick_asset(holdings.get(yref) or [], chk["want_asset"], listed_assets, cfg, k, yinfo)
+            if why is None and (ref in pending or yref in pending):
+                why = "an offer of ours on this card is settling"
+            if why is None and gain < need:
+                why = f"gain {gain:+.1f} below need {need:.1f}"
+            if why is None and owner_of(vid) and not cfg.team_venues:
+                why = "team venue (off by --no-team-venues)"
+            if why is None:
+                why = swap_caps(cfg, fee=fee, cash=cash, ledger=ledger, t_hours=th, partner=partner)
+            if why:
+                records.append({**rec, "action": "skip", "reason": why})
+            else:
+                cands.append({**rec, "side": "swap", "asset": asset, "cancel_listing": listed_assets.get(asset)})
         else:
             records.append({**rec, "kind": shape if shape != "other" else "skip", "card": None, "action": "skip",
                             "reason": f"structure: {shape} (not a one-card listing or bid)"})
@@ -667,8 +848,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
         elif accept is None:
             accept = c
             note = ""
-            if c["side"] == "buy" and (bidbook.get(c["card"]) or {}).get("offer") is not None:
+            if c["side"] in ("buy", "swap") and (bidbook.get(c["card"]) or {}).get("offer") is not None:
                 note = f"; cancel our bid {bidbook[c['card']]['offer']} first"
+            if c["side"] in ("buy", "swap") and (swapbook.get(c["card"]) or {}).get("offer") is not None:
+                note += f"; cancel our swap {swapbook[c['card']]['offer']} first"
             if c.get("cancel_listing"):
                 note += f"; cancel our listing {c['cancel_listing']} first"
             records.append({**c, "action": "take", "reason": f"best gain this tick ({c['gain']:+.1f}){note}"})
@@ -680,7 +863,13 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
         if cfg.bids else []
     for b in bid_actions:
         records.append({**base, **b["record"]})
-    return {"records": records, "accept": accept, "bids": bid_actions}
+    bid_cards = {b["card"] for b in bid_actions if b["action"] in ("post", "keep", "replace")}
+    live_swaps = any(s.get("offer") is not None for s in swapbook.values())
+    swap_actions = plan_swaps(snap, valuer, tape, cfg, swapbook, holdings, counts, pending, accept, listed_assets,
+                              bid_cards) if cfg.swap_post or live_swaps else []
+    for s in swap_actions:
+        records.append({**base, **s["record"]})
+    return {"records": records, "accept": accept, "bids": bid_actions, "swaps": swap_actions}
 
 
 def pick_asset(copies: list, wanted, listed: dict, cfg: Config, k: int, info: dict) -> tuple:
@@ -807,6 +996,146 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
         rec = {"kind": "bid", "card": ref, "venue": cfg.bid_venue, "price": live.get("price"), "offer": live["offer"],
                "action": "cancel", "reason": why}
         out.append({"action": "cancel", "card": ref, "offer": live["offer"], "price": live.get("price"), "record": rec})
+    return out
+
+
+RARITY_RANK = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4}
+
+
+def swap_pool(holdings: dict, counts: dict, cfg: Config, valuer: Valuer, busy: dict, reserved: set, skip_refs: set):
+    """Our copies a swap of ours may give: {ref: {assets (offer order), value of our copy, rarity}}, plus notes on
+    the spares held back. Same rules as a sale (keep the lowest serial; never the only copy on a protected page; a
+    single copy only for --sell-first-copies sets), and an asset that another live offer of ours holds (busy:
+    {asset: offer}, e.g. a rastro_seller listing) is never offered again. Copies in rastro_seller's config stay with
+    the seller unless --swap-seller-spares: its sync adopts any single-asset El Rastro offer of ours as its listing."""
+    pool, held_back = {}, []
+    for ref in sorted(holdings):
+        k = counts.get(ref, 0)
+        if k == 0 or ref in skip_refs:
+            continue
+        info = valuer.info(ref)
+        if k == 1 and (info["set"] in cfg.protect or info["set"] not in cfg.sell_first_copies):
+            continue
+        ordered = sorted((a for a in holdings[ref] if isinstance(a, dict) and isinstance(a.get("id"), int)),
+                         key=lambda a: (a.get("serial") or 0, a["id"]))
+        keep = ordered[0]["id"] if k >= 2 and ordered else None
+        free = []
+        for a in reversed(ordered):
+            aid = a["id"]
+            if aid == keep or aid < 0:          # negative ids: watch's would-be buys, not real assets
+                continue
+            if aid in busy:
+                held_back.append(f"{ref} #{aid} (in our offer {busy[aid]})")
+            elif aid in reserved and not cfg.swap_seller_spares:
+                held_back.append(f"{ref} #{aid} (rastro_seller's config)")
+            else:
+                free.append(aid)
+        if free:
+            v, src = valuer.copy(ref)
+            pool[ref] = {"assets": free, "value": round(v, 2), "src": src, "rarity": info["rarity"]}
+    return pool, held_back
+
+
+def plan_swaps(snap, valuer, tape, cfg, swapbook, holdings, counts, pending, accept, listed_assets, bid_cards) -> list:
+    """Our own swaps on cfg.swap_venue: give one spare, want {"cards": [ref]}, no cash either way. The side that
+    accepts pays the fee, so our gain is value(one more of ref) - value of our copy, held to the buy margin. For each
+    page card we lack (most valuable first) the spare whose value to us is lowest, of the same rarity or higher
+    (--swap-any-rarity drops that), one copy per card given, one swap per card asked, at most --swap-max live. Never a
+    card we are bidding for, buying this tick or that is settling; never an asset another offer of ours holds."""
+    tick, me = snap["tick"], snap["me_id"]
+    released = set(snap.get("released") or [])
+    reserved = set(snap.get("reserved") or ())
+    limit = cfg.swap_max if cfg.swap_post else 0
+    our_swap_offers = {s.get("offer") for s in swapbook.values() if s.get("offer") is not None}
+    busy = {a: oid for a, oid in listed_assets.items() if oid not in our_swap_offers}
+    skip_refs = set(pending)
+    if accept and accept.get("side") in ("sell", "swap"):
+        busy[accept.get("asset")] = f"accept {accept.get('offer')}"
+        skip_refs.add(accept.get("give_card") if accept["side"] == "swap" else accept["card"])
+    pool, held_back = swap_pool(holdings, counts, cfg, valuer, busy, reserved, skip_refs)
+    out = []
+    if limit and (pool or held_back):
+        note = ("spares we may give: " + (", ".join(f"{r} #{p['assets'][0]} ({p['value']:.1f})" for r, p in
+                                                     sorted(pool.items(), key=lambda x: x[1]["value"])) or "none"))
+        if held_back:
+            note += "; held back: " + ", ".join(held_back)
+        out.append({"action": "note", "card": None, "record": {"kind": "myswap", "card": None, "action": "note",
+                                                               "venue": cfg.swap_venue, "reason": note}})
+    wanted = []
+    for ref, info in valuer.cards.items():
+        if not info["page"] or info["hidden"] or info["set"] not in released or counts.get(ref, 0) > 0:
+            continue
+        if ref in pending or ref in bid_cards or (accept and accept["card"] == ref):
+            continue
+        live_first = 0 if (swapbook.get(ref) or {}).get("offer") is not None else 1   # live swaps keep their place
+        wanted.append((live_first, -valuer.offline_more(ref), ref, info))
+    wanted.sort()
+    owner = {s["asset"]: x for x, s in swapbook.items() if s.get("offer") is not None and s.get("asset") is not None}
+    chosen, used = {}, set()
+    for i, (_, _, ref, info) in enumerate(wanted):
+        if not pool or len(chosen) >= limit:
+            break
+        # the server's value only for the cards that could make the list (each one is a keyed request)
+        v, src = valuer.more(ref) if i < limit + 4 else (valuer.offline_more(ref), "offline")
+        if v < cfg.swap_min_value:
+            continue
+        need = need_buy(v, cfg)
+        live = swapbook.get(ref) or {}
+        options = []
+        for y, p in pool.items():
+            if y in used or v - p["value"] < need:
+                continue
+            if not cfg.swap_any_rarity and RARITY_RANK.get(p["rarity"], 0) < RARITY_RANK.get(info["rarity"], 0):
+                continue
+            mine = [a for a in p["assets"] if owner.get(a, ref) == ref]   # a copy another live swap holds stays there
+            if mine:
+                options.append((p["value"], y, mine))
+        if not options:
+            continue
+        # keep the live swap's copy while it still passes (no churn of the listing quota), else the cheapest to us
+        same = [o for o in options if live.get("asset") in o[2]]
+        vy, yref, assets = same[0] if same else min(options, key=lambda o: (o[0], o[1]))
+        asset = live["asset"] if same else assets[0]
+        used.add(yref)
+        to = None
+        if cfg.address_swaps:   # a public holder of the card, preferring one not known to hold the card we give
+            holders = tape.owners(ref, exclude=me)
+            lacking = [t for t in holders if t not in set(tape.owners(yref))]
+            to = tape.last_receiver(ref, exclude=me, among=lacking or holders)
+        chosen[ref] = {"card": ref, "give_card": yref, "asset": asset, "to": to, "value": round(v, 2),
+                       "value_src": src, "give_value": vy, "gain": round(v - vy, 2), "need": round(need, 2),
+                       "set": info["set"], "rarity": info["rarity"], "since": live.get("since", tick)}
+    for ref, c in chosen.items():
+        live = swapbook.get(ref) or {}
+        if live.get("offer") is not None and live.get("asset") == c["asset"] and live.get("to") == c["to"]:
+            act, reason = "keep", f"live swap {live['offer']} gives {c['give_card']} #{c['asset']}"
+        elif live.get("offer") is not None:
+            act, reason = "replace", (f"swap {live['offer']} {live.get('give_card')} #{live.get('asset')} -> "
+                                      f"{c['give_card']} #{c['asset']}")
+        else:
+            act, reason = "post", f"new swap (gain if filled {c['gain']:+.1f})"
+        rec = {"kind": "myswap", "card": ref, "give_card": c["give_card"], "give_asset": c["asset"],
+               "venue": cfg.swap_venue, "to": c["to"], "value": c["value"], "value_src": c["value_src"],
+               "give_value": c["give_value"], "gain": c["gain"], "need": c["need"], "set": c["set"],
+               "rarity": c["rarity"], "action": act, "reason": reason, "offer": live.get("offer")}
+        out.append({"kind": "myswap", "action": act, "card": ref, "give_card": c["give_card"], "asset": c["asset"],
+                    "to": c["to"], "since": c["since"], "offer": live.get("offer"), "record": rec})
+    for ref, live in swapbook.items():
+        if ref in chosen or live.get("offer") is None:
+            continue
+        if counts.get(ref, 0) > 0:
+            why = "card arrived"
+        elif accept and accept["card"] == ref:
+            why = "getting it this tick"
+        elif ref in bid_cards:
+            why = "we bid for it instead"
+        elif live.get("asset") in busy or live.get("give_card") not in pool:
+            why = f"{live.get('give_card')} #{live.get('asset')} may no longer go"
+        else:
+            why = "no longer among the swaps we want"
+        rec = {"kind": "myswap", "card": ref, "give_card": live.get("give_card"), "give_asset": live.get("asset"),
+               "venue": cfg.swap_venue, "offer": live["offer"], "action": "cancel", "reason": why}
+        out.append({"kind": "myswap", "action": "cancel", "card": ref, "offer": live["offer"], "record": rec})
     return out
 
 
@@ -962,10 +1291,20 @@ def venue_table(venues_body: dict, tick: int) -> dict:
 
 # ---------------------------------------------------------------- the desk
 
+def seller_assets(path) -> set:
+    """Asset ids rastro_seller's config may list (enabled lines). Our swaps leave them alone by default."""
+    try:
+        cfg = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return set()
+    return {int(c["asset_id"]) for c in cfg.get("cards", []) if isinstance(c, dict) and c.get("enabled", True)
+            is not False and isinstance(c.get("asset_id"), int)}
+
+
 class Desk:
     def __init__(self, mode: str, cfg: Config, public: PublicClient, *, keyed=None, lease=None, log=None,
                  feed_files=None, me_path: Path = ME_SNAPSHOT, offers_path: Path = OFFERS_SNAPSHOT,
-                 heartbeat: Path | None = HEARTBEAT, out=print):
+                 heartbeat: Path | None = HEARTBEAT, out=print, seller_config: Path | None = SELLER_CONFIG):
         self.mode, self.cfg, self.public, self.keyed, self.lease = mode, cfg, public, keyed, lease
         self.log, self.out, self.heartbeat = log, out, heartbeat
         self.me_path, self.offers_path = Path(me_path), Path(offers_path)
@@ -974,7 +1313,12 @@ class Desk:
         self.valuer = None
         self.ledger = Ledger()
         self.bidbook: dict = {}           # watch: simulated bids; run: synced from /api/me/offers
+        self.swapbook: dict = {}          # our swaps, same sources: {card asked: {offer, asset, give_card, to, since}}
+        self.reserved = seller_assets(seller_config) if seller_config else set()
         self.shadow_counts: dict = {}     # watch: cards a would-be buy brought in
+        self.shadow_gone: set = set()     # watch: our assets a would-be sale or swap handed over
+        self.swap_dupes: list = []        # run: a second live swap of ours asking the same card (cancelled)
+        self.cancelled_ids: set = set()   # run: offers of ours we cancelled (never cancelled twice, never re-read)
         self.said: dict = {}              # last logged decision per offer/card (log on change only)
         self.ticks = 0
         self.last = None
@@ -1033,7 +1377,7 @@ class Desk:
                 boards[vid] = self.public.board(vid).get("offers", [])
             except BazaarError as e:
                 self._say_once(("board", vid, tick), f"tick {tick} board {vid} unread ({e.code})")
-        holdings = holdings_of(acct["assets"])
+        holdings = holdings_of([a for a in acct["assets"] if not (isinstance(a, dict) and a.get("id") in self.shadow_gone)])
         for ref, n in self.shadow_counts.items():   # watch: what our would-be buys brought in
             holdings.setdefault(ref, []).extend({"id": -i - 1, "ref": ref, "serial": 10 ** 6} for i in range(n))
         copy_values = {}
@@ -1051,7 +1395,7 @@ class Desk:
         return {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
                 "me_id": acct["id"], "cash": acct["cash"] + shadow_cash,
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
-                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh()}
+                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": self.reserved}
 
     def duel_lock_fresh(self) -> bool:
         """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
@@ -1090,12 +1434,44 @@ class Desk:
                 live[ref] = {**old, "offer": None}
         self.bidbook = live
 
+    def sync_swaps(self, snap: dict) -> None:
+        """Our live swaps. run: what /api/me/offers says (one card given, one card asked, no cash, on our swap venue);
+        a second swap asking the same card is cancelled (self.swap_dupes). watch: the simulated ones, which expire."""
+        self.swap_dupes = []
+        if self.mode == "watch":
+            for x in [x for x, s in self.swapbook.items() if snap["tick"] >= s.get("expires", 10 ** 9)]:
+                self.swapbook.pop(x)
+            return
+        if self.mode != "run":
+            return
+        live = {}
+        for o in sorted(snap["mine"], key=lambda o: o.get("id") or 0):
+            if o.get("maker") != snap["me_id"] or o.get("status") != "open" or o.get("thread") is not None \
+                    or (o.get("venue") or HOME) != self.cfg.swap_venue or o.get("id") in self.cancelled_ids:
+                continue
+            g, w = o.get("give") or {}, o.get("want") or {}
+            assets, types = g.get("assets") or [], w.get("types") or []
+            if g.get("cash") or w.get("cash") or g.get("types") or w.get("assets") or len(assets) != 1 \
+                    or len(types) != 1 or not isinstance(types[0], str) or not types[0].startswith("card:"):
+                continue
+            a = assets[0]
+            ref = types[0][5:]
+            if ref in live:
+                self.swap_dupes.append({"card": ref, "offer": o["id"]})
+                continue
+            old = self.swapbook.get(ref) or {}
+            live[ref] = {"offer": o["id"], "asset": a.get("id") if isinstance(a, dict) else a,
+                         "give_card": a.get("ref") if isinstance(a, dict) else None, "to": o.get("to"),
+                         "since": old.get("since", snap["tick"])}
+        self.swapbook = live
+
     # ------------------------------------------------ one tick
     def tick(self, clock: dict) -> dict:
         snap = self.snapshot(clock)
         self.last_snap = snap
         self.sync_bids(snap)
-        res = decide(snap, self.valuer, self.tape, self.ledger, self.cfg, self.bidbook)
+        self.sync_swaps(snap)
+        res = decide(snap, self.valuer, self.tape, self.ledger, self.cfg, self.bidbook, self.swapbook)
         self.report(snap, res)
         if self.mode == "watch":
             self.shadow(snap, res)
@@ -1112,7 +1488,7 @@ class Desk:
                            "reason": f"server value {m['server']} != offline {m['offline']} (page bonus or rule change?)"})
             self.valuer.mismatches.clear()
         for d in res["records"]:
-            key = (d["kind"], d.get("offer") if d["kind"] in ("buy", "sell") else d.get("card"))
+            key = (d["kind"], d.get("offer") if d["kind"] in ("buy", "sell", "swap") else d.get("card"))
             sig = (d["action"], d.get("price"), d.get("reason"))
             if self.mode != "plan" and self.said.get(key) == sig:
                 continue
@@ -1121,7 +1497,7 @@ class Desk:
 
     def emit(self, d: dict) -> None:
         d = {**d, "mode": self.mode}
-        self.out(line(d) if d.get("kind") in ("buy", "sell", "bid") else
+        self.out(line(d) if d.get("kind") in ("buy", "sell", "bid", "swap", "myswap") and d.get("action") != "note" else
                  f"tick {d.get('tick')} {str(d.get('kind')).upper():<4} {d.get('card') or '-':<6} -> "
                  f"{str(d.get('action')).upper()}: {d.get('reason')}")
         if self.log is not None:
@@ -1140,7 +1516,13 @@ class Desk:
                 self.shadow_counts[a["card"]] = self.shadow_counts.get(a["card"], 0) + 1
                 self.ledger.add(side="buy", t_hours=snap["t_hours"], tick=snap["tick"], cost=a["price"] + a["fee"],
                                 partner=a.get("partner"), card=a["card"], shadow=True)
+            elif a["side"] == "swap":
+                self.shadow_counts[a["card"]] = self.shadow_counts.get(a["card"], 0) + 1
+                self.shadow_gone.add(a.get("asset"))
+                self.ledger.add(side="swap", t_hours=snap["t_hours"], tick=snap["tick"], cost=a["fee"],
+                                partner=a.get("partner"), card=a["card"], give_card=a.get("give_card"), shadow=True)
             else:
+                self.shadow_gone.add(a.get("asset"))
                 self.ledger.add(side="sell", t_hours=snap["t_hours"], tick=snap["tick"], cash=a["price"] - a["fee"],
                                 partner=a.get("partner"), card=a["card"], shadow=True)
         for b in res["bids"]:
@@ -1150,6 +1532,13 @@ class Desk:
                                            "expires": snap["tick"] + self.cfg.bid_expires}
             elif b["action"] == "cancel":
                 self.bidbook.pop(b["card"], None)
+        for s in res.get("swaps") or []:
+            if s["action"] in ("post", "replace"):
+                self.swapbook[s["card"]] = {"offer": f"shadow-swap-{s['card']}", "asset": s["asset"],
+                                            "give_card": s["give_card"], "to": s["to"], "since": s["since"],
+                                            "expires": snap["tick"] + self.cfg.swap_expires}
+            elif s["action"] == "cancel":
+                self.swapbook.pop(s["card"], None)
 
     # ------------------------------------------------ run (never started without the team's yes)
     def execute(self, clock: dict, snap: dict, res: dict) -> None:
@@ -1158,9 +1547,13 @@ class Desk:
         if self.lease.stopped():
             self.out(f"tick {snap['tick']} STOP file present: nothing sent")
             return
-        # cancels first (a stale bid must not fill while we buy), then the accept, then new bids
+        # cancels first (a stale bid or swap must not fill while we buy), then the accept, then new bids and swaps
+        swaps = res.get("swaps") or []
         cancels = [("cancel", b) for b in res["bids"] if b["action"] in ("cancel", "replace")]
+        cancels += [("cancel", {**d, "kind": "myswap", "dupe": True}) for d in self.swap_dupes]
+        cancels += [("cancel", s) for s in swaps if s["action"] in ("cancel", "replace")]
         posts = [("post", b) for b in res["bids"] if b["action"] in ("post", "replace")]
+        posts += [("post", s) for s in swaps if s["action"] in ("post", "replace")]
         failed = self.send(clock, snap, cancels)
         if res["accept"]:
             self.take(clock, snap, res["accept"])
@@ -1183,21 +1576,36 @@ class Desk:
             if op == "cancel":
                 failed.add(b["card"])
         for op, b in ops[:n]:
+            swap = b.get("kind") == "myswap"
+            book = self.swapbook if swap else self.bidbook
             try:
                 if op == "cancel":
                     self.keyed.cancel(b["offer"])
-                    self.bidbook.pop(b["card"], None)
+                    self.cancelled_ids.add(b["offer"])
+                    if not b.get("dupe"):
+                        book.pop(b["card"], None)
+                elif swap:
+                    # one card for one card, no cash either way: give our spare, want any copy of the card
+                    r = self.keyed.list_offer({"assets": [int(b["asset"])]}, {"cards": [b["card"]]},
+                                              venue=self.cfg.swap_venue, to=b.get("to"),
+                                              expires_in_ticks=self.cfg.swap_expires)
+                    o = r.get("offer", r) if isinstance(r, dict) else {}
+                    book[b["card"]] = {"offer": o.get("id"), "asset": b["asset"], "give_card": b["give_card"],
+                                       "to": b.get("to"), "since": b["since"]}
                 else:
                     r = self.keyed.list_offer({"cash": int(b["price"])}, {"cards": [b["card"]]}, venue=self.cfg.bid_venue,
                                               to=b.get("to"), expires_in_ticks=self.cfg.bid_expires)
                     o = r.get("offer", r) if isinstance(r, dict) else {}
-                    self.bidbook[b["card"]] = {"offer": o.get("id"), "price": b["price"], "to": b.get("to"),
-                                               "since": b["since"], "anchor": b["anchor"]}
-                self.log.event("sent", tick=snap["tick"], op=op, card=b["card"], price=b.get("price"), offer=b.get("offer"))
+                    book[b["card"]] = {"offer": o.get("id"), "price": b["price"], "to": b.get("to"),
+                                       "since": b["since"], "anchor": b["anchor"]}
+                self.log.event("sent", tick=snap["tick"], op=op, kind="swap" if swap else "bid", card=b["card"],
+                               price=b.get("price"), give_card=b.get("give_card"), asset=b.get("asset"),
+                               offer=b.get("offer"))
             except BazaarError as e:
-                self.log.event("refused", tick=snap["tick"], op=op, card=b["card"], code=e.code, msg=e.message[:200])
+                self.log.event("refused", tick=snap["tick"], op=op, kind="swap" if swap else "bid", card=b["card"],
+                               code=e.code, msg=e.message[:200])
                 if op == "cancel":
-                    failed.add(b["card"])   # never post the replacement if the old bid could not be cancelled
+                    failed.add(b["card"])   # never post the replacement if the old offer could not be cancelled
         return failed
 
     def take(self, clock: dict, snap: dict, a: dict) -> None:
@@ -1211,7 +1619,8 @@ class Desk:
             self.log.event("skip_accept", tick=snap["tick"], why="tick moved while waiting", offer=a["offer"])
             return
         fresh = self.snapshot(c2)   # stale inventory is the main risk: decide again on fresh reads
-        res = decide(fresh, self.valuer, self.tape, self.ledger, self.cfg, self.bidbook)
+        self.sync_swaps(fresh)
+        res = decide(fresh, self.valuer, self.tape, self.ledger, self.cfg, self.bidbook, self.swapbook)
         b = res["accept"]
         if not b or b["offer"] != a["offer"]:
             self.log.event("skip_accept", tick=snap["tick"], why="fresh reads changed the decision", offer=a["offer"])
@@ -1220,31 +1629,35 @@ class Desk:
             self.log.event("skip_accept", tick=snap["tick"], why="lease refused", offer=b["offer"])
             return
         try:
-            if b["side"] == "buy" and b["card"] in self.bidbook and self.bidbook[b["card"]].get("offer"):
-                if self.lease.claim_listings(c2, 1):
-                    self.keyed.cancel(self.bidbook[b["card"]]["offer"])
-                    self.bidbook.pop(b["card"], None)
-                else:
-                    self.lease.release_accept(c2, "could not cancel our bid first")
-                    return
+            # a card we get must not also arrive through our own bid or swap: cancel those first
+            for book, what in ((self.bidbook, "bid"), (self.swapbook, "swap")):
+                oid = (book.get(b["card"]) or {}).get("offer")
+                if b["side"] in ("buy", "swap") and oid and oid not in self.cancelled_ids:
+                    if not self.lease.claim_listings(c2, 1):
+                        self.lease.release_accept(c2, f"could not cancel our {what} first")
+                        return
+                    self.keyed.cancel(oid)
+                    self.cancelled_ids.add(oid)
+                    book.pop(b["card"], None)
             if b.get("cancel_listing"):
                 if not self.lease.claim_listings(c2, 1):
                     self.lease.release_accept(c2, "could not cancel our listing first")
                     return
                 self.keyed.cancel(b["cancel_listing"])
-            assets = [b["asset"]] if b["side"] == "sell" and b.get("asset") else None
+                self.cancelled_ids.add(b["cancel_listing"])
+            assets = [b["asset"]] if b["side"] in ("sell", "swap") and b.get("asset") else None
             self.keyed.accept(b["offer"], assets=assets)
         except BazaarError as e:
             self.log.event("refused", tick=snap["tick"], op="accept", offer=b["offer"], code=e.code, msg=e.message[:200])
             if e.status not in (0, 429) and e.code not in ("wait_for_tick", "rate_limited"):
                 self.lease.release_accept(c2, e.code)
             return
-        cost = b["price"] + b["fee"]
-        self.ledger.add(side=b["side"], t_hours=fresh["t_hours"], tick=fresh["tick"],
-                        cost=cost if b["side"] == "buy" else 0, partner=b.get("partner"), card=b["card"])
+        cost = {"buy": b["price"] + b["fee"], "swap": b["fee"]}.get(b["side"], 0)
+        self.ledger.add(side=b["side"], t_hours=fresh["t_hours"], tick=fresh["tick"], cost=cost,
+                        partner=b.get("partner"), card=b["card"])
         self.log.event("accepted", tick=fresh["tick"], side=b["side"], offer=b["offer"], card=b["card"],
                        price=b["price"], fee=b["fee"], value=b["value"], gain=b["gain"], partner=b.get("partner"),
-                       t_hours=fresh["t_hours"], cost=cost if b["side"] == "buy" else 0)
+                       t_hours=fresh["t_hours"], cost=cost, give_card=b.get("give_card"), asset=b.get("asset"))
         if self.valuer:
             self.valuer.cache.clear()
 
@@ -1258,11 +1671,14 @@ class Desk:
             "desk": "market", "mode": self.mode, "tick": snap["tick"], "t_hours": snap["t_hours"],
             "time": datetime.now(MADRID).strftime("%Y-%m-%dT%H:%M:%S%z"),
             "last_decision": {k: top.get(k) for k in ("kind", "action", "card", "offer", "price", "fee", "value",
-                                                       "gain", "venue", "partner")} if top else None,
+                                                       "gain", "venue", "partner", "give_card")} if top else None,
             "reason": top.get("reason") if top else "nothing passes the rules this tick",
             "counts": {"records": len(res["records"]), "candidates": sum(1 for r in res["records"]
                                                                          if r["action"] in ("take", "defer")),
-                       "bids": sum(1 for b in res["bids"] if b["action"] in ("post", "keep", "replace"))},
+                       "bids": sum(1 for b in res["bids"] if b["action"] in ("post", "keep", "replace")),
+                       "swaps": sum(1 for s in res.get("swaps") or [] if s["action"] in ("post", "keep", "replace")),
+                       "swap_fills": sum(1 for r in res["records"] if r["kind"] == "swap"
+                                         and r["action"] in ("take", "defer"))},
             "account": snap.get("account_source"), "stop": bool(self.lease and self.lease.stopped()),
         })
 
@@ -1311,7 +1727,11 @@ def build_config(args) -> Config:
                   sell_first_copies=sets(args.sell_first_copies), sell_listed=args.sell_listed,
                   team_venues=not args.no_team_venues, bids=not args.no_bids, bid_max=args.bid_max,
                   bid_min_value=args.bid_min_value, bid_step=args.bid_step, bid_step_ticks=args.bid_step_ticks,
-                  bid_expires=args.bid_expires, address_bids=args.address_bids, page_bonus=args.page_bonus)
+                  bid_expires=args.bid_expires, address_bids=args.address_bids, page_bonus=args.page_bonus,
+                  swap_fill=not args.no_swap_fills, swap_post=not args.no_swap_posts, swap_venue=args.swap_venue,
+                  swap_max=args.swap_max, swap_expires=args.swap_expires, swap_min_value=args.swap_min_value,
+                  swap_max_fee=args.swap_max_fee, address_swaps=args.address_swaps,
+                  swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares)
 
 
 def add_config_args(ap: argparse.ArgumentParser) -> None:
@@ -1339,6 +1759,20 @@ def add_config_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--bid-expires", type=int, default=c.bid_expires, help="expires_in_ticks for our bids")
     ap.add_argument("--address-bids", action="store_true", help="address each bid to one public holder of the card")
     ap.add_argument("--page-bonus", action="store_true", help="offline values add the page bonus (unconfirmed)")
+    ap.add_argument("--no-swap-fills", action="store_true", help="never accept other teams' swaps")
+    ap.add_argument("--no-swap-posts", action="store_true", help="never post swaps of our own (live ones are cancelled)")
+    ap.add_argument("--swap-venue", default=c.swap_venue, help="venue for our swaps (another team's needs "
+                                                               "--swap-team-venue)")
+    ap.add_argument("--swap-team-venue", action="store_true",
+                    help="allow --swap-venue on another team's venue (its trades score market points for its owner)")
+    ap.add_argument("--swap-max", type=int, default=c.swap_max, help="max live swaps of ours")
+    ap.add_argument("--swap-expires", type=int, default=c.swap_expires, help="expires_in_ticks for our swaps")
+    ap.add_argument("--swap-min-value", type=float, default=c.swap_min_value)
+    ap.add_argument("--swap-max-fee", type=int, default=c.swap_max_fee, help="max fee we pay to fill a swap")
+    ap.add_argument("--address-swaps", action="store_true", help="address each swap to one public holder of the card")
+    ap.add_argument("--swap-any-rarity", action="store_true", help="may offer a lower-rarity spare for a card")
+    ap.add_argument("--swap-seller-spares", action="store_true",
+                    help="may offer copies in rastro_seller's config (only when the seller is not running)")
 
 
 def until_time(hhmm: str) -> datetime:
@@ -1359,11 +1793,16 @@ def main() -> None:
     ap.add_argument("--offers", default=str(OFFERS_SNAPSHOT), help="keyless: /api/me/offers snapshot")
     ap.add_argument("--until", default=None, help="HH:MM Madrid time to stop (required for run)")
     ap.add_argument("--json", action="store_true", help="plan: print the JSON records too")
+    ap.add_argument("--seller-config", default=str(SELLER_CONFIG),
+                    help="rastro_seller's config: its assets stay out of our swaps ('' = none)")
     add_config_args(ap)
     args = ap.parse_args()
     cfg = build_config(args)
     if args.cmd == "run" and (args.keyless or not args.until):
         ap.error("run needs the key and --until HH:MM")
+    if cfg.swap_venue != HOME and not args.swap_team_venue:
+        ap.error(f"--swap-venue {cfg.swap_venue} is another team's venue (its trades score for its owner): "
+                 f"add --swap-team-venue to mean it")
     until = until_time(args.until) if args.until else None
     url = os.environ.get("BAZAAR_URL", URL)
     public = PublicClient(url)
@@ -1384,7 +1823,8 @@ def main() -> None:
         log = QuietRunLog("market")
     feeds = args.feed if args.feed is not None else [p for p in FEED_FILES if p.exists()][:1]
     desk = Desk(args.cmd, cfg, public, keyed=keyed, lease=lease, log=log, feed_files=feeds,
-                me_path=Path(args.me), offers_path=Path(args.offers))
+                me_path=Path(args.me), offers_path=Path(args.offers),
+                seller_config=Path(args.seller_config) if args.seller_config else None)
     if log is not None:
         desk.ledger = today_ledger(log.path) if args.cmd == "run" else Ledger()
         log.start(mode=args.cmd, config=asdict(cfg), feeds=[str(f) for f in feeds], keyed=keyed is not None)
@@ -1445,6 +1885,16 @@ def summary(desk: Desk, clock: dict, res: dict, json_out: bool) -> None:
     for b in res["bids"]:
         if b["action"] in ("post", "replace", "keep"):
             print(f"  bid: {line({**b['record'], 'tick': clock.get('tick')})}")
+    fills = [r for r in recs if r["kind"] == "swap" and r.get("value") is not None]
+    print(f"  swaps on the boards: {sum(1 for r in recs if r['kind'] == 'swap')} seen, "
+          f"{sum(1 for r in fills if r['action'] in ('take', 'defer'))} pass the rule")
+    for r in sorted(fills, key=lambda r: -(r.get("gain") or 0))[:10]:
+        print(f"  swap fill: {line(r)}")
+    for s in res.get("swaps") or []:
+        if s["action"] == "note":
+            print(f"  our swaps: {s['record']['reason']}")
+        elif s["action"] in ("post", "replace", "keep", "cancel"):
+            print(f"  our swap: {line({**s['record'], 'tick': clock.get('tick')})}")
     if json_out:
         print(json.dumps(redact(recs), ensure_ascii=False, indent=1, default=str))
 
