@@ -44,6 +44,12 @@ main { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
 #graph .lbl { font-size: 12px; font-weight: 700; }
 #graph .sub { font-size: 9.5px; fill: var(--muted); }
 #graph .edge { fill: none; }
+#graph .read { fill: none; stroke-dasharray: 2 4; stroke-width: 1.2; }
+#graph .node.stale rect { stroke: var(--bad) !important; }
+#graph .node.aging rect { stroke: var(--world) !important; }
+.badge { font: 600 11px var(--mono); color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 4px 10px; display: none; }
+body.public .badge { display: inline-block; }
+body.public .score .neg { display: none; }
 .banner { position: absolute; left: 50%; top: 18px; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; background: color-mix(in srgb, var(--gold) 14%, var(--panel)); border: 1.5px solid var(--gold); border-radius: 12px; padding: 12px 20px; max-width: min(640px, 90%); text-align: center; transition: opacity .35s, transform .35s cubic-bezier(.2,.9,.3,1.2); }
 .banner.on { opacity: 1; transform: translate(-50%, 0); }
 .banner b { display: block; font: 800 22px/1.2 var(--display); color: var(--gold); }
@@ -80,11 +86,12 @@ footer { border-top: 1px solid var(--line); padding: 10px 20px 12px; display: gr
     <button type="button" id="m-live" aria-pressed="true" data-i="live">En vivo</button>
     <button type="button" id="m-replay" aria-pressed="false" data-i="replay">Repetición</button>
   </div>
+  <span class="badge" data-i="publicBadge">Vista pública · sin valores privados ni texto interno</span>
   <div class="grow"></div>
   <div class="score" aria-live="polite">
     <div><span data-i="score">puntos</span><b id="s-score">–</b></div>
     <div><span data-i="rank">puesto</span><b id="s-rank">–</b></div>
-    <div><span data-i="neg">negociación</span><b id="s-neg">–</b></div>
+    <div class="neg"><span data-i="neg">negociación</span><b id="s-neg">–</b></div>
   </div>
   <div class="clock" id="clock">--:--:--</div>
   <button type="button" class="lang" id="lang">EN</button>
@@ -120,11 +127,15 @@ const SETS = {LAV: 'Lavapiés', LAT: 'La Latina', SAL: 'Salamanca', MAL: 'Malasa
 const I18N = {
   es: {title: 'Enjambre', live: 'En vivo', replay: 'Repetición', score: 'puntos', rank: 'puesto', neg: 'negociación', feed: 'Qué está pasando', negpts: 'puntos de negociación',
        play: '▶ Reproducir', pause: '❚❚ Pausa', page: 'completa', events: 'eventos', updated: 'actualizado', source: 'Fuente única', lock: 'duelo en curso', stop: 'STOP activo',
-       bands: {people: 'Personas', team: 'Agentes Claude del Team 3', sessions: 'Sesiones en el bus', hub: 'Bus', bots: 'Bots de Python (Mac Mini)', world: 'Juego'},
+       bands: {people: 'Personas', team: 'Agentes Claude del Team 3', sessions: 'Sesiones en el bus', hub: 'Bus', bots: 'Bots de Python (Mac Mini)', data: 'Datos con los que deciden (según el código)', world: 'Juego'},
+       publicBadge: 'Vista pública · sin valores privados ni texto interno', pageN: 'Página completa', reads: 'lo leen', withKey: 'con clave', noKey: 'sin clave', brokerKey: 'clave de broker', config: 'config a mano', snapshot: 'foto', ago: 'hace', live_: 'en vivo',
+       data: {'d-me': 'Cuenta /api/me', 'd-value': 'Valor privado', 'd-duels': 'Duelos /api/duels', 'd-books': 'Libros de ofertas', 'd-v20': 'Libro de v20', 'd-feed': 'Feed público', 'd-params': 'duel-params.json', 'd-floors': 'rastro_floors.json', 'd-snap': 'Foto me.json', 'd-decisions': 'decisions.jsonl'},
        kinds: {msg: 'mensaje', bus: 'bus', decision: 'decisión', deal: 'trato', offer: 'oferta', duel: 'duelo', match: 'cruce', announce: 'anuncio', score: 'marcador', act: 'acción', say: 'dice', life: 'arranque', result: 'resultado', skip: 'descarta', grant: 'permiso', error: 'error'}},
   en: {title: 'Swarm', live: 'Live', replay: 'Replay', score: 'score', rank: 'rank', neg: 'negotiation', feed: 'What is happening', negpts: 'negotiation points',
        play: '▶ Play', pause: '❚❚ Pause', page: 'complete', events: 'events', updated: 'updated', source: 'Single source', lock: 'duel running', stop: 'STOP on',
-       bands: {people: 'People', team: "Team 3's Claude agents", sessions: 'Sessions on the bus', hub: 'Bus', bots: 'Python bots (Mac Mini)', world: 'Game'},
+       bands: {people: 'People', team: "Team 3's Claude agents", sessions: 'Sessions on the bus', hub: 'Bus', bots: 'Python bots (Mac Mini)', data: 'Data they decide with (from the code)', world: 'Game'},
+       publicBadge: 'Public view · no private values or internal text', pageN: 'Page complete', reads: 'read by', withKey: 'keyed', noKey: 'keyless', brokerKey: 'broker key', config: 'hand-set config', snapshot: 'snapshot', ago: '', live_: 'live',
+       data: {},
        kinds: {msg: 'message', bus: 'bus', decision: 'decision', deal: 'deal', offer: 'offer', duel: 'duel', match: 'match', announce: 'announce', score: 'score', act: 'action', say: 'says', life: 'start/stop', result: 'result', skip: 'skip', grant: 'grant', error: 'error'}}
 };
 let lang = 'es'; try { lang = localStorage.getItem('swarm-lang') || 'es'; } catch (e) {}
@@ -134,21 +145,36 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).
 const col = k => css(KCOL[k] || '--muted');
 
 let META = {nodes: {}}, ALL = [], next = 0, mode = 'live';
+const READS = new Map(), DECIDES = new Set(['decision', 'deal', 'offer', 'match', 'duel', 'announce']);
 const nodes = new Map(), edges = new Map();
 let layoutKey = '';
 
 /* ---------- nodes and layout ---------- */
 function bandOf(id) {
+  if (/^d-/.test(id)) return 'data';
   const m = META.nodes[id];
   if (m) return m.layer === 'claude' ? 'team' : m.layer;
   if (/^lane-/.test(id)) return 'team';
-  if (/^(thiago|hector|jay)-/.test(id)) return 'sessions';
+  if (/^(thiago|hector|jay|bazaar)-/.test(id)) return 'sessions';
   return 'bots';
 }
-function labelOf(id) { const m = META.nodes[id]; return m ? m.label : id.replace(/^thiago-/, 'T · ').replace(/^hector-/, 'H · ').replace(/^jay-/, 'J · '); }
-function subOf(id) { const m = META.nodes[id]; return m && (m.note || m.where) || ''; }
+function labelOf(id) { if (/^d-/.test(id)) { const d = (META.data || {})[id]; return tr('data')[id] || (d ? d.label : id); } const m = META.nodes[id]; return m ? m.label : id.replace(/^thiago-/, 'T · ').replace(/^hector-/, 'H · ').replace(/^jay-/, 'J · '); }
+function subOf(id) {
+  if (/^d-/.test(id)) { const d = (META.data || {})[id]; return d ? dataSub(d) : ''; }
+  const m = META.nodes[id]; return m && (m.note || m.where) || '';
+}
+function age(s) { if (s == null) return ''; if (s < 90) return `${tr('ago')} ${Math.round(s)} s`.trim(); if (s < 5400) return `${tr('ago')} ${Math.round(s / 60)} min`.trim(); return `${tr('ago')} ${(s / 3600).toFixed(1).replace('.', lang === 'es' ? ',' : '.')} h`.trim(); }
+function dataSub(d) {
+  const key = d.key === 'team' ? tr('withKey') : d.key === 'broker' ? tr('brokerKey') : tr('noKey');
+  if (d.kind === 'config') return `${tr('config')} · ${age(d.age_s)}`;
+  if (d.kind === 'snapshot') return `${tr('snapshot')} · ${age(d.age_s)}`;
+  return d.age_s == null ? `${tr('live_')} · ${key}` : `${key} · ${age(d.age_s)}`;
+}
+function staleness(d) { if (!d || d.kind === 'config' || d.age_s == null) return ''; const lim = d.kind === 'snapshot' ? 1800 : 600; return d.age_s > lim * 6 ? 'stale' : d.age_s > lim ? 'aging' : ''; }
 const ORDER = ['thiago', 'hector', 'jay', 'conductor', 'thiago-air-f8', 'mini-conductor', 'lane-a-venue', 'lane-b-mini', 'lane-c-trades', 'lane-d-ladder', 'lane-v-liveview', 'lane-duel', 'lane-market',
-  'bus', 'duel', 'broker', 'dealer-bots', 'announce', 'market-desk', 'rastro-seller', 'lease', 'concierge', 'teams', 'dealers', 'rastro', 'bench', 'game'];
+  'bus', 'duel', 'broker', 'dealer-bots', 'announce', 'market-desk', 'rastro-seller', 'lease', 'concierge',
+  'd-me', 'd-value', 'd-duels', 'd-books', 'd-v20', 'd-feed', 'd-params', 'd-floors', 'd-snap', 'd-decisions', 'teams', 'dealers', 'rastro', 'bench', 'game'];
+function ensureData() { Object.keys(META.data || {}).forEach(id => { ensure(id); nodes.get(id).seen = true; }); }
 function ensure(id) { if (id && !nodes.has(id)) nodes.set(id, {id, band: bandOf(id), x: 0, y: 0, last: -1e15, seen: false, g: null}); }
 
 function layout() {
@@ -159,7 +185,7 @@ function layout() {
   const defs = el('defs', {}, svg);
   const f = el('filter', {id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%'}, defs);
   el('feGaussianBlur', {stdDeviation: 4, result: 'b'}, f); const mg = el('feMerge', {}, f); el('feMergeNode', {in: 'b'}, mg); el('feMergeNode', {in: 'SourceGraphic'}, mg);
-  const bands = ['people', 'team', 'sessions', 'hub', 'bots', 'world'];
+  const bands = ['people', 'team', 'sessions', 'hub', 'bots', 'data', 'world'];
   const groups = bands.map(b => [...nodes.values()].filter(n => n.band === b).sort((a, c) => {
     const ia = ORDER.indexOf(a.id), ic = ORDER.indexOf(c.id);
     return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.id.localeCompare(c.id);
@@ -179,14 +205,21 @@ function layout() {
     y += rowH * rows[bi];
   });
   const gE = el('g', {id: 'edges'}, svg); el('g', {id: 'pulses'}, svg); const gN = el('g', {id: 'nodes'}, svg);
+  READS.clear();
+  Object.entries(META.data || {}).forEach(([did, d]) => (d.readers || []).forEach(r => {
+    const a = nodes.get(did), b = nodes.get(r); if (!a || !b) return;
+    const path = el('path', {class: 'read', d: curve(a, b), stroke: css('--muted'), 'stroke-opacity': b.seen ? .35 : .08}, gE);
+    (READS.get(r) || READS.set(r, []).get(r)).push({did, path});
+  }));
   edges.forEach(e => { e.path = el('path', {class: 'edge', d: curve(nodes.get(e.a), nodes.get(e.b)), stroke: col(e.kind)}, gE); });
-  const stroke = {people: '--people', team: '--claude', sessions: '--bus', hub: '--bus', bots: '--bot', world: '--world'};
+  const stroke = {people: '--people', team: '--claude', sessions: '--bus', hub: '--bus', bots: '--bot', data: '--muted', world: '--world'};
   nodes.forEach(n => {
-    const g = el('g', {class: 'node' + (n.seen ? '' : ' off')}, gN);
+    const g = el('g', {class: 'node' + (n.seen ? '' : ' off') + (n.band === 'data' && mode === 'live' ? ' ' + staleness((META.data || {})[n.id]) : '')}, gN);
     el('rect', {x: n.x - n.w / 2, y: n.y - 17, width: n.w, height: 34, rx: n.band === 'people' ? 17 : 7, fill: css('--panel'), stroke: css(stroke[n.band])}, g);
     const s = subOf(n.id), t = el('text', {x: n.x, y: s ? n.y - 1 : n.y + 4, 'text-anchor': 'middle', class: 'lbl'}, g); t.textContent = fit(labelOf(n.id), n.w);
     if (s) { const t2 = el('text', {x: n.x, y: n.y + 11, 'text-anchor': 'middle', class: 'sub'}, g); t2.textContent = fit(s, n.w); }
-    const ti = el('title', {}, g); ti.textContent = n.id; n.g = g;
+    const dd = (META.data || {})[n.id], ti = el('title', {}, g);
+    ti.textContent = dd ? `${dd.label}\n${tr('reads')}: ${(dd.readers || []).map(labelOf).join(', ')}${dd.fresh_at ? '\n' + dd.fresh_at.slice(11, 19) : ''}` : n.id; n.g = g;
   });
 }
 const fit = (s, w) => { const m = Math.floor(w / 6.4); return s.length > m ? s.slice(0, m - 1) + '…' : s; };
@@ -212,15 +245,19 @@ function apply(e, animate) {
     if (animate) pulse(a, b, col(e.kind));
   }
   if (animate) { [a, b].forEach(n => n && heat(n)); if (!b) ripple(a, col(e.kind)); }
+  if (animate && DECIDES.has(e.kind)) (READS.get(e.src) || []).forEach(r => {
+    const now = performance.now(); if (r.t && now - r.t < 2500) return; r.t = now;
+    r.path.setAttribute('stroke-opacity', .35); pulse(nodes.get(r.did), a, css('--muted'), 700); heat(nodes.get(r.did));
+  });
   if (e.score) setScore(e.score);
   if (animate || mode === 'live') addFeed(e);
   if (animate && e.highlight) star(e);
 }
 function heat(n) { if (!n.g) return; n.g.classList.add('hot'); n.g.setAttribute('filter', 'url(#glow)'); clearTimeout(n.tm); n.tm = setTimeout(() => { n.g.classList.remove('hot'); n.g.removeAttribute('filter'); }, 1100); }
-function pulse(a, b, color) {
+function pulse(a, b, color, dur = 900) {
   const g = document.getElementById('pulses'); if (!g) return;
   const p = el('path', {d: curve(a, b), fill: 'none', stroke: 'none'}, g), c = el('circle', {r: 4.5, fill: color, filter: 'url(#glow)'}, g);
-  const L = p.getTotalLength(), t0 = performance.now(), dur = 900;
+  const L = p.getTotalLength(), t0 = performance.now();
   (function step(now) { const k = Math.min(1, (now - t0) / dur), pt = p.getPointAtLength(L * (1 - Math.pow(1 - k, 2))); c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); if (k < 1) requestAnimationFrame(step); else { p.remove(); c.remove(); } })(t0);
 }
 function ripple(n, color) {
@@ -230,7 +267,7 @@ function ripple(n, color) {
 }
 function decayEdges() {
   edges.forEach(ed => { if (!ed.path) return; const age = (clockMs - ed.last) / 60000; const op = Math.max(0.035, Math.exp(-age / 25)); ed.path.setAttribute('stroke-opacity', op.toFixed(3)); ed.path.setAttribute('stroke-width', (1 + Math.log2(1 + ed.n)).toFixed(2)); });
-  nodes.forEach(n => { if (n.g && n.seen) n.g.style.opacity = (clockMs - n.last) / 60000 > 45 ? 0.45 : 1; });
+  nodes.forEach(n => { if (n.g && n.seen && n.band !== 'data') n.g.style.opacity = (clockMs - n.last) / 60000 > 45 ? 0.45 : 1; });
 }
 let lastScore = null;
 function setScore(s) {
@@ -242,6 +279,7 @@ function setScore(s) {
 }
 function hms(iso) { return iso.slice(11, 19); }
 function addFeed(e) {
+  if (META.public && !e.text) return;
   const feed = document.getElementById('feed'), d = document.createElement('div');
   d.className = 'ev' + (e.highlight ? ' hl' : '');
   const who = labelOf(e.src) + (e.dst ? ' → ' + labelOf(e.dst) : '');
@@ -252,6 +290,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': 
 function starTitle(e) {
   const m = (e.highlight || '').match(/\b(LAV|LAT|SAL|MAL|RET|CHA)-\d\d\b/);
   if (m) return `★ ${SETS[m[1]]} ${tr('page')}`;
+  if (/^page \d+ complete$/.test(e.highlight || '')) return `★ ${tr('pageN')}`;
   const n = (e.highlight || '').match(/([\d.]+) → ([\d.]+)/);
   if (n) return `★ +${(n[2] - n[1]).toLocaleString(lang === 'es' ? 'es-ES' : 'en-GB', {maximumFractionDigits: 1})} ${tr('negpts')}`;
   return '★ ' + e.highlight;
@@ -278,6 +317,7 @@ async function poll() {
 let started = false;
 async function meta() {
   try { const r = await fetch(q('/meta')); META = await r.json(); } catch (e) { return; }
+  document.body.classList.toggle('public', !!META.public); ensureData(); if (mode === 'live') { layoutKey = ''; relayoutIfNeeded(); }
   const hb = META.desks || {}, parts = [`${tr('source')}: ${(META.events_file || 'swarm-events.jsonl').replace(/^\/Users\/[^/]+/, '~')} · ${ALL.length} ${tr('events')}`];
   Object.entries(hb).forEach(([k, v]) => parts.push(`${labelOf(k)}: tick ${v.tick ?? '–'} · ${v.time ? hms(v.time) : '–'}`));
   if (META.duel_lock) parts.push('⚑ ' + tr('lock')); if (META.stop) parts.push('⚑ ' + tr('stop'));
@@ -304,8 +344,8 @@ function loadDay() {
 }
 function reset() { nodes.clear(); edges.clear(); layoutKey = ''; document.getElementById('feed').innerHTML = ''; lastScore = null; ['s-score', 's-rank', 's-neg'].forEach(i => document.getElementById(i).textContent = '–'); }
 function seek(t) {
-  reset(); DAY.forEach(e => { ensure(e.src); ensure(e.dst); }); relayoutIfNeeded();
-  nodes.forEach(n => { n.seen = false; n.g && n.g.classList.add('off'); });
+  reset(); ensureData(); DAY.forEach(e => { ensure(e.src); ensure(e.dst); }); relayoutIfNeeded();
+  nodes.forEach(n => { if (n.band === 'data') return; n.seen = false; n.g && n.g.classList.add('off'); });
   rt = t; ri = 0; while (ri < DAY.length && Date.parse(DAY[ri].ts) <= t) { apply(DAY[ri], false); ri++; }
   DAY.slice(Math.max(0, ri - 25), ri).forEach(e => addFeed(e));
   clockMs = rt; tick();
@@ -346,13 +386,14 @@ function setMode(m) {
   document.getElementById('m-live').setAttribute('aria-pressed', m === 'live'); document.getElementById('m-replay').setAttribute('aria-pressed', m === 'replay');
   setPlaying(false); reset();
   if (m === 'replay') { requestAnimationFrame(loadDay); return; }
-  const today = ALL.length ? ALL[ALL.length - 1].ts.slice(0, 10) : ''; ALL.filter(e => e.ts.startsWith(today)).forEach(e => apply(e, false));
+  ensureData(); const today = ALL.length ? ALL[ALL.length - 1].ts.slice(0, 10) : ''; ALL.filter(e => e.ts.startsWith(today)).forEach(e => apply(e, false));
   ALL.slice(-30).forEach(e => addFeed(e));
 }
 function paintText() {
   document.querySelectorAll('[data-i]').forEach(n => { const v = tr(n.dataset.i); if (typeof v === 'string') n.textContent = v; });
   document.getElementById('lang').textContent = lang === 'es' ? 'EN' : 'ES'; document.documentElement.lang = lang;
-  document.getElementById('legend').innerHTML = ['msg', 'bus', 'decision', 'deal', 'offer', 'match', 'score'].map(k => `<span><i style="background:${col(k)}"></i>${esc(tr('kinds')[k])}</span>`).join('');
+  document.getElementById('legend').innerHTML = ['msg', 'bus', 'decision', 'deal', 'offer', 'match', 'score'].map(k => `<span><i style="background:${col(k)}"></i>${esc(tr('kinds')[k])}</span>`).join('')
+    + `<span>┄ ${esc(tr('bands').data)}</span>`;
   document.getElementById('play').textContent = tr(playing ? 'pause' : 'play'); layoutKey = ''; relayoutIfNeeded();
 }
 document.getElementById('m-live').onclick = () => setMode('live');

@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.request
 from pathlib import Path
@@ -36,6 +37,11 @@ class AgentsLog(unittest.TestCase):
         lines = ["23:50:00 [conductor] says: late", "00:10:00 [conductor] says: early"]
         self.assertEqual(swarm.first_day(lines, DAY), DAY - dt.timedelta(days=1))
         self.assertEqual(swarm.first_day(lines[:1], DAY), DAY)
+
+    def test_air_session_names_join_their_bus_nodes(self):
+        e = swarm.agents_event("a", "1", DAY, "20:04:58 [conductor] does: message to bazaar-f8: Credit outage warning")
+        self.assertEqual(e["dst"], "thiago-air-f8")
+        self.assertEqual(swarm.node_id("bazaar-pr-steward"), "thiago-air-prsteward")
 
     def test_keys_are_redacted(self):
         e = swarm.agents_event("a", "1", DAY, "10:00:00 [conductor] says: key is tk-abcdef123456 ok")
@@ -139,6 +145,38 @@ class Score(unittest.TestCase):
         self.assertNotIn("highlight", swarm.score_event("v", pts[0]["ts"], pts[0], {"score": 20}))
 
 
+class Public(unittest.TestCase):
+    def test_public_view_keeps_the_shape_and_drops_private_text(self):
+        dec = swarm.decision_event("d", "1", dict(Decisions.ROW, our_value=218.0))
+        p = swarm.public_view(dec)
+        self.assertEqual((p["src"], p["dst"], p["kind"], p["text"], p["why"]), ("lane-c-trades", "teams", "decision", "accept LAV-10", None))
+        self.assertEqual(p["highlight"], "LAV-10 completes a page")
+        skip = swarm.decision_event("d", "2", dict(Decisions.ROW, action="skip", why="our value 2.8"))
+        self.assertEqual(swarm.public_view(skip)["text"], "")
+
+    def test_numbers_that_are_ours_are_stripped(self):
+        new = swarm.bot_event("duel/x", "1", "duel", {"ts": "2026-10-03T11:59:20", "event": "duel_new", "duel": 2314,
+                                                      "role": "seller", "item": "El Mesón", "limit": 64})
+        res = swarm.bot_event("duel/x", "2", "duel", {"ts": "2026-10-03T12:06:20", "event": "result", "duel": 2328,
+                                                      "status": "deal", "price": 152, "our_surplus": 61})
+        lst = swarm.bot_event("rastro/x", "3", "rastro", {"ts": "2026-10-03T09:33:22", "event": "listed", "card": "LAV-08",
+                                                          "price": 24, "floor": 22})
+        self.assertNotIn("64", swarm.public_view(new)["text"])
+        self.assertNotIn("61", swarm.public_view(res)["text"])
+        self.assertIn("152", swarm.public_view(res)["text"])
+        self.assertEqual(swarm.public_view(lst)["text"], "lists LAV-08 at 24")
+
+    def test_messages_bus_and_score_details_stay_out(self):
+        bus = swarm.bus_events([comment(1, "thiago-air-f8", ["hector14mv"], "we still miss SAL-09 and SAL-10")])[0]
+        self.assertEqual(swarm.public_view(bus)["text"], "")
+        sc = swarm.score_event("v", "2026-10-03T17:17:19+02:00",
+                               {"score": 27.99, "rank": 6, "neg_points": 145.7, "pages_complete": 2, "cash": 40},
+                               {"score": 27.99, "rank": 6, "neg_points": 97.9, "pages_complete": 1})
+        p = swarm.public_view(sc)
+        self.assertEqual(p["score"], {"score": 27.99, "rank": 6})
+        self.assertEqual(p["highlight"], "page 2 complete")
+
+
 class FoldAndServe(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -192,8 +230,30 @@ class FoldAndServe(unittest.TestCase):
             meta = json.load(urllib.request.urlopen(base + "/meta?t=s3"))
             self.assertIn("conductor", meta["nodes"])
             self.assertFalse(meta["duel_lock"])
+            self.assertIn("duel", meta["data"]["d-params"]["readers"])
         finally:
             srv.shutdown()
+
+    def test_public_serve_tails_the_file_another_process_writes(self):
+        self.out.mkdir()
+        self.fold()
+        pub = swarm.Store(self.out, public=True)
+        self.assertEqual(len(pub.events), 3)
+        self.assertTrue(all(e["why"] is None for e in pub.events))
+        with open(self.live / "decisions.jsonl", "a") as f:
+            f.write(json.dumps(dict(Decisions.ROW, ts="2026-10-03T18:00:00+0200", why="secret plan")) + "\n")
+        self.fold()
+        self.assertEqual(pub.refresh(), 1)
+        self.assertNotIn("secret", json.dumps(pub.events))
+        self.assertEqual(swarm.main(["fold", "--public", "--live", str(self.live), "--repo", str(self.repo), "--out", str(self.out)]), 2)
+
+    def test_data_freshness(self):
+        (self.repo / "results").mkdir()
+        (self.repo / "results" / "duel-params.json").write_text("{}")
+        d = swarm.data_sources(self.live, self.repo, time.time() + 100)
+        self.assertGreaterEqual(d["d-params"]["age_s"], 99)
+        self.assertIsNone(d["d-snap"]["age_s"])
+        self.assertTrue(all(r in swarm.NODES or r.startswith("lane-") for x in d.values() for r in x["readers"]))
 
 
 if __name__ == "__main__":

@@ -21,6 +21,8 @@ usage (on the Mini, where <live> is ~/bazaar-live and <repo> is this checkout):
   SWARM_TOKEN=... python3 tools/swarm.py run --host 0.0.0.0   # same, reachable over the tailnet with ?t=<token>
   python3 tools/swarm.py fold                                 # fold once and exit
   python3 tools/swarm.py plan                                 # fold once into memory, print counts, write nothing
+  python3 tools/swarm.py serve --public --port 8778           # second, read-only view for a public link (no folding):
+                                                              # strips private values, whys and every internal text
 development on another machine, against the Mini's shares (read-only there, so --out must be local):
   python3 tools/swarm.py run --live /Volumes/bazaar-live --repo /Volumes/bazaar --out /tmp/swarm
 """
@@ -80,7 +82,8 @@ NODES = {
     "bench": {"label": "Market Test", "layer": "world"},
     "game": {"label": "Scoreboard", "layer": "world"},
 }
-ALIASES = {"team-lead": "conductor", "thiago-air-f7": "conductor", "thiago-mini-conductor": "mini-conductor"}
+ALIASES = {"team-lead": "conductor", "thiago-air-f7": "conductor", "thiago-mini-conductor": "mini-conductor",
+           "bazaar-pr-steward": "thiago-air-prsteward"}
 PEOPLE = {"thiagoamaro91": "thiago", "hector14mv": "hector", "jpshankarpurieu2025-rgb": "jay",
           "thiago": "thiago", "hector": "hector", "jay": "jay"}
 DECISION_LANES = {"trades": "lane-c-trades", "ladder": "lane-d-ladder", "duel": "lane-duel", "market": "lane-market",
@@ -92,6 +95,33 @@ BOT_DIRS = {"duel": "duel", "broker": "broker", "announce": "announce", "rastro"
             "abuela": "dealer-bots", "chato": "dealer-bots", "pilar": "dealer-bots", "picaros": "dealer-bots",
             "taller": "dealer-bots"}
 DEALER_WORDS = ("pilar", "chato", "picaros", "pícaros", "abuela", "taller", "workshop", "ernesto")
+
+# Where each agent gets the data it decides with, read from the code (agent/*.py, tools/*.py, ~/bazaar-live/live.py)
+# and the lanes' own transcripts. kind: "live" should be fresh; "config" is set by hand; a "snapshot" is a photo that
+# goes stale unless someone retakes it. fresh: the file whose age tells how fresh the source is (live: or repo: path).
+DATA = {
+    "d-me": {"label": "Account /api/me", "kind": "live", "key": "team", "fresh": "live:score.state.json",
+             "readers": ["dealer-bots", "rastro-seller", "market-desk", "lane-c-trades", "lane-d-ladder", "conductor",
+                         "thiago-air-f8"]},
+    "d-value": {"label": "Private value /api/me/value", "kind": "live", "key": "team", "fresh": None,
+                "readers": ["dealer-bots", "market-desk", "lane-c-trades", "lane-d-ladder"]},
+    "d-duels": {"label": "Duels /api/duels", "kind": "live", "key": "team", "fresh": "repo:logs/duel/*.jsonl",
+                "readers": ["duel", "market-desk"]},
+    "d-books": {"label": "Venue books", "kind": "live", "key": None, "fresh": "repo:logs/feed/snapshots.jsonl",
+                "readers": ["market-desk", "rastro-seller", "announce", "lane-c-trades"]},
+    "d-v20": {"label": "v20 book", "kind": "live", "key": "broker", "fresh": "repo:logs/state/desk-broker.json",
+              "readers": ["broker"]},
+    "d-feed": {"label": "Public feed", "kind": "live", "key": None, "fresh": "repo:logs/feed/feed.jsonl",
+               "readers": ["market-desk", "rastro-seller", "lane-c-trades", "lane-d-ladder"]},
+    "d-params": {"label": "duel-params.json", "kind": "config", "key": None, "fresh": "repo:results/duel-params.json",
+                 "readers": ["duel"]},
+    "d-floors": {"label": "rastro_floors.json", "kind": "config", "key": None, "fresh": "repo:agent/rastro_floors.json",
+                 "readers": ["rastro-seller", "market-desk"]},
+    "d-snap": {"label": "me.json snapshot", "kind": "snapshot", "key": None, "fresh": "repo:logs/state/me.json",
+               "readers": ["market-desk"]},
+    "d-decisions": {"label": "decisions.jsonl", "kind": "live", "key": None, "fresh": "live:decisions.jsonl",
+                    "readers": ["conductor", "thiago-air-f8"]},
+}
 
 
 def redact(s) -> str:
@@ -121,7 +151,11 @@ def to_local_iso(ts) -> str | None:
 def node_id(name) -> str:
     name = str(name or "").strip()
     name = name.split("/")[0]  # "lane-d-ladder/Explore" is the ladder lane's own helper
-    return ALIASES.get(name, name)
+    if name in ALIASES:
+        return ALIASES[name]
+    if name.startswith("bazaar-"):  # SendMessage names of Thiago's Air sessions; the bus calls them thiago-air-*
+        return "thiago-air-" + name[len("bazaar-"):]
+    return name
 
 
 def event(source: str, key: str, ts, src, dst, kind: str, text: str, why=None, highlight=None) -> dict | None:
@@ -377,6 +411,37 @@ def score_view_points(text: str, day: dt.date) -> list:
     return [p for p in pts if "score" in p]
 
 
+# ---------- public view ----------
+
+PUBLIC_TEXT = {"deal", "result", "match", "announce", "duel", "offer"}
+PUBLIC_DECISIONS = {"offer", "bid", "accept", "buy", "sell", "convert"}
+PRIVATE_BITS = re.compile(r"\s*\((?:floor|cap)[^)]*\)|,?\s*our surplus [-\d.]+|,?\s*limit [-\d.]+|\bworth [-\d.]+|"
+                          r"\bour value [-\d.]+", re.I)
+CARD = re.compile(r"^[A-Z]{3}-\d\d$")
+
+
+def public_view(e: dict) -> dict:
+    """What a public link may show: who talked to whom and when, what we did on public boards, the public score.
+    Never a why, a private value, a floor or limit, cash, or the text of a message, a bus post or a lane's thought."""
+    out = {k: e[k] for k in ("id", "ts", "src", "dst", "kind", "source") if k in e}
+    out["why"], kind, text = None, e.get("kind"), e.get("text") or ""
+    if kind == "score":
+        s = e.get("score") or {}
+        out["score"] = {"score": s.get("score"), "rank": s.get("rank")}
+        out["text"] = f"score {s.get('score')} · rank {s.get('rank')}"
+    elif kind in PUBLIC_TEXT:
+        out["text"] = PRIVATE_BITS.sub("", text).strip()
+    elif kind == "decision":
+        w = text.split()
+        card = w[1] if len(w) > 1 and CARD.match(w[1]) else ""
+        out["text"] = f"{w[0]} {card}".strip() if w and w[0] in PUBLIC_DECISIONS else ""
+    else:
+        out["text"] = ""
+    if e.get("highlight"):
+        out["highlight"] = e["highlight"].split(":")[0]
+    return out
+
+
 # ---------- folding ----------
 
 class Folder:
@@ -522,18 +587,38 @@ def out_dir_ok(out: Path) -> bool:
 
 
 class Store:
-    def __init__(self, out: Path):
+    def __init__(self, out: Path, public: bool = False):
         self.out, self.lock, self.events, self.ids = Path(out), threading.Lock(), [], set()
-        self.path = self.out / EVENTS
-        if self.path.exists():
-            for line in self.path.read_text(errors="replace").splitlines():
-                try:
-                    e = json.loads(line)
-                except ValueError:
-                    continue
-                if e.get("id") not in self.ids:
-                    self.ids.add(e.get("id"))
-                    self.events.append(e)
+        self.path, self.public, self.off = self.out / EVENTS, public, 0
+        self.refresh()
+
+    def refresh(self) -> int:
+        """Pick up lines another process appended (serve mode reads the file the run process writes)."""
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            return 0
+        if size <= self.off:
+            return 0
+        with open(self.path, "rb") as f:
+            f.seek(self.off)
+            chunk = f.read(size - self.off)
+        end = chunk.rfind(b"\n")
+        if end < 0:
+            return 0
+        new = []
+        for line in chunk[: end + 1].decode("utf-8", "replace").splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(e, dict) and e.get("id") not in self.ids:
+                self.ids.add(e.get("id"))
+                new.append(public_view(e) if self.public else e)
+        with self.lock:
+            self.events.extend(new)
+            self.off += end + 1
+        return len(new)
 
     def state(self) -> dict:
         try:
@@ -551,6 +636,7 @@ class Store:
                 for e in new:
                     self.ids.add(e["id"])
                 self.events.extend(new)
+                self.off = self.path.stat().st_size
             tmp = self.out / (STATE + ".tmp")
             tmp.write_text(json.dumps(state))
             os.replace(tmp, self.out / STATE)
@@ -560,6 +646,19 @@ class Store:
         with self.lock:
             n = max(0, min(n, len(self.events)))
             return {"events": self.events[n:], "next": len(self.events)}
+
+
+def data_sources(live: Path, repo: Path, now: float) -> dict:
+    out = {}
+    for did, d in DATA.items():
+        mt = None
+        if d["fresh"]:
+            base, pat = d["fresh"].split(":", 1)
+            paths = glob.glob(str((live if base == "live" else repo) / pat))
+            mts = [os.path.getmtime(p) for p in paths if os.path.exists(p)]
+            mt = max(mts) if mts else None
+        out[did] = dict(d, fresh_at=to_local_iso(mt) if mt else None, age_s=round(now - mt) if mt else None)
+    return out
 
 
 def heartbeats(live: Path, repo: Path) -> dict:
@@ -582,7 +681,7 @@ def heartbeats(live: Path, repo: Path) -> dict:
             "stop": (repo / "logs" / "state" / "STOP").exists()}
 
 
-def make_handler(store: Store, live: Path, repo: Path, token: str | None):
+def make_handler(store: Store, live: Path, repo: Path, token: str | None, serving_only: bool = False):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
@@ -607,10 +706,13 @@ def make_handler(store: Store, live: Path, repo: Path, token: str | None):
                     n = int(q.get("since", ["0"])[0])
                 except ValueError:
                     n = 0
+                if serving_only:
+                    store.refresh()
                 return self._send(200, json.dumps(store.since(n)).encode(), "application/json")
             if u.path == "/meta":
-                body = {"nodes": NODES, "now": to_local_iso(time.time()), "events_file": str(store.path),
-                        **heartbeats(live, repo)}
+                body = {"nodes": NODES, "now": to_local_iso(time.time()), "public": store.public,
+                        "events_file": EVENTS if store.public else str(store.path),
+                        "data": data_sources(live, repo, time.time()), **heartbeats(live, repo)}
                 return self._send(200, json.dumps(body).encode(), "application/json")
             return self._send(404, b"not found\n", "text/plain")
     return Handler
@@ -627,7 +729,7 @@ def fold_loop(folder: Folder, store: Store, interval: float, stop: threading.Eve
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", choices=("run", "fold", "plan"))
+    ap.add_argument("cmd", choices=("run", "fold", "plan", "serve"))
     ap.add_argument("--live", default=os.path.expanduser("~/bazaar-live"))
     ap.add_argument("--repo", default=str(HERE.parent))
     ap.add_argument("--out", default=None, help="where swarm-events.jsonl lives (default: --live)")
@@ -635,6 +737,7 @@ def main(argv=None) -> int:
     ap.add_argument("--port", type=int, default=8777)
     ap.add_argument("--interval", type=float, default=5.0)
     ap.add_argument("--no-bus", action="store_true", help="do not read the team bus through gh")
+    ap.add_argument("--public", action="store_true", help="serve: strip private values, whys and internal texts")
     a = ap.parse_args(argv)
     live, repo = Path(a.live).expanduser(), Path(a.repo).expanduser()
     out = Path(a.out).expanduser() if a.out else live
@@ -646,6 +749,19 @@ def main(argv=None) -> int:
             srcs[e["src"]] = srcs.get(e["src"], 0) + 1
         print(json.dumps({"events": len(evs), "kinds": kinds, "sources": srcs,
                           "first": evs[0]["ts"] if evs else None, "last": evs[-1]["ts"] if evs else None}, indent=1))
+        return 0
+    if a.public and a.cmd != "serve":
+        print("swarm: --public only goes with serve (a second, read-only view of the same file)", file=sys.stderr)
+        return 2
+    if a.cmd == "serve":
+        store = Store(out, public=a.public)
+        token = os.environ.get("SWARM_TOKEN") or None
+        srv = ThreadingHTTPServer((a.host, a.port), make_handler(store, live, repo, token, serving_only=True))
+        print(f"swarm: serving {'PUBLIC ' if a.public else ''}view of {store.path} on http://{a.host}:{a.port}/")
+        try:
+            srv.serve_forever()
+        except KeyboardInterrupt:
+            pass
         return 0
     if not out_dir_ok(out):
         print(f"swarm: refusing to write into {out}; pass --out to a local folder", file=sys.stderr)
