@@ -22,6 +22,14 @@ logs/duel/<YYYY-MM-DD>.jsonl (duel_new, rival, hold, say / would_say, accept / w
 run_start / run_end / stop) and its accept-slot lock results/duel.lock, both under the same --broker-root (alias
 --bots-root). The page may be screen-shared, so our limits never leave this process: only a coarse zone per offer
 (outside our limit, at it, near it, far inside it) reaches /data, never a gap number.
+
+Rivals and Market panels (keyless and offline, own thread): all 18 teams from /api/leaderboard, /api/venues and the
+recorded public feed (feed.jsonl, written by tools/feed_recorder.py) run through tools/ledger.py (cash, known cards,
+moves), tools/value_inference.py (inferred set multipliers) and tools/price_index.py (team-to-team prices). The feed
+tools rerun only when feed.jsonl changed, at most every 20 s. Our own row shows the leaderboard and our rebuilt cash
+only, and a trust line compares that cash with /api/me. The feed folder:
+
+    python3 tools/dashboard.py --feed ~/bazaar/logs/feed      # or BAZAAR_FEED=...; default: <broker root>/logs/feed
 """
 from __future__ import annotations
 
@@ -44,9 +52,20 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
 
+if str(ROOT / "tools") not in sys.path:
+    sys.path.append(str(ROOT / "tools"))
+try:  # the Rivals panel's offline tools; a copy without them still serves every other panel
+    import ledger  # noqa: E402
+    import price_index as pi  # noqa: E402
+    import value_inference as vi  # noqa: E402
+    RIV_IMPORT_ERROR = None
+except Exception as _e:  # only on a deploy that left a file out
+    ledger = pi = vi = None
+    RIV_IMPORT_ERROR = f"rivals tools missing: {_e!r}"[:200]
+
 PAGE = ROOT / "tools" / "dashboard.html"
 HISTORY = ROOT / "logs" / "dashboard_history.jsonl"
-STATE: dict = {"data": None, "error": None, "updated": 0.0, "celestina": None, "duels": None}
+STATE: dict = {"data": None, "error": None, "updated": 0.0, "celestina": None, "duels": None, "rivals": None}
 LOCK = threading.Lock()
 TEAM = "t03"
 
@@ -630,6 +649,246 @@ class Duels:
                 **duel_view(self.tail.state, now, lock_view(self.root / "results" / "duel.lock", now), exists)}
 
 
+# ---------------------------------------------------------------- Rivals: every team from public data (pure parts)
+#
+# Keyless and offline: the public leaderboard and /api/venues, plus the recorded public feed run through
+# tools/ledger.py (cash and known cards), tools/value_inference.py (inferred set multipliers) and
+# tools/price_index.py (team-to-team prices). The page may be screen-shared, so the block is built from an ALLOWLIST:
+# our own row carries the leaderboard and our rebuilt cash only (no inferred multipliers, no known cards, no moves),
+# "who wants what" counts the other 17 teams only, and nothing here reads logs/state/me*.json.
+
+RIV_FEED_EVERY = 20.0      # seconds between recomputes of the feed tools (only when feed.jsonl changed)
+RIV_PUBLIC_EVERY = 15.0    # seconds between keyless reads of /api/leaderboard and /api/venues
+RIV_CATALOG_EVERY = 300.0  # seconds between refreshes of the cached catalog (a set may be released)
+RIV_LOOP = 5.0             # seconds between passes of the rivals thread
+RIV_TRUST_TOL = 10         # our rebuilt cash may be this many P off /api/me before the cash column greys out
+RIV_HISTORY = 40           # cash points per team kept for the sparkline
+RIV_MOVES = 8              # cash moves per team shown when a row is opened
+RIV_PRICES = 15            # cards listed in the team-to-team price table
+RIV_TEXT = 60              # characters kept of feed-authored text (move notes, venue names)
+RIV_LB_KEYS = ("rank", "team", "name", "score", "negotiating", "market", "level", "album_filled", "album_slots",
+               "pages_complete", "luck", "deals", "frozen", "venue")
+RIV_VENUE_KEYS = ("venue", "owner", "owner_name", "status", "fee_bps", "fee_per_card", "bond", "trades", "volume",
+                  "fees", "traders", "pairs", "house")
+RIV_MONEY_KEYS = ("dealer_spent", "dealer_earned", "team_bought", "team_sold", "fees", "bonds", "gifts", "grants")
+
+
+def _text(x, n: int = RIV_TEXT):
+    return None if x is None else str(x)[:n]
+
+
+def downsample(points, n: int = RIV_HISTORY) -> list:
+    """At most n points of a [(tick, value), ...] series, first and last always kept."""
+    pts = [[p[0], p[1]] for p in points or [] if isinstance(p, (list, tuple)) and len(p) >= 2]
+    if len(pts) <= n:
+        return pts
+    step = (len(pts) - 1) / (n - 1)
+    return [pts[round(i * step)] for i in range(n)]
+
+
+def read_feed(path: Path) -> list:
+    """The recorded public feed (feed.jsonl). A last line without its newline is still being written and is left for
+    the next pass; any other line that is not JSON is an error."""
+    data = path.read_bytes()
+    end = data.rfind(b"\n")
+    if end < 0:
+        return []
+    return [json.loads(line) for line in data[:end].decode("utf-8").splitlines() if line.strip()]
+
+
+def infer_teams(events: list, cat: dict, skip: str = TEAM) -> tuple[list, dict]:
+    """(sets in play, {team: inferred row}) from tools/value_inference.py, for every team but `skip` (us: our real
+    multipliers are private, and our inferred ones would point at them). Mirrors value_inference.load()."""
+    book = {c["id"]: c["book"] for s in cat["sets"] for c in s["cards"]}
+    sets = [s["id"] for s in cat["sets"]]
+    by_team = vi.evidence(events, book)
+    seen = {ev["set"] for evs in by_team.values() for ev in evs}
+    in_play = [s["id"] for s in cat["sets"] if s.get("released") or s["id"] in seen]
+    model = vi.Model(sets, in_play, book)
+    out = {}
+    for t, evs in by_team.items():
+        if t == skip:
+            continue
+        r = model.summary(model.posterior(evs), evs)
+        out[t] = {"exp": {s: round(r["expected"][s], 2) for s in in_play}, "fav": r["favourite"],
+                  "p_fav": round(r["p_favourite"], 2), "least": r["least"], "p_least": round(r["p_least"], 2),
+                  "choices": r["choices"], "evidence": r["n_evidence"], "confidence": r["confidence"]}
+    return in_play, out
+
+
+def card_prices(trades: list, names: dict, limit: int = RIV_PRICES) -> dict:
+    """Single-card team-to-team trades (price_index.team_trades) per card: count, last, median, low, high; the most
+    traded first, then the most recent."""
+    by = {}
+    for r in trades:
+        by.setdefault(r["ref"], []).append(r)
+    rows = []
+    for ref, rs in by.items():
+        rs.sort(key=lambda r: r["tick"])
+        ps = sorted(r["price"] for r in rs)
+        mid = len(ps) // 2
+        rows.append({"ref": ref, "name": _text(names.get(ref), 40), "rarity": rs[-1].get("rarity"), "n": len(rs),
+                     "last": rs[-1]["price"], "last_tick": rs[-1]["tick"], "venue": _text(rs[-1].get("venue"), 20),
+                     "median": ps[mid] if len(ps) % 2 else (ps[mid - 1] + ps[mid]) / 2, "low": ps[0], "high": ps[-1]})
+    rows.sort(key=lambda r: (-r["n"], -r["last_tick"]))
+    return {"cards": len(rows), "trades": len(trades), "rows": rows[:limit]}
+
+
+def who_wants(inferred: dict, in_play: list) -> list:
+    """Per set: the other teams whose inferred favourite it is, and the ones that like it least ('weak' left out)."""
+    out = []
+    for s in in_play:
+        fav = sorted(t for t, r in inferred.items() if r["confidence"] != "weak" and r["fav"] == s)
+        least = sorted(t for t, r in inferred.items() if r["confidence"] != "weak" and r["least"] == s)
+        out.append({"set": s, "favourite": fav, "least": least})
+    return out
+
+
+def trust_view(history, real: dict | None, feed_tick, tol: int = RIV_TRUST_TOL) -> dict:
+    """Our cash rebuilt from the feed against our real cash (/api/me, already on the page as the Cash KPI)."""
+    cash, tick = (real or {}).get("cash"), (real or {}).get("tick")
+    if not _num(cash):
+        return {"state": "unchecked", "feed_tick": feed_tick}
+    pts = [p for p in history or [] if not _num(tick) or p[0] <= tick]
+    rebuilt = pts[-1][1] if pts else (ledger.START_CASH if ledger else 400)
+    diff = rebuilt - cash
+    return {"state": "ok" if abs(diff) <= tol else "off", "real": cash, "rebuilt": rebuilt, "diff": diff,
+            "tick": tick, "feed_tick": feed_tick, "tol": tol}
+
+
+def venue_rows(venues) -> list:
+    if isinstance(venues, dict):
+        venues = venues.get("venues") or []
+    rows = []
+    for v in venues or []:
+        if not isinstance(v, dict):
+            continue
+        rules = v.get("rules") if isinstance(v.get("rules"), dict) else {}
+        rows.append({**{k: v.get(k) for k in RIV_VENUE_KEYS}, "name": _text(v.get("name"), 40),
+                     "owner_name": _text(v.get("owner_name"), 30), "mechanism": _text(rules.get("mechanism"), 20)})
+    rows.sort(key=lambda r: (-(r["volume"] or 0), str(r["venue"])))
+    return rows
+
+
+def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool, names: dict) -> dict:
+    """One team for the panel. Our own row stops at the leaderboard and our rebuilt cash."""
+    rarest = lb_row.get("rarest") if isinstance(lb_row.get("rarest"), dict) else None
+    row = {**{k: lb_row.get(k) for k in RIV_LB_KEYS}, "name": _text(lb_row.get("name"), 30), "us": us,
+           "rarest": {k: rarest.get(k) for k in ("ref", "name", "serial", "print_run", "rarity")} if rarest else None,
+           "badges": len(lb_row.get("badges") or []), "cash": None, "cash_hist": [], "unlocked": [], "trades": None,
+           "own_venue": None}
+    if led_row:
+        row.update(cash=led_row.get("cash"), cash_hist=downsample(led_row.get("history")),
+                   unlocked=[str(u) for u in led_row.get("unlocked") or []], trades=led_row.get("trades"),
+                   own_venue=led_row.get("venue"))
+    if us:
+        return row
+    known = {str(r): n for r, n in ((led_row or {}).get("known_cards") or {}).items() if n and n > 0}
+    row.update(known=known, known_n=sum(known.values()) if led_row else None, inferred=inferred,
+               money={k: led_row.get(k) for k in RIV_MONEY_KEYS} if led_row else None,
+               moves=[{"tick": m.get("tick"), "delta": m.get("delta"), "what": _text(m.get("what"))}
+                      for m in ((led_row or {}).get("moves") or [])[-RIV_MOVES:]][::-1])
+    return row
+
+
+def rivals_view(lb, venues, heavy: dict | None, real: dict | None = None, team: str = TEAM) -> dict:
+    """The panel's payload from the leaderboard, /api/venues and the feed tools' last good result (`heavy`), built
+    from an allowlist (see the section comment)."""
+    heavy = heavy or {}
+    led, inferred, names = heavy.get("ledger") or {}, heavy.get("inferred") or {}, heavy.get("names") or {}
+    lb_rows = [t for t in ((lb or {}).get("teams") or []) if isinstance(t, dict) and t.get("team")]
+    have = {t["team"] for t in lb_rows}
+    lb_rows += [{"team": t, "name": t} for t in sorted(led) if t not in have]  # no leaderboard yet: feed teams only
+    teams = [team_row(t, led.get(t["team"]), inferred.get(t["team"]), t["team"] == team, names) for t in lb_rows]
+    teams.sort(key=lambda r: (r["rank"] if _num(r["rank"]) else 1e9, str(r["team"])))
+    us_hist = (led.get(team) or {}).get("history") or []
+    return {"teams": teams, "sets": heavy.get("in_play") or [],
+            "want": who_wants({t: r for t, r in inferred.items() if t != team}, heavy.get("in_play") or []),
+            "trust": trust_view(us_hist, real, heavy.get("feed_tick")), "venues": venue_rows(venues),
+            "prices": heavy.get("prices") or {"cards": 0, "trades": 0, "rows": []}, "cards": heavy.get("cards") or {},
+            "feed_tick": heavy.get("feed_tick"), "events": heavy.get("events"), "computed_at": heavy.get("computed_at"),
+            "leaderboard_tick": (lb or {}).get("tick")}
+
+
+# ---------------------------------------------------------------- Rivals: files and keyless reads
+
+class Rivals:
+    """The Rivals and Market panels: /api/leaderboard and /api/venues (keyless, every RIV_PUBLIC_EVERY s) and the
+    recorded public feed (feed_dir/feed.jsonl) through the offline tools, recomputed only when the file changed and at
+    most every RIV_FEED_EVERY s. Each source keeps its last good value when a read fails, and reports the error."""
+
+    def __init__(self, url: str, feed_dir: Path, team: str = TEAM):
+        self.url, self.feed, self.team = url, Path(feed_dir), team
+        self.lb = self.venues = self.heavy = None
+        self.lb_error = self.venues_error = self.feed_error = None
+        self.public_at = self.feed_at = self.cat_at = 0.0
+        self.sig = None
+        self.cat = None
+
+    def refresh_public(self, now: float) -> None:
+        if now - self.public_at < RIV_PUBLIC_EVERY:
+            return
+        self.public_at = now
+        try:
+            self.lb, self.lb_error = public(self.url, "/api/leaderboard"), None
+        except Exception as e:
+            self.lb_error = repr(e)[:200]
+        try:
+            self.venues, self.venues_error = public(self.url, "/api/venues"), None
+        except Exception as e:
+            self.venues_error = repr(e)[:200]
+
+    def compute(self, events: list, now: float) -> dict:
+        if self.cat is None or now - self.cat_at > RIV_CATALOG_EVERY:
+            try:  # in memory: the tracked logs/public/catalog.json is only the offline fallback, never rewritten here
+                cat = public(self.url, "/api/catalog")
+            except Exception:
+                cat = self.cat or vi.catalog()
+            self.cat, self.cat_at = cat, now
+        try:
+            schedule = vi.public("schedule")  # what `python3 tools/ledger.py` uses for the organisers' grants
+        except Exception:
+            schedule = None
+        led = ledger.build(events, schedule)
+        if isinstance(led.get("teams"), dict):  # the CLI's --json shape, should build() ever return it
+            led = led["teams"]
+        in_play, inferred = infer_teams(events, self.cat, self.team)
+        names = {c["id"]: c.get("name") for s in self.cat["sets"] for c in s["cards"]}
+        rarity = {c["id"]: c["rarity"] for s in self.cat["sets"] for c in s["cards"]}
+        keep = ("cash", "history", "unlocked", "trades", "venue", "known_cards", "moves") + RIV_MONEY_KEYS
+        return {"ledger": {t: {k: r.get(k) for k in keep} for t, r in led.items()}, "in_play": in_play,
+                "inferred": inferred, "names": names, "prices": card_prices(pi.team_trades(events, rarity), names),
+                "cards": {c["id"]: {"name": _text(c.get("name"), 40), "rarity": c.get("rarity")}
+                          for s in self.cat["sets"] for c in s["cards"]},
+                "feed_tick": events[-1].get("tick") if events else None, "events": len(events),
+                "computed_at": time.strftime("%H:%M:%S", time.localtime(now))}
+
+    def refresh_feed(self, now: float) -> None:
+        if now - self.feed_at < RIV_FEED_EVERY and self.heavy is not None:
+            return
+        path = self.feed / "feed.jsonl"
+        try:
+            if RIV_IMPORT_ERROR:
+                raise RuntimeError(RIV_IMPORT_ERROR)
+            st = path.stat()
+            sig = (st.st_size, st.st_mtime_ns)
+            if sig == self.sig and self.heavy is not None:
+                return
+            self.feed_at = now
+            self.heavy, self.sig, self.feed_error = self.compute(read_feed(path), now), sig, None
+        except (Exception, SystemExit) as e:  # keep the last good result; vi helpers may raise SystemExit
+            self.feed_at = now
+            self.feed_error = repr(e)[:200]
+
+    def snapshot(self, now: float | None = None, real: dict | None = None) -> dict:
+        now = time.time() if now is None else now
+        self.refresh_public(now)
+        self.refresh_feed(now)
+        return {**rivals_view(self.lb, self.venues, self.heavy, real, self.team),
+                "feed_error": self.feed_error, "lb_error": self.lb_error, "venues_error": self.venues_error,
+                "feed_file": str(self.feed.name) + "/feed.jsonl", "trust_tol": RIV_TRUST_TOL}
+
+
 def build(b: Bazaar, url: str, catalog: dict, history: list) -> dict:
     me = b.me()
     threads = b.my_threads().get("threads", [])
@@ -750,11 +1009,31 @@ def duels_step(duels: Duels) -> None:
         STATE["duels"] = snap
 
 
+def rivals_step(rivals: Rivals) -> None:
+    """The Rivals and Market panels, apart from build(): keyless reads and the recorded feed. Our real cash (for the
+    trust line) is read from what build() already fetched; an error here must not blank the other panels."""
+    with LOCK:
+        d = STATE.get("data") or {}
+        real = {"cash": (d.get("me") or {}).get("cash"), "tick": (d.get("clock") or {}).get("tick")} if d else None
+    try:
+        snap = rivals.snapshot(real=real)
+    except (Exception, SystemExit) as e:
+        snap = {"error": repr(e)[:300]}
+    with LOCK:
+        STATE["rivals"] = snap
+
+
+def rivals_loop(rivals: Rivals, every: float = RIV_LOOP) -> None:
+    while True:
+        rivals_step(rivals)
+        time.sleep(every)
+
+
 def poller(b: Bazaar | None, url: str, interval: float, cel: Celestina | None = None,
            duels: Duels | None = None) -> None:
     if b is None:  # no team key: only the keyless panels run (La Celestina, Duels)
         with LOCK:
-            STATE["error"] = "no BAZAAR_KEY: keyed panels are off, La Celestina and Duels only"
+            STATE["error"] = "no BAZAAR_KEY: keyed panels are off, La Celestina, Duels and Rivals only"
         while True:
             if cel is not None:
                 celestina_step(cel)
@@ -822,7 +1101,8 @@ def serve(port: int, token: str | None, host: str) -> None:
             if u.path == "/data":
                 with LOCK:
                     body = json.dumps({**(STATE["data"] or {}), "error": STATE["error"], "celestina": STATE["celestina"],
-                                       "duels": STATE["duels"], "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None})
+                                       "duels": STATE["duels"], "rivals": STATE["rivals"],
+                                       "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None})
                 return self._send(200, body.encode(), "application/json")
             return self._send(404, b"not found", "text/plain")
 
@@ -839,6 +1119,9 @@ def main() -> None:
                     default=os.environ.get("BROKER_ROOT") or str(ROOT),
                     help="checkout the bots run from: the broker's logs/ (heartbeat, event log) and the duel bot's "
                          "logs/duel/ and results/duel.lock; env BROKER_ROOT; default: this repo")
+    ap.add_argument("--feed", default=os.environ.get("BAZAAR_FEED"),
+                    help="folder with the recorded public feed (feed.jsonl, tools/feed_recorder.py) for the Rivals "
+                         "panel; env BAZAAR_FEED; default: <broker root>/logs/feed")
     args = ap.parse_args()
     url = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai").rstrip("/")
     key = os.environ.get("BAZAAR_KEY", "").strip()
@@ -848,7 +1131,14 @@ def main() -> None:
     print(f"Duels: duel bot files under {broker_root}/logs/duel and {broker_root}/results", flush=True)
     cel = Celestina(url, broker_root)
     duels = Duels(broker_root)
+    feed_dir = Path(args.feed).expanduser().resolve() if args.feed else broker_root / "logs" / "feed"
+    if vi is not None:
+        vi.FEED = feed_dir  # the tools' own default, for anything that still reads through vi.rows()
+    print(f"Rivals: public feed at {feed_dir}/feed.jsonl" + (f" ({RIV_IMPORT_ERROR})" if RIV_IMPORT_ERROR else ""),
+          flush=True)
+    rivals = Rivals(url, feed_dir)
     threading.Thread(target=poller, args=(b, url, args.interval, cel, duels), daemon=True).start()
+    threading.Thread(target=rivals_loop, args=(rivals,), daemon=True).start()
     # DASH_TOKEN (in .env) keeps the shared link stable across restarts, e.g. behind `tailscale funnel 8765`
     token = os.environ.get("DASH_TOKEN") or (secrets.token_urlsafe(8) if args.lan else None)
     host = "0.0.0.0" if args.lan else "127.0.0.1"

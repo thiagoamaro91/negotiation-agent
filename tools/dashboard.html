@@ -145,6 +145,61 @@ svg.spark { width: 100%; height: 70px; display: block; }
 .brk.waiting { color: var(--gold); border-color: rgba(255,196,77,0.45); }
 .brk.stopped { color: var(--muted); }
 .dot.wait { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+/* Rivals + Market: every team from public data only (leaderboard, venues, the recorded feed). Chart colours are the
+   dataviz reference palette's dark steps, validated on --panel (#121a2e): neg/market split = slot 1 blue + slot 2
+   orange; multiplier heat = diverging blue (values a set more) / red (less) around a grey 1.0. */
+:root { --neg: #3987e5; --mkt: #d95926; --div-hi: #3987e5; --div-lo: #e66767; --div-mid: #383835; }
+.riv, .mkt { margin-top: 14px; }
+a.pill { text-decoration: none; }
+a.pill:hover { color: var(--ink); border-color: var(--muted); }
+.rivnote { font-family: var(--mono); font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.rivnote b { color: var(--ink); font-weight: 600; }
+.lgd { display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+#rivtbl th[data-sort] { cursor: pointer; user-select: none; }
+#rivtbl th[data-sort]:hover { color: var(--ink); }
+#rivtbl th.sorted { color: var(--gold); }
+#rivtbl th.sorted::after { content: attr(data-arrow); margin-left: 3px; }
+#rivtbl tr.rrow { cursor: pointer; }
+#rivtbl tr.rrow:hover td { background: var(--panel2); }
+#rivtbl tr.rrow.open td { background: var(--panel2); border-bottom-color: transparent; }
+#rivtbl tr.rx > td { background: var(--panel2); white-space: normal; padding: 4px 10px 12px; }
+#rivtbl td .caret { display: inline-block; width: 10px; color: var(--muted); font-family: var(--mono); }
+.split { display: inline-flex; gap: 2px; height: 6px; width: 60px; vertical-align: middle; margin-left: 6px; }
+.split i { display: block; height: 100%; border-radius: 2px; min-width: 0; }
+.split .ng { background: var(--neg); } .split .mk { background: var(--mkt); }
+td.dim, td.dim * { color: var(--muted) !important; opacity: 0.55; }
+svg.cspark { width: 54px; height: 16px; vertical-align: middle; margin-left: 6px; overflow: visible; }
+.lb-sub { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+.rxgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .rxgrid { grid-template-columns: minmax(0, 1fr); } }
+.cardset { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 4px; }
+.cardset .sn { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 32px; }
+.cc { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--ink); }
+.cc.common { border-color: #9aa4b8; } .cc.uncommon { border-color: #3ddc97; } .cc.rare { border-color: #4c8dff; }
+.cc.epic { border-color: #b061ff; } .cc.legendary { border-color: #ffc44d; }
+.cc small { color: var(--muted); }
+.heat { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 2px; margin: 2px 0 6px; max-width: 320px; }
+.heat div { border-radius: 4px; padding: 5px 2px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--ink); line-height: 1.25; }
+.heat div b { display: block; font-size: 12.5px; }
+.mv { font-family: var(--mono); font-size: 11.5px; display: grid; grid-template-columns: 44px 44px minmax(0, 1fr); gap: 6px; }
+.mv .up { color: var(--good); } .mv .dn { color: var(--bad); }
+.rivcharts { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .rivcharts { grid-template-columns: minmax(0, 1fr); } }
+svg.scat { width: 100%; height: auto; display: block; }
+svg.scat .us circle.m { fill: var(--gold); }
+svg.scat .us text { fill: var(--gold); font-weight: 600; }
+svg.scat .hit { fill: transparent; }
+svg.scat g.pt:hover circle.m { stroke: var(--ink); stroke-width: 2; }
+.wbar { display: inline-block; height: 8px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.wbar.f { background: var(--div-hi); } .wbar.l { background: var(--div-lo); }
+.want td { white-space: normal; }
+.tlist { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+@media (max-width: 700px) {
+  body { padding: 12px 16px 28px; }
+  .hs { display: none; }
+}
 </style>
 </head>
 <body>
@@ -154,6 +209,7 @@ svg.spark { width: 100%; height: 70px; display: block; }
   <span class="pill" id="round"></span>
   <span class="pill" id="tick"></span>
   <span class="pill" id="closes"></span>
+  <a class="pill" href="#rivals">rivals ↓</a>
   <span class="err" id="err"></span>
 </div>
 
@@ -178,6 +234,10 @@ svg.spark { width: 100%; height: 70px; display: block; }
     <div class="panel"><h2>Feed</h2><div class="feed" id="feed"></div></div>
   </div>
 </div>
+
+<div class="panel riv" id="rivals"><h2>Rivals · all teams, public data</h2><span class="muted">connecting</span></div>
+
+<div class="panel mkt" id="market"><h2>Market · venues and team-to-team prices</h2><span class="muted">connecting</span></div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -486,6 +546,191 @@ function renderDuels(v) {
     <div class="celfoot">${foot.join(" · ")}</div>`;
 }
 
+// Rivals + Market: every team from public data only. Team names, venue names and move notes come from the feed or
+// other teams: every string goes through esc(). Our own row carries the leaderboard and our rebuilt cash only.
+const RIV = { sort: "rank", dir: 1, open: new Set(), last: "", v: null };
+const tnum = (t) => parseInt(String(t || "").replace(/\D/g, ""), 10) || 0;
+const signed = (n) => n == null ? "-" : (n > 0 ? "+" : "") + n;
+const RIV_SORT = {
+  rank: (r) => r.rank, team: (r) => tnum(r.team), score: (r) => r.score, level: (r) => r.level, cash: (r) => r.cash,
+  album: (r) => r.album_filled, known: (r) => r.us ? null : r.known_n, fav: (r) => r.inferred ? r.inferred.fav + (1 - r.inferred.p_fav) : null,
+  deals: (r) => r.deals, trades: (r) => r.trades, venue: (r) => r.own_venue || r.venue,
+};
+const RIV_DESC = new Set(["score", "level", "cash", "album", "known", "deals", "trades"]);  // first click: biggest first
+
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) { const x = hexRgb(a), y = hexRgb(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`; }
+// diverging around 1.0: blue = the team values the set above book, red = below, grey = about 1.0
+function multColor(m) {
+  if (m == null) return "var(--panel)";
+  const t = Math.max(-1, Math.min(1, (m - 1) / 0.6));
+  return t >= 0 ? mix("#383835", "#3987e5", t) : mix("#383835", "#e66767", -t);
+}
+
+function cashSpark(hist, dim) {
+  const h = (hist || []).filter((p) => p && p[1] != null);
+  if (h.length < 2) return "";
+  const t0 = h[0][0], t1 = h[h.length - 1][0], ys = h.map((p) => p[1]);
+  const lo = Math.min(...ys, 0), hi = Math.max(...ys, 1);
+  const x = (t) => 1 + 52 * (t1 > t0 ? (t - t0) / (t1 - t0) : 0), y = (v) => 15 - 14 * (v - lo) / (hi - lo || 1);
+  const path = h.map((p, i) => `${i ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(" ");
+  const zero = lo < 0 ? `<line x1="1" x2="53" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="var(--line)" stroke-dasharray="2 2"/>` : "";
+  return `<svg class="cspark" viewBox="0 0 54 16" aria-hidden="true">${zero}<path d="${path}" fill="none" stroke="${dim ? "var(--muted)" : "var(--ink)"}" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+}
+
+function splitBar(r) {
+  const n = Math.max(0, r.negotiating || 0), m = Math.max(0, r.market || 0);
+  return `<span class="split" title="negotiating ${fmt(r.negotiating, 2)} / 30 · market ${fmt(r.market, 2)} / 30"><i class="ng" style="width:${(n / 60 * 100).toFixed(1)}%"></i><i class="mk" style="width:${(m / 60 * 100).toFixed(1)}%"></i></span>`;
+}
+
+function rivTrust(tr) {
+  tr = tr || {};
+  if (tr.state === "ok") return `Cash is rebuilt from the public feed; ours matches /api/me (<b>${esc(tr.real)} P</b> at tick ${esc(tr.tick)}, feed tick ${esc(tr.feed_tick)}).`;
+  if (tr.state === "off") return `<span class="chip bad">cash estimate off</span> Cash is rebuilt from the public feed, and ours is <b>${esc(Math.abs(tr.diff))} P</b> ${tr.diff > 0 ? "above" : "below"} /api/me (rebuilt ${esc(tr.rebuilt)} vs real ${esc(tr.real)} P at tick ${esc(tr.tick)}, feed tick ${esc(tr.feed_tick)}): the cash column is greyed out, read it as a rough guide.`;
+  return `Cash is rebuilt from the public feed; not checked against /api/me in this run (no key here). Feed tick ${esc(tr.feed_tick ?? "-")}.`;
+}
+
+function rivDetail(r, v) {
+  if (r.us) return `<div class="rivnote">Our own row shows the leaderboard and our rebuilt cash only: what we hold and value stays off this screen.</div>`;
+  const cards = v.cards || {}, inf = r.inferred, sets = v.sets || [];
+  const bySet = {};
+  for (const [ref, n] of Object.entries(r.known || {})) (bySet[ref.split("-")[0]] ||= []).push([ref, n]);
+  const order = [...sets, ...Object.keys(bySet).filter((s) => !sets.includes(s))];
+  const chips = order.filter((s) => bySet[s]).map((s) => `<div class="cardset"><span class="sn">${esc(s)}</span>${bySet[s].sort().map(([ref, n]) => {
+    const c = cards[ref] || {};
+    return `<span class="cc ${esc(c.rarity || "")}" title="${esc(c.name || ref)}${c.rarity ? " · " + esc(c.rarity) : ""}">${esc(ref.split("-")[1] || ref)}${n > 1 ? `<small>×${esc(n)}</small>` : ""}</span>`;
+  }).join("")}</div>`).join("") || `<div class="empty">No card of theirs seen in the feed yet.</div>`;
+  const rar = r.rarest ? `rarest <b>${esc(r.rarest.ref)}</b> ${esc(r.rarest.name || "")} · #${esc(r.rarest.serial ?? "?")}/${esc(r.rarest.print_run ?? "?")} ${esc(r.rarest.rarity || "")}` : "rarest card not shown";
+  const heat = inf ? `<div class="heat" style="--n:${sets.length}">${sets.map((s) => `<div style="background:${multColor(inf.exp[s])}" title="${esc(s)}: expected multiplier ${fmt(inf.exp[s], 2)}"><b>${fmt(inf.exp[s], 2)}</b>${esc(s)}</div>`).join("")}</div>
+    <div class="rivnote">favourite <b>${esc(inf.fav)}</b> ${Math.round(inf.p_fav * 100)}% · least liked <b>${esc(inf.least)}</b> ${Math.round(inf.p_least * 100)}%<br>${esc(inf.confidence)} confidence · ${fmt(inf.choices, 1)} choice-equivalents · ${esc(inf.evidence)} pieces of evidence</div>`
+    : `<div class="empty">No inference for this team.</div>`;
+  const mn = r.money || {};
+  const money = r.money ? `<div class="rivnote" style="margin-top:6px">dealers spent ${esc(mn.dealer_spent)} · earned ${esc(mn.dealer_earned)} P<br>teams bought ${esc(mn.team_bought)} · sold ${esc(mn.team_sold)} P · fees ${esc(mn.fees)} · bonds ${esc(mn.bonds)}${mn.grants ? " · grants " + esc(mn.grants) : ""}${mn.gifts ? " · gifts " + esc(mn.gifts) : ""}</div>` : "";
+  const moves = (r.moves || []).map((m) => `<div class="mv"><span class="muted">t${esc(m.tick)}</span><span class="${m.delta > 0 ? "up" : "dn"}">${esc(signed(m.delta))}</span><span>${esc(m.what)}</span></div>`).join("") || `<div class="empty">No cash move in the feed.</div>`;
+  return `<div class="rxgrid">
+    <div><div class="celsub">Known cards <b>${esc(r.known_n ?? 0)}</b> · lower bound (starting hand and packs stay hidden)</div>${chips}<div class="rivnote">${rar}</div></div>
+    <div><div class="celsub">What they value · inferred</div>${heat}${money}</div>
+    <div><div class="celsub">Last cash moves</div>${moves}</div></div>`;
+}
+
+function rivTable(v) {
+  const dim = (v.trust || {}).state === "off";
+  const key = RIV_SORT[RIV.sort] || RIV_SORT.rank;
+  const rows = [...(v.teams || [])].sort((a, b) => {
+    const x = key(a), y = key(b);
+    if (x == null && y == null) return tnum(a.team) - tnum(b.team);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x < y ? -1 : x > y ? 1 : tnum(a.team) - tnum(b.team)) * RIV.dir;
+  });
+  const th = (k, label, cls = "", title = "") => `<th data-sort="${k}" class="${cls}${RIV.sort === k ? " sorted" : ""}" data-arrow="${RIV.dir > 0 ? "▲" : "▼"}"${title ? ` title="${esc(title)}"` : ""}>${label}</th>`;
+  const head = `<tr>${th("rank", "#", "n")}${th("team", "Team")}${th("score", "Score", "n", "score out of 60; bar: negotiating (blue) + market (orange)")}<th></th>${th("level", "Lvl", "n", "level, and the dealers it unlocked")}${th("cash", "Cash", "n", "rebuilt from the public feed")}${th("album", "Album", "n", "album filled / slots · pages complete")}${th("known", "Known", "n hs", "cards seen in the feed: a lower bound")}${th("fav", "Likes", "", "inferred favourite set / least liked set")}${th("deals", "Deals", "n")}${th("trades", "Trades", "n hs", "team-to-team trades in the feed")}${th("venue", "Venue", "hs")}</tr>`;
+  const body = rows.map((r) => {
+    const open = RIV.open.has(r.team), inf = r.inferred;
+    const likes = r.us ? `<span class="muted">private</span>` : inf ? (inf.confidence === "weak" ? `<span class="muted">no signal yet</span>` : `<b>${esc(inf.fav)}</b> <span class="muted">${Math.round(inf.p_fav * 100)}%</span> · <span class="muted">not ${esc(inf.least)}</span>`) : `<span class="muted">-</span>`;
+    const lvl = `${esc(r.level ?? "-")}${(r.unlocked || []).length ? ` <span class="lb-sub">${esc(r.unlocked.join(","))}</span>` : ""}`;
+    const tr = `<tr class="rrow${r.us ? " us" : ""}${open ? " open" : ""}" data-team="${esc(r.team)}">
+      <td class="n">${esc(r.rank ?? "-")}</td><td><span class="caret">${open ? "▾" : "▸"}</span>${esc(r.name || r.team)}${r.us ? " (us)" : ""}${r.frozen ? ` <span class="chip bad">frozen</span>` : ""}</td>
+      <td class="n">${fmt(r.score, 2)}</td><td>${splitBar(r)}</td><td class="n">${lvl}</td>
+      <td class="n${dim ? " dim" : ""}">${r.cash == null ? "-" : esc(r.cash) + " P"}${cashSpark(r.cash_hist, dim)}</td>
+      <td class="n">${esc(r.album_filled ?? "-")}/${esc(r.album_slots ?? "-")} <span class="lb-sub">${esc(r.pages_complete ?? 0)}p</span></td>
+      <td class="n hs">${r.us ? "-" : esc(r.known_n ?? "-")}</td><td>${likes}</td><td class="n">${esc(r.deals ?? "-")}</td><td class="n hs">${esc(r.trades ?? "-")}</td><td class="hs mono">${esc(r.own_venue || r.venue || "-")}</td></tr>`;
+    return tr + (open ? `<tr class="rx"><td colspan="12">${rivDetail(r, v)}</td></tr>` : "");
+  }).join("");
+  return `<div class="tablewrap"><table id="rivtbl">${head}${body}</table></div>`;
+}
+
+// Cash vs score: one dot per team, ours in gold, the rest muted (emphasis). Labels are team numbers.
+function rivScatter(v) {
+  const pts = (v.teams || []).filter((r) => r.cash != null && r.score != null);
+  if (pts.length < 2) return `<div class="empty">Waiting for the feed to rebuild cash.</div>`;
+  const W = 440, H = 250, L = 38, R = 14, T = 12, B = 30;
+  const xs = pts.map((p) => p.cash), ys = pts.map((p) => p.score);
+  const step = (span) => [10, 25, 50, 100, 200, 250, 500, 1000].find((s) => span / s <= 6) || 1000;
+  const xstep = step(Math.max(...xs, 0) - Math.min(...xs, 0) || 100);
+  const x0 = Math.floor(Math.min(...xs, 0) / xstep) * xstep, x1 = Math.ceil(Math.max(...xs, 1) / xstep) * xstep;
+  const ystep = Math.max(...ys) > 30 ? 10 : 5, y1 = Math.ceil(Math.max(...ys, 1) / ystep) * ystep;
+  const x = (c) => L + (W - L - R) * (c - x0) / (x1 - x0 || 1), y = (s) => H - B - (H - T - B) * s / (y1 || 1);
+  let grid = "";
+  for (let c = x0; c <= x1 + 1e-9; c += xstep) grid += `<line x1="${x(c).toFixed(1)}" x2="${x(c).toFixed(1)}" y1="${T}" y2="${H - B}" stroke="var(--line)" stroke-width="${c === 0 ? 1.5 : 0.6}"/><text x="${x(c).toFixed(1)}" y="${H - B + 13}" text-anchor="middle">${c}</text>`;
+  for (let s = 0; s <= y1 + 1e-9; s += ystep) grid += `<line x1="${L}" x2="${W - R}" y1="${y(s).toFixed(1)}" y2="${y(s).toFixed(1)}" stroke="var(--line)" stroke-width="0.6"/><text x="${L - 5}" y="${(y(s) + 3).toFixed(1)}" text-anchor="end">${s}</text>`;
+  const axes = `<text x="${(L + W - R) / 2}" y="${H - 3}" text-anchor="middle">cash, P (rebuilt from the feed)</text><text transform="translate(10 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle">score / 60</text>`;
+  const placed = [];
+  const order = [...pts].sort((a, b) => (a.us ? 1 : 0) - (b.us ? 1 : 0));  // ours drawn last, on top
+  const hollow = (v.trust || {}).state === "off";
+  const dots = order.map((p) => {
+    const cx = x(p.cash), cy = y(p.score), label = p.us ? "us" : String(tnum(p.team));
+    let lx = cx + 7, ly = cy + 3, anchor = "start";
+    const clash = (ax, ay) => placed.some(([px, py]) => Math.abs(px - ax) < 16 && Math.abs(py - ay) < 9);
+    if (clash(lx, ly)) { lx = cx - 7; anchor = "end"; }
+    if (clash(lx, ly)) { lx = cx; ly = cy - 8; anchor = "middle"; }
+    if (clash(lx, ly)) { lx = cx; ly = cy + 14; anchor = "middle"; }
+    placed.push([lx, ly]);
+    const inf = p.inferred && p.inferred.confidence !== "weak" ? ` · likes ${p.inferred.fav}` : "";
+    const tip = `${p.name || p.team}: score ${fmt(p.score, 2)} (rank ${p.rank ?? "-"}) · cash ${p.cash} P${inf}`;
+    return `<g class="pt${p.us ? " us" : ""}"><title>${esc(tip)}</title><circle class="hit" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="11"/><circle class="m" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${p.us ? 6 : 4.5}" fill="${hollow && !p.us ? "none" : "var(--muted)"}" stroke="${p.us ? "var(--bg)" : "var(--muted)"}" stroke-width="${p.us ? 2 : 1.5}"/><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}">${esc(label)}</text></g>`;
+  }).join("");
+  return `<svg class="scat" viewBox="0 0 ${W} ${H}" role="img" aria-label="cash versus score, one dot per team">${grid}${axes}${dots}</svg>
+    <div class="rivnote">Gold = us. Hover a dot for the team.${hollow ? " Dots are hollow while the cash estimate is off (see above)." : ""}</div>`;
+}
+
+// Who wants what: per set, how many of the other 17 teams have it as their inferred favourite, and as least liked.
+function rivWant(v) {
+  const rows = v.want || [];
+  if (!rows.length) return `<div class="empty">No inference yet.</div>`;
+  const max = Math.max(1, ...rows.map((w) => Math.max(w.favourite.length, w.least.length)));
+  const cell = (list, cls) => `<span class="wbar ${cls}" style="width:${(list.length / max * 70).toFixed(0)}px"></span><b class="mono">${list.length}</b> <span class="tlist">${list.map((t) => esc(tnum(t))).join(" ")}</span>`;
+  return `<div class="tablewrap"><table class="want"><tr><th>Set</th><th>Favourite of · sell to them</th><th>Least liked by · buy from them</th></tr>${rows.map((w) => `<tr><td class="mono"><b>${esc(w.set)}</b></td><td>${cell(w.favourite, "f")}</td><td>${cell(w.least, "l")}</td></tr>`).join("")}</table></div>
+    <div class="rivnote">Teams with no real signal yet are left out; we are never counted. Numbers are team ids.</div>`;
+}
+
+function renderRivals(v) {
+  const title = `<h2>Rivals · all teams, public data</h2>`;
+  if (v.error) { $("rivals").innerHTML = `${title}<span class="err">${esc(v.error)}</span>`; return; }
+  const errs = [v.feed_error && `feed: ${esc(v.feed_error)}`, v.lb_error && `leaderboard: ${esc(v.lb_error)}`, v.venues_error && `venues: ${esc(v.venues_error)}`].filter(Boolean);
+  const head = `<div class="celhd">${title}<span class="pill">${esc((v.teams || []).length)} teams</span><span class="pill">feed tick <b>${esc(v.feed_tick ?? "-")}</b> · ${esc(v.events ?? 0)} events · computed ${esc(v.computed_at || "-")}</span>
+    <span class="rivnote"><span class="lgd"><span class="sw" style="background:var(--neg)"></span>negotiating</span><span class="lgd"><span class="sw" style="background:var(--mkt)"></span>market</span></span></div>`;
+  $("rivals").innerHTML = `${head}<div class="rivnote">${rivTrust(v.trust)} Known cards are what the feed has shown (a lower bound); "Likes" is the inferred favourite set, from what each team chose and shed. Click a header to sort, a row to open it.</div>
+    ${rivTable(v)}
+    <div class="rivcharts"><div><div class="celsub">Cash vs score</div>${rivScatter(v)}</div><div><div class="celsub">Who wants what</div>${rivWant(v)}</div></div>
+    ${errs.length ? `<div class="err">${errs.join(" · ")}</div>` : ""}`;
+}
+
+function renderMarket(v) {
+  const title = `<h2>Market · venues and team-to-team prices</h2>`;
+  if (v.error) { $("market").innerHTML = `${title}<span class="err">${esc(v.error)}</span>`; return; }
+  const vRows = (v.venues || []).map((x) => `<tr class="${x.owner === "t03" ? "us" : ""}"><td>${esc(x.name || x.venue)} <span class="lb-sub">${esc(x.venue)}</span></td><td>${esc(x.owner_name || x.owner || "-")}</td><td>${esc(x.mechanism || (x.house ? "posted" : "-"))}</td><td class="n">${esc(celFee(x).replace("fee ", ""))}</td><td class="n">${esc(x.trades ?? 0)}</td><td class="n">${esc(x.volume ?? 0)}</td><td class="n">${esc(x.fees ?? 0)}</td><td class="n">${esc(x.traders ?? 0)}</td><td>${x.status === "open" ? "" : `<span class="st">${esc(x.status)}</span>`}</td></tr>`).join("");
+  const venues = vRows ? `<div class="tablewrap"><table><tr><th>Venue</th><th>Owner</th><th>Mechanism</th><th class="n">Fee</th><th class="n">Trades</th><th class="n">Volume</th><th class="n">Fees</th><th class="n">Traders</th><th></th></tr>${vRows}</table></div>` : `<div class="empty">${v.venues_error ? "Cannot read /api/venues right now." : "No venue listed."}</div>`;
+  const pr = v.prices || {}, cards = v.cards || {};
+  const pRows = (pr.rows || []).map((p) => `<tr><td class="mono"><span class="cc ${esc(p.rarity || "")}">${esc(p.ref)}</span></td><td>${esc(p.name || (cards[p.ref] || {}).name || "")}</td><td class="n">${esc(p.n)}</td><td class="n">${esc(p.last)} P <span class="lb-sub">t${esc(p.last_tick)}</span></td><td class="n">${fmt(p.median, p.median % 1 ? 1 : 0)}</td><td class="n">${esc(p.low)}-${esc(p.high)}</td></tr>`).join("");
+  const prices = pRows ? `<div class="tablewrap"><table><tr><th>Card</th><th>Name</th><th class="n">Trades</th><th class="n">Last</th><th class="n">Median</th><th class="n">Range</th></tr>${pRows}</table></div><div class="celfoot">single-card trades between teams in the feed: ${esc(pr.trades ?? 0)} over ${esc(pr.cards ?? 0)} cards; most traded first</div>` : `<div class="empty">No team-to-team trade in the feed yet.</div>`;
+  $("market").innerHTML = `${title}<div class="celgrid"><div><div class="celsub">Venues <b>${esc((v.venues || []).length)}</b> · by volume</div>${venues}</div><div><div class="celsub">Card prices between teams · top ${esc((pr.rows || []).length)}</div>${prices}</div></div>`;
+}
+
+function drawRivals(force) {
+  const v = RIV.v;
+  if (!v) return;
+  try { renderRivals(v); } catch (e) { $("rivals").innerHTML = `<h2>Rivals · all teams, public data</h2><span class="err">${esc(String(e))}</span>`; }
+  if (force) return;
+  try { renderMarket(v); } catch (e) { $("market").innerHTML = `<h2>Market · venues and team-to-team prices</h2><span class="err">${esc(String(e))}</span>`; }
+}
+
+$("rivals").addEventListener("click", (ev) => {
+  const th = ev.target.closest("th[data-sort]");
+  if (th) {
+    const k = th.dataset.sort;
+    if (RIV.sort === k) RIV.dir = -RIV.dir; else { RIV.sort = k; RIV.dir = RIV_DESC.has(k) ? -1 : 1; }
+    drawRivals(true);
+    return;
+  }
+  const tr = ev.target.closest("tr.rrow");
+  if (tr) {
+    const t = tr.dataset.team;
+    if (RIV.open.has(t)) RIV.open.delete(t); else RIV.open.add(t);
+    drawRivals(true);
+  }
+});
+
 function render(d) {
   const c = d.clock || {};
   $("round").innerHTML = `<b>${esc(c.round_name || "")}</b>`;
@@ -504,6 +749,10 @@ async function tick() {
     }
     if (d.duels) {
       try { renderDuels(d.duels); } catch (e) { $("duels").innerHTML = `<h2>Duels · our bot</h2><span class="err">${esc(String(e))}</span>`; }
+    }
+    if (d.rivals) {
+      const s = JSON.stringify(d.rivals);  // redraw only on news, so an opened row or a sort survives the 3 s poll
+      if (s !== RIV.last) { RIV.last = s; RIV.v = d.rivals; drawRivals(false); }
     }
     if (d.me) { last = d; render(d); }
     const stale = d.age == null || d.age > 15;
