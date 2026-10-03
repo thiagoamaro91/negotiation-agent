@@ -43,6 +43,7 @@ ANCHOR_FRAC = 0.40          # first counter, as a share of her opening price (bu
 ANCHOR_ABS = None           # --anchor N: absolute first bid when buying (overrides ANCHOR_FRAC)
 SELL_ANCHOR_MULT = 1.6      # first ask, as a multiple of his opening bid (selling); he holds his bid, so stay short
 STEP = 1                    # primas per round when buying: he mirrors our step, his final comes at his limit
+MAX_BID = None              # --max-bid N: our bids stop here; we then wait for his final (accepted up to the cap)
 SELL_STEP = 2               # primas per round when selling (time is short and his bid barely moves)
 MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low
 DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
@@ -203,6 +204,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         else:
             nxt = ours + STEP if side == "buy" else ours - SELL_STEP
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
+        if side == "buy" and MAX_BID is not None:
+            nxt = min(nxt, int(MAX_BID))  # stop bidding here; his final is still taken up to the reservation
         # 5) she is already at (or past) our next number: take her price
         crossed = her <= nxt if side == "buy" else her >= nxt
         if crossed and good(her):
@@ -273,7 +276,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
 
 def bid_ladder(limit: float, spendable: int) -> list:
     """The bids a buy would walk through with --anchor (shown by plan; she may cross or stop us earlier)."""
-    top = int(min(limit, spendable))
+    top = int(min(limit, spendable, MAX_BID if MAX_BID is not None else limit))
     if ANCHOR_ABS is None or top < 1:
         return []
     out, b = [], int(ANCHOR_ABS)
@@ -284,7 +287,7 @@ def bid_ladder(limit: float, spendable: int) -> list:
 
 
 def main() -> None:
-    global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP
+    global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP, MAX_BID
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
@@ -296,6 +299,7 @@ def main() -> None:
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (default: our value)")
     ap.add_argument("--anchor", type=int, default=None, help="absolute first bid when buying (overrides ANCHOR_FRAC)")
     ap.add_argument("--step", type=int, default=STEP, help="primas per round when buying (default 1)")
+    ap.add_argument("--max-bid", type=int, default=None, help="highest number we send when buying; his final is still taken up to the cap")
     args = ap.parse_args()
     if args.step < 1 or (args.anchor is not None and args.anchor < 1):
         ap.error("--step and --anchor must be >= 1")
@@ -303,7 +307,7 @@ def main() -> None:
         print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
               "Not starting El Chato; try again after the duel wave.", flush=True)
         return
-    ANCHOR_ABS, STEP = args.anchor, args.step
+    ANCHOR_ABS, STEP, MAX_BID = args.anchor, args.step, args.max_bid
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
