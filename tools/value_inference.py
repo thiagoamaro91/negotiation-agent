@@ -44,6 +44,11 @@ FLOOR_NOISE = 0.10       # share of price floors that say nothing (overpaying to
 BETA_CHOOSE = 4.0        # how strongly a team's choices follow its multipliers (0 = not at all); `check` re-tests it
 BETA_SHED = 0.5          # sheds say little (most are spare copies from packs); `check` slightly prefers 0, but a sold rare
                          # does say something a next-choice test cannot see
+# Confidence label: the favourite's probability AND enough independent choices behind it. Choices of the same set weigh
+# 1/k (see Model.weights), so a team that asked Abuela for five LAV cards has ~2.3 choice-equivalents, not five.
+STRONG_P, STRONG_CHOICES = 0.6, 4.0
+SOME_P, SOME_CHOICES = 0.4, 2.0
+RELIABILITY_BINS = (0.0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0001)
 
 
 # ---------------------------------------------------------------- data
@@ -178,6 +183,56 @@ def evidence(events: list, book: dict) -> dict:
 
 # ---------------------------------------------------------------- model
 
+def choice_weight(evs: list) -> float:
+    """Independent choice-equivalents in a team's evidence: the k-th choice of the same set counts 1/k."""
+    return sum(w for ev, w in zip(evs, Model.weights(evs)) if ev["kind"] == "choose")
+
+
+def confidence_label(p_favourite: float, choices: float) -> str:
+    """'strong' needs a likely favourite AND enough independent choices behind it; few choices are never strong."""
+    if p_favourite >= STRONG_P and choices >= STRONG_CHOICES:
+        return "strong"
+    if p_favourite >= SOME_P and choices >= SOME_CHOICES:
+        return "some"
+    return "weak"
+
+
+def reliability(records: list, bins: tuple = RELIABILITY_BINS) -> list:
+    """Prequential reliability table: records are (predicted probability, came true); one row per probability bin with
+    how many predictions fell in it, their mean, and how often they came true."""
+    out = []
+    for lo, hi in zip(bins, bins[1:]):
+        inside = [(p, ok) for p, ok in records if lo <= p < hi]
+        out.append({"lo": lo, "hi": min(hi, 1.0), "n": len(inside),
+                    "predicted": round(sum(p for p, _ in inside) / len(inside), 3) if inside else None,
+                    "observed": round(sum(ok for _, ok in inside) / len(inside), 3) if inside else None})
+    return out
+
+
+def fit_shrink(preds: list, step: float = 0.05) -> tuple[float, float]:
+    """The share of the model's confidence worth keeping: lam in [0, 1] minimising the out-of-sample log-loss of
+    lam * prediction + (1 - lam) * uniform, over preds = [(predicted {set: p}, actual set)]. Returns (lam, loss)."""
+    if not preds:
+        return 1.0, 0.0
+    best = None
+    for i in range(int(round(1 / step)) + 1):
+        lam = round(i * step, 4)
+        loss = 0.0
+        for pred, actual in preds:
+            u = 1.0 / len(pred)
+            loss += -math.log(max(lam * pred.get(actual, 0.0) + (1 - lam) * u, 1e-12))
+        loss /= len(preds)
+        if best is None or loss < best[1] - 1e-12:
+            best = (lam, loss)
+    return best
+
+
+def shrink(dist: dict, lam: float) -> dict:
+    """A multiplier distribution pulled toward the uniform prior: keep `lam` of the model's confidence."""
+    u = 1.0 / len(dist) if dist else 0.0
+    return {m: lam * p + (1 - lam) * u for m, p in dist.items()}
+
+
 class Model:
     """Uniform prior over the 720 permutations; evidence multiplies in.
 
@@ -190,6 +245,14 @@ class Model:
         self.perms = [dict(zip(sets, p)) for p in itertools.permutations(MULTS)]
         self.beta_choose, self.beta_shed = beta_choose, beta_shed
         self._z = {}
+        self._top = [max(in_play, key=lambda s: p[s]) for p in self.perms]  # each permutation's favourite set in play
+
+    def p_top(self, post: list) -> dict:
+        """P(set s is the team's highest multiplier among the sets in play)."""
+        out = dict.fromkeys(self.in_play, 0.0)
+        for w, s in zip(post, self._top):
+            out[s] += w
+        return out
 
     def _logz(self, i: int, beta: float) -> float:
         if (i, beta) not in self._z:
@@ -240,43 +303,69 @@ class Model:
         return dict(out)
 
     def time_split(self, by_team: dict) -> dict:
-        """Predict every choice from the evidence of earlier ticks only, one team at a time."""
+        """Predict every choice from the evidence of earlier ticks only, one team at a time (prequential), and score it:
+        hit rate and log-loss against two baselines (chance, and 'repeat the team's most frequent past choice'), a
+        reliability table (predicted probability of the top pick vs how often it came true), how often the next choice
+        was the favourite under each confidence label, and the share of confidence worth keeping (`shrink`)."""
         n = hits = naive_hits = 0
         loss = 0.0
+        top_records, preds = [], []
+        by_label = collections.defaultdict(lambda: [0, 0])
         for evs in by_team.values():
             logp = [0.0] * len(self.perms)
             weights = self.weights(evs)
             past = collections.Counter()
+            choices = 0.0
             ticks = sorted({ev["tick"] for ev in evs})
             for tick in ticks:
                 now = [(ev, w) for ev, w in zip(evs, weights) if ev["tick"] == tick]
-                pred = None
+                pred = label = fav = None
                 for ev, _ in now:
                     if ev["kind"] != "choose":
                         continue
-                    pred = pred or self.predict_choice(self._normalise(logp))
+                    if pred is None:
+                        post = self._normalise(logp)
+                        pred = self.predict_choice(post)
+                        top = self.p_top(post)
+                        fav = max(top, key=top.get)
+                        flat = top[fav] <= 1.0 / len(self.in_play) + 0.01  # no favourite yet (ties go to the first set)
+                        label = "no evidence" if flat else confidence_label(top[fav], choices)
                     n += 1
-                    hits += max(pred, key=pred.get) == ev["set"]
+                    pick = max(pred, key=pred.get)
+                    hits += pick == ev["set"]
                     naive_hits += bool(past) and past.most_common(1)[0][0] == ev["set"]
                     loss += -math.log(max(pred[ev["set"]], 1e-12))
+                    top_records.append((pred[pick], pick == ev["set"]))
+                    preds.append((pred, ev["set"]))
+                    by_label[label][0] += 1
+                    by_label[label][1] += fav == ev["set"]
                 for ev, w in now:
                     for i in range(len(self.perms)):
                         logp[i] += w * self.loglik(ev, i)
                     if ev["kind"] == "choose":
                         past[ev["set"]] += 1
+                        choices += w
+        lam, lam_loss = fit_shrink(preds)
         return {"n": n, "hit": hits / n if n else 0, "naive_hit": naive_hits / n if n else 0,
-                "loss": loss / n if n else 0, "uniform_loss": math.log(len(self.in_play))}
+                "loss": loss / n if n else 0, "uniform_loss": math.log(len(self.in_play)),
+                "reliability": reliability(top_records),
+                "by_label": {k: {"n": v[0], "favourite_next": round(v[1] / v[0], 3) if v[0] else None}
+                             for k, v in sorted(by_label.items())},
+                "shrink": lam, "shrunk_loss": lam_loss}
 
-    def summary(self, post: list) -> dict:
+    def summary(self, post: list, evs: list | None = None) -> dict:
+        """Expected multiplier and distribution per set, favourite and least liked; the confidence label also needs the
+        evidence behind the posterior (`evs`): without it the label is 'weak'."""
         exp = {s: sum(w * p[s] for w, p in zip(post, self.perms)) for s in self.sets}
         dist = {s: {m: sum(w for w, p in zip(post, self.perms) if p[s] == m) for m in MULTS} for s in self.sets}
-        best = {s: sum(w for w, p in zip(post, self.perms) if p[s] == max(p[r] for r in self.in_play)) for s in self.in_play}
+        best = self.p_top(post)
         worst = {s: sum(w for w, p in zip(post, self.perms) if p[s] == min(p[r] for r in self.in_play)) for s in self.in_play}
         fav = max(best, key=best.get)
         least = max(worst, key=worst.get)
-        conf = "strong" if best[fav] >= 0.6 else "some" if best[fav] >= 0.4 else "weak"
+        choices = choice_weight(evs or [])
         return {"expected": exp, "dist": dist, "favourite": fav, "p_favourite": best[fav],
-                "least": least, "p_least": worst[least], "confidence": conf}
+                "least": least, "p_least": worst[least], "choices": round(choices, 2), "n_evidence": len(evs or []),
+                "confidence": confidence_label(best[fav], choices)}
 
 
 def load(beta_choose: float = BETA_CHOOSE, beta_shed: float = BETA_SHED) -> tuple:
@@ -301,7 +390,7 @@ def counts(evs: list) -> str:
 
 def cmd_teams(args) -> None:
     model, by_team, events, _ = load()
-    res = {t: model.summary(model.posterior(evs)) for t, evs in by_team.items()}
+    res = {t: model.summary(model.posterior(evs), evs) for t, evs in by_team.items()}
     if args.json:
         print(json.dumps({"tick": events[-1]["tick"], "beta_choose": model.beta_choose, "beta_shed": model.beta_shed,
                           "in_play": model.in_play,
@@ -310,11 +399,13 @@ def cmd_teams(args) -> None:
     print(f"feed up to tick {events[-1]['tick']}; beta_choose={model.beta_choose} beta_shed={model.beta_shed}; "
           f"sets in play {', '.join(model.in_play)}")
     print("expected multiplier per set (1.02 with no evidence); c/s/f = choices, sheds, price floors")
-    print(f"{'team':5} {'evidence':12} " + " ".join(f"{s:>5}" for s in model.in_play) + "   favourite   least liked   confidence")
+    print(f"confidence: strong = favourite >= {STRONG_P:.0%} on >= {STRONG_CHOICES:g} choice-equivalents, "
+          f"some = >= {SOME_P:.0%} on >= {SOME_CHOICES:g} (the k-th choice of a set counts 1/k)")
+    print(f"{'team':5} {'evidence':12} " + " ".join(f"{s:>5}" for s in model.in_play) + "   favourite   least liked   choices confidence")
     for t, r in res.items():
         e = r["expected"]
         print(f"{t:5} {counts(by_team[t]):12} " + " ".join(f"{e[s]:5.2f}" for s in model.in_play)
-              + f"   {r['favourite']} {r['p_favourite']:4.0%}    {r['least']} {r['p_least']:4.0%}      {r['confidence']}")
+              + f"   {r['favourite']} {r['p_favourite']:4.0%}    {r['least']} {r['p_least']:4.0%}      {r['choices']:5.1f}  {r['confidence']}")
 
 
 def cmd_team(args) -> None:
@@ -326,7 +417,7 @@ def cmd_team(args) -> None:
         price = f" at {ev['price']} P (floor {ev['price'] / model.book[ev['ref']]:.2f})" if ev["price"] else ""
         weight = "" if w == 1 else f"  [weight {w:.2f}]"
         print(f"  tick {ev['tick']:>3} {ev['kind']:6} {ev['ref']:13} {ev['how']}{price}{weight}")
-    r = model.summary(model.posterior(evs))
+    r = model.summary(model.posterior(evs), evs)
     print(f"\n{args.team}: favourite {r['favourite']} ({r['p_favourite']:.0%}), least liked {r['least']} ({r['p_least']:.0%}), {r['confidence']}")
     for s in model.sets:
         d = " ".join(f"{m}:{r['dist'][s][m]:4.0%}" for m in MULTS)
@@ -338,7 +429,7 @@ def cmd_check(args) -> None:
     # 1) our own truth, never used by the inference
     if ME.exists() or ME_LIVE.exists():
         truth = load_me()["affinity"]
-        r = model.summary(model.posterior(by_team.get(US, [])))
+        r = model.summary(model.posterior(by_team.get(US, [])), by_team.get(US, []))
         print(f"1) Team 3, whose real multipliers we know ({counts(by_team.get(US, []))}):")
         for s in model.in_play:
             print(f"   {s}: inferred {r['expected'][s]:.2f}  true {truth[s]}")
@@ -356,6 +447,16 @@ def cmd_check(args) -> None:
             print(f"   {bc:11} {bs:9} {r['hit']:15.0%} {r['loss']:9.3f}{mark}")
     print(f"   baselines over {r['n']} choices: chance {1 / len(model.in_play):.0%} (log-loss {r['uniform_loss']:.3f}); "
           f"'same set as its most frequent past choice' {r['naive_hit']:.0%}")
+    # 3) reliability of the setting in use: when the model said p, how often was its top pick right?
+    r = model.time_split(by_team)
+    print(f"\n3) reliability (betas in use): top pick right {r['hit']:.1%} vs 'repeat its favourite' {r['naive_hit']:.1%}, "
+          f"n={r['n']}; keeping {r['shrink']:.0%} of the confidence minimises the log-loss ({r['shrunk_loss']:.3f})")
+    print(f"   {'predicted':>11} {'n':>4} {'mean p':>7} {'right':>6}")
+    for b in r["reliability"]:
+        if b["n"]:
+            print(f"   {b['lo']:4.0%}-{b['hi']:4.0%} {b['n']:4} {b['predicted']:7.0%} {b['observed']:6.0%}")
+    print("   label at the time -> next choice was the favourite: "
+          + ", ".join(f"{k} {v['favourite_next']:.0%} (n={v['n']})" for k, v in r["by_label"].items()))
 
 
 def holdings(events: list, teams: set) -> dict:
@@ -417,7 +518,7 @@ def targets(min_gap: float = 5.0, n: int = 12) -> dict:
     me = load_me()
     ours = me["affinity"]
     teams = set(by_team) - {US}
-    res = {t: model.summary(model.posterior(by_team[t])) for t in teams}
+    res = {t: model.summary(model.posterior(by_team[t]), by_team[t]) for t in teams}
     held = holdings(events, set(by_team))
     want = wanted(by_team)
     mine = our_cards(me, events)
