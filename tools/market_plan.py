@@ -46,7 +46,8 @@ import ledger as ledger_mod  # noqa: E402
 import price_index  # noqa: E402
 import value_inference as vi  # noqa: E402
 
-CASH_RESERVE = 280          # level-2 venue bond 250 + 20 (README); the team decides whether we still want a venue
+CASH_RESERVE = 280          # level-2 venue bond 250 + 20 (README): kept while we have no venue of our own
+VENUE_OPEN_RESERVE = 40     # with our venue open the bond is spent: the team's floor (plan v2.1, Saturday 17:16)
 MIN_GAIN = 3.0              # smallest gain (P, after fees) worth one of our listings or our single accept per tick
 ATTENTION = 0.5             # chance an interested team notices and takes our offer within one session
 ACTIVE_TICKS = 40           # a team with no public move in this many ticks is treated as mostly idle
@@ -254,7 +255,15 @@ def page_bonus_on() -> bool:
     return os.environ.get(PAGE_BONUS_ENV) == "1"
 
 
-def plan(split: dict | None = None) -> dict:
+def cash_reserve(our_ledger: dict) -> int:
+    """Cash we never plan to spend: the venue bond while we have no venue, the team's floor once ours is open."""
+    return VENUE_OPEN_RESERVE if our_ledger.get("venue") else CASH_RESERVE
+
+
+def plan(split: dict | None = None, cash_reading: dict | None = None) -> dict:
+    """The plan. `cash_reading` ({"cash", "cash_source"}) is the caller's freshest validated reading of our cash (the brain's
+    live score or account, carried by the ledger only while it agrees); without it, the ledger (or the account when
+    the ledger check fails)."""
     bonus_on = page_bonus_on()
     model, by_team, events, book = vi.load()
     cat = vi.catalog()
@@ -272,6 +281,8 @@ def plan(split: dict | None = None) -> dict:
     chk = ledger_mod.check_us(led)
     if chk is not None and not chk["ok"]:  # the rebuild disagrees with the real account: trust the account
         cash, cash_source = me["cash"], f"account at tick {chk['tick']} (ledger check failed: {chk['rebuilt']} P rebuilt)"
+    if cash_reading and isinstance(cash_reading.get("cash"), (int, float)):  # one reading for the page and the funding
+        cash, cash_source = cash_reading["cash"], cash_reading.get("cash_source") or "caller"
     now_tick = events[-1]["tick"]
     hz = horizons(clock, schedule)
     liquidate = hz[0]["hours"] >= LIQUIDATE_FROM_HOURS
@@ -286,7 +297,8 @@ def plan(split: dict | None = None) -> dict:
     menu = dealer_menu(dealers)
     dprices = price_index.dealer_prices(events, kind_of, kind_of_topic, dealers)
     unlocked = {t: set(led[t]["unlocked"]) for t in led}
-    free_now = cash - CASH_RESERVE
+    reserve = cash_reserve(led[vi.US])
+    free_now = cash - reserve
     calibrated = {t: {s: vi.shrink(res[t]["dist"][s], lam) for s in model.sets} for t in teams}
 
     def dist(team: str, s: str) -> dict:
@@ -518,7 +530,7 @@ def plan(split: dict | None = None) -> dict:
             v = copy_value(book[o["ref"]], ours[s], max(k, 0), marginals)
             decisions.insert(0, f"WARNING: our bid {o['id']} offers {o['price']} P for {o['ref']}, above its {v:.0f} P value to us: cancel it?")
     if free_now < 0:
-        decisions.append(f"Cash {cash} P is {-free_now} P under the {CASH_RESERVE} P venue reserve: no buy is funded until a "
+        decisions.append(f"Cash {cash} P is {-free_now} P under the {reserve} P reserve: no buy is funded until a "
                          f"sale lands or the next grant, unless the team drops or lowers the reserve.")
     for did in sorted(slots):
         best = next((d for d in dealer_rows if d["dealer"] == did and d["adds"] > 0 and d["below_value"]), None)
@@ -539,7 +551,7 @@ def plan(split: dict | None = None) -> dict:
                                 if bonus_on else
                                 f"the ~{p['bonus_if_confirmed']} P page bonus is NOT counted until the desk confirms it enters "
                                 f"trade value (BRAIN_PAGE_BONUS=1)."))
-    return {"tick": now_tick, "horizons": hz, "cash": cash, "cash_source": cash_source, "reserve": CASH_RESERVE, "free_cash": free_now,
+    return {"tick": now_tick, "horizons": hz, "cash": cash, "cash_source": cash_source, "reserve": reserve, "free_cash": free_now,
             "board": board_source, "me_tick": me.get("tick"), "pages": pages, "sells": sells, "buys": buys, "holds": holds,
             "dealer": dealer_rows, "ladder_ours": {d: v for d, v in ladder.items()}, "dealer_prices": dprices,
             "calibration": {"shrink": lam, "p_cap": P_CAP}, "page_bonus_confirmed": bonus_on,

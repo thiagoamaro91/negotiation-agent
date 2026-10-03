@@ -185,6 +185,24 @@ class CashWhenTheLedgerCheckFails(unittest.TestCase):
         self.assertTrue(p["cash_source"].startswith("account"))
 
 
+class CashFromTheCaller(unittest.TestCase):
+    def test_the_callers_validated_reading_funds_the_plan(self):
+        """Codex review of #43 (0ec982a): the page showed the live 60 P while the plan budgeted from the ledger."""
+        import value_inference as vi
+        saved = (vi.FEED, vi.public, mp.live_board)
+        public = {"clock": {"today": "sat", "t_hours": 9.0, "doors": "open"},
+                  "schedule": {"upcoming": []}, "dealers": PlanOnTheCommittedFeed.DEALERS}
+        try:
+            vi.FEED = Path(__file__).resolve().parent.parent / "logs" / "feed"
+            vi.public = lambda name, refresh=False: public[name] if name in public else saved[1](name, False)
+            mp.live_board = lambda events: ([], "test: empty board")
+            p = mp.plan(cash_reading={"cash": 7, "cash_source": "live score at t1186"})
+        finally:
+            vi.FEED, vi.public, mp.live_board = saved
+        self.assertEqual((p["cash"], p["cash_source"], p["free_cash"]), (7, "live score at t1186", 7 - p["reserve"]))
+        self.assertFalse(any(b["funded"] for b in p["buys"]))
+
+
 class PageBonus(unittest.TestCase):
     def test_off_unless_the_desk_confirms_it_read_at_plan_time(self):
         import os
@@ -197,6 +215,14 @@ class PageBonus(unittest.TestCase):
             os.environ.pop(mp.PAGE_BONUS_ENV, None)
             if saved is not None:
                 os.environ[mp.PAGE_BONUS_ENV] = saved
+
+
+class Reserve(unittest.TestCase):
+    def test_the_venue_bond_is_kept_only_until_our_venue_is_open(self):
+        self.assertEqual(mp.cash_reserve({"venue": None}), mp.CASH_RESERVE)
+        self.assertEqual(mp.cash_reserve({}), mp.CASH_RESERVE)
+        self.assertEqual(mp.cash_reserve({"venue": "v20"}), mp.VENUE_OPEN_RESERVE)
+        self.assertLess(mp.VENUE_OPEN_RESERVE, mp.CASH_RESERVE)
 
 
 if __name__ == "__main__":

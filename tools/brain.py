@@ -9,7 +9,10 @@ It runs next to tools/feed_recorder.py (same clone, same logs/feed/) and, as soo
 - how far to trust the inference: hit rate next to the naive baseline, a reliability table, the confidence labels;
 - a live tape of the market (every listing, bid and deal, with the real team behind each pseudonym), flagging the
   offers that are an opportunity for us at our private values;
-- the team's desks (trading agents): their heartbeats, mode and last decision.
+- the team's desks (trading agents): their heartbeats, mode and last decision;
+- our own account from the key machine's files (tools/team_relay.py, keyless): cash checked against the ledger, cards
+  with our values, pages, the live score, every bot decision on the tape, and how close the inference gets to our
+  real multipliers (the one team whose truth we know), replayed over the weekend.
 Open pages are told at once (server-sent events on /stream) and fetch the new state. It also keeps a learning curve
 (logs/brain/history.jsonl).
 
@@ -23,7 +26,9 @@ tools/me_relay.py push our account (POST /ingest/me) from the laptop that holds 
 leaves that laptop, and lets the desks post heartbeats (POST /ingest/desk, header X-Brain-Write, body
 {"name", "mode": "shadow"|"live", "tick", "last_decision", "reason"}; 4 KB at most, any field whose name contains
 "key" is dropped and key-like values are redacted). BRAIN_PAGE_BONUS=1 counts the page bonus in trade values once the
-desk confirms it. The brain itself has no key and never sends anything to the game.
+desk confirms it. POST /ingest/team (same header, 1 MB at most) takes tools/team_relay.py's bundle: our account,
+the live score, decisions.jsonl and the desk files, scrubbed again here. The brain itself has no key and never sends
+anything to the game.
 """
 from __future__ import annotations
 
@@ -33,6 +38,7 @@ import json
 import math
 import os
 import re
+import tempfile
 import threading
 import time
 import traceback
@@ -40,9 +46,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import decks as decks_mod
 import ledger as ledger_mod
 import market_plan
 import price_index
+import redaction
 import value_inference as vi
 
 OUT = vi.ROOT / "logs" / "brain"
@@ -52,17 +60,21 @@ COND = threading.Condition()
 POKE = threading.Event()        # set by /ingest/me to refresh at once
 CHECK_SECONDS = 2.0             # how often the worker looks for new events
 MAX_QUIET_SECONDS = 60.0        # refresh at least this often (the live board can change without a feed event)
-TAPE_LEN = 60
+TAPE_LEN = 100
 DEFAULT_ENV = Path.home() / "bazaar" / "brain.env"
 DESK_MAX_BYTES = 4096           # a heartbeat is a few lines; anything bigger is refused
 DESK_MAX = 24                   # desks remembered at once (the oldest heartbeat is forgotten first)
 DESK_TEXT = {"last_decision": 300, "reason": 500}
 DESK_NAME = re.compile(r"^[A-Za-z0-9 _.-]{1,40}$")
-KEYLIKE = re.compile(r"\b(?:tk|bk|sk)-[A-Za-z0-9-]{6,}")  # team / broker key shapes, redacted if a desk ever echoes one
 DESKS: dict = {}
 DESK_LOCK = threading.Lock()
 LAST_DESK_PUSH = [0.0]
 DESK_FILE = OUT / "desks.json"
+TEAM_LIVE = vi.ROOT / "logs" / "state" / "team_live.json"   # tools/team_relay.py's last bundle
+TEAM_MAX_BYTES = 1_000_000
+TEAM_STALE_SECONDS = 180    # the relay sends every 20 s; older than this and the page says so
+DECISIONS_ON_TAPE = 40      # our latest decisions merged into the market tape
+TRUTH_POINTS = 60           # points kept on the inference-vs-truth curve
 
 
 def load_env(path: Path) -> None:
@@ -142,14 +154,9 @@ def venues_panel(snaps: Snapshots, events: list) -> list:
 # ---------------------------------------------------------------- desks (the team's trading agents)
 
 def scrub(x):
-    """Drop every field whose name mentions a key, at any depth, and redact key-shaped strings."""
-    if isinstance(x, dict):
-        return {k: scrub(v) for k, v in x.items() if "key" not in str(k).lower()}
-    if isinstance(x, list):
-        return [scrub(v) for v in x]
-    if isinstance(x, str):
-        return KEYLIKE.sub("[redacted]", x)
-    return x
+    """Drop every field named like a key, token or secret, at any depth, and redact credential-shaped strings
+    (tools/redaction.py: team tk-, broker bk_, admin adm_)."""
+    return redaction.scrub(x)
 
 
 def valid_desk(body) -> dict | None:
@@ -202,6 +209,317 @@ def desk_rows(now: float | None = None) -> list:
     with DESK_LOCK:
         rows = [{**d, "age_s": round(now - d["received"], 1)} for d in DESKS.values()]
     return sorted(rows, key=lambda d: d["age_s"])
+
+
+# ---------------------------------------------------------------- our own team (tools/team_relay.py)
+
+def finite(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def desk_from_file(d) -> dict | None:
+    """A key-machine desk file (logs/state/desk-<name>.json) as a heartbeat named mini-<name>; None if it is not one."""
+    if not isinstance(d, dict):
+        return None
+    name = d.get("agent") or d.get("desk") or d.get("name")
+    last, reason, tick = d.get("last_decision"), d.get("reason") or d.get("what") or "", d.get("tick")
+    if isinstance(last, (dict, list)):
+        last = json.dumps(last, ensure_ascii=False)
+    return valid_desk({"name": f"mini-{name}" if isinstance(name, str) else "", "tick": tick if isinstance(tick, int)
+                       and not isinstance(tick, bool) and tick >= 0 else None,
+                       "mode": "live" if d.get("mode") in ("run", "live") else "shadow",
+                       "last_decision": last if isinstance(last, str) else None,
+                       "reason": reason if isinstance(reason, str) else json.dumps(reason)})
+
+
+def valid_team(body, received: float | None = None) -> dict | None:
+    """tools/team_relay.py's bundle, scrubbed again and cut down to what the brain shows; None if it is not one.
+    `received` is when it arrived (now by default)."""
+    if not isinstance(body, dict) or body.get("kind") != "team":
+        return None
+    body = scrub(body)
+    rows = lambda name, n: [r for r in body.get(name) or [] if isinstance(r, dict)][-n:] \
+        if isinstance(body.get(name), list) else []
+    me, st = body.get("me"), body.get("score_state")
+    desks = []
+    for d in rows("desks", DESK_MAX):
+        desk = desk_from_file(d)
+        if desk:
+            at = d.get("epoch") if finite(d.get("epoch")) else d.get("_mtime")
+            desks.append({**desk, "at": at if finite(at) else None})
+    return {"kind": "team", "at": body["at"] if finite(body.get("at")) else None,
+            "received": received if finite(received) else time.time(),
+            "files": {str(k)[:80]: v for k, v in (body.get("files") or {}).items() if finite(v)}
+            if isinstance(body.get("files"), dict) else {},
+            "me": me if valid_account(me) else None, "score_state": st if isinstance(st, dict) else None,
+            "decisions": rows("decisions", 400), "score_rows": rows("score_rows", 200), "desks": desks}
+
+
+ACCOUNT_LOCK = threading.Lock()   # the account's freshness check and its replacement happen as one step
+
+
+def write_json(path: Path, obj) -> None:
+    """Atomic replace through a temporary file of its own, so concurrent writers never share one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(obj))
+    os.replace(tmp, path)
+
+
+def write_account(me: dict, only_if_fresher: bool) -> bool:
+    """Replace the relayed account; with `only_if_fresher`, only by a strictly later tick. Locked across writers."""
+    with ACCOUNT_LOCK:
+        if only_if_fresher:
+            try:
+                have = json.loads(vi.ME_LIVE.read_text(encoding="utf-8")).get("tick")
+            except (OSError, ValueError):
+                have = None
+            if isinstance(have, int) and me["tick"] <= have:
+                return False
+        write_json(vi.ME_LIVE, me)
+        return True
+
+
+ASSET_REF = re.compile(r"\b([A-Z]{3}-\d{2}) #(\d+)")
+
+
+def conversions(decisions: list) -> list:
+    """The Workshop conversions our bots logged: the public feed says only "turned three common cards into X", so the
+    burned copies stay in our holdings until the next account snapshot. A `convert` decision names them ("burned
+    spares LAV-01 #41, ...") and the card it got ("got LAV-06 #1001")."""
+    out = []
+    for d in decisions:
+        tick = d.get("tick")
+        if d.get("action") != "convert" or not isinstance(tick, int) or isinstance(tick, bool):
+            continue
+        burned = sorted(({"id": int(i), "ref": ref} for ref, i in set(ASSET_REF.findall(str(d.get("why") or "")))),
+                        key=lambda b: b["id"])
+        got = [{"id": int(i), "ref": ref} for ref, i in ASSET_REF.findall(str(d.get("result") or ""))]
+        if burned or got:
+            out.append({"tick": tick, "card": d.get("card"), "burned": burned, "got": got})
+    return out
+
+
+def remember_conversions(found: list) -> list:
+    """Every conversion ever relayed, kept in vi.CONVERSIONS (the relay sends only the latest decisions, so an old one
+    would otherwise fall out of the window and its burned copies come back). vi.load_me() attaches the ones after the
+    account's tick."""
+    try:
+        kept = json.loads(vi.CONVERSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        kept = []
+    def key(c: dict) -> tuple:
+        ids = lambda xs: tuple(x.get("id") if isinstance(x, dict) else x for x in xs or [])
+        return c.get("tick"), ids(c.get("burned")), ids(c.get("got"))
+
+    seen = {key(c) for c in kept}
+    new = [c for c in found if key(c) not in seen]
+    if new:
+        kept = sorted(kept + new, key=lambda c: c.get("tick") or 0)
+        write_json(vi.CONVERSIONS, kept)
+    return kept
+
+
+def absorb(team: dict) -> None:
+    """The bundle's account becomes the relayed account unless the one we have is fresher, and its Workshop
+    conversions are remembered; its desk files become heartbeats, aged by the file's own time (a desk that stopped
+    writing shows its real silence)."""
+    remember_conversions(conversions(team.get("decisions") or []))
+    me = team.get("me")
+    if me:
+        write_account({**me, "source": "team relay"}, only_if_fresher=True)
+    for d in team.get("desks") or []:
+        record_desk({k: v for k, v in d.items() if k != "at"}, now=d.get("at"))
+
+
+def store_team(team: dict) -> None:
+    """POST /ingest/team: keep the bundle (desks go to the desk table) and absorb it."""
+    write_json(TEAM_LIVE, {k: v for k, v in team.items() if k != "desks"})
+    absorb(team)
+
+
+def load_team() -> dict | None:
+    """The last bundle: posted to /ingest/team, or written straight to TEAM_LIVE by `team_relay.py --out` on the same
+    machine (then it is absorbed here)."""
+    try:
+        raw = json.loads(TEAM_LIVE.read_text(encoding="utf-8"))
+        mtime = TEAM_LIVE.stat().st_mtime
+    except (OSError, ValueError):
+        return None
+    team = valid_team(raw, raw.get("received") if isinstance(raw, dict) and finite(raw.get("received")) else mtime)
+    if team:
+        absorb(team)
+    return team
+
+
+def decision_rows(decisions: list) -> list:
+    """decisions.jsonl as tape rows, oldest first; a row without a tick takes the one before it (file order is time)."""
+    out, last = [], None
+    for d in decisions:
+        lane = str(d.get("lane") or "")
+        if not lane or lane.endswith("-test"):
+            continue
+        tick = d.get("tick") if isinstance(d.get("tick"), int) and not isinstance(d.get("tick"), bool) \
+            and d["tick"] > 0 else last
+        last = tick
+        price, who = d.get("price"), d.get("dealer") or d.get("counterparty") or d.get("venue")
+        text = " ".join(str(x) for x in (d.get("action"), d.get("card")) if x)
+        if finite(price) and price:
+            text += f" at {price} P"
+        if who:
+            text += f" · {who}"
+        row = {"kind": "decision", "tick": tick, "lane": lane, "text": text, "teams": [vi.US], "ours": True,
+               "id": f"d:{d.get('ts')}:{lane}:{d.get('action')}:{d.get('card')}",
+               "why": str(d.get("why") or "")[:400], "result": str(d.get("result") or "")[:240]}
+        if finite(d.get("surplus")):
+            row["surplus"] = d["surplus"]
+        out.append(row)
+    return out
+
+
+def merge_tape(market: list, decisions: list) -> list:
+    """The market tape (newest first) with our latest decisions slotted in by tick; a decision older than the market
+    rows lands at the bottom, so the page's "decisions" filter always has the latest ones."""
+    return sorted(market + decisions[-DECISIONS_ON_TAPE:][::-1], key=lambda r: -(r["tick"] or 0))
+
+
+def our_account(me: dict, mine, led: dict, team: dict | None, book: dict, rarity: dict, marginals: list,
+                 in_play: list, last_tick: int) -> dict:
+    """Our cash (live score reading, checked against the ledger at that tick), score, cards with our values, pages."""
+    aff = me.get("affinity") or {}
+    st = ((team or {}).get("score_state") or {}).get("prev") or {}
+    hist = led.get(vi.US, {}).get("history", [])
+    rows = [{"tick": me.get("tick"), "cash": me.get("cash"), "what": "account"}]
+    rows += [{"tick": r.get("tick"), "cash": r.get("cash"), "what": "score log"} for r in (team or {}).get("score_rows") or []]
+    rows.append({"tick": st.get("tick"), "cash": st.get("cash"), "what": "live score"})
+    checks, seen = [], set()
+    for r in rows:
+        if not (isinstance(r["tick"], int) and finite(r["cash"])) or r["tick"] in seen:
+            continue
+        seen.add(r["tick"])
+        rebuilt = ledger_mod.cash_at(hist, r["tick"])
+        checks.append({**r, "rebuilt": rebuilt, "ok": rebuilt == r["cash"], "ahead": r["tick"] > last_tick})
+    checks.sort(key=lambda c: c["tick"])
+    api_value = {}
+    for a in me.get("assets") or []:
+        if a.get("kind") == "card" and finite(a.get("your_value")):
+            api_value[a["ref"]] = max(api_value.get(a["ref"], 0), a["your_value"])
+    cards = []
+    for ref, n in sorted(mine.items()):
+        if n <= 0 or ref not in book:
+            continue
+        m = aff.get(vi.set_of(ref))
+        cards.append({"ref": ref, "set": vi.set_of(ref), "n": n, "rarity": rarity.get(ref), "book": book[ref],
+                      "values": [round(market_plan.copy_value(book[ref], m, i, marginals), 1) for i in range(n)] if m else [],
+                      "api_value": api_value.get(ref)})
+    pages = []
+    for s in sorted({c["set"] for c in cards} | set(in_play), key=lambda s: -(aff.get(s) or 0)):
+        held = [f"{s}-{i:02d}" for i in range(1, 11) if mine.get(f"{s}-{i:02d}", 0) > 0]
+        pages.append({"set": s, "mult": aff.get(s), "held": len(held), "of": 10,
+                      "missing": [f"{s}-{i:02d}" for i in range(1, 11) if f"{s}-{i:02d}" not in held],
+                      "live": st.get(f"set_{s}")})
+    score = {k: st.get(k) for k in ("score", "rank", "negotiating", "market", "neg_points", "duel_points",
+                                    "ladder_points", "bench_efficiency", "deals", "pages_complete", "album_filled")}
+    files = (team or {}).get("files") or {}
+    now = time.time()
+    cash = choose_cash(me, st, hist, led.get(vi.US, {}).get("cash"), last_tick)
+    live_file = files.get("score.state.json")
+    return {"account_tick": me.get("tick"), "account_source": me.get("source") or "snapshot",
+            "live_tick": st.get("tick"), **cash,
+            "ledger_cash": led.get(vi.US, {}).get("cash"), "score": score, "cards": cards, "pages": pages,
+            "checks": checks[-12:], "copies": sum(c["n"] for c in cards),
+            "relay": {"age_s": round(now - team["received"], 1) if team and finite(team.get("received")) else None,
+                      "files_age_s": {k: round(now - v) for k, v in files.items()},
+                      "live_score_age_s": round(now - live_file) if finite(live_file) else None,
+                      "decisions": len((team or {}).get("decisions") or [])}}
+
+
+def choose_cash(me: dict, st: dict, hist: list, ledger_now, last_tick: int) -> dict:
+    """Our cash now: the freshest real reading (the account snapshot or the live score reader, by tick). When the
+    rebuilt ledger agrees with that reading at its tick and the feed has moved on, the ledger's latest value is fresher
+    still; otherwise the reading stands. `cash_stale` says how many ticks the reading is behind the feed."""
+    readings = [{"tick": r["tick"], "cash": r["cash"], "what": r["what"]}
+                for r in ({"tick": me.get("tick"), "cash": me.get("cash"), "what": "account"},
+                          {"tick": st.get("tick"), "cash": st.get("cash"), "what": "live score"})
+                if isinstance(r["tick"], int) and not isinstance(r["tick"], bool) and finite(r["cash"])]
+    if not readings:
+        return {"cash": ledger_now, "cash_source": "ledger", "cash_tick": last_tick, "cash_stale": None}
+    fresh = max(readings, key=lambda r: r["tick"])
+    behind = last_tick - fresh["tick"]
+    if behind > 0 and ledger_now is not None and ledger_mod.cash_at(hist, fresh["tick"]) == fresh["cash"]:
+        return {"cash": ledger_now, "cash_source": f"ledger (agrees with the {fresh['what']} at t{fresh['tick']})",
+                "cash_tick": last_tick, "cash_stale": 0}
+    return {"cash": fresh["cash"], "cash_source": f"{fresh['what']} at t{fresh['tick']}", "cash_tick": fresh["tick"],
+            "cash_stale": max(behind, 0)}
+
+
+def deck_vs_real(events: list, cat: dict, team: dict | None) -> dict | None:
+    """The deck rebuild (tools/decks.py) checked on the one deck we know: ours, at the tick of our last raw account
+    snapshot (the relayed one, else logs/state/me.json)."""
+    me = (team or {}).get("me")
+    if not me:
+        try:
+            me = json.loads(vi.ME.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+    rebuilt = decks_mod.build(events, cat, upto=me.get("tick")).get(vi.US)
+    return {"tick": me.get("tick"), **decks_mod.check(rebuilt, me.get("assets") or [])} if rebuilt else None
+
+
+TRUTH_CACHE: dict = {}
+
+
+def inference_vs_truth(model, evs: list, truth: dict) -> dict | None:
+    """How close the inference gets to our real multipliers, replayed over our own public evidence: after each tick
+    with new evidence, the mean error per set, the share of set pairs put in the right order, the probability on each
+    true multiplier and on our true favourite. The prior (no evidence) is the baseline."""
+    sets = [s for s in model.in_play if finite(truth.get(s))]
+    if len(sets) < 2:
+        return None
+    evs = sorted(evs, key=lambda e: e["tick"])
+    key = (tuple(sets), tuple(truth.get(s) for s in sets), len(evs), evs[-1]["tick"] if evs else None)
+    if key in TRUTH_CACHE:
+        return TRUTH_CACHE[key]
+    fav = max(sets, key=lambda s: truth[s])
+    pairs = [(a, b) for i, a in enumerate(sets) for b in sets[i + 1:] if truth[a] != truth[b]]
+
+    def score(post: list, tick, n: int) -> dict:
+        exp = {s: sum(w * p[s] for w, p in zip(post, model.perms)) for s in sets}
+        p_true = {s: sum(w for w, p in zip(post, model.perms) if p[s] == truth[s]) for s in sets}
+        top = model.p_top(post)
+        ok = sum(0.5 if abs(exp[a] - exp[b]) < 1e-9 else float((exp[a] - exp[b]) * (truth[a] - truth[b]) > 0)
+                 for a, b in pairs)  # a tie is a coin flip: the prior scores 50 %
+        return {"tick": tick, "n": n, "mae": round(sum(abs(exp[s] - truth[s]) for s in sets) / len(sets), 3),
+                "pairs": round(ok / len(pairs), 3) if pairs else None,
+                "p_true": round(sum(p_true.values()) / len(sets), 3), "p_fav": round(top.get(fav, 0.0), 3),
+                "fav_ok": max(top, key=top.get) == fav, "exp": {s: round(exp[s], 2) for s in sets},
+                "p_each": {s: round(p_true[s], 3) for s in sets}}
+
+    prior = score([1 / len(model.perms)] * len(model.perms), None, 0)
+    ends = [k for k in range(len(evs)) if k == len(evs) - 1 or evs[k + 1]["tick"] != evs[k]["tick"]]
+    if len(ends) > TRUTH_POINTS:  # keep evenly spaced points, always the last one
+        step = len(ends) / TRUTH_POINTS
+        ends = sorted({ends[int(i * step)] for i in range(TRUTH_POINTS)} | {ends[-1]})
+    logp, points, done = [0.0] * len(model.perms), [], 0
+    for k, (ev, w) in enumerate(zip(evs, model.weights(evs))):
+        for i in range(len(model.perms)):
+            logp[i] += w * model.loglik(ev, i)
+        if done < len(ends) and k == ends[done]:
+            done += 1
+            points.append({x: v for x, v in score(model._normalise(logp), ev["tick"], k + 1).items()
+                           if x not in ("exp", "p_each")})
+    final = score(model._normalise(logp), evs[-1]["tick"], len(evs)) if evs else prior
+    rank = lambda vals: {s: 1 + sum(vals[t] > vals[s] for t in sets) for s in sets}
+    r_inf, r_true = rank(final["exp"]), rank(truth)
+    out = {"sets": [{"set": s, "true": truth[s], "inferred": final["exp"][s], "p_true": final["p_each"][s],
+                     "rank_true": r_true[s], "rank_inferred": r_inf[s]} for s in sorted(sets, key=lambda s: -truth[s])],
+           "favourite": fav, "now": {k: v for k, v in final.items() if k not in ("exp", "p_each")},
+           "prior": {k: v for k, v in prior.items() if k not in ("exp", "p_each")}, "curve": points,
+           "evidence": len(evs), "pairs_total": len(pairs)}
+    TRUTH_CACHE.clear()
+    TRUTH_CACHE[key] = out
+    return out
 
 
 def tape(events: list, ours: dict, mine, book: dict, marginals: list) -> list:
@@ -287,6 +605,7 @@ def refresh() -> dict:
         vi.catalog(refresh=True)
     except Exception:  # noqa: BLE001  unreachable or bad body: the cached logs/public/catalog.json stays
         pass
+    team = load_team()  # first: a fresher account in it becomes the one load_me() and the plan read
     model, by_team, events, book = vi.load()
     cat = vi.catalog()
     marginals = cat["values"]["copy_marginals"]
@@ -298,20 +617,28 @@ def refresh() -> dict:
     truth = me.get("affinity", {})
     mine = vi.our_cards(me, events)
     ours = model.summary(model.posterior(by_team.get(vi.US, [])), by_team.get(vi.US, []))
-    plan = market_plan.plan(split)
+    st_now = ((team or {}).get("score_state") or {}).get("prev") or {}
+    cash_now = choose_cash(me, st_now, led.get(vi.US, {}).get("history", []), led.get(vi.US, {}).get("cash"),
+                           events[-1]["tick"])
+    plan = market_plan.plan(split, cash_reading=cash_now)  # the page's cash and the plan's funding are one reading
     rarity, _, _ = price_index.card_kinds(cat)
     snaps = SNAPS.update()
     lb = snaps.body("leaderboard")
     score = {t["team"]: t.get("score") for t in lb.get("teams", [])}
+    album = {t["team"]: {k: t.get(k) for k in ("album_filled", "album_slots", "pages_complete")} for t in lb.get("teams", [])}
+    deck = decks_mod.build(events, cat)
+    deck_check = deck_vs_real(events, cat, team)
     teams = []
     for t in sorted(by_team):
         r = model.summary(model.posterior(by_team[t]), by_team[t])
         L = led.get(t, {})
         teams.append({
             "team": t, "us": t == vi.US, "score": score.get(t), "rank": None,
-            "cash": L.get("cash"), "cash_history": L.get("history", [])[-60:], "trades": L.get("trades"),
+            "cash": L.get("cash"), "cash_unsure": L.get("cash_unsure") or 0, "cash_history": L.get("history", [])[-60:],
+            "trades": L.get("trades"),
             "unlocked": L.get("unlocked"), "venue": L.get("venue"), "bonds": L.get("bonds"),
             "dealer_spent": L.get("dealer_spent"), "known_cards": L.get("known_cards"),
+            "deck": {k: v for k, v in deck.get(t, {}).items() if k != "ids"}, "album": album.get(t),
             "expected": {s: round(r["expected"][s], 2) for s in model.in_play},
             "dist": {s: {str(m): round(p, 3) for m, p in r["dist"][s].items()} for s in model.in_play},
             "favourite": r["favourite"], "p_favourite": round(r["p_favourite"], 2),
@@ -320,13 +647,16 @@ def refresh() -> dict:
         })
     for i, t in enumerate(sorted((x for x in teams if x["score"] is not None), key=lambda x: -x["score"])):
         t["rank"] = i + 1
+    us = our_account(me, mine, led, team, book, rarity, marginals, model.in_play, events[-1]["tick"])
+    truth_panel = inference_vs_truth(model, by_team.get(vi.US, []), truth)
     live = vi.ME_LIVE.exists() and json.loads(vi.ME_LIVE.read_text()).get("tick") == me.get("tick")
     data = {
         "tick": events[-1]["tick"], "server_time": time.strftime("%H:%M:%S"),
         "store": {"events": len(events), "api_window": 1000, "first_tick": events[0]["tick"],
                   "last_tick": events[-1]["tick"], "last_seen": events[-1].get("seen_at")},
-        "account": {"source": "relay (live)" if live else "snapshot", "tick": me.get("tick"),
+        "account": {"source": (me.get("source") or "relay (live)") if live else "snapshot", "tick": me.get("tick"),
                     "age_ticks": events[-1]["tick"] - (me.get("tick") or 0)},
+        "us": us, "truth": truth_panel, "deck_check": deck_check,
         "model": {"hit": round(split["hit"], 3), "naive": round(split["naive_hit"], 3), "n": split["n"],
                   "chance": round(1 / len(model.in_play), 3), "loss": round(split["loss"], 3),
                   "uniform_loss": round(split["uniform_loss"], 3), "beta_choose": model.beta_choose,
@@ -338,7 +668,8 @@ def refresh() -> dict:
         "ledger_check": chk, "teams": teams, "plan": plan, "in_play": model.in_play,
         "prices": {"dealers": plan.pop("dealer_prices"), "teams": price_index.team_index(events, rarity)},
         "venues": venues_panel(snaps, events),
-        "tape": tape(events, truth, mine, book, marginals), "leaderboard_tick": lb.get("snapshot_tick"),
+        "tape": merge_tape(tape(events, truth, mine, book, marginals), decision_rows((team or {}).get("decisions") or [])),
+        "leaderboard_tick": lb.get("snapshot_tick"),
     }
     data["compute_s"] = round(time.time() - t0, 2)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -348,7 +679,8 @@ def refresh() -> dict:
     with open(OUT / "history.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps({"tick": data["tick"], "at": data["server_time"], "events": len(events), "hit": data["model"]["hit"],
                             "n": split["n"], "beliefs": {t["team"]: [t["favourite"], t["p_favourite"]] for t in teams},
-                            "cash": {t["team"]: t["cash"] for t in teams}}) + "\n")
+                            "cash": {t["team"]: t["cash"] for t in teams},
+                            "truth": {k: (truth_panel or {}).get("now", {}).get(k) for k in ("mae", "pairs", "p_fav")}}) + "\n")
     return data
 
 
@@ -365,7 +697,8 @@ def worker() -> None:
         try:
             feed = vi.FEED / "feed.jsonl"
             sig = (feed.stat().st_size if feed.exists() else 0,
-                   vi.ME_LIVE.stat().st_mtime if vi.ME_LIVE.exists() else 0)
+                   vi.ME_LIVE.stat().st_mtime if vi.ME_LIVE.exists() else 0,
+                   TEAM_LIVE.stat().st_mtime if TEAM_LIVE.exists() else 0)
             if sig != last_sig or POKE.is_set() or time.time() - last_at > MAX_QUIET_SECONDS:
                 POKE.clear()
                 last_sig, last_at = sig, time.time()
@@ -375,7 +708,7 @@ def worker() -> None:
         POKE.wait(CHECK_SECONDS)
 
 
-def valid_account(body: dict) -> bool:
+def valid_account(body) -> bool:
     return (isinstance(body, dict) and isinstance(body.get("affinity"), dict) and isinstance(body.get("assets"), list)
             and isinstance(body.get("cash"), (int, float)) and math.isfinite(body["cash"]) and isinstance(body.get("tick"), int))
 
@@ -438,19 +771,27 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
         def do_POST(self):
             u = urlparse(self.path)
             given = (self.headers.get("X-Brain-Write") or "").encode()
-            if (u.path not in ("/ingest/me", "/ingest/desk") or not write_token
+            if (u.path not in ("/ingest/me", "/ingest/desk", "/ingest/team") or not write_token
                     or not hmac.compare_digest(given, write_token.encode())):
                 return self._send(403, b"forbidden", "text/plain")
             try:
                 n = int(self.headers.get("Content-Length") or 0)
             except ValueError:
                 n = -1
-            if n <= 0 or n > (DESK_MAX_BYTES if u.path == "/ingest/desk" else 512_000):
+            limit = {"/ingest/desk": DESK_MAX_BYTES, "/ingest/team": TEAM_MAX_BYTES}.get(u.path, 512_000)
+            if n <= 0 or n > limit:
                 return self._send(413, b"too large", "text/plain")
             try:
                 body = json.loads(self.rfile.read(n))
             except ValueError:
                 return self._send(400, b"bad json", "text/plain")
+            if u.path == "/ingest/team":
+                team = valid_team(body)
+                if team is None:
+                    return self._send(400, b"not a team bundle", "text/plain")
+                store_team(team)
+                POKE.set()
+                return self._send(200, b"ok", "text/plain")
             if u.path == "/ingest/desk":
                 desk = valid_desk(body)
                 if desk is None:
@@ -462,10 +803,7 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
                 return self._send(200, b"ok", "text/plain")
             if not valid_account(body):
                 return self._send(400, b"not an account", "text/plain")
-            vi.ME_LIVE.parent.mkdir(parents=True, exist_ok=True)
-            tmp = vi.ME_LIVE.with_suffix(".tmp")
-            tmp.write_text(json.dumps(body), encoding="utf-8")
-            tmp.replace(vi.ME_LIVE)
+            write_account(body, only_if_fresher=False)  # the keyed relay reads /api/me now: always the freshest
             POKE.set()
             return self._send(200, b"ok", "text/plain")
 
