@@ -98,8 +98,22 @@ class Guard(unittest.TestCase):
     def test_different_runs_never_pair(self):
         self.check(("b2-1", "b1-2", 25), "different_runs")
 
-    def test_same_maker_never_pairs(self):
-        self.check(("b1-1", "b1-3", 22), "same_maker")
+    def test_same_maker_pairs_on_the_bench(self):
+        # every real bench offer shows maker "bench": a shared maker must not block a bench pair
+        ok, bad = brk.guard([("b1-1", "b1-3", 21)], self.book)  # both maker "mA"; 21 + ceil(2.1) + 1 = 25 <= 25
+        self.assertEqual((ok, bad), ([("b1-1", "b1-3", 21)], []))
+
+    def test_same_maker_never_pairs_on_public_offers(self):
+        book = book_of([], [
+            {"id": 11, "maker": "pA", "give": {"cash": 0, "assets": [{"kind": "card", "ref": "LAV-03", "id": 5}],
+                                              "types": []}, "want": {"cash": 10, "assets": [], "types": []}},
+            {"id": 13, "maker": "pA", "give": {"cash": 30, "assets": [], "types": []},
+             "want": {"cash": 0, "assets": [], "types": ["card:LAV-03"]}},
+            {"id": 14, "maker": "pB", "give": {"cash": 30, "assets": [], "types": []},
+             "want": {"cash": 0, "assets": [], "types": ["card:LAV-03"]}}])
+        ok, bad = brk.guard([(11, 13, 20)], book)
+        self.assertEqual((ok, bad), ([], [((11, 13, 20), "same_maker")]))
+        self.assertEqual(brk.guard([(11, 14, 20)], book), ([(11, 14, 20)], []))
 
     def test_an_offer_is_used_once(self):
         ok, bad = brk.guard([("b1-1", "b1-2", 25), ("b1-1", "b1-2", 25)], self.book)
@@ -130,23 +144,18 @@ class PolicyInvariants(unittest.TestCase):
             self.assertIsInstance(price, int)
             self.assertGreaterEqual(price, ask)
             self.assertLessEqual(price + brk.fee_of(book, price), bid)
-            if s.get("maker") is not None:
-                self.assertNotEqual(s.get("maker"), b.get("maker"))
             self.assertNotIn(sell, used)
             self.assertNotIn(buy, used)
             used.update((sell, buy))
 
-    def test_every_plan_respects_quotes_runs_makers_and_reuse(self):
-        n = 0
+    def test_every_plan_respects_quotes_runs_and_reuse(self):
+        n = 0  # every simulated offer shows maker "bench" (pseudonyms in "makers"), as the real bench does
         for name, params in (("standard", {"blind": "policy"}), ("hard", {"blind": "policy"}),
                              ("expiry_exact", {}), ("makers", {"blind": "policy"})):
             sc = {**bs.scenario(name), "fee_bps": 150, "fee_card": 1}
             for seed in range(60):
                 rng = random.Random(f"inv:{name}:{seed}")
                 day = [bs.make_session(rng, sc, run=f"b{k + 1}") for k in range(3)]
-                if name == "makers":  # two offers of one maker in a run: they must never be paired
-                    for traders in day:
-                        traders[1]["maker"] = traders[0]["maker"]
                 pol = brk.BenchPolicy(params)
 
                 def fn(book, t):
@@ -176,6 +185,53 @@ class PolicyInvariants(unittest.TestCase):
             pol = brk.BenchPolicy(params)
             pol.plan(book, 1)
             self.assertEqual(sorted(pol.plan(book, 2)), [("b1-1", "b1-2", 20), ("b2-1", "b2-2", 49)])
+
+
+class RealBench(unittest.TestCase):
+    """Regression (Market Test, 3 Oct): every real bench offer shows maker "bench", and the guard dropped every bench
+    pair as same_maker. The buyer's shape is copied from the live book; the seller's is the mirror image (a guess)."""
+
+    @staticmethod
+    def offer(n, side, quote, expires=457):
+        o = {"id": f"b36-{n}", "bench": True, "maker": "bench", "status": "open", "expires_tick": expires}
+        if side == "sell":
+            o["give"] = {"cash": 0, "assets": [], "types": ["bench:cromo"]}
+            o["want"] = {"cash": quote, "assets": [], "types": []}
+        else:
+            o["give"] = {"cash": quote, "assets": [], "types": []}
+            o["want"] = {"cash": 0, "assets": [], "types": ["bench:cromo"]}
+        return o
+
+    def book(self, tick=450):
+        return book_of([self.offer(3, "buy", 51), self.offer(4, "buy", 40, 452), self.offer(17, "sell", 45, 454),
+                        self.offer(8, "sell", 60), self.offer(9, "buy", 30, 451), self.offer(12, "sell", 55, 455)],
+                       tick=tick)
+
+    def test_the_stall_sends_a_crossing_bench_pair(self):
+        ok, bad, notes = brk.plan_book(self.book(), 450, None)  # policy None: live `run --policy stall`
+        self.assertEqual((ok, bad), ([("b36-17", "b36-3", 48)], []))
+        self.assertEqual(ok, bench_plan(self.book()))
+
+    def test_our_policy_sends_a_crossing_bench_pair(self):
+        for params in ({}, {"blind": "policy"}):  # blind: the stall's rule; policy: the matching on estimates
+            pol = brk.BenchPolicy(params)
+            brk.plan_book(self.book(449), 449, pol)
+            ok, bad, notes = brk.plan_book(self.book(450), 450, pol)
+            self.assertEqual(bad, [], params)
+            self.assertEqual([m[:2] for m in ok], [("b36-17", "b36-3")], (params, notes))
+
+    def test_the_live_loop_matches_and_drops_nothing(self):
+        for policy in ("stall", "ours"):
+            tmp = tempfile.TemporaryDirectory()
+            self.addCleanup(tmp.cleanup)
+            fake = FakeBroker(self.book(), refuse=False)
+            log = MemLog(Path(tmp.name) / "broker.jsonl")
+            desk = brk.Desk(fake, log, policy, now=lambda: 1000.0, heartbeat=Path(tmp.name) / "hb.json")
+            desk.step()
+            events = [r["event"] for r in log.rows]
+            self.assertNotIn("dropped", events, policy)
+            self.assertEqual(events.count("matched"), 1, policy)
+            self.assertEqual([c[1:3] for c in fake.calls], [("b36-17", "b36-3")], policy)
 
 
 class Fallback(unittest.TestCase):
