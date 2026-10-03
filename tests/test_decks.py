@@ -76,6 +76,51 @@ class Decks(unittest.TestCase):
         self.assertEqual((c["named"], c["names_right"], c["missed"]), (1, 1, [99]))
 
 
+class CensusTopUp(unittest.TestCase):
+    """`decks.py moved`: the ids a tools/census.py top-up must re-read since a full walk."""
+    SNAP = {"meta": {"tick_start": 100, "tick_end": 160},
+            "cards": [{"id": i, "owner": "t02" if i <= 15 else "t01", "rarity": "common" if i % 2 else "rare"}
+                      for i in range(1, 31)],
+            "packs": [{"id": 31, "owner": "t02"}]}
+
+    def test_settlements_packs_new_mints_our_burns_and_crafters_commons(self):
+        events = JOINED + [settled(99, "t02", "t01", 3, "LAV-01"),            # before the census: not again
+                           settled(120, "t02", "t01", 5, "LAV-01"),
+                           ev(125, "settlement", items=[{"id": 31, "kind": "pack", "frm": "t02", "to": "t01"}]),
+                           ev(130, "pack.opened", team="t02", pack="sobre_barrio", best={"id": 40, "ref": "LAV-09"}),
+                           listed(140, "t02", (45, "LAV-01")),
+                           ev(150, "taller.crafted", team="t01", card="La Tabacalera")]
+        convs = [{"tick": 155, "burned": [{"id": 7, "ref": "LAV-01"}], "got": [{"id": 44, "ref": "LAV-06"}]},
+                 {"tick": 90, "burned": [{"id": 8, "ref": "LAV-01"}], "got": []}]
+        ids, info = decks.moved(events, CAT, self.SNAP, margin=2, conversions=convs)
+        t01_commons = [i for i in range(16, 31) if i % 2]
+        expected = sorted({5, 31, 38, 39, 40, 7, 44} | set(range(32, 48)) | set(t01_commons))
+        self.assertEqual(ids, expected)
+        self.assertNotIn(3, ids)
+        self.assertNotIn(8, ids)
+        self.assertEqual((info["since"], info["census_max_id"], info["feed_max_id"], info["crafters"]), (100, 31, 45, ["t01"]))
+
+    def test_since_overrides_the_census_tick_and_a_tickless_census_needs_it(self):
+        events = JOINED + [settled(120, "t02", "t01", 5, "LAV-01")]
+        self.assertNotIn(5, decks.moved(events, CAT, self.SNAP, since=130, margin=0)[0])
+        with self.assertRaises(ValueError):
+            decks.moved(events, CAT, {"meta": {}, "cards": []}, margin=0)
+
+    def test_the_command_writes_ids_only(self):
+        import json
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            feed = Path(d) / "feed.jsonl"
+            feed.write_text("".join(json.dumps(e) + "\n" for e in JOINED + [settled(120, "t02", "t01", 5, "LAV-01")]))
+            base, out = Path(d) / "snap.json", Path(d) / "moved.txt"
+            base.write_text(json.dumps(self.SNAP))
+            with mock.patch.object(decks.vi, "FEED", Path(d)), mock.patch.object(decks.vi, "catalog", lambda refresh=False: CAT), \
+                    mock.patch.object(decks.vi, "CONVERSIONS", Path(d) / "none.json"):
+                decks.cmd_moved(["--base", str(base), "--margin", "0", "--out", str(out)])
+            self.assertEqual(out.read_text(), "5\n")
+
+
 class BrainDeckCheck(unittest.TestCase):
     def test_the_brain_checks_the_rebuild_on_our_relayed_account_at_its_tick(self):
         import brain

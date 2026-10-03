@@ -11,6 +11,17 @@ Every card copy in the game is one asset with a unique id, minted in order, so t
 So for each team: the copies we can name, the copies we know it owns but have never seen (a starter or pack card never
 listed or traded), cards from packs whose ids we cannot place, and the Workshop burns we cannot name. Checked against
 our own account (the one deck we know): `python3 tools/decks.py` prints the check and every team's deck.
+
+It also writes the id list for a census top-up (tools/census.py reads every asset by id with the team key; a top-up
+re-reads only the ids that may have changed since a full walk):
+
+    python3 tools/decks.py moved --base ~/bazaar-census/out/cards-2026-10-03-t<TICK>.json --out ~/bazaar-census/moved.txt
+
+`moved` = every asset id in a public settlement since the census started (cards and packs changing hands, dealer
+copies minted), every id above the census's highest up to the highest id the feed has shown since (a listing, a
+settlement, a pack's best card) plus a margin, which covers every new mint, even those the feed never names (packs
+without a best card, gifts, eggs, Workshop cards), our own logged Workshop burns, and every common the census gave a
+team that has crafted at the Workshop since (the feed never names the three commons it burns). Ids only, one per line.
 """
 from __future__ import annotations
 
@@ -118,7 +129,93 @@ def check(deck: dict, assets: list) -> dict:
             "missed": sorted(set(truth) - ids)}
 
 
+MINT_MARGIN = 40      # ids above the highest one the feed has shown, for mints it never names
+
+
+def snapshot_bounds(snap: dict) -> tuple:
+    """(tick the census started, highest asset id it found) from a tools/census.py snapshot."""
+    meta = snap.get("meta") or {}
+    tick = meta.get("tick_start") if isinstance(meta.get("tick_start"), int) else meta.get("tick_end")
+    ids = [x["id"] for k in ("cards", "packs") for x in snap.get(k) or [] if isinstance(x.get("id"), int)]
+    return tick, max(ids, default=0)
+
+
+def moved(events: list, cat: dict, snap: dict, since: int | None = None, margin: int = MINT_MARGIN,
+          conversions: list | None = None) -> tuple:
+    """The ids a census top-up must re-read, and why. `since` defaults to the census's start tick (cards could move
+    while it walked)."""
+    start, base_max = snapshot_bounds(snap)
+    since = since if since is not None else start
+    if since is None:
+        raise ValueError("the census snapshot has no tick: pass --since")
+    ids, why = set(), collections.Counter()
+    seen_max, crafters = base_max, set()
+    for e in events:
+        if e["tick"] < since:
+            continue
+        p, kind = e["payload"], e["type"]
+        if kind == "settlement":
+            for it in p.get("items") or []:
+                if isinstance(it.get("id"), int):
+                    ids.add(it["id"])
+                    why["settled"] += 1
+                    seen_max = max(seen_max, it["id"])
+        elif kind == "offer.listed":
+            for a in ((p.get("offer") or {}).get("give") or {}).get("assets") or []:
+                if isinstance(a, dict) and isinstance(a.get("id"), int):
+                    seen_max = max(seen_max, a["id"])
+        elif kind == "pack.opened":  # a pack's cards are minted above the census: its best card raises the range
+            best = p.get("best") if isinstance(p.get("best"), dict) else None
+            if best and isinstance(best.get("id"), int):
+                seen_max = max(seen_max, best["id"])
+        elif kind == "taller.crafted" and p.get("team"):
+            crafters.add(p["team"])
+    new = set(range(base_max + 1, seen_max + margin + 1))
+    ids |= new
+    why["above the census"] = len(new)
+    for c in conversions or []:
+        if isinstance(c.get("tick"), int) and c["tick"] >= since:
+            for x in (c.get("burned") or []) + (c.get("got") or []):
+                aid = x.get("id") if isinstance(x, dict) else x
+                if isinstance(aid, int):
+                    ids.add(aid)
+                    why["our Workshop"] += 1
+    for card in snap.get("cards") or []:
+        if card.get("owner") in crafters and card.get("rarity") == "common" and isinstance(card.get("id"), int):
+            ids.add(card["id"])
+            why["commons of crafters"] += 1
+    return sorted(ids), {"since": since, "census_max_id": base_max, "feed_max_id": seen_max,
+                         "crafters": sorted(crafters), "why": dict(why)}
+
+
+def cmd_moved(argv: list) -> None:
+    import argparse
+    ap = argparse.ArgumentParser(prog="decks.py moved", description="Ids a census top-up must re-read (ids only).")
+    ap.add_argument("--base", type=Path, required=True, help="the census snapshot (tools/census.py run)")
+    ap.add_argument("--since", type=int, help="first tick to look at (default: the census's start tick)")
+    ap.add_argument("--margin", type=int, default=MINT_MARGIN)
+    ap.add_argument("--out", type=Path, help="write the ids here, one per line (default: print them)")
+    args = ap.parse_args(argv)
+    snap = json.loads(args.base.expanduser().read_text(encoding="utf-8"))
+    try:
+        convs = json.loads(vi.CONVERSIONS.read_text(encoding="utf-8"))
+    except (OSError, ValueError, AttributeError):
+        convs = []
+    ids, info = moved(vi.rows("feed.jsonl"), vi.catalog(), snap, args.since, args.margin, convs)
+    text = "".join(f"{i}\n" for i in ids)
+    if args.out:
+        args.out.expanduser().parent.mkdir(parents=True, exist_ok=True)
+        args.out.expanduser().write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+    print(f"moved: {len(ids)} ids since tick {info['since']} (census max id {info['census_max_id']}, feed max id "
+          f"{info['feed_max_id']}); {info['why']}; crafters since: {', '.join(info['crafters']) or 'none'}"
+          + (f" -> {args.out}" if args.out else ""), file=sys.stderr)
+
+
 def main() -> None:
+    if sys.argv[1:2] == ["moved"]:
+        return cmd_moved(sys.argv[2:])
     cat = vi.catalog()
     events = vi.rows("feed.jsonl")
     me = json.loads(vi.ME.read_text(encoding="utf-8"))  # the raw snapshot (the relayed copy may carry Workshop edits)
