@@ -169,6 +169,14 @@ class PolicyInvariants(unittest.TestCase):
         plan = pol.plan(book, 2)  # second sight: the policy path, not the no-history fallback
         self.assertEqual(sorted(plan), [("b1-1", "b1-2", 22), ("b2-2", "b2-1", 35)])
 
+    def test_a_better_pair_across_runs_is_never_taken(self):
+        # one match b1-1 x b2-2 (20 against 60) would be worth more than both in-run pairs together
+        book = book_of([seller("b1-1", 20), buyer("b1-2", 21), seller("b2-1", 39), buyer("b2-2", 60)])
+        for params in ({"blind": "policy"}, {}):
+            pol = brk.BenchPolicy(params)
+            pol.plan(book, 1)
+            self.assertEqual(sorted(pol.plan(book, 2)), [("b1-1", "b1-2", 20), ("b2-1", "b2-2", 49)])
+
 
 class Fallback(unittest.TestCase):
     def test_bad_offers_do_not_break_the_plan(self):
@@ -264,6 +272,18 @@ class LiveLoop(unittest.TestCase):
             self.loop(desk, 10)
             self.assertEqual(len(fake.calls), 2, policy)
             self.assertEqual(sum(r["event"] == "refused" for r in log.rows), 2)
+
+    def test_the_book_is_planned_and_logged_once_per_state(self):
+        fake = FakeBroker(book_of([seller("b1-1", 20), buyer("b1-2", 18)]))  # nothing crosses
+        desk, log = self.desk(fake)
+        self.loop(desk, 40)
+        rows = (self.dir / "broker.jsonl").read_text().splitlines()
+        self.assertEqual(len(rows), 1)
+        fake.book_now["bench_offers"][1]["give"]["cash"] = 19  # a quote moved: a new state
+        self.loop(desk, 2)
+        rows = [json.loads(r) for r in (self.dir / "broker.jsonl").read_text().splitlines()]
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1]["same_reads_before"], 39)  # the identical reads are counted, not stored
 
     def test_an_accepted_match_is_not_sent_twice_while_it_settles(self):
         fake = FakeBroker(book_of([seller("b1-1", 20), buyer("b1-2", 30)]), refuse=False)
