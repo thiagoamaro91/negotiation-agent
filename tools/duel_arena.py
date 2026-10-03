@@ -78,6 +78,10 @@ PAIR_SEEN = 1.0
 # the role default (buyer late, seller early) and the weight shown to us is negative, as a server that signs it would.
 DAYS_WORDING = "primas per day away from your preferred delivery day"
 DAYS_FLIP = False
+# How duel.py runs in the arena on two issues: "" = robust (no --days-confirmed: what `run` does until a human reads
+# the first duel_new lines), "confirmed" (--days-confirmed), or a --days-best value such as "buyer:10,seller:0" (a
+# human confirmed this direction, right or wrong).
+ARENA_DAYS = ""
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
 # duel.py --late-poll (a second read of the duels late in the tick): the share of the rival's same-tick messages that
@@ -91,7 +95,8 @@ def cfg_for(params: dict, ticks: int):
     with tempfile.TemporaryDirectory() as tmp:
         f = Path(tmp) / "params.json"
         f.write_text(json.dumps({**params, "duel_ticks": ticks}))
-        return duel.make_cfg(["watch", "--params", str(f)])
+        extra = ["--days-confirmed"] if ARENA_DAYS == "confirmed" else (["--days-best", ARENA_DAYS] if ARENA_DAYS else [])
+        return duel.make_cfg(["watch", "--params", str(f), *extra])
 
 
 def load_policy(path) -> dict:
@@ -927,12 +932,15 @@ def main() -> None:
                     "(default PAIR_SEEN = 1; Duels I: 0)")
     ap.add_argument("--weights", default="friday", choices=["friday", "duels1"],
                     help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
+    ap.add_argument("--days-mode", default="", help='two issues: "" robust (duel.py run before --days-confirmed), '
+                    '"confirmed", or a --days-best value such as "buyer:10,seller:0"')
     ap.add_argument("--json", action="store_true", help="print the summaries as JSON")
     ap.add_argument("--stress", action="store_true", help="also print the stress table (what if the model is wrong)")
     a = ap.parse_args()
-    global PAIR_SEEN
+    global PAIR_SEEN, ARENA_DAYS
     if a.pair_seen is not None:
         PAIR_SEEN = a.pair_seen
+    ARENA_DAYS = a.days_mode
     weights = DUELS1_WEIGHTS if a.weights == "duels1" else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}
