@@ -19,10 +19,16 @@ Usage (from the repo root):
     python3 agent/abuela.py run           # work through the plan, one conversation at a time
     python3 agent/abuela.py run --only LAV-07,sell:39
     python3 agent/abuela.py run --only SAL-01 --reserve 200 --cap 10   # --cap only lowers our limit
+    python3 agent/abuela.py run --only LAV-07 --resume 412              # continue a thread a run left open
+When the round budget runs out we take her standing offer if it is inside our limit instead of closing on it.
+Sell floors are rounded up before any price is built (a 19.5 floor never yields a binding 19).
 `run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds), and
 re-checks the lock before every accept: while it is fresh the accept waits a tick (no round spent).
-`run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it.
-The client never resends a refused write and waits through a paused clock (agent/dealer_client.py).
+`run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it;
+4 when a thread could not be closed (one line with the --resume command: her only slot may still be held);
+5 when the duel lock stayed fresh for --max-defer-ticks (default 60) and the thread was closed without a deal.
+The client never lets the SDK resend a write, counts a round only for a confirmed new tick, and waits through a paused
+clock with one line a minute (agent/dealer_client.py).
 Only ONE process per team may talk to Abuela at a time (one open conversation per dealer).
 """
 from __future__ import annotations
@@ -39,8 +45,9 @@ sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import BazaarError  # noqa: E402
 # the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
-from dealer_client import (ACCEPTED, DEFERRED, EXIT_RESERVE, close_safely, guarded_accept,  # noqa: E402,F401
-                           reserve_line)
+from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOSE_FAILED,  # noqa: E402,F401
+                           EXIT_LOCK_TIMEOUT, EXIT_RESERVE, MAX_DEFER_TICKS, Rounds, close_failed_line,
+                           guarded_accept, lock_timeout_line, reserve_line, try_close)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
@@ -127,61 +134,96 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
 
 # ---------------------------------------------------------------- one negotiation
 
-def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
+def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
     topic = {"buy": {"card": item}} if side == "buy" else {"sell": {"assets": [asset_id]}}
-    try:
-        th = b.open_thread(DEALER, topic=topic)
-    except BazaarError as e:
-        log("open_refused", item=item, side=side, code=e.code, msg=e.message)
-        return {"result": "refused", "code": e.code}
-    tid = th["id"]
-    log("open", thread=tid, side=side, item=item, value=value, welcome=first_deal)
-
     ours: int | None = None
     said = 0
     last_her = None
     answered = None  # id of her offer we last countered
-    rnd = 0          # rounds spent (one per tick); lock deferrals and clock pauses (inside wait_tick) cost none
+    if resume:
+        # pick up a conversation an earlier process left open: our last number comes from the first good read
+        tid = resume
+    else:
+        try:
+            th = b.open_thread(DEALER, topic=topic)
+        except BazaarError as e:
+            log("open_refused", item=item, side=side, code=e.code, msg=e.message)
+            return {"result": "refused", "code": e.code}
+        tid = th["id"]
+        log("open", thread=tid, side=side, item=item, value=value, welcome=first_deal)
 
-    def tick(free: bool = False) -> None:
-        nonlocal rnd
-        b.wait_tick()
-        if not free:
-            rnd += 1
+    rounds = Rounds(b, MAX_ROUNDS, MAX_DEFER_TICKS)  # a round is a confirmed tick; deferrals and pauses are free
 
-    while rnd < MAX_ROUNDS:
+    def close(event: str, result: str, **info) -> dict | None:
+        """Close for `result`. None: the close was refused and the loop decides again on a fresh read."""
+        if try_close(b, tid, log, rounds, event):
+            log(event, thread=tid, **info)
+            return {"result": result, "thread": tid}
+        if rounds.close_refusals >= CLOSE_TRIES:
+            log("close_failed", thread=tid, wanted=result, refusals=rounds.close_refusals)
+            return {"result": "close_failed", "thread": tid, "wanted": result}
+        return None
+
+    while True:
+        spent = rounds.spent()
         try:
             t = b.thread(tid)
         except BazaarError as e:
-            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
-            tick()
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rounds.used)
+            if spent:  # cannot see the offer and the budget is gone: close
+                r = close("max_rounds", "max_rounds", ours=ours, her=last_her)
+                if r:
+                    return r
+                continue
+            rounds.wait()
             continue
+        if resume:
+            msgs = sorted(t.get("messages") or [], key=lambda m: m.get("id") or 0)
+            mine = [m for m in msgs if m.get("sender") != DEALER and m.get("offer")]
+            if mine:  # continue from our last number, never step back
+                ours = offer_price(mine[-1]["offer"])
+                said = len(mine)
+                if msgs[-1].get("sender") != DEALER:  # our number is the latest word: wait for her answer
+                    o = her_open_offer(t)
+                    answered = o["id"] if o else None
+            log("resume", thread=tid, side=side, item=item, value=value, ours=ours, answered=answered)
+            resume = None
         status = t.get("status")
         if status != "open":
             log("closed", thread=tid, status=status, reason=t.get("closed_reason"), ours=ours, her=last_her)
             return {"result": status, "thread": tid, "ours": ours, "her": last_her}
         o = her_open_offer(t)
-        if o is None:
-            tick()
-            continue
-        if not offer_matches(o, side, item, asset_id):
+        if o is not None and not offer_matches(o, side, item, asset_id):
             log("mismatch", thread=tid, offer=o)  # a switched item: never accept it
-            tick()
+            o = None
+        if o is None:
+            if spent:
+                r = close("max_rounds", "max_rounds", ours=ours, her=last_her)
+                if r:
+                    return r
+                continue
+            rounds.wait()
             continue
         her = offer_price(o)
         final = bool(o.get("final"))
         if her != last_her:
-            log("her", thread=tid, price=her, final=final, round=rnd)
+            log("her", thread=tid, price=her, final=final, round=rounds.used)
         last_her = her
         try:
             cash = b.me()["cash"] if side == "buy" else None
         except BazaarError as e:
-            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rnd)
-            tick()
+            log("read_refused", thread=tid, code=e.code, msg=e.message, round=rounds.used)
+            if spent:
+                r = close("max_rounds", "max_rounds", ours=ours, her=her)
+                if r:
+                    return r
+                continue
+            rounds.wait()
             continue
-        reservation = (min(value, cash - CASH_RESERVE) if side == "buy" else value)
+        # sells: the floor rounded UP before any price is built (a 19.5 floor must never yield a binding 19)
+        reservation = (min(value, cash - CASH_RESERVE) if side == "buy" else int(-(-value // 1)))
 
         def good(p: int) -> bool:
             return p <= reservation if side == "buy" else p >= reservation
@@ -194,50 +236,71 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool) -> dict:
         # 2) her last word: take it if it is still a good deal, else walk
         elif final:
             if not good(her):
-                close_safely(b, tid, log)
-                log("walk", thread=tid, price=her, reservation=reservation)
-                return {"result": "walked_by_us", "thread": tid}
+                r = close("walk", "walked_by_us", price=her, reservation=reservation)
+                if r:
+                    return r
+                continue
             why = "final"
-        # 3) she has not answered our last number yet: never bid against ourselves
+        # 3) the round budget is spent: never close on a standing offer inside our reservation
+        elif spent:
+            if not good(her):
+                r = close("max_rounds", "max_rounds", ours=ours, her=her)
+                if r:
+                    return r
+                continue
+            why = "budget_end"
+        # 4) she has not answered our last number yet: never bid against ourselves
         elif o["id"] == answered:
-            tick()
+            rounds.wait()
             continue
         else:
-            # 4) our next number: low anchor, then STEP per round toward her
+            # 5) our next number: low anchor, then STEP per round toward her
             if ours is None:
                 nxt = int(her * ANCHOR_FRAC) if side == "buy" else int(round(her * SELL_ANCHOR_MULT))
             else:
                 nxt = ours + STEP if side == "buy" else ours - STEP
             nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
-            # 5) she is already at (or past) our next number: take her price
+            # 6) she is already at (or past) our next number: take her price
             crossed = her <= nxt if side == "buy" else her >= nxt
             if crossed and good(her):
                 why = "crossed"
             elif ours is not None and nxt == ours:  # pinned at our reservation: wait for her final offer
-                tick()
+                rounds.wait()
                 continue
             else:
                 try:
                     b.say(tid, line(BUY_LINES if side == "buy" else SELL_LINES, said, nxt), price=nxt)
-                except BazaarError as e:  # nothing moved: same number next tick, after a fresh read
-                    log("say_refused", thread=tid, price=nxt, code=e.code, msg=e.message, round=rnd)
-                    tick()
+                except BazaarError as e:  # nothing moved: decide again next tick, after a fresh read
+                    log("say_refused", thread=tid, price=nxt, code=e.code, msg=e.message, round=rounds.used)
+                    rounds.wait()
                     continue
                 ours = nxt
                 answered = o["id"]
                 said += 1
                 log("say", thread=tid, price=ours, her=her)
-                tick()
+                rounds.wait()
                 continue
-        # 6) accept, behind the duel lock; a refusal is never resent blindly: wait, re-read, decide again
-        r = guarded_accept(b, o["id"], duel_lock_fresh, log, thread=tid, price=her, why=why, round=rnd)
+        # 7) accept, behind the duel lock; once the budget is spent only END_ACCEPTS attempts, each on a fresh read
+        if spent and rounds.end_tries >= END_ACCEPTS:
+            r = close("max_rounds", "max_rounds", ours=ours, her=her)
+            if r:
+                return r
+            continue
+        r = guarded_accept(b, o["id"], duel_lock_fresh, log, thread=tid, price=her, why=why, round=rounds.used)
         if r == ACCEPTED:
-            log("accept", thread=tid, price=her, why=why, ours=ours, round=rnd)
+            log("accept", thread=tid, price=her, why=why, ours=ours, round=rounds.used)
             return settle(b, tid, her)
-        tick(free=(r == DEFERRED))  # the duel bot holds the team's accept this tick: no round spent
-    close_safely(b, tid, log)
-    log("max_rounds", thread=tid, ours=ours, her=last_her)
-    return {"result": "max_rounds", "thread": tid}
+        if r == DEFERRED:
+            if rounds.lock_timed_out():  # the duel bot kept the team's accept for --max-defer-ticks
+                r = close("lock_timeout", "lock_timeout", ticks=rounds.deferred, price=her)
+                if r:
+                    return dict(r, ticks=rounds.deferred)
+                continue
+            rounds.defer()  # wait a tick, no round spent; then re-check the lock on a fresh read
+            continue
+        if spent:  # REFUSED: never resent blindly; wait, re-read, decide again
+            rounds.end_tries += 1
+        rounds.wait()
 
 
 def settle(b: Bazaar, tid: int, price: int) -> dict:
@@ -295,8 +358,16 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None = 
     return plan
 
 
+def on_wait(kind: str, clock: dict, waited: float) -> None:
+    """Called by the client when a wait finds the game paused, the doors closed or the clock unreadable, then once a
+    minute while it lasts: one line for the operator, one log event."""
+    log("clock_wait", kind=kind, tick=clock.get("tick"), waited=int(waited))
+    print(f"waiting: {kind.replace('_', ' ')} at tick {clock.get('tick', '?')}, {int(waited)} s so far "
+          "(no round is spent while waiting)", flush=True)
+
+
 def main() -> None:
-    global CASH_RESERVE
+    global CASH_RESERVE, MAX_DEFER_TICKS
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
@@ -304,7 +375,15 @@ def main() -> None:
     ap.add_argument("--max-deals", type=int, default=6)
     ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (only lowers our value)")
+    ap.add_argument("--resume", type=int, default=None,
+                    help="thread id to continue for the first target (e.g. after a close that failed)")
+    ap.add_argument("--max-defer-ticks", type=int, default=MAX_DEFER_TICKS,
+                    help="ticks an accept may wait on the duel lock in one thread before the thread is closed "
+                         f"(exit {EXIT_LOCK_TIMEOUT}; default {MAX_DEFER_TICKS})")
     args = ap.parse_args()
+    if args.max_defer_ticks < 1:
+        ap.error("--max-defer-ticks must be >= 1")
+    MAX_DEFER_TICKS = args.max_defer_ticks
     if args.cmd == "run" and duel_lock_fresh():
         print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
               "Not starting Abuela; try again after the duel wave.", flush=True)
@@ -313,7 +392,7 @@ def main() -> None:
     # wait_on_tick=False: a refused write comes back to negotiate(), which re-reads and decides again (never resent)
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"],
                wait_on_tick=False)
-    b.on_pause = lambda c: log("clock_paused", tick=c.get("tick"), paused=c.get("paused"), doors=c.get("doors"))
+    b.on_wait = on_wait
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap)
@@ -327,6 +406,7 @@ def main() -> None:
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
               plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]])
     done = 0
+    stop = None   # (exit status, the one line for the operator) when a thread ends in close_failed or lock_timeout
     buys_reached, buys_short = 0, []
     need = 5   # the least a buy needs above the reserve
     for target in plan:
@@ -340,21 +420,37 @@ def main() -> None:
                 buys_short.append(target["item"])
                 continue
         first = (me["score"].get("deals") or 0) == 0
-        r = negotiate(b, target, first)
+        r = negotiate(b, target, first, resume=args.resume if target is plan[0] else None)
         if r.get("thread"):
-            save_thread(b, r["thread"])  # full transcript, her words included
+            try:
+                save_thread(b, r["thread"])  # full transcript, her words included
+            except BazaarError as e:
+                log("save_thread_failed", thread=r["thread"], code=e.code)
         if r.get("result") == "deal":
             done += 1
+        if r.get("result") == "close_failed":  # Abuela's only conversation slot may still be held
+            spec = target["item"] if target["side"] == "buy" else f"sell:{target['asset_id']}"
+            cmd = f"python3 agent/abuela.py run --only {spec} --resume {r['thread']}"
+            stop = (EXIT_CLOSE_FAILED, close_failed_line(r["thread"], "Abuela", cmd))
+            log("stop", code="close_failed", thread=r["thread"])
+            break
+        if r.get("result") == "lock_timeout":
+            stop = (EXIT_LOCK_TIMEOUT, lock_timeout_line(r["thread"], r.get("ticks", MAX_DEFER_TICKS)))
+            log("stop", code="lock_timeout", thread=r["thread"])
+            break
         if r.get("code") in ("persona_quota", "cooloff", "locked"):
             log("stop", code=r["code"])
             break
     me = b.me()
-    blocked = buys_reached and len(buys_short) == buys_reached
+    blocked = not stop and buys_reached and len(buys_short) == buys_reached
     if blocked:  # say it out loud instead of finishing silently with nothing done
         log("reserve_blocks_buys", cash=me["cash"], reserve=CASH_RESERVE, need=need, items=buys_short)
     s = me["score"]
     RUN.end(cash=me["cash"], level=me["level"], unlocked=me["unlocked"], deals=s.get("deals"),
             ladder_points=s.get("ladder_points"), score=s.get("score"), rank=s.get("rank"))
+    if stop:
+        print(stop[1], flush=True)
+        sys.exit(stop[0])
     if blocked:
         print(reserve_line(me["cash"], CASH_RESERVE, need, len(buys_short)), flush=True)
         sys.exit(EXIT_RESERVE)

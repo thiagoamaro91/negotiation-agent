@@ -5,7 +5,9 @@ holds through a paused clock or closed doors and tolerates a null next_tick_in (
 """
 import unittest
 
-from dealer_fakes import (BOTS, FakeAccount, NullRun, Thread, VirtualClock, lock_sequence, patched_sleep,
+from bazaar_sdk import Bazaar as KitBazaar
+from bazaar_sdk import BazaarError
+from dealer_fakes import (BOTS, FakeAccount, FakeServer, NullRun, VirtualClock, lock_sequence, patched_sleep,
                           restore_globals, run_main, save_globals, sell_target)
 
 
@@ -102,7 +104,8 @@ class TestPauseSafeWait(unittest.TestCase):
             self.assertLess(vc.reads, 600 / 1, mod.__name__)           # but not spinning
 
     def test_stuck_running_clock_returns(self):
-        """A running clock whose tick never moves must not hold the bot forever (bounded fallback)."""
+        """A running clock whose tick never moves must not hold the bot forever (bounded fallback), and the wait
+        confirms no new tick (so no round is counted for it)."""
         same = {"tick": 100, "paused": False, "doors": "open", "next_tick_in": 0}
         for mod in BOTS:
             b = client(mod)
@@ -111,8 +114,136 @@ class TestPauseSafeWait(unittest.TestCase):
             vc = VirtualClock()
             with patched_sleep(vc):
                 c = b.wait_tick()
-            self.assertEqual(c["tick"], 100, mod.__name__)
+            self.assertIsNone(c.get("tick"), mod.__name__)
             self.assertLess(len(n), 1000, mod.__name__)
+
+    def test_pause_reports_once_a_minute(self):
+        """item 6: a long pause is reported once a minute, not once per wait."""
+        for mod in BOTS:
+            vc = VirtualClock(pause_from=0.0, pause_to=300.0)
+            b = client(mod)
+            b._call = lambda method, path, body=None, query=None: vc.read()
+            seen = []
+            b.on_wait = lambda kind, c, waited: seen.append((kind, waited))
+            with patched_sleep(vc):
+                b.wait_tick()
+            self.assertIn(len(seen), (5, 6), (mod.__name__, seen))
+            self.assertEqual({k for k, _ in seen}, {"paused"}, mod.__name__)
+            self.assertEqual(seen[0][1], 0.0, mod.__name__)
+
+    def test_unreadable_clock_gives_up_within_about_a_minute(self):
+        """item 8: a dead clock endpoint (every read times out) releases the bot within about a minute of real time,
+        and reports it; no round can be counted for it."""
+        for mod in BOTS:
+            srv = FakeServer(clock_down=(0.0, 10.0 ** 9))
+            seen = []
+            with srv.serving():
+                b = srv.client(mod)
+                b.on_wait = lambda kind, c, waited: seen.append(kind)
+                t0 = srv.vc.now
+                c = b.wait_tick()
+                elapsed = srv.vc.now - t0
+            self.assertEqual(c, {}, mod.__name__)
+            self.assertLess(elapsed, 90.0, (mod.__name__, elapsed))
+            self.assertEqual(seen[:1], ["clock_unreadable"], mod.__name__)
+
+
+class TestWritesNotRetried(unittest.TestCase):
+    """item 2: the SDK must never resend a write (a retried accept can land after the duel lock turned fresh, a
+    retried message after the dealer replaced her offer). Reads keep the SDK's retries."""
+
+    def test_rate_limited_message_raises_once(self):
+        for mod in BOTS:
+            srv = FakeServer(dealer=mod.DEALER)
+            srv.inject["say"] = [(429, "rate_limited")]
+            with srv.serving():
+                b = srv.client(mod)
+                b.open_thread(mod.DEALER, topic={"sell": {"assets": [42]}})
+                with self.assertRaises(BazaarError) as e:
+                    b.say(7, "x", price=30)
+            self.assertEqual(e.exception.code, "rate_limited", mod.__name__)
+            self.assertEqual(len(srv.writes("messages")), 1, mod.__name__)
+
+    def test_rate_limited_accept_raises_once(self):
+        for mod in BOTS:
+            srv = FakeServer(dealer=mod.DEALER, opening=25)
+            srv.inject["accept"] = [(429, "rate_limited")]
+            with srv.serving():
+                b = srv.client(mod)
+                b.open_thread(mod.DEALER, topic={"sell": {"assets": [42]}})
+                oid = srv.dealer_offer()["id"]
+                with self.assertRaises(BazaarError):
+                    b.accept(oid)
+            self.assertEqual(len(srv.writes("accept")), 1, mod.__name__)
+            self.assertEqual(srv.accepted, [], mod.__name__)
+
+    def test_reads_keep_the_sdk_retries(self):
+        for mod in BOTS:
+            srv = FakeServer(dealer=mod.DEALER)
+            with srv.serving():
+                b = srv.client(mod)
+                b.open_thread(mod.DEALER, topic={"sell": {"assets": [42]}})
+                srv.inject["thread"] = [(429, "rate_limited")]
+                self.assertEqual(b.thread(7)["status"], "open", mod.__name__)
+
+
+class TestFakeServer(unittest.TestCase):
+    """The fake behaves like the server on the three points the bots depend on (kit SDK client, no retries)."""
+
+    def setUp(self):
+        self.srv = FakeServer(dealer="chato", opening=25)
+        self.cm = self.srv.serving()
+        self.cm.__enter__()
+        self.b = KitBazaar("http://fake.invalid", "test-dummy", wait_on_tick=False, retries=0)
+        self.b.open_thread("chato", topic={"sell": {"assets": [42]}})
+
+    def tearDown(self):
+        self.cm.__exit__(None, None, None)
+
+    def next_tick(self):
+        self.srv.vc.sleep(15.0)
+
+    def test_accept_of_an_unknown_or_replaced_offer_is_refused(self):
+        old = self.srv.dealer_offer()["id"]
+        with self.assertRaises(BazaarError) as e:
+            self.b.accept(old + 999)
+        self.assertEqual(e.exception.code, "offer_not_open")
+        self.srv.post(24)
+        with self.assertRaises(BazaarError):
+            self.b.accept(old)                                   # replaced: no longer open
+
+    def test_accept_settles_on_the_next_tick(self):
+        self.b.accept(self.srv.dealer_offer()["id"])
+        self.assertEqual(self.b.thread(7)["status"], "open")
+        self.next_tick()
+        self.assertEqual(self.b.thread(7)["status"], "deal")
+
+    def test_one_accept_per_team_and_one_message_per_thread_per_tick(self):
+        self.b.say(7, "x", price=40)
+        with self.assertRaises(BazaarError) as e:
+            self.b.say(7, "y", price=39)
+        self.assertEqual(e.exception.code, "wait_for_tick")
+        self.srv.teammate_accepts.add(self.srv.tick())
+        with self.assertRaises(BazaarError) as e:
+            self.b.accept(self.srv.dealer_offer()["id"])
+        self.assertEqual(e.exception.code, "wait_for_tick")
+
+    def test_dealer_answers_on_the_next_tick_and_offers_lapse(self):
+        first = self.srv.dealer_offer()["id"]
+        self.b.say(7, "x", price=40)
+        self.assertEqual(self.srv.dealer_offer()["id"], first)   # no answer in the same tick
+        self.next_tick()
+        self.b.thread(7)
+        self.assertNotEqual(self.srv.dealer_offer()["id"], first)
+        for _ in range(4):
+            self.next_tick()
+        self.assertEqual(self.b.thread(7)["standing_offers"], [])   # lapsed 4 ticks after it was posted
+
+    def test_sdk_retry_shows_as_a_same_tick_resend(self):
+        self.srv.inject["say"] = [(429, "rate_limited")]
+        retrying = KitBazaar("http://fake.invalid", "test-dummy", wait_on_tick=False, retries=3)
+        retrying.say(7, "x", price=40)
+        self.assertEqual(len(self.srv.same_tick_resends()), 1)
 
 
 class TestPauseCostsNoRounds(unittest.TestCase):

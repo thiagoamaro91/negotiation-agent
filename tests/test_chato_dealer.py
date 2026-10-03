@@ -68,7 +68,8 @@ class FakeDealer:
         if self.status == "open" and not self.moved and self.final is not None and not self.offer["final"]:
             self._post(self.final, final=True)  # we stopped moving: her patience runs out
         self.moved = False
-        return {}
+        self.tick = getattr(self, "tick", 100) + 1
+        return {"tick": self.tick}   # a confirmed new tick: the bot spends a round only for these
 
     def accept(self, oid):
         self.calls.append(("accept", oid, self.offer["give"]["cash"]))
