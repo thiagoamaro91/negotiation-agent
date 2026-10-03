@@ -257,7 +257,9 @@ class RunLoop(unittest.TestCase):
         srv, out = self.play(self.POSTS, "--late-poll", "8", "--late-ticks", "3")
         self.assertEqual([(t, p) for t, _, p in srv.accepts], [(114, 130)])
         self.assertGreaterEqual(srv.accepts[0][1], 21.0)      # about 8 s before the tick ends, not at its start
-        self.assertIn("late=True", out)
+        seen = [ln for ln in out.splitlines() if " rival duel=7 " in ln and "'price': 130" in ln]
+        self.assertEqual(len(seen), 1)
+        self.assertIn("late=True", seen[0])                   # logged: the late read saw a same-tick offer
 
     def test_a_failed_late_read_lets_the_next_tick_accept_in_its_first_read(self):
         srv, out = self.play(self.POSTS, "--late-poll", "8", "--late-ticks", "3", fail_late=True)

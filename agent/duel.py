@@ -713,6 +713,9 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: flo
         st = states.get(d.get("duel"))
         if d.get("status") != "live" or st is None:
             continue
+        if d.get("rival_offer") != st.last_rival:   # what the late read is for: logged so Saturday can measure it
+            st.last_rival = d.get("rival_offer")
+            run.event("rival", duel=d["duel"], offer=d.get("rival_offer"), rounds=d.get("rounds"), late=True)
         st.pair_l = mirror_limit(d, every)
         st.rival_limit = st.pair_l if cfg.mirror else None
         sync_state(st, d)
