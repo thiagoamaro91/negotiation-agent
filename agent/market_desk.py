@@ -30,23 +30,27 @@ Every tick, one pass:
      (team trades for that card, else its set and rarity, else its rarity, else 80 % of book), raised by --bid-step
      every --bid-step-ticks without a fill, never above value - margin or the price caps. One bid per card, at most
      --bid-max live, their sum within cash - min cash. A bid is cancelled when the card arrives or the price is stale.
-  6. SWAPS: one card for one card, no cash on either side (give {"assets": [id]}, want {"cards": [ref]}, which the
-     board shows as want.types ["card:REF"]). A spare is worth 25 % or 10 % of a first copy to us and a card we lack
-     100 %, so a swap creates value at our private values without spending cash: it is held to the buy margin and
-     the spend caps for its fee, never to --min-cash. The fee is paid by the side that accepts: 0 % of 0 P plus the
-     per-card fee for both cards (El Rastro 2 P; v03 at 1 % and 0 per card: 0 P).
-     FILL another team's swap (they give X, want Y) when
+  6. SWAPS (off by default: --swap-fills and --swap-posts turn them on): one card for one card, no cash on either
+     side (give {"assets": [id]}, want {"cards": [ref]}, which the board shows as want.types ["card:REF"]). A spare
+     is worth 25 % or 10 % of a first copy to us and a card we lack 100 %, so a swap creates value at our private
+     values without spending cash: it is held to the buy margin and the spend caps for its fee, and to a hard cash
+     floor (cash - live bids - fee >= 200 P, Config.swap_cash_floor). The fee is paid by the side that accepts: 0 %
+     of 0 P plus the per-card fee for both cards (El Rastro 2 P; v03 at 1 % and 0 per card: 0 P).
+     Both directions give only a spare: never our last copy of a card (--sell-first-copies does not apply to
+     swaps), never the lowest serial, and never an asset in rastro_seller's config (agent/rastro_floors.json, every
+     line, re-read every tick) unless --swap-seller-spares.
+     FILL another team's swap (they give X, want Y) on El Rastro only (another team's venue with --swap-team-venue)
+     when
         value(one more X) - value of our copy of Y - fee >= max(3, 10 % of value(X)),
-     we hold no X, Y is a spare (or a --sell-first-copies set) and never the only copy on a protected page, no
-     offer of ours on X or Y is settling, the fee is <= --swap-max-fee, and the per-partner cap allows it. Same
-     one-accept-per-tick ranking, lease, duel.lock and re-read before the accept as buys; we pass our copy's asset id.
+     we hold no X, we hold Y at least twice, no offer of ours on X or Y is settling, the fee is <= --swap-max-fee,
+     the cash floor holds and the per-partner cap allows it. Same one-accept-per-tick ranking, lease, duel.lock and
+     re-read before the accept as buys; we pass our copy's asset id.
      POST our own: for each page card we lack worth >= --swap-min-value (most valuable first, live swaps keep their
      place), the spare whose value to us is lowest, of the same rarity or higher, passing the same rule without a
      fee (the side that accepts pays it); one swap per card asked, one copy per card given, at most --swap-max live,
      on El Rastro (another team's venue only with --swap-team-venue), --swap-expires ticks, optionally addressed to a
      public holder (--address-swaps). Never a card we bid for, buy or swap for this tick; never an asset that another
-     live offer of ours holds, nor one in rastro_seller's config (its sync would adopt a single-asset offer of ours
-     as its listing) unless --swap-seller-spares. Renewed, replaced and cancelled like bids.
+     live offer of ours holds. Renewed, replaced and cancelled like bids.
   7. Every decision, taken or not, is one human line and one JSON record (logs/market/<date>.jsonl in watch/run);
      a heartbeat goes to logs/state/desk-market.json.
 
@@ -64,7 +68,7 @@ Modes:
     python3 agent/market_desk.py watch --keyless      # shadow without the key (e.g. on the VM, which never holds it)
     python3 agent/market_desk.py run --until 13:00    # live through the lease (needs the team's yes first)
     python3 agent/market_desk.py plan --sell-first-copies MAL --cap-hour 60 --min-cash 280   # caps are flags
-    python3 agent/market_desk.py plan --keyless --sell-first-copies MAL --address-swaps      # swap candidates
+    python3 agent/market_desk.py plan --keyless --swap-fills --swap-posts --address-swaps   # swap candidates (opt-in)
 Keyless mode knows our cards only as of the last tools/snapshot.py (plus public settlements; packs are not public):
 refresh logs/state/me.json and offers.json at 09:00. With the key it reads /api/me every tick and asks
 /api/me/value for the cards that come close to the rule (cached until our holdings change).
@@ -143,9 +147,11 @@ class Config:
     page_bonus: bool = False            # offline value adds the page bonus to a page's last missing card
     price_window: int = 15              # last N observed trades in the price index
     # swaps: one card for one card, no cash either way (docs in the module docstring, step 6)
-    swap_fill: bool = True              # accept other teams' swaps that pass the rule
-    swap_post: bool = True              # post our own swaps (a spare for a card we lack)
+    swap_fill: bool = False             # accept other teams' swaps that pass the rule (opt-in: --swap-fills)
+    swap_post: bool = False             # post our own swaps, a spare for a card we lack (opt-in: --swap-posts)
     swap_venue: str = HOME              # another team's venue only with --swap-team-venue (it scores for its owner)
+    swap_team_venue: bool = False       # fills and posts on another team's venue (El Rastro only without it)
+    swap_cash_floor: int = 200          # hard floor: cash - live bids - swap fee never below this
     swap_max: int = 4                   # our live swaps at once
     swap_expires: int = 30              # expires_in_ticks for our swaps
     swap_min_value: float = 8.0         # do not ask a swap for cards worth less than this to us
@@ -609,13 +615,17 @@ def buy_caps(cfg: Config, *, price: int, fee: int, info: dict, cash: int, ledger
     return None
 
 
-def swap_caps(cfg: Config, *, fee: int, cash: int, ledger: Ledger, t_hours: float, partner: str | None) -> str | None:
+def swap_caps(cfg: Config, *, fee: int, cash: int, ledger: Ledger, t_hours: float, partner: str | None,
+              committed: int = 0) -> str | None:
     """The first cap filling a swap would break, or None. A swap moves no cash, only the fee: it is held to
-    --swap-max-fee and the spend caps, not to --min-cash (the cash floor is for buys and bids)."""
+    --swap-max-fee, the spend caps and a hard cash floor (cash - committed - fee >= cfg.swap_cash_floor, 200 P),
+    not to --min-cash. `committed`: cash already promised to live bids."""
     if fee > cfg.swap_max_fee:
         return f"cap: swap fee {fee} > max {cfg.swap_max_fee}"
     if fee > cash:
         return f"cap: fee {fee} > cash {cash}"
+    if cash - committed - fee < cfg.swap_cash_floor:
+        return f"cap: cash after swap fee {cash - committed - fee} < floor {cfg.swap_cash_floor}"
     h = ledger.spent(t_hours, 1.0)
     if fee and h + fee > cfg.cap_hour:
         return f"cap: hour spend {h}+{fee} > {cfg.cap_hour}"
@@ -681,6 +691,8 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
     venues = snap.get("venues") or {}
     bidbook = dict(bidbook or {})
     swapbook = dict(swapbook or {})
+    reserved = set(snap.get("reserved") or ())
+    bid_committed = sum(int(b.get("price") or 0) for b in bidbook.values() if b.get("offer") is not None)
     mine = [o for o in snap.get("mine") or [] if isinstance(o, dict)]
     my_ids = {o.get("id") for o in mine if o.get("maker") == me}
     our_assets = {a["id"]: r for r, lst in holdings.items() for a in lst if isinstance(a, dict) and "id" in a}
@@ -801,6 +813,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             if not chk["ok"]:
                 records.append({**rec, "action": "skip", "reason": f"structure: {chk['reason']}"})
                 continue
+            if vid != HOME and not cfg.swap_team_venue:
+                records.append({**rec, "action": "skip", "reason": f"swap on {vid}: fills on {HOME} only "
+                                                                   f"(--swap-team-venue to allow a team venue)"})
+                continue
             ref, yref = chk["ref"], chk["want_ref"]
             info, yinfo = valuer.info(ref), valuer.info(yref)
             fee = swap_fee(fee_of(vid))
@@ -821,7 +837,8 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             gain, need = round(v - vy - fee, 2), round(need_buy(v, cfg), 2)
             rec.update(value=round(v, 2), value_src=src, give_value=round(vy, 2), give_value_src=ysrc, gain=gain,
                        need=need)
-            asset, why = pick_asset(holdings.get(yref) or [], chk["want_asset"], listed_assets, cfg, k, yinfo)
+            asset, why = pick_swap_asset(holdings.get(yref) or [], chk["want_asset"], listed_assets, reserved, cfg,
+                                         k, yinfo)
             if why is None and (ref in pending or yref in pending):
                 why = "an offer of ours on this card is settling"
             if why is None and gain < need:
@@ -829,11 +846,15 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             if why is None and owner_of(vid) and not cfg.team_venues:
                 why = "team venue (off by --no-team-venues)"
             if why is None:
-                why = swap_caps(cfg, fee=fee, cash=cash, ledger=ledger, t_hours=th, partner=partner)
+                why = swap_caps(cfg, fee=fee, cash=cash, ledger=ledger, t_hours=th, partner=partner,
+                                committed=bid_committed)
             if why:
                 records.append({**rec, "action": "skip", "reason": why})
             else:
                 cands.append({**rec, "side": "swap", "asset": asset, "cancel_listing": listed_assets.get(asset)})
+        elif shape == "swap":
+            records.append({**rec, "kind": "swap", "card": None, "action": "skip",
+                            "reason": "swap fills off (--swap-fills to accept other teams' swaps)"})
         else:
             records.append({**rec, "kind": shape if shape != "other" else "skip", "card": None, "action": "skip",
                             "reason": f"structure: {shape} (not a one-card listing or bid)"})
@@ -894,6 +915,36 @@ def pick_asset(copies: list, wanted, listed: dict, cfg: Config, k: int, info: di
         if wanted == keep:
             return None, "they want the copy we keep (lowest serial)"
         pool = [a for a in pool if a == wanted]
+    free = [a for a in pool if a not in listed]
+    if free:
+        return free[0], None
+    if pool and cfg.sell_listed:
+        return pool[0], None
+    if pool:
+        return None, f"the spare is listed by rastro_seller (offer {listed.get(pool[0])}); --sell-listed to override"
+    return None, "no copy we may hand over"
+
+
+def pick_swap_asset(copies: list, wanted, listed: dict, reserved: set, cfg: Config, k: int, info: dict) -> tuple:
+    """Which of our copies a swap fill would hand over, or why none may go. Stricter than a sale: never our last
+    copy of a card (--sell-first-copies does not apply), the lowest serial stays, and never an asset in
+    rastro_seller's config (reserved) unless --swap-seller-spares."""
+    if k <= 1:
+        if info.get("set") in cfg.protect:
+            return None, f"protected: our only copy on the {info.get('set')} page"
+        return None, "not a spare (our only copy: swaps never give a last copy)"
+    seller = set() if cfg.swap_seller_spares else set(reserved)
+    ordered = sorted((a for a in copies if isinstance(a, dict)), key=lambda a: (a.get("serial") or 0, a.get("id")))
+    keep = ordered[0]["id"] if ordered else None
+    pool = [a["id"] for a in reversed(ordered) if a["id"] != keep]
+    if wanted is not None:
+        if wanted == keep:
+            return None, "they want the copy we keep (lowest serial)"
+        pool = [a for a in pool if a == wanted]
+    held = [a for a in pool if a in seller]
+    pool = [a for a in pool if a not in seller]
+    if held and not pool:
+        return None, f"#{held[0]} is in rastro_seller's config (--swap-seller-spares to override)"
     free = [a for a in pool if a not in listed]
     if free:
         return free[0], None
@@ -1010,8 +1061,8 @@ RARITY_RANK = {"common": 0, "uncommon": 1, "rare": 2, "epic": 3, "legendary": 4}
 
 def swap_pool(holdings: dict, counts: dict, cfg: Config, valuer: Valuer, busy: dict, reserved: set, skip_refs: set):
     """Our copies a swap of ours may give: {ref: {assets (offer order), value of our copy, rarity}}, plus notes on
-    the spares held back. Same rules as a sale (keep the lowest serial; never the only copy on a protected page; a
-    single copy only for --sell-first-copies sets), and an asset that another live offer of ours holds (busy:
+    the spares held back. Stricter than a sale: keep the lowest serial and never give our last copy of a card
+    (--sell-first-copies does not apply to swaps), and an asset that another live offer of ours holds (busy:
     {asset: offer}, e.g. a rastro_seller listing) is never offered again. Copies in rastro_seller's config stay with
     the seller unless --swap-seller-spares: its sync adopts any single-asset El Rastro offer of ours as its listing."""
     pool, held_back = {}, []
@@ -1020,7 +1071,7 @@ def swap_pool(holdings: dict, counts: dict, cfg: Config, valuer: Valuer, busy: d
         if k == 0 or ref in skip_refs:
             continue
         info = valuer.info(ref)
-        if k == 1 and (info["set"] in cfg.protect or info["set"] not in cfg.sell_first_copies):
+        if k <= 1:                               # our last copy never goes in a swap
             continue
         ordered = sorted((a for a in holdings[ref] if isinstance(a, dict) and isinstance(a.get("id"), int)),
                          key=lambda a: (a.get("serial") or 0, a["id"]))
@@ -1297,14 +1348,32 @@ def venue_table(venues_body: dict, tick: int) -> dict:
 
 # ---------------------------------------------------------------- the desk
 
+def read_seller_assets(path) -> set:
+    """Every asset id in rastro_seller's config, enabled or not (a disabled line is still a copy the owner set
+    aside). Raises OSError or ValueError when the file is missing or malformed."""
+    cfg = json.loads(Path(path).read_text())
+    cards = cfg.get("cards") if isinstance(cfg, dict) else None
+    if not isinstance(cards, list):
+        raise ValueError("no 'cards' list")
+    out = set()
+    for c in cards:
+        aid = c.get("asset_id") if isinstance(c, dict) else None
+        if isinstance(aid, bool):
+            continue
+        if isinstance(aid, int):
+            out.add(aid)
+        elif isinstance(aid, str) and aid.strip().isdigit():
+            out.add(int(aid.strip()))
+    return out
+
+
 def seller_assets(path) -> set:
-    """Asset ids rastro_seller's config may list (enabled lines). Our swaps leave them alone by default."""
+    """Asset ids in rastro_seller's config (every line). Our swaps leave them alone by default. Empty when the file
+    is missing or malformed (Desk.reload_reserved keeps the last good set instead)."""
     try:
-        cfg = json.loads(Path(path).read_text())
+        return read_seller_assets(path)
     except (OSError, ValueError):
         return set()
-    return {int(c["asset_id"]) for c in cfg.get("cards", []) if isinstance(c, dict) and c.get("enabled", True)
-            is not False and isinstance(c.get("asset_id"), int)}
 
 
 class Desk:
@@ -1320,7 +1389,10 @@ class Desk:
         self.ledger = Ledger()
         self.bidbook: dict = {}           # watch: simulated bids; run: synced from /api/me/offers
         self.swapbook: dict = {}          # our swaps, same sources: {card asked: {offer, asset, give_card, to, since}}
-        self.reserved = seller_assets(seller_config) if seller_config else set()
+        self.seller_config = Path(seller_config) if seller_config else None
+        self.reserved: set = set()        # asset ids in rastro_seller's config, re-read every tick
+        self._reserved_err = None
+        self.reload_reserved()
         self.shadow_counts: dict = {}     # watch: cards a would-be buy brought in
         self.shadow_gone: set = set()     # watch: our assets a would-be sale or swap handed over
         self.swap_dupes: list = []        # run: a second live swap of ours asking the same card (cancelled)
@@ -1364,8 +1436,28 @@ class Desk:
         offers = json.loads(self.offers_path.read_text()).get("offers", []) if self.offers_path.exists() else []
         return offline_account(me, offers, self.tape, tick)
 
+    def reload_reserved(self) -> set:
+        """Re-read rastro_seller's config so the reserved set follows edits made during the day. A missing or
+        malformed file keeps the last good set (logged once per distinct error)."""
+        if self.seller_config is None:
+            return self.reserved
+        try:
+            self.reserved = read_seller_assets(self.seller_config)
+            self._reserved_err = None
+        except (OSError, ValueError) as e:
+            err = f"{type(e).__name__}: {e}"
+            if err != self._reserved_err:
+                self._reserved_err = err
+                self.out(f"seller config {self.seller_config} unreadable ({err}); keeping the last good set of "
+                         f"{len(self.reserved)} reserved assets")
+                if self.log is not None:
+                    self.log.event("seller_config_unreadable", path=str(self.seller_config), error=err,
+                                   kept=sorted(self.reserved))
+        return self.reserved
+
     def snapshot(self, clock: dict) -> dict:
         tick = int(clock["tick"])
+        self.reload_reserved()
         if self.catalog is None or self.ticks % 120 == 0:
             self.catalog = self.public.catalog()
         try:
@@ -1403,7 +1495,7 @@ class Desk:
         return {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
                 "me_id": acct["id"], "cash": acct["cash"] + shadow_cash,
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
-                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": self.reserved,
+                "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": set(self.reserved),
                 "duel_live": self.duel_guard(tick)}
 
     def duel_guard(self, tick: int) -> str | None:
@@ -1782,7 +1874,8 @@ def build_config(args) -> Config:
                   team_venues=not args.no_team_venues, bids=not args.no_bids, bid_max=args.bid_max,
                   bid_min_value=args.bid_min_value, bid_step=args.bid_step, bid_step_ticks=args.bid_step_ticks,
                   bid_expires=args.bid_expires, address_bids=args.address_bids, page_bonus=args.page_bonus,
-                  swap_fill=not args.no_swap_fills, swap_post=not args.no_swap_posts, swap_venue=args.swap_venue,
+                  swap_fill=args.swap_fills, swap_post=args.swap_posts, swap_venue=args.swap_venue,
+                  swap_team_venue=args.swap_team_venue,
                   swap_max=args.swap_max, swap_expires=args.swap_expires, swap_min_value=args.swap_min_value,
                   swap_max_fee=args.swap_max_fee, address_swaps=args.address_swaps,
                   swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares,
@@ -1814,12 +1907,17 @@ def add_config_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--bid-expires", type=int, default=c.bid_expires, help="expires_in_ticks for our bids")
     ap.add_argument("--address-bids", action="store_true", help="address each bid to one public holder of the card")
     ap.add_argument("--page-bonus", action="store_true", help="offline values add the page bonus (unconfirmed)")
-    ap.add_argument("--no-swap-fills", action="store_true", help="never accept other teams' swaps")
-    ap.add_argument("--no-swap-posts", action="store_true", help="never post swaps of our own (live ones are cancelled)")
+    ap.add_argument("--swap-fills", action="store_true",
+                    help="opt in: accept other teams' swaps that pass the rule (off by default)")
+    ap.add_argument("--swap-posts", action="store_true",
+                    help="opt in: post swaps of our own (off by default; without it live ones are cancelled)")
+    ap.add_argument("--no-swap-fills", action="store_true", help=argparse.SUPPRESS)   # old flag: swaps are off anyway
+    ap.add_argument("--no-swap-posts", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--swap-venue", default=c.swap_venue, help="venue for our swaps (another team's needs "
                                                                "--swap-team-venue)")
     ap.add_argument("--swap-team-venue", action="store_true",
-                    help="allow --swap-venue on another team's venue (its trades score market points for its owner)")
+                    help="allow swaps (fills and --swap-venue) on another team's venue (its trades score market "
+                         "points for its owner)")
     ap.add_argument("--swap-max", type=int, default=c.swap_max, help="max live swaps of ours")
     ap.add_argument("--swap-expires", type=int, default=c.swap_expires, help="expires_in_ticks for our swaps")
     ap.add_argument("--swap-min-value", type=float, default=c.swap_min_value)
@@ -1858,7 +1956,7 @@ def main() -> None:
     cfg = build_config(args)
     if args.cmd == "run" and (args.keyless or not args.until):
         ap.error("run needs the key and --until HH:MM")
-    if cfg.swap_venue != HOME and not args.swap_team_venue:
+    if cfg.swap_venue != HOME and not cfg.swap_team_venue:
         ap.error(f"--swap-venue {cfg.swap_venue} is another team's venue (its trades score for its owner): "
                  f"add --swap-team-venue to mean it")
     until = until_time(args.until) if args.until else None
