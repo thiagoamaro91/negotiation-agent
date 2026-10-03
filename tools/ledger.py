@@ -496,8 +496,12 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
            for t in teams}
     posted = listings(events)
     owners: dict = {}  # venue id -> owning team
-    gifted_at = set()
-    grant_ticks = {e["tick"] for e in events if e["type"] == "schedule.fired" and e["payload"].get("action") == "grant_all"}
+    # read before the replay, so the order of same-tick events never matters: (team, tick) of every cash gift, and the
+    # ticks of every structured grant whose cash the ledger can read (one it cannot read accounts for nothing)
+    gifted_at = {(e["payload"].get("team"), e["tick"]) for e in events
+                 if e["type"] == "gift.given" and e["payload"].get("cash")}
+    grant_ticks = {e["tick"] for e in events if e["type"] == "schedule.fired"
+                   and e["payload"].get("action") == "grant_all" and grant_cash(schedule, e["payload"])}
 
     def record(tick: int) -> None:
         for team in led:
@@ -662,7 +666,6 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
             if p.get("cash"):
                 move(p["team"], t, int(p["cash"]), f"gift: {p.get('reason', '')}")
                 led[p["team"]]["gifts"] += int(p["cash"])
-                gifted_at.add((p["team"], t))
         elif kind == "schedule.fired" and p.get("action") == "grant_all":
             cash = grant_cash(schedule, p)
             for team in led:
