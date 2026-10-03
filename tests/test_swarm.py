@@ -170,12 +170,28 @@ class Public(unittest.TestCase):
         bid = swarm.decision_event("d", "1", dict(Decisions.ROW, action="bid", why="our value 218", result="posted id 12442"))
         acc = swarm.decision_event("d", "2", dict(Decisions.ROW, our_value=218.0))
         lst = swarm.bot_event("rastro/x", "3", "rastro", {"ts": "2026-10-03T09:33:22", "event": "listed", "card": "LAV-08",
-                                                          "price": 24, "floor": 22})
+                                                          "price": 24, "floor": 22, "mode": "run", "offer": 2920})
         self.assertEqual(swarm.public_view(bid)["text"], "bid LAV-10")
         self.assertEqual(swarm.public_view(lst)["text"], "lists LAV-08 at 24")
         p = swarm.public_view(acc)
         self.assertEqual((p["src"], p["dst"], p["kind"], p["text"], p["why"]), ("lane-c-trades", "teams", "decision", "", None))
         self.assertNotIn("highlight", p)  # "LAV-10 completes a page" tells rivals what we hold
+
+    def test_prices_only_from_confirmed_posts(self):
+        cancel = swarm.bot_event("market/x", "1", "market", {"ts": "2026-10-03T10:00:00", "event": "sent", "op": "cancel",
+                                                             "kind": "bid", "card": "LAV-10", "price": 77, "offer": 4100})
+        post = swarm.bot_event("market/x", "2", "market", {"ts": "2026-10-03T10:00:01", "event": "sent", "op": "post",
+                                                           "kind": "bid", "card": "LAV-09", "price": 64, "offer": None})
+        self.assertNotIn("77", cancel["text"])  # the replacement's price, maybe never posted
+        self.assertEqual(swarm.public_view(cancel)["text"], "")
+        self.assertEqual(swarm.public_view(post)["text"], "posts bid LAV-09 at 64")
+        base = {"ts": "2026-10-03T09:33:22", "event": "listed", "card": "LAV-08", "price": 24, "floor": 22}
+        for extra in ({"mode": "plan", "offer": 2920}, {"mode": "run", "offer": None}):
+            e = swarm.bot_event("rastro/x", "3", "rastro", dict(base, **extra))
+            self.assertEqual(swarm.public_view(e)["text"], "", extra)
+        for result in ("refused offer_not_open", "cancelled", "not possible"):
+            d = swarm.decision_event("d", "4", dict(Decisions.ROW, action="bid", result=result))
+            self.assertEqual(swarm.public_view(d)["text"], "", result)
 
     def test_duel_and_dealer_negotiations_stay_private(self):
         rows = [("duel", {"event": "say", "duel": 2314, "price": 100, "days": 2}),

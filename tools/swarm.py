@@ -264,8 +264,11 @@ def decision_event(source: str, key: str, r: dict) -> dict | None:
     why = str(r.get("why") or "")
     page = "page complete" in result.lower() or (result.upper().startswith("FILLED") and "complete" in why.lower())
     hl = f"{card} completes a page" if page else None
-    return event(source, key, iso, decision_lane(r.get("lane"), iso),
-                 counterparty_node(r.get("counterparty"), r.get("venue"), why), "decision", text, why, hl)
+    ev = event(source, key, iso, decision_lane(r.get("lane"), iso),
+               counterparty_node(r.get("counterparty"), r.get("venue"), why), "decision", text, why, hl)
+    if ev and action in PUBLIC_DECISIONS and result.lower().startswith("posted"):
+        ev["posted"] = True  # the post went through: it is on a public board now
+    return ev
 
 
 # ---------- bot logs (agent/runlog.py) ----------
@@ -330,7 +333,10 @@ def bot_event(source: str, key: str, folder: str, r: dict) -> dict | None:
         return E("teams", "announce", r.get("text") or "announcement")
     if node == "rastro-seller":
         if ev == "listed":
-            return E("rastro", "offer", f"lists {r.get('card')} at {r.get('price')} (floor {r.get('floor')})")
+            e = E("rastro", "offer", f"lists {r.get('card')} at {r.get('price')} (floor {r.get('floor')})")
+            if e and r.get("offer") and r.get("mode") == "run":  # plan mode logs "listed" without posting
+                e["posted"] = True
+            return e
         if ev == "their_message":
             return E(node, "msg", "a message from another team (text not replayed)", None, "teams")
         if ev in ("not_held", "bid_below_floor"):
@@ -340,7 +346,13 @@ def bot_event(source: str, key: str, folder: str, r: dict) -> dict | None:
         return E("market-desk", "read", f"weighs {r.get('kind')} {r.get('card')} at {r.get('price')} on {r.get('venue')}",
                  None, "d-books")
     if node == "market-desk" and ev == "sent":
-        return E("rastro", "offer", f"{r.get('op')} {r.get('kind')} {r.get('card')} at {r.get('price')}")
+        if r.get("op") == "cancel":  # its price is the replacement's, which may never get posted
+            return E("rastro", "offer", f"cancels {r.get('kind')} {r.get('card')}")
+        price = f" at {r.get('price')}" if r.get("price") is not None else ""
+        e = E("rastro", "offer", f"posts {r.get('kind')} {r.get('card')}{price}")
+        if e:
+            e["posted"] = True  # "sent" is only logged after the post succeeded (agent/market_desk.py)
+        return e
     if node == "lease" and ev == "grant":
         desk = BOT_DIRS.get(str(r.get("desk")), str(r.get("desk")))
         return E(desk, "grant", f"grants {r.get('got')}/{r.get('asked')} {r.get('kind')}")
@@ -453,16 +465,17 @@ CARD = re.compile(r"^[A-Z]{3}-\d\d$")
 
 
 def public_text(e: dict) -> str:
-    """Only what already sits on a public board: our listings and posted bids, crosses on our venue during a Market
-    Test, our public announcements, the leaderboard. Duel and dealer negotiations are bilateral and stay out."""
+    """Only what already sits on a public board: posts confirmed as made (our listings and bids), crosses on our venue
+    during a Market Test, our public announcements, the leaderboard. A price we only planned, a cancellation, a duel or
+    a dealer negotiation never shows."""
     kind, src, text = e.get("kind"), e.get("src"), e.get("text") or ""
-    if kind == "offer" and src in ("rastro-seller", "market-desk"):
+    if kind == "offer" and src in ("rastro-seller", "market-desk") and e.get("posted"):
         return PRIVATE_BITS.sub("", text).strip()
     if kind in ("match", "result") and src == "broker":
         return text
     if kind == "announce" and src == "announce":
         return text
-    if kind == "decision":
+    if kind == "decision" and e.get("posted"):
         w = text.split()
         if len(w) > 1 and w[0] in PUBLIC_DECISIONS and CARD.match(w[1]):
             return f"{w[0]} {w[1]}"
