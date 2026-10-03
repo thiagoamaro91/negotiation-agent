@@ -2,6 +2,7 @@
 
 Written by the `bazaar-strategy` session with Thiago at 11:47 to 12:15 Madrid (ticks 430 to 470).
 Ranked moves agreed by Thiago at about 12:08. Move 2 detail corrected at 12:20 with the conductor's holdings check.
+Red-teamed at 12:45 (no BLOCKER; 4 MAJOR fixed in place). Section 5 lists the corrections; where they differ from earlier text the corrected rows below win.
 `bazaar-strategy` recommends; `bazaar-conductor` executes.
 Private values in this file stay inside the team.
 
@@ -26,6 +27,8 @@ Private values in this file stay inside the team.
 | t01 (the team Thiago meant) | 23.23 | 15.73 | 7.5 | 18 | LB460 |
 | t13 (level 3) | 29.88 | 24.39 | 5.49 | 45 | LB460 |
 | t14 | 29.05 | 17.19 | 11.86 | 21 | LB460 |
+| t03 (us) after tick 520 (during Duels I) | 19.29 | 15.68 | 3.61 | | `/api/leaderboard` and DASH as re-read by the red-team verifier |
+| t01 after tick 520 | 25.95 | 18.45 | | | same |
 
 Thiago's "Team 7" was Team 1 on the big screen (confirmed at about 11:55).
 At tick 430 we matched Team 1 on market (7.5 each) and nearly on deals (15 against 17): the whole 5.4 gap was negotiating.
@@ -63,7 +66,7 @@ At tick 460 we also lost 3.89 on market (section 2.1).
 ### 2.4 Weak Chato slots
 
 - Saturday Chato deals: MAL-06 sold at 14 (e16916) and LAV-08 sold at 14 (e20819). Third slot empty.
-- In the same window Abuela paid 17 (e18805) and 15 (e21830) for uncommons. So both sales went to the lowest buyer on offer.
+- Abuela paid other teams 17 (e18805) and 15 (e21830) for uncommons at other ticks after longer haggles; her opening (12) is below Chato's (13). So this is not a like-for-like proof that Chato was the wrong buyer.
 - t13 bought LAV-06 and LAV-07 from Chato at 26 against an opening of 33 (e12519 / e13430).
 
 ### 2.5 Duels (no leak so far today)
@@ -84,11 +87,11 @@ Point figures are estimates on today's relative scale. Re-rank after the 13:52 M
 
 | # | Move | Expected points | Cost | Risk | Who |
 |---|---|---|---|---|---|
-| 1 | Verify the PR #22 broker fix at the 13:52 Market Test. Minimum bar: every tick match every crossing pair within the quotes (what the free stall does). If market does not recover to at least stall level: find out whether v20 can switch to `auto` or whether closing it brings back a free stall (bond back after cooldown). Do not assume either from the rules text | Win back about +3.9 (to 7.5); up to about +7.5 more if the broker beats the stall (full bench points go to the mean of the top three) | 0 P | Each bad session stays in today's average | Conductor + broker owner (`tools/bench_check.py`) |
-| 2 | Fill all three Doña Pilar slots today. No rush at 12:21: each dealer gives every team the same allotment per hour (`kit/RULES.md` "Dealers"); start after Duels I so dealer accepts do not compete with duel accepts. Sell only copies where her price beats our private value. Held candidates (COND 12:15): MAL-06 and MAL-08 single copies (worth 17.5 each to us); no uncommon spares and no Retiro uncommons left. Slot 3: buy a second copy of a Salamanca uncommon we already hold from Abuela (she sells uncommons at 21 to 25 per FEED) and resell it to Pilar in the Salamanca fever (hour 9.15; about 16:00 to 17:30). A second copy is valued at 25 % (about 8 for a Salamanca uncommon) so her price clears our value; an extra Abuela deal costs nothing because only her best three count. Open high and come down in big steps | Large but not sized: no team has three level-3 deals yet | 0 P for slots 1 and 2; about 0 to 5 P net for slot 3 | She is stingy (held 16 for 9 threads); if the private-value gate holds then selling below our value earns nothing (FRI score.md:54); no Pilar bot yet (a `--dealer` option for `agent/chato.py` is proposed) | Conductor |
+| 1 | Verify the PR #22 broker fix at the 13:52 Market Test by THAT SESSION's efficiency from `tools/bench_check.py` against the free-stall level. Do not judge it by the leaderboard market reaching 7.5: market is a round average and the bad session at ticks 441 to 457 stays in it (`kit/RULES.md` "the round averages its sessions"). Ask now (not after the test) whether v20 can switch to `auto` and whether closing it restores a free stall (`kit/RULES.md`: "Every team without a venue then gets a free starter stall"); act on it only if the session itself is below stall | Each session at stall level or better instead of near zero; up to about +7.5 on the market part if the broker beats the stall | 0 P | Each bad session stays in today's average | Conductor + broker owner (`tools/bench_check.py`) |
+| 2 | Fill all three Doña Pilar slots today after Duels I. Each dealer gives every team the same allotment per hour (`kit/RULES.md` "Dealers"). Slots 1 and 2: MAL-06 and MAL-08 single copies with a floor of 18 each (our value is 17.5; she paid t08 only 17 for MAL-06 at tick 510 per `/api/feed`). Treat each of the first three deals per dealer as final: Friday's data fits "the first three gated deals count about the same" as well as "best three by share" (section 5). Slot 3 preferred: buy a first copy we lack in a low-multiplier set (likely MAL-07; worth 17.5) from another team at 17 or less and resell it to Pilar at 18 or more. Slot 3 fallback (manual exception that needs Thiago's yes): a second copy of a Salamanca uncommon bought from Abuela and resold to Pilar in the Salamanca fever (hours 9.15 to 11.15; about 16:00 to 18:00) only if a probe at 16:00 shows her fever bid above the Abuela price; `agent/abuela.py` skips held cards so it cannot do this. Never buy a Salamanca second copy from another team (a team trade at about 20 for a copy worth about 8 scores about -12 surplus) | Large but not sized: no team has three level-3 deals yet | 0 P for slots 1 and 2; slot 3 about 15 to 17 P out and 18 or more back | She is stingy; live prices since 12:21 were 17 to 20 for uncommons outside her loved sets and 24 for SAL-08 before the fever (`/api/feed` ticks 508 to 513); no Pilar bot yet (a `--dealer` option for `agent/chato.py` is proposed) | Conductor |
 | 3 | Copy Team 1: trades with other teams. Buy missing commons cheaply (our Lavapiés commons are worth 16 and Salamanca commons 13; t15 sold commons at 5 to 7 and t18 at 9 to 10 per FEED). Sell spare commons (worth about 4 to us) at 7 to 9. Prefer 0-fee venues over El Rastro (5 % + 1 P). Fund it with Pilar cash | About 0.5 to 1.5 per good buy at Friday's rate (FRI score.md:51) | Small budget from cash 95 + Pilar income | Low | Conductor (market desk with a small budget) |
 | 4 | Duels: keep the bot as it is. For Duels II trade delivery days for price (the pie grows when each side gets the issue it cares about) | Not sized until Duels I scores | 0 P | Low | Duel bot owner |
-| 5 | Third Chato slot: one negotiated uncommon buy at 26 or less where our value is higher (for example a missing Salamanca uncommon worth 32.5 to us). Later deals can replace the two weak sales at 14 | Small to medium | About 26 P | Low | Conductor |
+| 5 | Third Chato slot: the Salamanca uncommon buy is withdrawn (we hold SAL-06 / SAL-07 / SAL-08; a second copy is worth about 8 and fails the gate). No uncommon we lack clears the gate at his 26 to 33 asks. Only a rare we lack does: LAV-09 with `--cap 88` (worth 112 to us) and only if cash is 120 or more after the Pilar sales; otherwise on Sunday with the 150 P allowance | Small to medium | About 88 P | Cash for move 3 | Conductor |
 
 Tonight (before Sunday 09:00):
 
@@ -103,4 +106,17 @@ Parked:
 
 ## 4. Brief for `bazaar-conductor`
 
-Thiago agreed this order at about 12:08. First: confirm at the 13:52 Market Test that the PR #22 broker brings market back to at least 7.5; if it does not then find out (from the API or the organisers) whether v20 can go `auto` or whether closing it restores a free stall before the 15:52 test. Second: after Duels I sell three cards to Doña Pilar to fill the empty level-3 slots (the hourly allotment is per team so there is no rush); MAL-06 and MAL-08 first; for the third buy a second copy of a Salamanca uncommon from Abuela and resell it to Pilar in the Salamanca fever; keep Lavapiés and Salamanca first copies; take live holdings from `/api/me` because `logs/state/me.json` is from tick 196. Third: restart team trading on a small budget funded by the Pilar cash; buy missing commons below our value and sell spare commons above it; prefer 0-fee venues. Fourth: leave the duel bot as it is and report `duel_points` after Duels I. Fifth: one Chato uncommon buy at 26 or less that is worth more to us. Tonight: prepare the Sunday ladder bots (three deals per dealer from about 09:30) because ladder points reset each round. Log any new finding in `docs/findings.md` with its tick.
+Thiago agreed this order at about 12:08. First: judge the 13:52 Market Test by that session's efficiency from `tools/bench_check.py` against the free-stall level (not by the board reaching 7.5); ask now whether v20 can go `auto` and whether closing it restores a free stall so a decision is ready before the 15:52 test. Second: after Duels I sell three cards to Doña Pilar to fill the empty level-3 slots (the hourly allotment is per team so there is no rush); MAL-06 and MAL-08 first with a floor of 18; for the third prefer a low-multiplier first copy bought from a team at 17 or less (the Abuela second-copy flip is a manual exception that needs Thiago's yes); keep Lavapiés and Salamanca first copies; take live holdings from `/api/me` because `logs/state/me.json` is from tick 196. Third: restart team trading on a small budget funded by the Pilar cash; buy missing commons below our value and sell spare commons above it; prefer 0-fee venues. Fourth: leave the duel bot as it is and report `duel_points` after Duels I. Fifth: Chato only for LAV-09 with `--cap 88` if cash is 120 or more after the Pilar sales. Any dealer bot launch passes `--reserve` (about 40) / `--only` / `--cap` / `--max-deals 1` explicitly. Tonight: prepare the Sunday ladder bots (three deals per dealer from about 09:30) because ladder points reset each round. Log any new finding in `docs/findings.md` with its tick.
+
+## 5. Red-team corrections (12:45)
+
+Run: four blind lenses (premise / sequencing / failure-modes / verification) with refute-first verifiers. No BLOCKER survived. The fixes above come from these four MAJOR findings:
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Move 1 used the board's market reaching 7.5 as the bar; market is a round average so a working broker would read as a failure | Judge the session by `tools/bench_check.py` efficiency against the stall; research the fallback now |
+| 2 | Move 5 named SAL-06 as missing; we hold SAL-06 / SAL-07 / SAL-08 (`logs/state/me.json`; ledger ticks 72 / 87 / 128) | Chato SAL buy withdrawn; LAV-09 with `--cap 88` only if cash allows |
+| 3 | "Later deals replace weak slots" is unproven: LAV-06 (share 0.0) took ladder 0 to 0.022 at tick 33 while SAL-06 (0.5) and SAL-07 (0.88) added nothing as deals 4 and 5 (SCORE lines 1 to 6 and the ledger) | Treat each of the first three deals per dealer as final; the optional Abuela spare-common sale is dropped |
+| 4 | The bots cannot run the slot-3 buys as written: `agent/abuela.py` skips held cards; `agent/chato.py` pays up to full private value without `--cap`; both default `CASH_RESERVE` to 280 (chato.py:41 / abuela.py:41) and skip every buy at 95 P | Explicit `--reserve` / `--only` / `--cap` / `--max-deals 1`; the Abuela flip only by hand as an approved exception |
+
+Refuted: dealer accepts do not steal the broker's Market Test matches (the broker uses its own key); the per-team hourly allotment line is in `kit/RULES.md`.
