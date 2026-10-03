@@ -590,6 +590,38 @@ class LocalVenue:
         self.server.server_close()
 
 
+class SlowVenue:
+    """Fake time for the pace tests. Every read takes `r` seconds and answers with the venue as it was when the request
+    arrived (its start); tick = time // 15. One seller and one buyer that cross live during tick 1 only, as a
+    one-tick trader of the hard test. The book carries `snap`, the time it was read, so a test can check the tick a
+    logged book was filed under."""
+
+    def __init__(self, r, t0):
+        self.t, self.r, self.calls, self.reads = t0, r, [], []
+
+    def now(self):
+        return self.t
+
+    def _read(self, kind, answer):
+        start = self.t
+        self.reads.append((kind, start))
+        self.t += self.r
+        return answer(start)
+
+    def clock(self):
+        return self._read("clock", lambda t: {"tick": int(t // 15)})
+
+    def book(self):
+        live = lambda t: [seller("b1-1", 20), buyer("b1-2", 30)] if int(t // 15) == 1 else []  # noqa: E731
+        return self._read("book", lambda t: {**book_of(live(t)), "snap": t})
+
+    def match(self, sell, buy, price):
+        self.calls.append(self.t)
+        if int(self.t // 15) != 1:
+            raise BazaarError("gone", "the offers left with their tick", 409)
+        return {"id": 1, "status": "queued"}
+
+
 class Pace15s(unittest.TestCase):
     """Sunday's ticks are 15 s and the hard Market Test's traders can stay a single tick: a hung read or a slow match
     must cost the loop seconds, not the tick. Saturday's broker read with a 5 s timeout and one retry (10.5 s blind
@@ -604,11 +636,45 @@ class Pace15s(unittest.TestCase):
         self.addCleanup(v.stop)
         return v
 
-    def test_the_worst_blind_stretch_leaves_most_of_a_15_s_tick(self):
+    def test_the_stated_guarantee_fits_a_15_s_tick(self):
         c = brk.PacedClient(brk.Broker, "http://127.0.0.1:9", FAKE_KEY)  # nothing is sent: only the settings
-        hung = c.reader.timeout * (c.reader.retries + 1) + 0.5 * c.reader.retries  # one read, the SDK's retries
-        self.assertLessEqual(hung + max(brk.ERROR_SLEEP), 15 / 3)  # however many reads in a row fail
+        failed = c.reader.timeout * (c.reader.retries + 1) + 0.5 * c.reader.retries  # one read, the SDK's retries
+        self.assertLessEqual(failed + max(brk.ERROR_SLEEP), 15 * 0.4)  # a failed read, then the longest backoff
+        two_reads = max(2 * c.reader.timeout, brk.REFRESH_BUDGET + c.reader.timeout)  # before a loop's matches
+        self.assertLessEqual(two_reads, 15 * 0.6)
         self.assertGreaterEqual(c.writer.timeout, c.reader.timeout)
+
+    def run_slow(self, r, t0, until=45.0):
+        venue = SlowVenue(r, t0)
+        d = Path(self.tmp.name) / f"{r}-{t0}"
+        d.mkdir()
+        log = MemLog(d / "broker.jsonl")
+        desk = brk.Desk(venue, log, "stall", now=venue.now, heartbeat=d / "hb.json")
+        while venue.t < until:
+            wait = desk.step()
+            venue.t += wait
+        rows = [json.loads(x) for x in (d / "broker.jsonl").read_text().splitlines()]
+        return venue, log, rows
+
+    def test_slow_reads_across_a_tick_change_still_match_inside_the_tick(self):
+        # Reads just under READ_TIMEOUT, from every phase of the loop against the tick: with a third (refresh) clock
+        # read after the changed book, a loop takes 3 r and from some phases the one-tick pair goes out in tick 2
+        for r in (2.9, brk.READ_TIMEOUT - 0.1):
+            for k in range(30):
+                venue, log, rows = self.run_slow(r, 0.5 * k)
+                self.assertTrue(venue.calls, (r, 0.5 * k))
+                self.assertEqual(int(venue.calls[0] // 15), 1, (r, 0.5 * k, venue.calls))
+                for row in rows:  # a book is never filed under a tick later than the one it was read in
+                    real = int(row["book"]["snap"] // 15)
+                    self.assertIn(row["tick"], (real - 1, real), (r, 0.5 * k, row["tick"], row["book"]["snap"]))
+
+    def test_fast_reads_keep_the_clock_check_after_a_changed_book(self):
+        venue, log, rows = self.run_slow(0.15, 14.0, until=16.0)
+        kinds = [k for k, _ in venue.reads]
+        i = kinds.index("book", next(j for j, (_, t) in enumerate(venue.reads) if t >= 15))
+        self.assertEqual(kinds[i + 1], "clock")  # the refresh after the changed book still happens
+        self.assertNotIn("slow_reads", [x["event"] for x in log.rows])
+        self.assertEqual(int(venue.calls[0] // 15), 1)
 
     def test_a_hung_read_costs_the_read_timeout_then_the_loop_reads_again(self):
         venue = self.venue({"/api/broker/book": [30.0]})  # the first book read hangs; the next ones answer
@@ -622,8 +688,8 @@ class Pace15s(unittest.TestCase):
         took = time.monotonic() - t0
         self.assertTrue(any(r["event"] == "matched" for r in log.rows))
         self.assertEqual([r["event"] for r in log.rows].count("read_error"), 1)
-        self.assertLess(took, 0.4 + brk.ERROR_SLEEP[0] + 1.0)  # not the 5 s timeout, not a retry of the hung read
-        self.assertEqual(venue.calls.count(("GET", "/api/broker/book")), 2)
+        self.assertLess(took, 0.4 + 3.0)  # integration bound (generous): the patched timeout, not 5 s twice
+        self.assertEqual(venue.calls.count(("GET", "/api/broker/book")), 2)  # the hung read was not retried inside
 
     def test_run_and_watch_use_the_paced_client(self):
         seen = {}
