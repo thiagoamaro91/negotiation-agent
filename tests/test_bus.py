@@ -222,6 +222,26 @@ class Ask(unittest.TestCase):
         self.assertEqual(b.ask("anyone?", [THIAGO], wait=30, interval=10), 3)
 
 
+class SessionName(unittest.TestCase):
+    def test_writing_needs_a_session_name_and_reading_does_not(self):
+        from unittest import mock
+        with mock.patch.dict(bus.os.environ, {}, clear=False):
+            bus.os.environ.pop("TEAM_BUS_SESSION", None)
+            with mock.patch.object(bus, "GitHub", side_effect=AssertionError("must not reach GitHub")):
+                for argv in (["post", "hi"], ["ask", "ok?", "--wait", "0"], ["claim", "market"], ["release", "market"],
+                             ["--session", "  ", "post", "hi"]):
+                    self.assertEqual(bus.main(argv), 2, argv)
+            with mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
+                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
+                    bus.main(["--session", "hector-mac-brain", "post", "hi"])
+                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
+                    bus.main(["read"])
+            with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "thiago-mini-market"}), \
+                    mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
+                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
+                    bus.main(["post", "hi"])
+
+
 class Board(unittest.TestCase):
     def claim(self, frm, what, mid, kind="claim", **kw):
         return {"id": mid, "from": frm, "at": "2026-10-03T12:00:00Z", "kind": kind, "human": False, "what": what, **kw}
