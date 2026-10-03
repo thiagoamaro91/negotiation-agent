@@ -33,7 +33,7 @@ COST = "250 P bond (refundable after closing) + 20 P"
 # The request. Fee 0: fees never score, and any fee shrinks the pairs that cross (price + fee <= bid). No rarity, set
 # or level restriction: they only cut traffic. "board": our broker matches; on "auto" the engine crosses every pair
 # first and a broker can do nothing (the free stall is auto).
-NAME = "Team 3 · zero fee"  # at most 40 characters (the server cuts longer names)
+NAME = "La Celestina · finds your missing card"  # at most 40 characters (the server cuts longer names)
 BODY = {
     "name": NAME,
     "fee_bps": 0,
