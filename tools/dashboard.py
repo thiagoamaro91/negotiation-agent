@@ -25,9 +25,10 @@ run_start / run_end / stop) and its accept-slot lock results/duel.lock, both und
 
 Rivals and Market panels (keyless and offline, own thread): all 18 teams from /api/leaderboard, /api/venues and the
 recorded public feed (feed.jsonl, written by tools/feed_recorder.py) run through tools/ledger.py (cash, known cards,
-moves), tools/value_inference.py (inferred set multipliers) and tools/price_index.py (team-to-team prices). The feed
-tools rerun only when feed.jsonl changed, at most every 20 s. Our own row shows the leaderboard and our rebuilt cash
-only, and a trust line compares that cash with /api/me. The feed folder:
+moves), tools/decks.py (every card each team holds, rebuilt from public asset ids), tools/value_inference.py
+(inferred set multipliers) and tools/price_index.py (team-to-team prices). The feed tools rerun only when feed.jsonl
+changed, at most every 20 s. Our own row shows the leaderboard and our rebuilt cash only, and a trust line compares
+that cash with /api/me. The feed folder:
 
     python3 tools/dashboard.py --feed ~/bazaar/logs/feed      # or BAZAAR_FEED=...; default: <broker root>/logs/feed
 """
@@ -62,6 +63,12 @@ try:  # the Rivals panel's offline tools; a copy without them still serves every
 except Exception as _e:  # only on a deploy that left a file out
     ledger = pi = vi = None
     RIV_IMPORT_ERROR = f"rivals tools missing: {_e!r}"[:200]
+try:  # the full-deck column (tools/decks.py); without it the rows fall back to the cards seen in the feed
+    import decks as decks_mod  # noqa: E402
+    DECKS_IMPORT_ERROR = None
+except Exception as _e:  # only on a deploy that left the file out
+    decks_mod = None
+    DECKS_IMPORT_ERROR = f"decks tool missing: {_e!r}"[:200]
 
 PAGE = ROOT / "tools" / "dashboard.html"
 HISTORY = ROOT / "logs" / "dashboard_history.jsonl"
@@ -652,10 +659,11 @@ class Duels:
 # ---------------------------------------------------------------- Rivals: every team from public data (pure parts)
 #
 # Keyless and offline: the public leaderboard and /api/venues, plus the recorded public feed run through
-# tools/ledger.py (cash and known cards), tools/value_inference.py (inferred set multipliers) and
-# tools/price_index.py (team-to-team prices). The page may be screen-shared, so the block is built from an ALLOWLIST:
-# our own row carries the leaderboard and our rebuilt cash only (no inferred multipliers, no known cards, no moves),
-# "who wants what" counts the other 17 teams only, and nothing here reads logs/state/me*.json.
+# tools/ledger.py (cash and known cards), tools/decks.py (each team's full deck), tools/value_inference.py (inferred
+# set multipliers) and tools/price_index.py (team-to-team prices). The page may be screen-shared, so the block is
+# built from an ALLOWLIST: our own row carries the leaderboard and our rebuilt cash only (no inferred multipliers, no
+# known cards, no deck, no moves), "who wants what" counts the other 17 teams only, and nothing here reads
+# logs/state/me*.json.
 
 RIV_FEED_EVERY = 20.0      # seconds between recomputes of the feed tools (only when feed.jsonl changed)
 RIV_PUBLIC_EVERY = 15.0    # seconds between keyless reads of /api/leaderboard and /api/venues
@@ -666,6 +674,7 @@ RIV_HISTORY = 40           # cash points per team kept for the sparkline
 RIV_MOVES = 8              # cash moves per team shown when a row is opened
 RIV_PRICES = 15            # cards listed in the team-to-team price table
 RIV_TEXT = 60              # characters kept of feed-authored text (move notes, venue names)
+RIV_REF = 24               # characters kept of a card ref in a rebuilt deck
 RIV_LB_KEYS = ("rank", "team", "name", "score", "negotiating", "market", "level", "album_filled", "album_slots",
                "pages_complete", "luck", "deals", "frozen", "venue")
 RIV_VENUE_KEYS = ("venue", "owner", "owner_name", "status", "fee_bps", "fee_per_card", "bond", "trades", "volume",
@@ -734,6 +743,54 @@ def card_prices(trades: list, names: dict, limit: int = RIV_PRICES) -> dict:
     return {"cards": len(rows), "trades": len(trades), "rows": rows[:limit]}
 
 
+def deck_rows(by_ref: dict, source: str, extra: dict | None = None) -> dict:
+    """{team: deck} for the rows, from ONE mapping {team: {ref: count}} and the label of where it came from: "feed"
+    (tools/decks.py, see feed_decks) today; a census of exact ownership can be passed the same way later, and the page
+    needs no change. `extra` ({team: {"total", "unnamed", "notes"}}, optional) is what a source knows beyond the cards
+    it can name: the estimated total, the copies held but never shown by name, and short notes (plain text, escaped
+    by the page). Without it the deck is exact: total = the cards named."""
+    out = {}
+    for team, refs in (by_ref or {}).items():
+        cards = {_text(r, RIV_REF): n for r, n in (refs or {}).items() if r and isinstance(n, int) and n > 0}
+        named = sum(cards.values())
+        x = (extra or {}).get(team) or {}
+        total = x.get("total") if isinstance(x.get("total"), int) else named
+        out[str(team)] = {"source": _text(source, 20), "cards": cards, "named": named, "total": total,
+                          "unnamed": x.get("unnamed") or 0, "approx": bool(x),
+                          "notes": [_text(n) for n in x.get("notes") or []]}
+    return out
+
+
+def feed_decks(events: list, cat: dict) -> tuple[dict, dict, str | None]:
+    """(by_ref, extra, error) for deck_rows() from tools/decks.py: every card each team holds, rebuilt from public
+    asset ids, run on the gap-filled events like the ledger. by_ref merges the copies named by id with the ones got
+    without an id (gift, egg, Workshop); extra carries the estimated total and what stays unnamed; asset ids never
+    leave this function. On any failure: ({}, {}, error), and the rows fall back to the cards seen in the feed."""
+    if decks_mod is None:
+        return {}, {}, DECKS_IMPORT_ERROR
+    try:
+        built = decks_mod.build(ledger.fill_gaps(events) if ledger else events, cat)
+        by_ref, extra = {}, {}
+        for team, k in (built or {}).items():
+            refs = dict(k.get("known") or {})
+            for r, n in (k.get("floating") or {}).items():
+                refs[r] = refs.get(r, 0) + n
+            no_id = sum((k.get("floating") or {}).values())
+            unseen, unplaced, burned = k.get("unknown_ids") or 0, k.get("unplaced") or 0, k.get("burned") or 0
+            notes = [f"{unseen} owned, never shown", f"{unplaced} pack cards unplaced"]
+            if no_id:
+                notes.append(f"{no_id} named without an id (gift, egg, Workshop)")
+            if burned:
+                notes.append(f"-{burned} burned at the Workshop (unknown which)")
+            if k.get("packs"):
+                notes.append(f"{k['packs']} packs opened")
+            by_ref[team] = refs
+            extra[team] = {"total": k.get("total"), "unnamed": unseen + unplaced, "notes": notes}
+        return by_ref, extra, None
+    except (Exception, SystemExit) as e:
+        return {}, {}, repr(e)[:200]
+
+
 def who_wants(inferred: dict, in_play: list) -> list:
     """Per set: the other teams whose inferred favourite it is, and the ones that like it least ('weak' left out)."""
     out = []
@@ -770,8 +827,10 @@ def venue_rows(venues) -> list:
     return rows
 
 
-def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool, cards: dict | None = None) -> dict:
-    """One team for the panel. Our own row stops at the leaderboard and our rebuilt cash."""
+def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool, cards: dict | None = None,
+             deck: dict | None = None) -> dict:
+    """One team for the panel. Our own row stops at the leaderboard and our rebuilt cash. `deck` is the team's full
+    deck from deck_rows() (None: not rebuilt, the page shows the cards seen in the feed instead)."""
     rarest = lb_row.get("rarest") if isinstance(lb_row.get("rarest"), dict) else None
     row = {**{k: lb_row.get(k) for k in RIV_LB_KEYS}, "name": _text(lb_row.get("name"), 30), "us": us,
            "rarest": {k: rarest.get(k) for k in ("ref", "name", "serial", "print_run", "rarity")} if rarest else None,
@@ -785,7 +844,7 @@ def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool
         return row
     held = {str(r): n for r, n in ((led_row or {}).get("known_cards") or {}).items() if n and n > 0}
     known = {r: n for r, n in held.items() if not cards or r in cards}  # the ledger also counts packs bought
-    row.update(known=known, known_n=sum(known.values()) if led_row else None, inferred=inferred,
+    row.update(known=known, known_n=sum(known.values()) if led_row else None, inferred=inferred, deck=deck,
                packs={r: n for r, n in held.items() if r not in known},
                money={k: led_row.get(k) for k in RIV_MONEY_KEYS} if led_row else None,
                moves=[{"tick": m.get("tick"), "delta": m.get("delta"), "what": _text(m.get("what"))}
@@ -801,8 +860,9 @@ def rivals_view(lb, venues, heavy: dict | None, real: dict | None = None, team: 
     lb_rows = [t for t in ((lb or {}).get("teams") or []) if isinstance(t, dict) and t.get("team")]
     have = {t["team"] for t in lb_rows}
     lb_rows += [{"team": t, "name": t} for t in sorted(led) if t not in have]  # no leaderboard yet: feed teams only
-    teams = [team_row(t, led.get(t["team"]), inferred.get(t["team"]), t["team"] == team, heavy.get("cards"))
-             for t in lb_rows]
+    decks = heavy.get("decks") or {}
+    teams = [team_row(t, led.get(t["team"]), inferred.get(t["team"]), t["team"] == team, heavy.get("cards"),
+                      decks.get(t["team"])) for t in lb_rows]
     teams.sort(key=lambda r: (r["rank"] if _num(r["rank"]) else 1e9, str(r["team"])))
     us_hist = (led.get(team) or {}).get("history") or []
     return {"teams": teams, "sets": heavy.get("in_play") or [],
@@ -810,7 +870,7 @@ def rivals_view(lb, venues, heavy: dict | None, real: dict | None = None, team: 
             "trust": trust_view(us_hist, real, heavy.get("feed_tick")), "venues": venue_rows(venues),
             "prices": heavy.get("prices") or {"cards": 0, "trades": 0, "rows": []}, "cards": heavy.get("cards") or {},
             "feed_tick": heavy.get("feed_tick"), "events": heavy.get("events"), "computed_at": heavy.get("computed_at"),
-            "leaderboard_tick": (lb or {}).get("tick")}
+            "decks_error": heavy.get("decks_error"), "leaderboard_tick": (lb or {}).get("tick")}
 
 
 # ---------------------------------------------------------------- Rivals: files and keyless reads
@@ -856,11 +916,14 @@ class Rivals:
         if isinstance(led.get("teams"), dict):  # the CLI's --json shape, should build() ever return it
             led = led["teams"]
         in_play, inferred = infer_teams(events, self.cat, self.team)
+        by_ref, extra, decks_error = feed_decks(events, self.cat)
+        decks = deck_rows(by_ref, "feed", extra)  # a census mapping can replace by_ref here later
         names = {c["id"]: c.get("name") for s in self.cat["sets"] for c in s["cards"]}
         rarity = {c["id"]: c["rarity"] for s in self.cat["sets"] for c in s["cards"]}
         keep = ("cash", "history", "unlocked", "trades", "venue", "known_cards", "moves") + RIV_MONEY_KEYS
         return {"ledger": {t: {k: r.get(k) for k in keep} for t, r in led.items()}, "in_play": in_play,
-                "inferred": inferred, "prices": card_prices(pi.team_trades(events, rarity), names),
+                "inferred": inferred, "decks": decks, "decks_error": decks_error,
+                "prices": card_prices(pi.team_trades(events, rarity), names),
                 "cards": {c["id"]: {"name": _text(c.get("name"), 40), "rarity": c.get("rarity")}
                           for s in self.cat["sets"] for c in s["cards"]},
                 "feed_tick": events[-1].get("tick") if events else None, "events": len(events),

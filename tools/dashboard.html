@@ -561,7 +561,7 @@ const tnum = (t) => parseInt(String(t || "").replace(/\D/g, ""), 10) || 0;
 const signed = (n) => n == null ? "-" : (n > 0 ? "+" : "") + n;
 const RIV_SORT = {
   rank: (r) => r.rank, team: (r) => tnum(r.team), score: (r) => r.score, level: (r) => r.level, cash: (r) => r.cash,
-  album: (r) => r.album_filled, known: (r) => r.us ? null : r.known_n, fav: (r) => r.inferred ? r.inferred.fav + (1 - r.inferred.p_fav) : null,
+  album: (r) => r.album_filled, known: (r) => r.us ? null : r.deck ? r.deck.total : r.known_n, fav: (r) => r.inferred ? r.inferred.fav + (1 - r.inferred.p_fav) : null,
   deals: (r) => r.deals, trades: (r) => r.trades, venue: (r) => r.own_venue || r.venue,
 };
 const RIV_DESC = new Set(["score", "level", "cash", "album", "known", "deals", "trades"]);  // first click: biggest first
@@ -598,16 +598,34 @@ function rivTrust(tr) {
   return `Cash is rebuilt from the public feed; not checked against /api/me in this run (no key here). Feed tick ${esc(tr.feed_tick ?? "-")}.`;
 }
 
+// Card chips grouped by set (the ref's prefix), sets in play first, from a {ref: count} map. Refs come from the
+// feed: esc() on every string.
+function rivChips(refs, v) {
+  const cards = v.cards || {}, sets = v.sets || [];
+  const bySet = {};
+  for (const [ref, n] of Object.entries(refs || {})) (bySet[String(ref).split("-")[0]] ||= []).push([ref, n]);
+  const order = [...sets, ...Object.keys(bySet).filter((s) => !sets.includes(s))];
+  return order.filter((s) => bySet[s]).map((s) => `<div class="cardset"><span class="sn">${esc(s)}</span>${bySet[s].sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(([ref, n]) => {
+    const c = cards[ref] || {};
+    return `<span class="cc ${esc(c.rarity || "")}" title="${esc(c.name || ref)}${c.rarity ? " · " + esc(c.rarity) : ""}">${esc(String(ref).split("-")[1] || ref)}${n > 1 ? `<small>×${esc(n)}</small>` : ""}</span>`;
+  }).join("")}</div>`).join("");
+}
+
+// The team's full deck, whatever its source (dashboard.py deck_rows: "feed" = rebuilt from public asset ids by
+// tools/decks.py): the cards it can name, then what the source knows but cannot name, as plain-text notes.
+const DECK_SOURCE = { feed: "rebuilt from public asset ids" };
+function rivDeck(k, v) {
+  const chips = rivChips(k.cards, v) || `<div class="empty">No card of theirs named yet.</div>`;
+  const src = DECK_SOURCE[k.source] || `source: ${esc(k.source || "?")}`;
+  const notes = [`${esc(k.named ?? 0)} named`, ...(k.notes || []).map(esc)].join(" · ");
+  return `<div class="celsub">Deck <b>${k.approx ? "~" : ""}${esc(k.total ?? "?")}</b> · every card they hold, ${src}</div>${chips}${k.unnamed ? `<div class="rivnote">+${esc(k.unnamed)} more held, not yet shown by name</div>` : ""}<div class="rivnote">${notes}</div>`;
+}
+
 function rivDetail(r, v) {
   if (r.us) return `<div class="rivnote">Our own row shows the leaderboard and our rebuilt cash only: what we hold and value stays off this screen.</div>`;
-  const cards = v.cards || {}, inf = r.inferred, sets = v.sets || [];
-  const bySet = {};
-  for (const [ref, n] of Object.entries(r.known || {})) (bySet[ref.split("-")[0]] ||= []).push([ref, n]);
-  const order = [...sets, ...Object.keys(bySet).filter((s) => !sets.includes(s))];
-  const chips = order.filter((s) => bySet[s]).map((s) => `<div class="cardset"><span class="sn">${esc(s)}</span>${bySet[s].sort().map(([ref, n]) => {
-    const c = cards[ref] || {};
-    return `<span class="cc ${esc(c.rarity || "")}" title="${esc(c.name || ref)}${c.rarity ? " · " + esc(c.rarity) : ""}">${esc(ref.split("-")[1] || ref)}${n > 1 ? `<small>×${esc(n)}</small>` : ""}</span>`;
-  }).join("")}</div>`).join("") || `<div class="empty">No card of theirs seen in the feed yet.</div>`;
+  const inf = r.inferred, sets = v.sets || [];
+  const known = rivChips(r.known, v) || `<div class="empty">No card of theirs seen in the feed yet.</div>`;
+  const cardsCol = r.deck ? rivDeck(r.deck, v) : `<div class="celsub">Known cards <b>${esc(r.known_n ?? 0)}</b> · lower bound (starting hand and packs stay hidden)</div>${known}`;
   const packs = Object.entries(r.packs || {}).map(([p, n]) => `${esc(p)}${n > 1 ? " ×" + esc(n) : ""}`).join(", ");
   const rar = r.rarest ? `rarest <b>${esc(r.rarest.ref)}</b> ${esc(r.rarest.name || "")} · #${esc(r.rarest.serial ?? "?")}/${esc(r.rarest.print_run ?? "?")} ${esc(r.rarest.rarity || "")}` : "rarest card not shown";
   const heat = inf ? `<div class="heat" style="--n:${sets.length}">${sets.map((s) => `<div style="background:${multColor(inf.exp[s])}" title="${esc(s)}: expected multiplier ${fmt(inf.exp[s], 2)}"><b>${fmt(inf.exp[s], 2)}</b>${esc(s)}</div>`).join("")}</div>
@@ -617,7 +635,7 @@ function rivDetail(r, v) {
   const money = r.money ? `<div class="rivnote" style="margin-top:6px">dealers spent ${esc(mn.dealer_spent)} · earned ${esc(mn.dealer_earned)} P<br>teams bought ${esc(mn.team_bought)} · sold ${esc(mn.team_sold)} P · fees ${esc(mn.fees)} · bonds ${esc(mn.bonds)}${mn.grants ? " · grants " + esc(mn.grants) : ""}${mn.gifts ? " · gifts " + esc(mn.gifts) : ""}</div>` : "";
   const moves = (r.moves || []).map((m) => `<div class="mv"><span class="muted">t${esc(m.tick)}</span><span class="${m.delta > 0 ? "up" : "dn"}">${esc(signed(m.delta))}</span><span>${esc(m.what)}</span></div>`).join("") || `<div class="empty">No cash move in the feed.</div>`;
   return `<div class="rxgrid">
-    <div><div class="celsub">Known cards <b>${esc(r.known_n ?? 0)}</b> · lower bound (starting hand and packs stay hidden)</div>${chips}<div class="rivnote">${rar}${packs ? `<br>unopened packs seen: ${packs}` : ""}</div></div>
+    <div>${cardsCol}<div class="rivnote">${rar}${packs ? `<br>unopened packs seen: ${packs}` : ""}</div></div>
     <div><div class="celsub">What they value · inferred</div>${heat}${money}</div>
     <div><div class="celsub">Last cash moves</div>${moves}</div></div>`;
 }
@@ -633,7 +651,7 @@ function rivTable(v) {
     return (x < y ? -1 : x > y ? 1 : tnum(a.team) - tnum(b.team)) * RIV.dir;
   });
   const th = (k, label, cls = "", title = "") => `<th data-sort="${k}" class="${cls}${RIV.sort === k ? " sorted" : ""}" data-arrow="${RIV.dir > 0 ? "▲" : "▼"}"${title ? ` title="${esc(title)}"` : ""}>${label}</th>`;
-  const head = `<tr>${th("rank", "#", "n")}${th("team", "Team")}${th("score", "Score", "n", "score out of 60; bar: negotiating (blue) + market (orange)")}<th></th>${th("level", "Lvl", "n", "level, and the dealers it unlocked")}${th("cash", "Cash", "n", "rebuilt from the public feed")}${th("album", "Album", "n", "album filled / slots · pages complete")}${th("known", "Known", "n hs", "cards seen in the feed: a lower bound")}${th("fav", "Likes", "", "inferred favourite set / least liked set")}${th("deals", "Deals", "n")}${th("trades", "Trades", "n hs", "team-to-team trades in the feed")}${th("venue", "Venue", "hs")}</tr>`;
+  const head = `<tr>${th("rank", "#", "n")}${th("team", "Team")}${th("score", "Score", "n", "score out of 60; bar: negotiating (blue) + market (orange)")}<th></th>${th("level", "Lvl", "n", "level, and the dealers it unlocked")}${th("cash", "Cash", "n", "rebuilt from the public feed")}${th("album", "Album", "n", "album filled / slots · pages complete")}${th("known", "Deck", "n hs", "every card the team holds, rebuilt from public asset ids (tools/decks.py); without the rebuild, the cards seen in the feed (a lower bound)")}${th("fav", "Likes", "", "inferred favourite set / least liked set")}${th("deals", "Deals", "n")}${th("trades", "Trades", "n hs", "team-to-team trades in the feed")}${th("venue", "Venue", "hs")}</tr>`;
   const body = rows.map((r) => {
     const open = RIV.open.has(r.team), inf = r.inferred;
     const likes = r.us ? `<span class="muted">private</span>` : inf ? (inf.confidence === "weak" ? `<span class="muted">no signal yet</span>` : `<b>${esc(inf.fav)}</b> <span class="muted">${Math.round(inf.p_fav * 100)}%</span> · <span class="muted">not ${esc(inf.least)}</span>`) : `<span class="muted">-</span>`;
@@ -643,7 +661,7 @@ function rivTable(v) {
       <td class="n">${fmt(r.score, 2)}</td><td>${splitBar(r)}</td><td class="n">${lvl}</td>
       <td class="n${dim ? " dim" : ""}">${r.cash == null ? "-" : esc(r.cash) + " P"}${cashSpark(r.cash_hist, dim)}</td>
       <td class="n">${esc(r.album_filled ?? "-")}/${esc(r.album_slots ?? "-")} <span class="lb-sub">${esc(r.pages_complete ?? 0)}p</span></td>
-      <td class="n hs">${r.us ? "-" : esc(r.known_n ?? "-")}</td><td>${likes}</td><td class="n">${esc(r.deals ?? "-")}</td><td class="n hs">${esc(r.trades ?? "-")}</td><td class="hs mono">${esc(r.own_venue || r.venue || "-")}</td></tr>`;
+      <td class="n hs">${r.us ? "-" : r.deck ? (r.deck.approx ? "~" : "") + esc(r.deck.total ?? "?") : esc(r.known_n ?? "-")}</td><td>${likes}</td><td class="n">${esc(r.deals ?? "-")}</td><td class="n hs">${esc(r.trades ?? "-")}</td><td class="hs mono">${esc(r.own_venue || r.venue || "-")}</td></tr>`;
     return tr + (open ? `<tr class="rx"><td colspan="12">${rivDetail(r, v)}</td></tr>` : "");
   }).join("");
   return `<div class="tablewrap"><table id="rivtbl">${head}${body}</table></div>`;
@@ -696,10 +714,10 @@ function rivWant(v) {
 function renderRivals(v) {
   const title = `<h2>Rivals · all teams, public data</h2>`;
   if (v.error) { $("rivals").innerHTML = `${title}<span class="err">${esc(v.error)}</span>`; return; }
-  const errs = [v.feed_error && `feed: ${esc(v.feed_error)}`, v.lb_error && `leaderboard: ${esc(v.lb_error)}`, v.venues_error && `venues: ${esc(v.venues_error)}`].filter(Boolean);
+  const errs = [v.feed_error && `feed: ${esc(v.feed_error)}`, v.lb_error && `leaderboard: ${esc(v.lb_error)}`, v.venues_error && `venues: ${esc(v.venues_error)}`, v.decks_error && `decks: ${esc(v.decks_error)}`].filter(Boolean);
   const head = `<div class="celhd">${title}<span class="pill">${esc((v.teams || []).length)} teams</span><span class="pill">feed tick <b>${esc(v.feed_tick ?? "-")}</b> · ${esc(v.events ?? 0)} events · computed ${esc(v.computed_at || "-")}</span>
     <span class="rivnote"><span class="lgd"><span class="sw" style="background:var(--neg)"></span>negotiating</span><span class="lgd"><span class="sw" style="background:var(--mkt)"></span>market</span></span></div>`;
-  $("rivals").innerHTML = `${head}<div class="rivnote">${rivTrust(v.trust)} Known cards are what the feed has shown (a lower bound); "Likes" is the inferred favourite set, from what each team chose and shed. Click a header to sort, a row to open it.</div>
+  $("rivals").innerHTML = `${head}<div class="rivnote">${rivTrust(v.trust)} "Deck" is every card a team holds, rebuilt from public asset ids (open a row to see the cards; ~ = an estimate: cards never shown and Workshop burns are counted, not named); "Likes" is the inferred favourite set, from what each team chose and shed. Click a header to sort, a row to open it.</div>
     ${rivTable(v)}
     <div class="rivcharts"><div><div class="celsub">Cash vs score</div>${rivScatter(v)}</div><div><div class="celsub">Who wants what</div>${rivWant(v)}</div></div>
     ${errs.length ? `<div class="err">${errs.join(" · ")}</div>` : ""}`;
