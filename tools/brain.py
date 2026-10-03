@@ -49,6 +49,7 @@ import decks as decks_mod
 import ledger as ledger_mod
 import market_plan
 import price_index
+import redaction
 import value_inference as vi
 
 OUT = vi.ROOT / "logs" / "brain"
@@ -64,7 +65,6 @@ DESK_MAX_BYTES = 4096           # a heartbeat is a few lines; anything bigger is
 DESK_MAX = 24                   # desks remembered at once (the oldest heartbeat is forgotten first)
 DESK_TEXT = {"last_decision": 300, "reason": 500}
 DESK_NAME = re.compile(r"^[A-Za-z0-9 _.-]{1,40}$")
-KEYLIKE = re.compile(r"\b(?:tk|bk|sk)-[A-Za-z0-9-]{6,}")  # team / broker key shapes, redacted if a desk ever echoes one
 DESKS: dict = {}
 DESK_LOCK = threading.Lock()
 LAST_DESK_PUSH = [0.0]
@@ -153,14 +153,9 @@ def venues_panel(snaps: Snapshots, events: list) -> list:
 # ---------------------------------------------------------------- desks (the team's trading agents)
 
 def scrub(x):
-    """Drop every field whose name mentions a key, at any depth, and redact key-shaped strings."""
-    if isinstance(x, dict):
-        return {k: scrub(v) for k, v in x.items() if "key" not in str(k).lower()}
-    if isinstance(x, list):
-        return [scrub(v) for v in x]
-    if isinstance(x, str):
-        return KEYLIKE.sub("[redacted]", x)
-    return x
+    """Drop every field named like a key, token or secret, at any depth, and redact credential-shaped strings
+    (tools/redaction.py: team tk-, broker bk_, admin adm_)."""
+    return redaction.scrub(x)
 
 
 def valid_desk(body) -> dict | None:
@@ -278,7 +273,8 @@ def conversions(decisions: list) -> list:
         tick = d.get("tick")
         if d.get("action") != "convert" or not isinstance(tick, int) or isinstance(tick, bool):
             continue
-        burned = sorted({int(i) for _, i in ASSET_REF.findall(str(d.get("why") or ""))})
+        burned = sorted(({"id": int(i), "ref": ref} for ref, i in set(ASSET_REF.findall(str(d.get("why") or "")))),
+                        key=lambda b: b["id"])
         got = [{"id": int(i), "ref": ref} for ref, i in ASSET_REF.findall(str(d.get("result") or ""))]
         if burned or got:
             out.append({"tick": tick, "card": d.get("card"), "burned": burned, "got": got})
@@ -293,8 +289,12 @@ def remember_conversions(found: list) -> list:
         kept = json.loads(vi.CONVERSIONS.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         kept = []
-    seen = {(c.get("tick"), tuple(c.get("burned") or []), tuple(g.get("id") for g in c.get("got") or [])) for c in kept}
-    new = [c for c in found if (c["tick"], tuple(c["burned"]), tuple(g["id"] for g in c["got"])) not in seen]
+    def key(c: dict) -> tuple:
+        ids = lambda xs: tuple(x.get("id") if isinstance(x, dict) else x for x in xs or [])
+        return c.get("tick"), ids(c.get("burned")), ids(c.get("got"))
+
+    seen = {key(c) for c in kept}
+    new = [c for c in found if key(c) not in seen]
     if new:
         kept = sorted(kept + new, key=lambda c: c.get("tick") or 0)
         write_json(vi.CONVERSIONS, kept)

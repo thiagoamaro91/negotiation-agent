@@ -77,6 +77,34 @@ class Relay(unittest.TestCase):
         self.assertGreater(kept[0]["i"], 0)
 
 
+class Redaction(unittest.TestCase):
+    """Codex review of #43 (b4541f1): broker keys are bk_..., not bk-...; scrub every real shape end to end."""
+    SHAPES = ("bk_live_9fA2xQ7z", "tk-ab12-cd34", "adm_root_42", "bk-old-shape-1234")
+
+    def test_credentials_in_decisions_never_reach_the_tape(self):
+        with tempfile.TemporaryDirectory() as d:
+            repo, live = key_machine(Path(d))
+            (live / "decisions.jsonl").write_text(json.dumps(
+                {"ts": "z", "tick": 950, "lane": "market", "action": "restart", "card": None,
+                 "why": "restarted broker with " + " and ".join(self.SHAPES), "result": f"ok {self.SHAPES[0]}",
+                 "broker_token": "x", "client_secret": "y"}) + "\n")
+            body = team_relay.encode(team_relay.collect(repo, live))
+        for shape in self.SHAPES + ("broker_token", "client_secret"):
+            self.assertNotIn(shape, body.decode())
+        team = brain.valid_team(json.loads(body))
+        tape = brain.merge_tape([], brain.decision_rows(team["decisions"]))
+        out = json.dumps(tape)
+        for shape in self.SHAPES + ("broker_token", "client_secret"):
+            self.assertNotIn(shape, out)
+        self.assertIn("[redacted]", out)
+
+    def test_a_raw_bundle_is_scrubbed_again_by_the_brain(self):
+        raw = {"kind": "team", "decisions": [{"tick": 1, "lane": "x", "why": "key bk_live_9fA2xQ7z leaked"}]}
+        self.assertNotIn("bk_live", json.dumps(brain.valid_team(raw)))
+        self.assertIsNone(brain.valid_desk({"name": "d", "mode": "live", "reason": {"x": 1}}))
+        self.assertEqual(brain.valid_desk({"name": "d", "mode": "live", "reason": "bk_live_9fA2xQ7z"})["reason"], "[redacted]")
+
+
 class TeamBundle(unittest.TestCase):
     def bundle(self, **kw):
         with tempfile.TemporaryDirectory() as d:
@@ -150,7 +178,8 @@ class Workshop(unittest.TestCase):
 
     def test_parses_burned_ids_and_the_card_got(self):
         self.assertEqual(brain.conversions([self.CONVERT, {**self.CONVERT, "action": "sell"}]),
-                         [{"tick": 953, "card": "LAV-06", "burned": [41, 499], "got": [{"id": 1001, "ref": "LAV-06"}]}])
+                         [{"tick": 953, "card": "LAV-06", "burned": [{"id": 41, "ref": "LAV-01"}, {"id": 499, "ref": "LAV-05"}],
+                           "got": [{"id": 1001, "ref": "LAV-06"}]}])
 
     def test_a_copy_bought_after_the_snapshot_then_burned_stays_gone(self):
         convert = {"tick": 953, "burned": [41, 499], "got": [{"id": 1001, "ref": "LAV-06"}]}
@@ -159,6 +188,29 @@ class Workshop(unittest.TestCase):
         self.assertEqual((mine["LAV-01"], mine["LAV-05"], mine["LAV-06"], mine["SAL-01"]), (1, 0, 0, 1))
         no_burn = brain.vi.our_cards(ME, events)
         self.assertEqual((no_burn["LAV-01"], no_burn["LAV-05"]), (2, 1))
+
+    def craft(self, tick):
+        return {"tick": tick, "type": "taller.crafted", "payload": {"team": brain.vi.US, "card": "La Tabacalera"}}
+
+    def test_a_copy_bought_and_burned_in_the_same_tick_stays_gone(self):
+        convert = {"tick": 953, "burned": [{"id": 499, "ref": "LAV-05"}], "got": [{"id": 1001, "ref": "LAV-06"}]}
+        events = [self.us("buy", 953, 499, "LAV-05"), self.craft(953)]   # the purchase settles, then the craft
+        mine = brain.vi.our_cards({**ME, "conversions": [convert]}, events)
+        self.assertEqual((mine["LAV-05"], mine["LAV-06"]), (0, 1))
+        sold_next_tick = brain.vi.our_cards({**ME, "conversions": [convert]}, events + [self.us("sell", 954, 1001, "LAV-06")])
+        self.assertEqual((sold_next_tick["LAV-05"], sold_next_tick["LAV-06"]), (0, 0))
+
+    def test_a_burned_gift_we_only_know_by_name_is_taken_from_the_gifts(self):
+        convert = {"tick": 953, "burned": [{"id": 777, "ref": "LAV-05"}], "got": []}
+        events = [{"tick": 900, "type": "gift.given", "payload": {"team": brain.vi.US, "cards": ["LAV-05"]}},
+                  self.craft(953)]
+        self.assertEqual(brain.vi.our_cards({**ME, "conversions": [convert]}, events)["LAV-05"], 0)
+        self.assertEqual(brain.vi.our_cards(ME, events)["LAV-05"], 1)
+
+    def test_a_conversion_whose_craft_event_never_shows_is_applied_once_the_feed_is_past_it(self):
+        convert = {"tick": 953, "burned": [{"id": 41, "ref": "LAV-01"}], "got": []}
+        mine = brain.vi.our_cards({**ME, "conversions": [convert]}, [self.us("buy", 990, 5, "SAL-02")])
+        self.assertEqual((mine["LAV-01"], mine["SAL-02"]), (1, 1))
 
     def test_a_conversion_is_remembered_after_it_leaves_the_relay_window(self):
         brain.remember_conversions(brain.conversions([self.CONVERT]))

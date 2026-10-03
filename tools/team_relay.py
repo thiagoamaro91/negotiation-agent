@@ -12,8 +12,9 @@ Every RELAY_SECONDS it reads exactly these files and nothing else (no glob, no d
     <repo>/logs/state/desk-*.json    the named desks' heartbeats (DESKS below)
     <live>/score.state.json          the live score reader's last reading (score, rank, cash, pages), minute by minute
     <live>/decisions.jsonl           every bot decision with its reason
-A symlink, or a path whose name mentions "env" or "key", is never opened. Every field whose name contains "key" is
-dropped at any depth and key-shaped strings are redacted before anything leaves the machine. It POSTs the bundle to
+A symlink, or a path whose name mentions env, key, token or secret, is never opened. tools/redaction.py drops every
+field named like a key, token or secret at any depth and redacts credential-shaped strings (tk-, bk_, adm_) before
+anything leaves the machine. It POSTs the bundle to
 BRAIN_URL/ingest/team with BRAIN_WRITE_TOKEN (from the environment or --env, default ~/bazaar/brain-relay.env), or
 writes it to --out. It never writes to the shares and never talks to the game.
 """
@@ -24,8 +25,12 @@ import json
 import os
 import re
 import time
+import sys
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import redaction  # noqa: E402
 
 RELAY_SECONDS = 20.0
 DEFAULT_REPO = Path("/Volumes/bazaar")
@@ -43,20 +48,8 @@ MAX_DECISIONS = 400
 MAX_SCORE_ROWS = 200
 MAX_TEXT = 600
 MAX_BYTES = 900_000          # the brain refuses a bundle over 1 MB
-KEYLIKE = re.compile(r"\b(?:tk|bk|sk)-[A-Za-z0-9-]{6,}")
-FORBIDDEN = re.compile(r"env|key", re.IGNORECASE)
-
-
-def scrub(x, limit: int | None = None):
-    """Drop every field whose name mentions a key, at any depth; redact key-shaped strings; cut long text."""
-    if isinstance(x, dict):
-        return {k: scrub(v, limit) for k, v in x.items() if "key" not in str(k).lower()}
-    if isinstance(x, list):
-        return [scrub(v, limit) for v in x]
-    if isinstance(x, str):
-        x = KEYLIKE.sub("[redacted]", x)
-        return x[:limit] if limit else x
-    return x
+FORBIDDEN = re.compile(r"env|key|token|secret", re.IGNORECASE)
+scrub = redaction.scrub   # drop key/token/secret fields, redact tk-/bk_/adm_ shapes, cut long text
 
 
 def safe_path(root: Path, rel: str) -> Path | None:
