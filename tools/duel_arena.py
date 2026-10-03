@@ -491,7 +491,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
     rng = random.Random(seed * 7919 + 1)
     lrng = random.Random(seed * 104729 + 5)       # late-read draws only, so flags off replay the same worlds
     prng = random.Random(seed * 31337 + 7)        # paired-limit visibility only (PAIR_SEEN)
-    hidden = {dl.pair for dl in duels if PAIR_SEEN < 1 and prng.random() >= PAIR_SEEN}
+    hidden = {k for k in sorted({dl.pair for dl in duels}) if PAIR_SEEN < 1 and prng.random() >= PAIR_SEEN}
 
     def pair_of(d, every):
         return None if int(d["item"].split("-")[1]) in hidden else duel.mirror_limit(d, every)

@@ -125,7 +125,7 @@ def replace(did, price, days, oid):
 
 class AcceptRace(unittest.TestCase):
     def go(self, b, duels_, c=None):
-        c = c or cfg()
+        c = c or cfg("--days-confirmed")
         pairs = [(d, duel.DuelState(d, 100, 16)) for d in duels_]
         decs = duel.allocate([(d, st, duel.decide(d, st, 114, c)) for d, st in pairs], c, late=True)
         run = Log()
@@ -157,7 +157,7 @@ class AcceptRace(unittest.TestCase):
         d = two_issue_duel()
         b = FakeB([d], before_accept=replace(1, 99, 10, 8))
         st = duel.DuelState(d, 100, 16)
-        duel.try_accepts(b, Log(), [(d, st, {"action": "accept", "left": 2})], 114, cfg())
+        duel.try_accepts(b, Log(), [(d, st, {"action": "accept", "left": 2})], 114, cfg("--days-confirmed"))
         self.assertEqual(st.accepted_terms, (90, 0))
         done = {**d, "status": "deal", "price": 99, "days": 10}
         self.assertEqual(duel.settled_mismatch(done, st)["surplus"], -29.0)
@@ -378,7 +378,8 @@ class DaysProfile(unittest.TestCase):
         self.assertEqual([duel.days_profile(x, "buyer:10,seller:0")[0] for x in (b, s)], [10, 0])
         self.assertEqual([duel.days_profile(x, "seller:0")[0] for x in (b, s)], [0, 0])     # buyer left on auto
         self.assertEqual([duel.days_profile(x, "10")[0] for x in (b, s)], [10, 10])
-        self.assertEqual(cfg("--days-best", "buyer:0,seller:10").days_best, "buyer:0,seller:10")
+        self.assertEqual([duel.role_days_best(cfg("--days-best", "buyer:0,seller:10").days_best, r)
+                          for r in ("buyer", "seller")], ["0", "10"])
         for bad in ("5", "buyer:3", "trader:0", "buyer0"):
             with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
                 cfg("--days-best", bad)
@@ -420,7 +421,7 @@ class TwoIssuePayload(unittest.TestCase):
 class RivalNamesOurBestDay(unittest.TestCase):
     def test_we_offer_our_best_day_with_no_premium(self):
         d = live(role="seller", limit=100, two=True, weight=0.5)               # cheap days, our best day is 10
-        c = cfg()
+        c = cfg("--days-confirmed")
         p, days = duel.planned_offer(d, 0, c, (150, 10), False)
         self.assertEqual((p, days), (155, 10))                                  # not day 0 plus a premium
         self.assertEqual(duel.planned_offer(d, 0, c, (150, 0), False)[1], 0)    # the rival wants day 0: give it
@@ -534,7 +535,7 @@ class OpenRung(unittest.TestCase):
 
     def test_two_issues_the_first_message_names_both(self):
         d = live(role="seller", limit=100, two=True, weight=0.5)                # days cheap: 5 <= 0.1 x 100
-        p, days = self.anchor(d, "--open-rung", "1")
+        p, days = self.anchor(d, "--open-rung", "1", "--days-confirmed")
         self.assertEqual(days, 0)                       # the day a buyer wants, not our best (10)
         self.assertGreater(p, 122)                      # and our days cost asked back in price
 
@@ -573,9 +574,9 @@ def random_states(n=1500, seed=11):
     return out
 
 
-def decisions_digest(mod, params: dict) -> str:
+def decisions_digest(mod, params: dict, extra=()) -> str:
     """sha256 of every decide() and our_number() output over random_states(), for one params set."""
-    c = mod.make_cfg(["watch"] + [x for k, v in params.items() for x in (f"--{k.replace('_', '-')}", str(v))])
+    c = mod.make_cfg(["watch", *extra] + [x for k, v in params.items() for x in (f"--{k.replace('_', '-')}", str(v))])
     rows = []
     for d, tick, pair, sent, last in random_states():
         st = mod.DuelState(d, d["deadline_tick"] - 16, 16)
@@ -597,8 +598,9 @@ T10_FLAGS = {"ratios": "1.55,1.277", "last_r": 1.103, "last_chance_ticks": 4, "a
 
 class FlagsOff(unittest.TestCase):
     def test_decide_and_our_numbers_are_unchanged_with_the_new_flags_off(self):
-        self.assertEqual(decisions_digest(duel, {}), DIGEST_DEFAULTS)
-        self.assertEqual(decisions_digest(duel, T10_FLAGS), DIGEST_T10)
+        # with the direction confirmed (robust mode, the new default, changes two-issue numbers on purpose)
+        self.assertEqual(decisions_digest(duel, {}, ["--days-confirmed"]), DIGEST_DEFAULTS)
+        self.assertEqual(decisions_digest(duel, T10_FLAGS, ["--days-confirmed"]), DIGEST_T10)
 
     def test_the_final_params_load_and_pass_the_simulation(self):
         c = duel.make_cfg(["selftest", "--params", str(FINAL)])
@@ -632,6 +634,232 @@ class TwoIssueArena(unittest.TestCase):
 
     def test_a_flipped_convention_shown_by_a_negative_weight_is_followed(self):
         self.assertEqual(self.outside(DAYS_FLIP=True), [])
+
+
+# ---------------------------------------------------------------- re-review at e63a33e (must fix before Duels II)
+
+class PayoffWording(unittest.TestCase):
+    """Re-review item 1a: "reduces your payoff" is bad news, "reduces your cost" good news."""
+
+    def test_reduced_payoff_by_delay_means_early_is_best(self):
+        self.assertEqual(duel.days_profile(days_duel("buyer", 3, "Each day later reduces your payoff")), (0, 3.0))
+        self.assertEqual(duel.days_profile(days_duel("seller", 3, "Each day earlier reduces your payoff")), (10, 3.0))
+        self.assertEqual(duel.days_profile(days_duel("buyer", 3, "each day later reduces your cost")), (10, 3.0))
+        self.assertEqual(duel.days_profile(days_duel("buyer", 3, "each day later costs you this much")), (0, 3.0))
+        self.assertEqual(duel.days_profile(days_duel("seller", 3, "each day earlier costs you this much")), (10, 3.0))
+        self.assertEqual(duel.days_profile(days_duel("buyer", 3, "every day of delay lowers your score")), (0, 3.0))
+
+    def test_confirmed_the_reviewers_offers_are_refused(self):
+        b = days_duel("buyer", 3, "Each day later reduces your payoff")
+        b.update(messages=[msg(112, 90, 10)], rival_offer={"id": 1, "price": 90, "tick": 112, "days": 10})
+        st = duel.DuelState(b, 100, 16)
+        c = cfg()
+        c.days_best = "auto"                                   # trust the parse (as --days-confirmed does)
+        self.assertEqual(duel.decide(b, st, 115, c)["action"], "hold")   # 10 - 30 = -20
+        s_ = days_duel("seller", 3, "Each day earlier reduces your payoff")
+        s_.update(messages=[msg(112, 110, 0)], rival_offer={"id": 1, "price": 110, "tick": 112, "days": 0})
+        self.assertEqual(duel.decide(s_, duel.DuelState(s_, 100, 16), 115, c)["action"], "hold")
+
+
+class RobustDays(unittest.TestCase):
+    """Re-review item 1b: until the direction is confirmed, accept and propose only what clears our limit with best
+    day 0 AND best day 10."""
+
+    def offer(self, price, day, meaning="each day later reduces your cost"):   # misleading for a buyer whose truth is 0
+        d = days_duel("buyer", 3, meaning)
+        d.update(messages=[msg(112, price, day)], rival_offer={"id": 1, "price": price, "tick": 112, "days": day})
+        return d
+
+    def test_a_wrong_reading_no_longer_accepts_a_losing_deal(self):
+        d = self.offer(90, 10)
+        st = duel.DuelState(d, 100, 16)
+        self.assertEqual(duel.decide(d, st, 115, cfg())["action"], "hold")                       # robust: 10 - 30
+        self.assertEqual(duel.decide(d, st, 115, cfg("--days-confirmed"))["action"], "accept")   # trusts the parse
+        self.assertEqual(duel.decide(d, st, 115, cfg("--days-best", "buyer:0"))["action"], "hold")
+        good = self.offer(60, 5)                                                                 # 40 - 15 > 0
+        self.assertEqual(duel.decide(good, duel.DuelState(good, 100, 16), 115, cfg())["action"], "accept")
+
+    def test_proposals_clear_under_both_readings(self):
+        d = days_duel("buyer", 3, None)                       # silent rival, absent offer at mid-clock
+        dec = duel.decide(d, duel.DuelState(d, 100, 16), 108, cfg())
+        self.assertEqual((dec["action"], dec["price"], dec["days"]), ("say", 66, 5))   # 100 / 1.22 = 81, minus 5 x 3
+        for best in ("0", "10"):
+            self.assertGreaterEqual(duel.surplus(d, 66, 5, f"buyer:{best}"), 1)
+
+    def test_no_proposal_when_none_clears_under_both_readings(self):
+        d = days_duel("buyer", 4, None)
+        d["your_limit"] = 20                                   # 5 days x 4 = 20: even a bid of 1 loses on one reading
+        dec = duel.decide(d, duel.DuelState(d, 100, 16), 108, cfg())
+        self.assertEqual(dec["action"], "hold")
+        self.assertIn("both day readings", dec["why"])
+
+    def test_in_the_arena_a_misleading_wording_never_loses_in_robust_mode(self):
+        p = json.loads(FINAL.read_text())
+        wrong = "each day later reduces your cost"          # says late is best: wrong for every arena buyer
+        with mock.patch.object(arena, "DAYS_WORDING", wrong):
+            robust = [r for r in arena.evaluate(p, range(12), 2) if r["deal"]]
+            self.assertEqual([r for r in robust if r["share"] < 0], [])
+            trusting = [r for r in arena.evaluate({**p, "days_confirmed": True}, range(12), 2) if r["deal"]]
+        self.assertTrue([r for r in trusting if r["share"] < 0])        # the protection is what keeps it at zero
+
+
+def _http_error(code, body):
+    import urllib.error
+    return urllib.error.HTTPError("http://x/api", code, "err", {}, io.BytesIO(json.dumps(body).encode()))
+
+
+class AcceptNoRetry(unittest.TestCase):
+    """Re-review item 2: the kit's client must not repeat a rate-limited accept (it would land in the next tick)."""
+
+    def test_a_rate_limited_accept_is_posted_once_and_left_to_the_next_tick(self):
+        import bazaar_sdk
+        d = live(1, limit=100, msgs=[msg(110, 150)], offer={"id": 1, "price": 150, "tick": 110, "days": 0})
+        posts = []
+
+        class Resp:
+            def __init__(self, data):
+                self.data = data
+
+            def read(self):
+                return json.dumps(self.data).encode()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def urlopen(req, timeout=None):
+            if req.get_method() == "GET":
+                return Resp({"duels": [d]})
+            posts.append(req.full_url)
+            if len(posts) <= 2:
+                raise _http_error(429, {"error": "rate_limited", "message": "slow down"})
+            return Resp({"queued": True, "price": 150})
+        b = bazaar_sdk.Bazaar("http://x", "test-not-a-key", wait_on_tick=False)
+        st = duel.DuelState(d, 100, 16)
+        run = Log()
+        with mock.patch.object(bazaar_sdk.urllib.request, "urlopen", urlopen), \
+                mock.patch.object(bazaar_sdk.time, "sleep", lambda s: None):
+            sent = duel.try_accepts(b, run, [(d, st, {"action": "accept", "left": 2, "rival_surplus": 50})], 114, cfg())
+        self.assertFalse(sent)
+        self.assertEqual(len(posts), 1)
+        self.assertIn("refused", run.kinds())
+        self.assertEqual(b.retries, 3)                      # restored for every other call
+
+
+class LatePassFailure(unittest.TestCase):
+    """Re-review item 3: a late pass that ran out of time without accepting is a failed late read."""
+
+    def test_a_budget_miss_returns_false(self):
+        class Clock:
+            now = 1000.0
+
+            def time(self):
+                return self.now
+
+            def sleep(self, s):
+                self.now += max(0.0, s)
+
+            def __getattr__(self, name):
+                return getattr(time, name)
+        clk = Clock()
+        d = live(1, limit=100, msgs=[msg(110, 150)], offer={"id": 1, "price": 150, "tick": 110, "days": 0})
+        b = FakeB([d])
+        slow = b.duels
+
+        def duels(done=False):
+            clk.now += 4.0                                   # a slow read
+            return slow(done)
+        b.duels = duels
+        b.clock = lambda: {"tick": 115, "paused": False, "next_tick_in": max(0.0, 1010.0 - clk.now),
+                           "tick_seconds": 15}
+        run = Log()
+        with mock.patch.object(duel, "time", clk):
+            ok = duel.late_pass(b, run, cfg("--late-poll", "8"), {1: duel.DuelState(d, 100, 16)}, 115, True, 1010.0)
+        self.assertFalse(ok)
+        self.assertEqual(b.accepted, [])
+        self.assertIn("late_failed", run.kinds())
+
+
+class RefreshCandidates(unittest.TestCase):
+    """Re-review (can wait, fixed): a re-read revalues every remaining candidate, not only the skipped one."""
+
+    def test_an_improved_other_offer_is_seen(self):
+        def one(did, price):
+            return live(did, limit=100, deadline=115, msgs=[msg(110, price)],
+                        offer={"id": did, "price": price, "tick": 110, "days": 0})
+        a, b_, c = one(1, 200), one(3, 180), one(5, 190)       # A=100, B=80, C=90, all on their last tick
+        b = FakeB([a, b_, c], script={1: lambda v: (replace(1, 95, None, 9)(v), replace(3, 250, None, 10)(v))})
+        cf = cfg()
+        pairs = [(d, duel.DuelState(d, d["deadline_tick"] - 16, 16)) for d in (a, b_, c)]
+        decs = duel.allocate([(d, st, duel.decide(d, st, 114, cf)) for d, st in pairs], cf, late=True)
+        duel.try_accepts(b, Log(), duel.accept_candidates(decs), 114, cf)
+        self.assertEqual([x[:2] for x in b.accepted], [(3, 250)])
+
+
+class ArenaPairDraw(unittest.TestCase):
+    def test_a_fractional_pair_seen_is_that_share(self):
+        p = json.loads(T10.read_text())
+        with mock.patch.object(arena, "PAIR_SEEN", 0.5):
+            rr = arena.evaluate(p, range(40), 2)
+        seen = sum(r["pair_limit"] is not None for r in rr) / len(rr)
+        self.assertGreater(seen, 0.4)
+        self.assertLess(seen, 0.6)
+
+
+class MainTwoIssue(unittest.TestCase):
+    """Re-review (can wait, fixed): main() end to end on a fake two-issue server: the POST body of our message, and
+    the settlement alarm computed with the configured best day."""
+
+    def test_post_body_and_settlement_utility(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_duel_improve as ti
+
+        class Srv(ti.FakeServer):
+            def __init__(self, *a, **k):
+                super().__init__(*a, **k)
+                self.bodies = []
+
+            def _view(self):
+                d = super()._view()
+                d.update(role="buyer", your_limit=100, issues=["price", "days"], your_days_weight=3,
+                         days_meaning="primas per day away from your preferred delivery day")
+                for m in d["messages"]:
+                    if m["from"] != "you":
+                        m["days"] = 10
+                if d.get("rival_offer"):
+                    d["rival_offer"]["days"] = 10
+                if d["status"] == "deal":
+                    d["days"] = 0                      # settled on other terms than the (60, 10) we approved
+                return d
+
+            def _call(self, method, path, body=None, **kw):
+                self.bodies.append((method, path, body))
+                return {"ok": True}
+
+        vt = ti.VirtualTime(100 * 30.0 + 0.4)
+        srv = Srv(vt, [(110, 1.0, 60)])
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(duel, "time", vt), \
+                mock.patch.object(duel, "Bazaar", lambda *a, **k: srv), \
+                mock.patch.object(duel, "load_env", lambda: None), \
+                mock.patch.object(duel, "ROOT", Path(tmp)), \
+                mock.patch.object(duel, "LOCK_PATH", Path(tmp) / "duel.lock"), \
+                mock.patch.object(duel, "RunLog", ti._tmp_runlog(Path(tmp))), \
+                mock.patch.dict(os.environ, {"BAZAAR_KEY": "test-not-a-key"}), \
+                mock.patch.object(sys, "argv", ["duel.py", "run", "--idle-ticks", "2", "--log-dir", tmp,
+                                                "--days-best", "buyer:10"]), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            duel.main()
+        self.assertEqual(srv.bodies[0][1], "/api/duels/7/messages")
+        body = srv.bodies[0][2]
+        self.assertEqual((body["price"], body["days"]), (body["offer"]["price"], body["offer"]["days"]))
+        self.assertEqual(body["days"], 10)                     # our confirmed best day, at top level
+        self.assertEqual([(t, p) for t, _, p in srv.accepts][:1], [(114, 60)])
+        alarm = [ln for ln in out.getvalue().splitlines() if "accept_mismatch" in ln and "where=settled" in ln]
+        self.assertEqual(len(alarm), 1)
+        self.assertIn("surplus=10.0", alarm[0])                # 40 - 3 x 10 with best day 10 (not +40)
 
 
 class Replays(unittest.TestCase):

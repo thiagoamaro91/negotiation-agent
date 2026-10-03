@@ -219,10 +219,13 @@ def two_issues(d: dict) -> bool:
     return "days" in (d.get("issues") or [])
 
 
+ROBUST = ";robust"   # appended to cfg.days_best by make_cfg until --days-confirmed: see days_unconfirmed
+
+
 def role_days_best(override, role) -> str:
     """--days-best for this duel's role: "auto", "0" or "10" (both roles), or per role, "buyer:0,seller:10" (a role
     left out is "auto")."""
-    override = str(override or "auto").strip()
+    override = str(override or "auto").split(";")[0].strip()
     if override in ("auto", "0", "10"):
         return override
     for part in override.split(","):
@@ -233,7 +236,7 @@ def role_days_best(override, role) -> str:
 
 
 def days_best_ok(override) -> bool:
-    override = str(override or "auto").strip()
+    override = str(override or "auto").split(";")[0].strip()
     if override in ("auto", "0", "10"):
         return True
     parts = [x.partition(":") for x in override.split(",")]
@@ -243,26 +246,44 @@ def days_best_ok(override) -> bool:
 
 _LATER = re.compile(r"\b(later|late|delay\w*|more time|longer|wait\w*)\b")
 _EARLIER = re.compile(r"\b(earlier|early|sooner|soon|rush\w*|faster|quicker|quickly)\b")
-_GOOD = re.compile(r"\b(reduc\w*|sav\w*|less|lower\w*|earn\w*|gain\w*|bonus|better|cheaper|want\w*|prefer\w*)\b")
+_DOWN = re.compile(r"\b(reduc\w*|lower\w*|less|decreas\w*|cuts?|shrink\w*|drops?|falls?|deduct\w*|subtract\w*)\b")
+_UP = re.compile(r"\b(increas\w*|rais\w*|adds?|more|grows?|boost\w*)\b")
+_GOOD_THING = re.compile(r"\b(payoffs?|values?|profits?|utility|scores?|surplus|worth|gains?|points?|rewards?|"
+                         r"benefits?|earnings?)\b")
+_BAD_THING = re.compile(r"\b(cost\w*|penalt\w*|fees?|charg\w*|loss\w*|fines?)\b")
+_GOOD = re.compile(r"\b(sav\w*|earn\w*|gain\w*|bonus|better|cheaper|want\w*|prefer\w*)\b")
 _BAD = re.compile(r"\b(cost\w*|penal\w*|los\w*|worse|charg\w*|fees?|fines?)\b")
+
+
+def _days_effect(m: str) -> int:
+    """+1 if the sentence says the direction is good for us, -1 bad, 0 unclear. What goes up or down decides first:
+    "reduces your payoff" is bad, "reduces your cost" is good, "raises your cost" is bad. Without such a pair, plain
+    words: saves / better / want (good), costs / penalty / loses (bad). Mixed signals: 0."""
+    verbs = [v for v, rx in ((1, _UP), (-1, _DOWN)) if rx.search(m)]
+    things = [t for t, rx in ((1, _GOOD_THING), (-1, _BAD_THING)) if rx.search(m)]
+    signs = {v * t for v in verbs for t in things}
+    if signs:
+        return signs.pop() if len(signs) == 1 else 0
+    good, bad = bool(_GOOD.search(m)), bool(_BAD.search(m))
+    return 0 if good == bad else (1 if good else -1)
 
 
 def days_direction(meaning) -> tuple[int | None, bool]:
     """(the best day `days_meaning` states, ambiguous). A direction statement needs one direction (later / delay /
-    more time, or earlier / sooner / rush) and one effect: good (reduces, saves, better, want, ...) or bad (costs,
-    penalty, loses, ...); "reduces your cost" is good. No direction word: (None, False), the caller falls back to the
-    role default and the weight's sign. Both directions, or a direction with no clear effect: (None, True)."""
+    more time, or earlier / sooner / rush) and one clear effect (_days_effect): "each day later reduces your payoff"
+    means early is best, "each day later reduces your cost" late is best. No direction word: (None, False), the
+    caller falls back to the role default and the weight's sign. Both directions, or no clear effect: (None, True).
+    Until --days-confirmed this only feeds the log (days_read): two-issue decisions run robust (days_unconfirmed)."""
     m = str(meaning or "").lower()
     later, earlier = bool(_LATER.search(m)), bool(_EARLIER.search(m))
     if not later and not earlier:
         return None, False
     if later and earlier:
         return None, True
-    good = bool(_GOOD.search(m))
-    bad = bool(_BAD.search(m)) and not good
-    if not good and not bad:
+    effect = _days_effect(m)
+    if effect == 0:
         return None, True
-    if good:
+    if effect > 0:
         return (10 if later else 0), False
     return (0 if later else 10), False
 
@@ -310,10 +331,21 @@ def days_profile(d: dict, override: str = "auto") -> tuple[int, float]:
     return best, abs(w)
 
 
+def days_unconfirmed(d: dict, override) -> bool:
+    """Robust mode: a two-issue duel whose role has no confirmed best day (make_cfg tags cfg.days_best with ROBUST
+    unless --days-confirmed; an explicit --days-best for the role confirms it). The server's wording has never been
+    seen, so until a human confirms it every days cost is taken at its worst over both hypotheses (best day 0 or 10):
+    an accept or a proposal then clears MIN_SURPLUS whichever way the wording was meant."""
+    return (ROBUST in str(override or "") and two_issues(d)
+            and role_days_best(override, d.get("role")) not in ("0", "10"))
+
+
 def days_cost(d: dict, days: int | None, override: str) -> float:
     if not two_issues(d) or days is None:
         return 0.0
     best, w = days_profile(d, override)
+    if days_unconfirmed(d, override):
+        return w * max(int(days), 10 - int(days))   # the worse of best day 0 and best day 10
     return w * abs(int(days) - best)
 
 
@@ -451,6 +483,8 @@ def planned_offer(d: dict, pos: float, cfg, rival: tuple[int, int | None] | None
         return min(lim - 1, int(math.floor(lim - share * pie))), None
     if not two_issues(d):
         return base, None
+    if days_unconfirmed(d, cfg.days_best):
+        return robust_offer(d, pos, cfg, rival, last, base)
     best, w = days_profile(d, cfg.days_best)
     far = 10 - best                                 # the day we assume the rival wants
     if rival and rival[1] is not None:
@@ -466,6 +500,26 @@ def planned_offer(d: dict, pos: float, cfg, rival: tuple[int, int | None] | None
     if not inside_limit(d, p) or surplus(d, p, far, cfg.days_best) < cfg.min_surplus:
         return base, best
     return p, far
+
+
+def robust_offer(d: dict, pos: float, cfg, rival, last: bool, base: int) -> tuple[int, int]:
+    """Robust mode (days_unconfirmed): a (price, day) that clears MIN_SURPLUS whether our best day is 0 or 10. The
+    rival's structured day when days are cheap for us and its worst-case days cost, plus the premium, still clears;
+    otherwise day 5, the smallest worst-case days cost (5 x weight), asked back in price. decide() never sends a
+    two-issue number that does not clear."""
+    _, w = days_profile(d, cfg.days_best)
+    seller = d["role"] == "seller"
+
+    def priced(extra: int) -> int:
+        return base + extra if seller else max(1, base - extra)
+    if rival and rival[1] is not None and 10 * w <= cfg.days_cheap * d["your_limit"]:
+        far = int(rival[1])
+        top = max(1, len(cfg.ratios) - 1)
+        prem = cfg.days_premium[-1] if last else _interp(cfg.days_premium, pos * (len(cfg.days_premium) - 1) / top)
+        p = priced(int(math.ceil(w * max(far, 10 - far) * (1 + prem))))
+        if inside_limit(d, p) and surplus(d, p, far, cfg.days_best) >= cfg.min_surplus:
+            return p, far
+    return priced(int(math.ceil(w * 5))), 5
 
 
 def our_number(d: dict, st: "DuelState", cfg, rival, kind: str) -> tuple[int, int | None]:
@@ -683,6 +737,8 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
 
     p, days = our_number(d, st, cfg, rival, kind)
     out.update(next=p, next_days=days, step=kind)
+    if two_issues(d) and surplus(d, p, days, cfg.days_best) < cfg.min_surplus:
+        return {**out, "action": "hold", "why": f"no ({p}, day {days}) clears our limit under both day readings"}
     if st.last_sent == (p, days):
         return {**out, "action": "hold", "why": f"our number {p} stands ({kind}; resending would cost a round)"}
     if acceptable:
@@ -782,14 +838,53 @@ def fresh_check(d: dict, fresh: dict | None, cfg) -> tuple[str, tuple | None]:
     return "changed", None
 
 
-def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = None, **tag) -> bool:
+def post_accept(b, did: int, deadline: float | None = None):
+    """POST /api/duels/{id}/accept exactly once. The kit's client repeats a rate-limited request after a pause, which
+    can land in the next tick on this tick's approval: here its retries are 0 for the call and its timeout is capped
+    to the time left before `deadline`. A refused accept (rate_limited included) raises; the next tick re-reads and
+    decides again."""
+    saved = {k: getattr(b, k) for k in ("retries", "timeout") if hasattr(b, k)}
+    try:
+        if "retries" in saved:
+            b.retries = 0
+        if "timeout" in saved and deadline is not None:
+            b.timeout = max(0.5, min(float(saved["timeout"]), deadline - time.time()))
+        return b.duel_accept(did)
+    finally:
+        for k, v in saved.items():
+            setattr(b, k, v)
+
+
+def refresh_candidates(remaining: list, views: dict, cfg) -> list:
+    """After a re-read (the full list), every remaining candidate takes its fresh offer: gone, finished or no longer
+    acceptable drops it; a changed but acceptable offer is revalued, so the next plan uses what the rivals offer now."""
+    out = []
+    for d, st, dec in remaining:
+        fv = views.get(d["duel"])
+        if fv is None or fv.get("status", "live") != "live":
+            continue
+        now = parse_offer(fv.get("rival_offer"))
+        if offer_id(fv.get("rival_offer")) == offer_id(d.get("rival_offer")) and now == parse_offer(d.get("rival_offer")):
+            out.append((d, st, dec))
+        elif acceptable_offer(fv, now, cfg):
+            out.append((fv, st, {**dec, "rival": now,
+                                 "rival_surplus": round(surplus(fv, now[0], now[1], cfg.days_best), 2)}))
+    return out
+
+
+def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = None, report: dict | None = None,
+                **tag) -> bool:
     """POST the tick's one accept to the candidate slot_plan puts first, if its re-read still shows its offer (or a
     better one). A candidate whose offer changed for the worse is dropped and the plan is made again on the rest, so
     one rival's move never wastes the tick's slot nor lets a duel expire that the plan could keep. A refusal or a
     failed read ends the tick's accepts, and so does `deadline` (epoch seconds: no re-read or POST after it, so an
     accept never lands in the next tick). The accept endpoint cannot name the offer, so a replacement between the
-    re-read and the POST is accepted as it stands: the response is checked and logged as `accept_mismatch`.
-    Returns True when an accept went out."""
+    re-read and the POST is accepted as it stands: the response is checked and logged as `accept_mismatch`. The POST
+    goes once (post_accept). Returns True when an accept went out; `report["why"]` says how it ended: accepted,
+    skipped (every offer changed), read, refused or budget.
+    Every re-read refreshes all remaining candidates (refresh_candidates) before the next plan."""
+    report = report if report is not None else {}
+    report["why"] = "skipped"
     remaining = list(cands)
     while remaining:
         d, st, dec = slot_plan(remaining)[0]
@@ -798,12 +893,16 @@ def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = No
         row = {k: dec.get(k) for k in ("left", "rival", "rival_surplus", "pair_l", "soft_pie", "moving", "why")}
         if deadline is not None and time.time() >= deadline:
             run.event("accept_budget", duel=did, why="tick almost over: no re-read", **tag)
+            report["why"] = "budget"
             return False
         try:
-            fresh = next((x for x in b.duels().get("duels", []) if x.get("duel") == did), None)
+            views = {x.get("duel"): x for x in b.duels().get("duels", []) if isinstance(x, dict)}
         except BazaarError as e:
             run.event("error", where="reread", duel=did, code=e.code, msg=e.message, **tag)
+            report["why"] = "read"
             return False
+        fresh = views.get(did)
+        remaining = refresh_candidates(remaining, views, cfg)
         verdict, terms = fresh_check(d, fresh, cfg)
         if verdict == "changed":
             run.event("accept_skipped", duel=did, why="rival offer changed", now=fresh and fresh.get("rival_offer"),
@@ -811,11 +910,13 @@ def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = No
             continue
         if deadline is not None and time.time() >= deadline:
             run.event("accept_budget", duel=did, why="tick almost over: no POST", **tag)
+            report["why"] = "budget"
             return False
         try:
-            resp = b.duel_accept(did)
+            resp = post_accept(b, did, deadline)
         except BazaarError as e:
             run.event("refused", duel=did, action="accept", code=e.code, msg=e.message, extra=e.extra, **tag)
+            report["why"] = "refused"
             return False
         st.accepted_at, st.accepted_terms = tick, (terms[0], terms[1] if two_issues(fresh) else None)
         run.event("accept", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, taken=verdict,
@@ -828,6 +929,7 @@ def try_accepts(b, run, cands: list, tick: int, cfg, deadline: float | None = No
                 run.event("accept_mismatch", duel=did, approved=list(terms), accepted={"price": rp, "days": rd},
                           surplus=round(surplus(fresh, int(rp if isinstance(rp, (int, float)) else terms[0]), days,
                                                 cfg.days_best), 2), **tag)
+        report["why"] = "accepted"
         return True
     return False
 
@@ -1056,7 +1158,12 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: flo
             run.event("would_accept", duel=d["duel"], role=d["role"], limit=d["your_limit"], tick=tick, late=True,
                       **row)
         else:
-            try_accepts(b, run, cands, tick, cfg, deadline=tick_end - 0.5, late=True)
+            rep = {}
+            try_accepts(b, run, cands, tick, cfg, deadline=tick_end - 0.5, report=rep, late=True)
+            if rep["why"] in ("read", "refused", "budget"):
+                # no accept went out for lack of time or a read / refusal: the next tick's first read accepts
+                run.event("late_failed", tick=tick, why=rep["why"])
+                return False
     return True
 
 
@@ -1098,6 +1205,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--days-best", default="auto",
                     help="override our preferred delivery day if days_meaning shows the guess is wrong: 0 or 10 for "
                          "both roles, or per role, e.g. buyer:0,seller:10")
+    ap.add_argument("--days-confirmed", action=argparse.BooleanOptionalAction, default=False,
+                    help="the delivery-day direction is confirmed from the first buyer and seller duel_new lines: "
+                         "use the configured / parsed best day. Without it (or a per-role --days-best), two-issue "
+                         "decisions are robust: they clear our limit with best day 0 AND best day 10")
     ap.add_argument("--duel-ticks", type=int, default=DEFAULT_DUEL_TICKS)
     ap.add_argument("--post-gap", type=float, default=POST_GAP)
     ap.add_argument("--lock-ticks", type=int, default=LOCK_TICKS)
@@ -1170,6 +1281,7 @@ def make_cfg(argv: list):
         sys.exit("--late-poll must be >= 0 (0: off) and --late-ticks >= 1")
     if not days_best_ok(cfg.days_best):
         sys.exit("--days-best must be auto, 0, 10 or per role like buyer:0,seller:10")
+    cfg.days_best = str(cfg.days_best).split(";")[0].strip() + ("" if cfg.days_confirmed else ROBUST)
     if cfg.window_retry < 0:
         sys.exit("--window-retry must be >= 0")
     if cfg.hold_ticks < 1 or not 0 <= cfg.silent_last_margin < 1 or cfg.open_rung < 0:
@@ -1294,6 +1406,7 @@ def main() -> None:
                                   limit=d.get("your_limit"), issues=d.get("issues"),
                                   days_weight=d.get("your_days_weight"), days_meaning=d.get("days_meaning"),
                                   days_best=best, days_read=days_reading(d, cfg.days_best) if two_issues(d) else None,
+                                  days_robust=days_unconfirmed(d, cfg.days_best),
                                   rival=d.get("rival"), deadline=d.get("deadline_tick"),
                                   decay=d.get("decay_per_round"), total_ticks=st.total, start_tick=st.start,
                                   born=follows, pair_limit=mirror_limit(d, every), mirror_used=cfg.mirror)
