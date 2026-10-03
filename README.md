@@ -32,9 +32,19 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `tools/ledger.py` | Every team's cash and known cards rebuilt from the public feed (exact for us: checked against `/api/me`) |
 | `tools/brain.py` | The market brain: keyless service that recomputes inference, ledger and plan on every new event and serves a live page (`brain.html`: plan, live market tape with the real team behind each pseudonym, every team's cash and values, the model's learning curve). Token-gated (`BRAIN_TOKEN`) |
 | `tools/run_brain.sh` | On the always-on VM: recorder + brain in tmux, restarted if they die |
+| `tools/concierge.py` | La Celestina concierge: a public, keyless wants / haves board (page + JSON API + `/llms.txt`) that routes other teams to post on our venue v20. No key, no model, never trades; `selftest`, `quote CARD` |
 | `tools/me_relay.py` | Run on ONE laptop that holds the key: pushes our account to the brain every 20 s (key fields scrubbed), so the plan sees pack pulls; the key never leaves the laptop |
 | `tests/` | `python3 -m unittest discover tests`: the plan's pure rules (fee, copy values, ask and bid prices) |
 | `logs/` | **Committed.** Every run and every transcript, for the team and for the judges' demo. `logs/public/` caches keyless reads (catalog, clock, schedule, dealers); `logs/plan/` is the live plan, not committed |
+
+## La Celestina concierge
+
+`tools/concierge.py` is the public front door to our venue: other teams (or their agents) post the card they want or the spare they would sell, and get back the opposite-side requests for that card, a price range from public team trades, how many other teams appear to hold it, and the exact `POST /api/offers` body for v20. It holds no key, calls only keyless GETs, runs no model, and never shows our holdings, values, cash or who holds what. Run command, routes and limits are in the module docstring:
+
+```bash
+python3 tools/concierge.py serve --host 0.0.0.0 --port 8780 --feed ~/bazaar/logs/feed/feed.jsonl --store-dir ~/bazaar/logs/concierge --public-url https://<tunnel>
+python3 tools/concierge.py selftest      # read-only, sample data, free port
+```
 
 ## Team rules while the game runs
 
