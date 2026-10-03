@@ -58,40 +58,53 @@ MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09",
 STATE = ROOT / "logs" / "state" / "announce.json"
 
 
-def rastro_book(offers: list) -> tuple[dict, dict]:
-    """Best bid and best ask per card on El Rastro: ({ref: bid}, {ref: ask}). A bid gives cash and wants a card (any
-    copy or a named asset); an ask gives exactly one card and wants cash. Swaps and bundles are skipped."""
-    bids, asks = {}, {}
-    for o in offers or []:
-        if not isinstance(o, dict) or o.get("status", "open") != "open":
-            continue
-        g, w = o.get("give") or {}, o.get("want") or {}
-        wanted = [t.split(":", 1)[1] for t in w.get("types") or [] if str(t).startswith("card:")]
-        wanted += [a.get("ref") for a in w.get("assets") or [] if a.get("ref")]
-        if g.get("cash") and not g.get("assets") and len(wanted) == 1 and not w.get("cash"):
-            ref = wanted[0]
-            bids[ref] = max(bids.get(ref, 0), int(g["cash"]))
-        elif len(g.get("assets") or []) == 1 and w.get("cash") and not wanted and not g.get("cash"):
-            ref = g["assets"][0].get("ref")
-            if ref:
-                asks[ref] = min(asks.get(ref, 10**9), int(w["cash"]))
-    return bids, asks
+def shape(o: dict):
+    """The offer's complete shape, or None for anything we do not advertise:
+      ("ask", ref, price)   gives exactly one card asset, wants cash only;
+      ("bid", ref, price)   gives cash only, wants exactly one card type ("card:<ref>"), nothing else;
+      ("swap", give, want)  gives exactly one card asset, wants exactly one card type, no cash either side.
+    Any extra requirement (an asset id, a second type, a pack, cash on both sides) makes it None: a cash-only
+    description or a crossing promise would be false for it. Asks and bids are what public_plan crosses."""
+    if not isinstance(o, dict):
+        return None
+    g, w = o.get("give") or {}, o.get("want") or {}
+    if not isinstance(g, dict) or not isinstance(w, dict):
+        return None
+    g_assets, g_types = g.get("assets") or [], g.get("types") or []
+    w_assets, w_types = w.get("assets") or [], w.get("types") or []
+    g_cash, w_cash = g.get("cash") or 0, w.get("cash") or 0
+
+    def one_card(assets):
+        if len(assets) == 1 and isinstance(assets[0], dict) and assets[0].get("kind") == "card" and assets[0].get("ref"):
+            return assets[0]["ref"]
+        return None
+
+    def one_card_type(types):
+        if len(types) == 1 and isinstance(types[0], str) and types[0].startswith("card:") and len(types[0]) > 5:
+            return types[0][5:]
+        return None
+
+    def cash(x):
+        return isinstance(x, (int, float)) and not isinstance(x, bool) and x > 0
+
+    if g_types or w_assets:
+        return None
+    gave, wanted = one_card(g_assets), one_card_type(w_types)
+    if gave and not g_cash and cash(w_cash) and not w_types:
+        return ("ask", gave, int(w_cash))
+    if wanted and not g_assets and cash(g_cash) and not w_cash:
+        return ("bid", wanted, int(g_cash))
+    if gave and wanted and not g_cash and not w_cash:
+        return ("swap", gave, wanted)
+    return None
 
 
-def near_pairs(bids: dict, asks: dict, gap: int = NEAR_GAP) -> list:
-    """Cards whose best bid is within `gap` P of the best ask, closest first: [(ref, bid, ask)]."""
-    out = [(r, bids[r], asks[r]) for r in bids if r in asks and asks[r] - bids[r] <= gap]
-    return sorted(out, key=lambda x: (x[2] - x[1], -x[1]))
-
-
-def _wanted(o: dict) -> list:
-    w = o.get("want") or {}
-    refs = [t.split(":", 1)[1] for t in w.get("types") or [] if str(t).startswith("card:")]
-    return refs + [x.get("ref") for x in w.get("assets") or [] if isinstance(x, dict) and x.get("ref")]
-
-
-def _given(o: dict) -> list:
-    return [x.get("ref") for x in (o.get("give") or {}).get("assets") or [] if isinstance(x, dict) and x.get("ref")]
+def refs(o: dict) -> set:
+    """Every card an offer names, for the exclusion list (a shape we do not advertise names none)."""
+    sh = shape(o)
+    if sh is None:
+        return set()
+    return {sh[1]} | ({sh[2]} if sh[0] == "swap" else set())
 
 
 def offer_makers(events: list) -> dict:
@@ -124,43 +137,38 @@ def market_books(get, venues: list) -> dict:
 
 def describe(o: dict, names: dict | None = None) -> str | None:
     """One offer in a few words: "t15 sells LAT-07 for 26 P (offer 9123)". None for shapes we do not advertise
-    (bundles, offers to one team, our own)."""
-    if not isinstance(o, dict) or o.get("to"):
+    (anything but a plain ask, bid or one-for-one swap), offers to one team, and our own."""
+    sh = shape(o)
+    if sh is None or o.get("to"):
         return None
     who = (names or {}).get(o.get("id")) or o.get("maker") or ""
     if who == OURS:
         return None
     who = who if isinstance(who, str) and who[:1] == "t" and who[1:].isdigit() else "a team"
-    g, w = o.get("give") or {}, o.get("want") or {}
-    given, wanted = _given(o), _wanted(o)
     oid = f" (offer {o['id']})" if o.get("id") is not None else ""
-    if len(given) == 1 and w.get("cash") and not wanted and not g.get("cash"):
-        return f"{who} sells {given[0]} for {int(w['cash'])} P{oid}"
-    if g.get("cash") and not given and len(wanted) == 1 and not w.get("cash"):
-        return f"{who} buys {wanted[0]} for {int(g['cash'])} P{oid}"
-    if len(given) == 1 and len(wanted) == 1 and not g.get("cash") and not w.get("cash"):
-        return f"{who} swaps {given[0]} for any {wanted[0]}{oid}, taken by accepting it"
-    return None
+    kind, a, b = sh
+    if kind == "ask":
+        return f"{who} sells {a} for {b} P{oid}"
+    if kind == "bid":
+        return f"{who} buys {a} for {b} P{oid}"
+    return f"{who} swaps {a} for any {b}{oid}, taken by accepting it"
 
 
 def crossable(o: dict) -> bool:
-    """A one-card cash ask or bid: what our broker crosses (public_plan). Swaps are only taken by accepting them."""
-    g, w = o.get("give") or {}, o.get("want") or {}
-    given, wanted = _given(o), _wanted(o)
-    return bool((len(given) == 1 and w.get("cash") and not wanted and not g.get("cash"))
-                or (g.get("cash") and not given and len(wanted) == 1 and not w.get("cash")))
+    """A plain card ask or bid: what our broker crosses (public_plan). Swaps are only taken by accepting them."""
+    sh = shape(o)
+    return sh is not None and sh[0] in ("ask", "bid")
 
 
 def take_order(o: dict) -> str | None:
-    """The order that takes a live v20 offer, as RULES.md writes it."""
-    g, w = o.get("give") or {}, o.get("want") or {}
-    given, wanted = _given(o), _wanted(o)
-    if len(given) == 1 and w.get("cash"):
-        return (f'{{"venue": "{VENUE}", "give": {{"cash": {int(w["cash"])}}}, '
-                f'"want": {{"cards": ["{given[0]}"]}}}}')
-    if g.get("cash") and len(wanted) == 1:
-        return f'{{"venue": "{VENUE}", "give": {{"assets": [<your {wanted[0]}>]}}, "want": {{"cash": {int(g["cash"])}}}}}'
-    return None
+    """The order that meets a plain v20 ask or bid on the other side, as RULES.md writes it; None otherwise."""
+    sh = shape(o)
+    if sh is None or sh[0] == "swap":
+        return None
+    kind, ref, price = sh
+    if kind == "ask":
+        return f'{{"venue": "{VENUE}", "give": {{"cash": {price}}}, "want": {{"cards": ["{ref}"]}}}}'
+    return f'{{"venue": "{VENUE}", "give": {{"assets": [<your {ref}>]}}, "want": {{"cash": {price}}}}}'
 
 
 def venue_name(v) -> str:
@@ -169,21 +177,18 @@ def venue_name(v) -> str:
 
 def market_sides(offers: list) -> tuple[dict, dict]:
     """Best bid and ask per card across the offers given (El Rastro's book plus other venues' live offers), with the
-    offer id and venue: ({ref: (bid, id, venue)}, {ref: (ask, id, venue)}). Offers on our venue and offers to one team
-    are left out."""
+    offer id and venue: ({ref: (bid, id, venue)}, {ref: (ask, id, venue)}). Only plain asks and bids (shape); offers
+    on our venue and offers to one team are left out."""
     bids, asks = {}, {}
     for o in offers or []:
         if not isinstance(o, dict) or o.get("status", "open") != "open" or o.get("to") or o.get("venue") == VENUE:
             continue
-        g, w = o.get("give") or {}, o.get("want") or {}
-        given, wanted = _given(o), _wanted(o)
+        sh = shape(o)
         v = o.get("venue") or "rastro"
-        if g.get("cash") and not given and len(wanted) == 1 and not w.get("cash"):
-            if int(g["cash"]) > bids.get(wanted[0], (0,))[0]:
-                bids[wanted[0]] = (int(g["cash"]), o.get("id"), v)
-        elif len(given) == 1 and w.get("cash") and not wanted and not g.get("cash"):
-            if int(w["cash"]) < asks.get(given[0], (10**9,))[0]:
-                asks[given[0]] = (int(w["cash"]), o.get("id"), v)
+        if sh and sh[0] == "bid" and sh[2] > bids.get(sh[1], (0,))[0]:
+            bids[sh[1]] = (sh[2], o.get("id"), v)
+        elif sh and sh[0] == "ask" and sh[2] < asks.get(sh[1], (10**9,))[0]:
+            asks[sh[1]] = (sh[2], o.get("id"), v)
     return bids, asks
 
 
@@ -211,7 +216,7 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     `exclude` never appear."""
     skip = set(exclude or ())
     names = names or {}
-    live = [o for o in venue_offers or [] if not (set(_given(o)) | set(_wanted(o))) & skip]
+    live = [o for o in venue_offers or [] if not refs(o) & skip]
     shown = [(o, d) for o in live for d in [describe(o, names)] if d][:SHOW_OFFERS]
     book = ""
     if shown:

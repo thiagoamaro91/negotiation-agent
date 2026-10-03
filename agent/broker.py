@@ -646,14 +646,14 @@ class Desk:
         """Alarm when bench offers have crossed for ALARM_TICKS ticks and nothing of the bench was accepted: whatever
         the cause (a guard, refusals, a policy waiting too long), the session is slipping. Heartbeat field
         bench_alarm = the tick it started; one log line per stretch. Check it before each session."""
-        if tick is None:
-            return
         try:
             crossing = bool(stall_rule_plan(book, self.pending))
         except Exception:  # never let the alarm cost the loop its heartbeat
             crossing = False
-        if bench_accepted or not crossing:
+        if bench_accepted or not crossing:  # cleared even when the tick is unknown
             self.idle_since = self.alarm = None
+            return
+        if tick is None:
             return
         if self.idle_since is None:
             self.idle_since = tick

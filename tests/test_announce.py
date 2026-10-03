@@ -42,10 +42,28 @@ NAMES = {1: "t09", 2: "t16"}
 
 
 class TestBook(unittest.TestCase):
-    def test_best_bid_and_ask_per_card_swaps_and_closed_skipped(self):
-        bids, asks = an.rastro_book(BOOK)
-        self.assertEqual(bids, {"MAL-04": 7, "LAV-09": 99, "SAL-09": 68, "RET-01": 2})
-        self.assertEqual(asks, {"MAL-04": 8, "LAV-09": 120})
+    def test_only_plain_card_asks_bids_and_swaps_have_a_shape(self):
+        self.assertEqual(an.shape(ask("LAT-07", 26)), ("ask", "LAT-07", 26))
+        self.assertEqual(an.shape(bid("LAT-06", 14)), ("bid", "LAT-06", 14))
+        self.assertEqual(an.shape(swap("SAL-03", "LAV-07")), ("swap", "SAL-03", "LAV-07"))
+        pack = ask("x", 20)
+        pack["give"]["assets"] = [{"id": 5, "kind": "pack", "ref": "sobre_barrio"}]
+        plus_asset = ask("LAT-07", 26)
+        plus_asset["want"]["assets"] = [123]                     # 26 P AND asset 123: not a cash-only ask
+        two_types = bid("A", 5)
+        two_types["want"]["types"] = ["card:A", "card:B"]
+        both_cash = ask("A", 5)
+        both_cash["give"]["cash"] = 3
+        typed_give = bid("A", 5)
+        typed_give["give"]["types"] = ["card:Z"]
+        for o in (pack, plus_asset, two_types, both_cash, typed_give, {"give": None}, "x"):
+            self.assertIsNone(an.shape(o), o)
+            self.assertIsNone(an.describe(o) if isinstance(o, dict) else None)
+            self.assertIsNone(an.take_order(o) if isinstance(o, dict) else None)
+        t = an.build_text([], 0, exclude=(), venue_offers=[dict(pack, venue="v20", id=40),
+                                                           dict(plus_asset, venue="v20", id=41)])
+        self.assertNotIn("sobre_barrio", t)
+        self.assertNotIn("offer 41", t)
 
     def test_market_sides_keep_ids_and_venues_and_skip_our_venue(self):
         bids, asks = an.market_sides(BOOK + [bid("MAL-04", 50, venue="v20"), ask("MAL-04", 7, venue="v07", oid=3)])
@@ -56,7 +74,6 @@ class TestBook(unittest.TestCase):
         self.assertEqual([p[0] for p in an.near_market_pairs(BOOK, NAMES)], ["MAL-04"])
         self.assertEqual(an.near_market_pairs(BOOK, {1: "t09", 2: "t09"}), [])
         self.assertEqual(an.near_market_pairs([ask("A", 10), bid("A", 6)], {}), [])  # 4 P apart > NEAR_GAP
-        self.assertEqual(an.near_pairs({"A": 10, "B": 9}, {"A": 10, "B": 10}), [("A", 10, 10), ("B", 9, 10)])
 
 
 class TestFeed(unittest.TestCase):

@@ -323,6 +323,23 @@ class AlarmEdges(unittest.TestCase):
         self.assertNotIn("bench_alarm", [r["event"] for r in log.rows])
         self.assertEqual(brk.safety_net(book_of(bench), [], [(("b1-1", "b2-1", 25), "different_runs")]), [])
 
+    def test_the_alarm_clears_when_the_bench_empties_even_without_a_tick(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        fake = FakeBroker(book_of([seller("b1-1", 20, maker="bench"), buyer("b1-2", 30, maker="bench")]), refuse=True)
+        log = MemLog(Path(tmp.name) / "broker.jsonl")
+        clock = [1000.0]
+        hb = Path(tmp.name) / "hb.json"
+        desk = brk.Desk(fake, log, "stall", now=lambda: clock[0], heartbeat=hb)
+        for t in (1, 2, 3):
+            fake.tick = t
+            desk.step()
+            clock[0] += brk.CLOCK_EVERY
+        self.assertEqual(json.loads(hb.read_text())["bench_alarm"], 1)
+        fake.tick, fake.book_now = None, book_of([])              # the session is over, the clock has no tick
+        desk.step()
+        self.assertIsNone(json.loads(hb.read_text())["bench_alarm"])
+
     def test_quotes_that_are_not_whole_keep_the_loop_and_its_heartbeat_alive(self):
         log, hb = self.run_desk([seller("b1-1", 10.5, maker="bench"), buyer("b1-2", 20.5, maker="bench")])
         self.assertEqual(hb["tick"], 4)
