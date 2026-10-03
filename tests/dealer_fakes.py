@@ -36,8 +36,9 @@ BOTS = (chato, abuela)
 
 # module globals that main() or a test may change; saved and restored around every test
 GLOBALS = ("CASH_RESERVE", "MAX_ROUNDS", "ANCHOR_ABS", "STEP", "MAX_BID", "RUN", "DEALER", "DEALER_NAME",
-           "SELL_RARITIES", "DEALER_SELLS_CARDS", "SELL_ANCHOR_MULT", "SELL_ANCHOR_OVER_FLOOR", "SELL_ANCHOR_ABS",
-           "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread", "RunLog")
+           "SELL_RARITIES", "DEALER_SELLS_CARDS", "SELL_CARD_RARITIES", "SELL_ANCHOR_MULT", "SELL_ANCHOR_OVER_FLOOR",
+           "SELL_ANCHOR_ABS", "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread",
+           "RunLog")
 
 
 class NullRun:

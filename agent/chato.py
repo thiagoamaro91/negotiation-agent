@@ -46,7 +46,12 @@ floor. Logs go to logs/pilar/<date>.jsonl.
     python3 agent/chato.py plan --dealer pilar --only sell:42,sell:44 --allow-single
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --max-deals 2
 --allow-single lets an explicitly listed `sell:<asset_id>` go even when it is our last copy (or the copy we keep);
-nothing is ever auto-selected that way: without an explicit id the agent sells spares only.
+nothing is ever auto-selected that way: without an explicit id the agent sells spares only. `sell:<REF>` (sell:RET-09)
+names the copy we hold of that card (the highest serial) when its asset id is not known yet, e.g. a card bought a
+minute ago; a ref we hold no copy of is skipped with a reason.
+--dealer picaros (L4, tricksters): buys RARES from him (`--only SAL-10,RET-09 --cap 62 --anchor 40 --step 2`); nothing is
+ever sold to him (his bids are below every value of ours), named ids included. Feed: he opens at 73, then 64, 59, 54 and
+a final at 52-63; steps of 1-2 P ended at 52-57.
 --sell-anchor N (absolute first ask), --sell-step N and --max-rounds N override the dealer's defaults; the floor
 still holds.
 --floor P replaces the default sell floor (private value + 2) with P for this run; a copy whose private value is above
@@ -99,7 +104,7 @@ DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run whil
 
 # Per-dealer table. Chato's row is exactly the constants above, so no --dealer flag means no change.
 DEALERS = {
-    "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True,
+    "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True, "sells": ("uncommon", "rare"),
               "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 2, "example_bid": 13,
               "max_rounds": 12},
     # L3 collector: buys uncommon/rare/epic (loves SAL, RET), sells gold packs only. Opened 16, held 16 (feed).
@@ -109,22 +114,32 @@ DEALERS = {
     "pilar": {"name": "Doña Pilar", "buys": ("uncommon", "rare", "epic"), "sells_cards": False,
               "sell_anchor_mult": 1.25, "sell_anchor_over_floor": 9, "sell_step": 1, "example_bid": 16,
               "max_rounds": 40},
+    # L4 tricksters: they SELL rares (opening 73, then 64, 59, 54 and a final at 52-63 as we move; 52-57 when our
+    # steps are 1-2 P) and epics (128-167), and buy only commons (4-5) and uncommons (10-12), always below our values.
+    # So `buys` is empty: nothing is ever sold to them (not even a named sell:<id>), and only rares are bought. Offers
+    # that switch the card (the topic LAV-09, the offer LAV-07 at 64) are refused by offer_matches() as for any dealer.
+    "picaros": {"name": "Los Pícaros", "buys": (), "sells_cards": True, "sells": ("rare",),
+                "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 1, "example_bid": 5,
+                "max_rounds": 40},
 }
 DEFAULT_DEALER = "chato"
 DEALER_NAME = DEALERS[DEFAULT_DEALER]["name"]
 SELL_RARITIES = DEALERS[DEFAULT_DEALER]["buys"]       # what the dealer buys from us
 DEALER_SELLS_CARDS = DEALERS[DEFAULT_DEALER]["sells_cards"]
+SELL_CARD_RARITIES = DEALERS[DEFAULT_DEALER]["sells"]   # the rarities of card the dealer sells us (buy targets)
 
 
 def apply_dealer(dealer: str, sell_anchor: int | None = None, sell_step: int | None = None,
                  max_rounds: int | None = None) -> None:
     """Point every dealer-specific global at one row of DEALERS (plus the --sell-anchor/--sell-step/--max-rounds
     overrides: an explicit flag always wins over the dealer's default)."""
-    global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR
+    global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_CARD_RARITIES, SELL_ANCHOR_MULT
+    global SELL_ANCHOR_OVER_FLOOR
     global SELL_ANCHOR_ABS, SELL_STEP, MAX_ROUNDS
     d = DEALERS[dealer]
     DEALER, DEALER_NAME = dealer, d["name"]
     SELL_RARITIES, DEALER_SELLS_CARDS = d["buys"], d["sells_cards"]
+    SELL_CARD_RARITIES = d.get("sells", ("uncommon", "rare"))
     SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR = d["sell_anchor_mult"], d["sell_anchor_over_floor"]
     SELL_ANCHOR_ABS = sell_anchor
     SELL_STEP = d["sell_step"] if sell_step is None else int(sell_step)
@@ -445,14 +460,27 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 # ---------------------------------------------------------------- what to trade
 
-def listed_sell_ids(only: list[str] | None) -> list[int]:
-    """The asset ids named as sell:<asset_id> in --only, in order."""
+def listed_sell_ids(only: list[str] | None, assets: list[dict] | None = None) -> list[int]:
+    """The asset ids named as sell:<asset_id> in --only, in order. With `assets` (our cards), a sell:<REF> entry
+    (sell:RET-09: a card bought a minute ago, whose asset id nobody knows yet) names the copy we would give up of
+    that card: the highest serial, as the default spare rule does (it is the only copy when we hold one)."""
     out = []
     for x in only or []:
         k, _, v = x.partition(":")
-        if k == "sell" and v.isdigit():
+        if k != "sell":
+            continue
+        if v.isdigit():
             out.append(int(v))
+        elif v and assets is not None:
+            copies = [a for a in assets if a.get("kind") == "card" and a.get("ref") == v]
+            if copies:
+                out.append(max(copies, key=lambda a: a["serial"])["id"])
     return out
+
+
+def listed_sell_entries(only: list[str] | None) -> list[str]:
+    """Every sell:<something> entry of --only: an asset id or a card ref."""
+    return [x for x in only or [] if x.partition(":")[0] == "sell" and x.partition(":")[2]]
 
 
 def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, allow_single: bool = False) -> list[dict]:
@@ -473,7 +501,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
             if s["id"] not in released:
                 continue
             for c in s["cards"]:
-                if c["rarity"] not in ("uncommon", "rare") or c["id"] in held:
+                if c["rarity"] not in SELL_CARD_RARITIES or c["id"] in held:
                     continue
                 if only and c["id"] not in only:
                     continue
@@ -496,7 +524,7 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
     if allow_single:  # only explicitly named ids; the floor is still that copy's private value + 2
         by_id = {a["id"]: a for copies in held.values() for a in copies}
         planned = {s["asset_id"] for s in sells}
-        for aid in listed_sell_ids(only):
+        for aid in listed_sell_ids(only, me["assets"]):
             a = by_id.get(aid)
             if a is None or aid in planned or a["rarity"] not in SELL_RARITIES:
                 continue
@@ -508,7 +536,8 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
     plan = sells + buys  # sells first: they bring cash in
     if only:
         keys = set(only)
-        plan = [p for p in plan if (p["side"] == "buy" and p["item"] in keys) or f"sell:{p.get('asset_id')}" in keys]
+        plan = [p for p in plan if (p["side"] == "buy" and p["item"] in keys) or f"sell:{p.get('asset_id')}" in keys
+                or (p["side"] == "sell" and f"sell:{p['item']}" in keys)]
     return plan
 
 
@@ -585,8 +614,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if args.max_defer_ticks < 1:
         ap.error("--max-defer-ticks must be >= 1")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
-    if args.allow_single and not listed_sell_ids(only):
-        ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
+    if args.allow_single and not listed_sell_entries(only):
+        ap.error("--allow-single needs explicit --only sell:<asset_id> or sell:<REF> entries (nothing is auto-selected)")
     if not DEALERS[args.dealer]["sells_cards"]:
         buys = [x for x in only if not x.startswith("sell:")]
         if buys:
@@ -600,7 +629,12 @@ def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single:
     by_id = {a["id"]: a for a in me["assets"]}
     planned = {p.get("asset_id") for p in plan}
     out = []
-    for aid in listed_sell_ids(only):
+    for entry in listed_sell_entries(only):
+        ids = listed_sell_ids([entry], me["assets"])
+        if not ids:   # a sell:<REF> for a card we do not hold (yet)
+            out.append(f"  skip {entry}: we hold no copy of {entry.partition(':')[2]}")
+            continue
+        aid = ids[0]
         if aid in planned:
             continue
         a = by_id.get(aid)
@@ -614,7 +648,8 @@ def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single:
             why = "not a spare (our last copy, or the copy we keep): add --allow-single to sell it"
         else:
             why = "not planned"
-        out.append(f"  skip sell:{aid} {(a or {}).get('ref', '')}: {why}")
+        named = "" if entry.partition(":")[2].isdigit() else f" (asset {aid})"   # a sell:<REF> shows the copy it picked
+        out.append(f"  skip {entry}{named} {(a or {}).get('ref', '')}: {why}")
     return out
 
 
