@@ -193,14 +193,14 @@ def ceiling_gain(traders: list, sc: dict) -> float:
 
 
 def offer(tr: dict, oid: str, q: int, sc: dict, t0: int = 0) -> dict:
-    o = {"id": oid, "status": "open"}
+    o = {"id": oid, "status": "open", "bench": True, "maker": "bench"}  # as the game shows every bench offer
     if tr["side"] == "sell":
         o["give"] = {"cash": 0, "assets": [{"kind": "card", "ref": "BEN-01"}], "types": []}
         o["want"] = {"cash": q, "assets": [], "types": []}
     else:
         o["give"] = {"cash": q, "assets": [], "types": []}
         o["want"] = {"cash": 0, "assets": [], "types": ["card:BEN-01"]}
-    if sc["makers"]:
+    if sc["makers"]:  # a pseudonym per trader instead of the game's shared "bench"
         o["maker"] = tr["maker"]
     last = min(tr["a"] + tr["P"] - 1, TICKS - 1)
     if sc["expiry"] == "exact":
@@ -269,10 +269,18 @@ def policies(sc: dict, params: dict | None = None) -> dict:
 
     def ours_fn(book, t):
         plan = ours.plan(book, t)
-        ok, _ = brk.guard(plan, book)
+        ok, bad = brk.guard(plan, book)
+        ours_fn.dropped += len(bad)  # the guard dropping our own plan is a bug: the selftest fails on it
         for sell, buy, _p in ok:
             ours.sent(sell, buy, t)
         return ok
+    ours_fn.dropped = 0
+
+    def stall(book, t):
+        plan = bench_plan(book)
+        stall.dropped += len(brk.guard(plan, book)[1])  # what the live `run --policy stall` guard would drop
+        return plan
+    stall.dropped = 0
 
     def stall1(book, t):
         out, seen = [], set()
@@ -283,7 +291,7 @@ def policies(sc: dict, params: dict | None = None) -> dict:
                 out.append(m)
         return out
 
-    return {"stall": lambda book, t: bench_plan(book), "ours": ours_fn, "stall1": stall1}
+    return {"stall": stall, "ours": ours_fn, "stall1": stall1}
 
 
 # ---------------------------------------------------------------- statistics
@@ -292,7 +300,7 @@ def run_scenario(args) -> dict:
     name, seeds, extra, params = args
     sc = {**scenario(name), **(extra or {})}
     effs = {"stall": [], "ours": [], "stall1": [], "ceiling": []}
-    diffs, refused = [], 0
+    diffs, refused, dropped = [], 0, 0
     t0 = time.time()
     for seed in range(seeds):
         rng = random.Random(f"{name}:{seed}")
@@ -312,6 +320,7 @@ def run_scenario(args) -> dict:
             for key in effs:
                 effs[key].append(res[key])
             diffs.append(res["ours"] - res["stall"])
+        dropped += fns["ours"].dropped + fns["stall"].dropped
     n = len(diffs)
 
     def p10(xs):
@@ -324,7 +333,8 @@ def run_scenario(args) -> dict:
             **{f"{k}_p10": p10(v) for k, v in effs.items()},
             "diff_mean": statistics.fmean(diffs), "diff_ci95": 1.96 * sd / math.sqrt(n) if n else 0.0,
             "win": sum(d > 1e-9 for d in diffs) / n, "tie": sum(abs(d) <= 1e-9 for d in diffs) / n,
-            "loss": sum(d < -1e-9 for d in diffs) / n, "worst_diff": min(diffs), "ours_refused": refused}
+            "loss": sum(d < -1e-9 for d in diffs) / n, "worst_diff": min(diffs), "ours_refused": refused,
+            "guard_dropped": dropped}
 
 
 def fmt_table(rows: list) -> str:
@@ -361,7 +371,11 @@ def cmd_table(args) -> int:
     bad = sum(r["ours_refused"] for r in rows)
     if bad:
         print(f"WARNING: the engine refused {bad} of our matches (the guard should make that impossible)")
-    return 1 if bad else 0
+    dropped = sum(r.get("guard_dropped", 0) for r in rows)
+    if dropped:
+        print(f"WARNING: the guard dropped {dropped} planned bench matches (ours or the stall's); live, those are "
+              f"never sent")
+    return 1 if bad or dropped else 0
 
 
 # ---------------------------------------------------------------- refit from a recorded session
