@@ -55,7 +55,7 @@ VENUE_FEE = 20
 HOUSE_VENUES = (None, "rastro")
 GAP_SOURCES = (vi.ROOT / "logs" / "feed-vm" / "feed.jsonl",)  # complete copies of stretches our recorder missed
 EXPIRY_GRACE = 1  # an accept on an offer's last tick settles on the next one (ticks 40, 49, 103, 152, 946)
-MAX_FLIP_POOL = 12  # consistency pass: unsure fees it weighs, every subset (4,096 for 12; those of teams below zero first)
+MAX_FLIP_COMBOS = 4096  # consistency pass: combinations of the unsure settlements it weighs (teams below zero first)
 GAP_TICKS = 1  # two consecutive events further apart than this: a hole in the recording, filled from GAP_SOURCES
 PRIMAS = re.compile(r"(\d+)\s*primas", re.IGNORECASE)
 _source_cache: dict = {}
@@ -354,42 +354,81 @@ def overdrawn(led: dict) -> list:
 
 
 def consistent_flips(rep: dict) -> tuple:
-    """Which unsure fees to charge to the other side, and which unsure fees are pinned by the teams' cash.
+    """How to read the unsure settlements so that the fewest teams go below zero, and which fees that pins.
 
-    Every subset of the unsure one-way fees (a pool of MAX_FLIP_POOL at most, those of teams below zero first) is
-    tried by moving each chosen fee to the other side from that settlement on, on the cash points the build recorded
-    (no rebuild: nothing else in the ledger depends on cash). The subsets that leave the fewest teams below zero are
-    the feasible ones; the one with the fewest moves, latest first, is applied. A fee of the pool is settled when every
-    feasible subset agrees on it (all move it, or none does). Returns ({event id: payer}, {settled event ids})."""
-    cands = [u for u in rep["unsure"] if u["payer"] is not None and u.get("seq") is not None]
+    Unknowns: each unsure one-way fee (keep it on the old rule's payer, or move it to the other side) and each
+    settlement whose direction is unknown (which side paid the cash, which side paid the fee; a dealer's settlement
+    without items: paid or got the price). Every combination is weighed by shifting cash on the points the build
+    recorded (no rebuild: nothing else in the ledger depends on cash), up to MAX_FLIP_COMBOS combinations, the
+    unknowns of teams below zero first. The combinations that leave the fewest teams below zero are the feasible ones;
+    the fee payers of the one with the fewest moved fees are applied (forced); a settlement of unknown direction stays
+    unapplied (its whole amount is in cash_unsure, which then covers every reading). A one-way fee is pinned only when
+    every feasible combination agrees on its payer, and never when an unknown that touches its teams was left out of
+    the search, or a settlement without known sides exists. Returns ({event id: payer}, {pinned event ids})."""
     points = rep.get("points") or {}
     base_low = {team for team, pts in points.items() if any(c < 0 for _, c in pts)}
-    if len(cands) > MAX_FLIP_POOL:
-        cands = [u for u in cands if {u["buyer"], u["seller"]} & base_low][-MAX_FLIP_POOL:]
-    if not cands:
-        return {}, set()
+    unsure = [u for u in rep["unsure"] if u.get("seq") is not None]
+    blind = any(u["payer"] is None and not u.get("parties") for u in unsure)
 
     def other(u: dict) -> str:
         return u["seller"] if u["payer"] == u["buyer"] else u["buyer"]
 
-    def below(combo: tuple) -> int:
-        shifts = collections.defaultdict(list)
-        for u in combo:
-            shifts[u["payer"]].append((u["seq"], u["fee"]))
-            shifts[other(u)].append((u["seq"], -u["fee"]))
-        low = base_low - set(shifts)
-        for team, ds in shifts.items():
+    def unknown(u: dict) -> tuple:
+        """(u, options, cash shifts of each option, teams it touches)."""
+        s = u["seq"]
+        if u["payer"] is not None:
+            return u, [None, other(u)], [[], [(u["payer"], s, u["fee"]), (other(u), s, -u["fee"])]], {u["buyer"], u["seller"]}
+        a = u["parties"][0]
+        b = u["parties"][1] if len(u["parties"]) > 1 else "dealer"
+        opts, shifts = [], []
+        for payer in ((a, b) if u["price"] else (None,)):
+            for fee_by in (((a, b) if b != "dealer" else (a,)) if u["fee"] else (None,)):
+                d = []
+                if payer:
+                    payee = b if payer == a else a
+                    d += [(x, s, sign * u["price"]) for x, sign in ((payer, -1), (payee, 1)) if x != "dealer"]
+                if fee_by:
+                    d.append((fee_by, s, -u["fee"]))
+                opts.append((payer, fee_by))
+                shifts.append(d)
+        return u, opts, shifts, {x for x in u["parties"]}
+
+    unknowns = [unknown(u) for u in unsure if u["payer"] is not None or u.get("parties")]
+    if not unknowns:
+        return {}, set()
+    keep, size = [], 1
+    for v in sorted(unknowns, key=lambda v: (not (v[3] & base_low), -v[0]["seq"])):
+        if size * len(v[1]) <= MAX_FLIP_COMBOS:
+            keep.append(v)
+            size *= len(v[1])
+    left_out = set().union(*(v[3] for v in unknowns if v not in keep))
+    keep.sort(key=lambda v: -v[0]["seq"])
+
+    def below(shifts: list) -> int:
+        by_team = collections.defaultdict(list)
+        for team, s, d in shifts:
+            by_team[team].append((s, d))
+        low = base_low - set(by_team)
+        for team, ds in by_team.items():
             pts = points.get(team) or []
             checks = list(pts) + [(s, next((c for q, c in reversed(pts) if q <= s), START_CASH)) for s, _ in ds]
             if any(c + sum(d for s, d in ds if s <= q) < 0 for q, c in checks):
                 low.add(team)
         return len(low)
 
-    scored = [(below(combo), combo) for k in range(len(cands) + 1) for combo in itertools.combinations(reversed(cands), k)]
-    fewest = min(n for n, _ in scored)
-    feasible = [combo for n, combo in scored if n == fewest]
-    settled = {u["event"] for u in cands if len({any(u is x for x in combo) for combo in feasible}) == 1}
-    return {u["event"]: other(u) for u in feasible[0]}, settled
+    scored = []
+    for choice in itertools.product(*(range(len(v[1])) for v in keep)):
+        shifts = [d for v, c in zip(keep, choice) for d in v[2][c]]
+        moved = sum(1 for v, c in zip(keep, choice) if v[0]["payer"] is not None and c)
+        scored.append((below(shifts), moved, choice))
+    fewest = min(n for n, _, _ in scored)
+    feasible = [(moved, choice) for n, moved, choice in scored if n == fewest]
+    chosen = min(feasible, key=lambda x: x[0])[1]
+    forced = {v[0]["event"]: v[1][c] for v, c in zip(keep, chosen) if v[0]["payer"] is not None and c}
+    pinned = set() if blind else {
+        v[0]["event"] for i, v in enumerate(keep)
+        if v[0]["payer"] is not None and not (v[3] & left_out) and len({c[i] for _, c in feasible}) == 1}
+    return forced, pinned
 
 
 def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, rep: dict,
@@ -420,18 +459,23 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
         led[team]["cash"] += delta
         led[team]["moves"].append({"tick": tick, "delta": delta, "what": what})
 
+    def credit_owner(p: dict, refs: str, tick: int) -> None:
+        """A fee charged on a team's own venue goes to its owner, whoever paid it (El Rastro keeps its own)."""
+        fee = p.get("fee") or 0
+        owner = owners.get(p.get("venue")) if p.get("venue") not in HOUSE_VENUES else None
+        if fee and owner in led:
+            move(owner, tick, fee, f"fee earned on {refs} at {p.get('venue')}")
+            led[owner]["fees_earned"] += fee
+
     def pay_fee(p: dict, acceptor: str, refs: str, tick: int) -> None:
-        """The settlement's fee comes out of the acceptor's cash; on a team's own venue it goes to the owner."""
+        """The settlement's fee comes out of the acceptor's cash and goes to the venue (credit_owner)."""
         fee = p.get("fee") or 0
         if not fee:
             return
         move(acceptor, tick, -fee, f"fee on {refs} (accepted)")
         if acceptor in led:
             led[acceptor]["fees"] += fee
-        owner = owners.get(p.get("venue")) if p.get("venue") not in HOUSE_VENUES else None
-        if owner in led:
-            move(owner, tick, fee, f"fee earned on {refs} at {p.get('venue')}")
-            led[owner]["fees_earned"] += fee
+        credit_owner(p, refs, tick)
 
     for n, e in enumerate(events):
         if upto is not None and e["tick"] > upto:
@@ -446,11 +490,14 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
             if not items:  # nothing to read who paid whom: keep the amount as unsure for the parties named
                 fee = p.get("fee") or 0
                 if price or fee:
-                    named = [x for x in p.get("parties") or [] if x in led] or [None]
-                    rep["unsure"].append({"event": e.get("id"), "tick": t, "ref": None, "buyer": named[0],
-                                          "seller": named[-1], "price": price, "fee": fee, "amount": price + fee,
-                                          "payer": None, "seq": n, "incomplete": True})
+                    named = [x for x in p.get("parties") or [] if x in led]
+                    rep["unsure"].append({"event": e.get("id"), "tick": t, "ref": None,
+                                          "buyer": named[0] if named else None, "seller": named[-1] if named else None,
+                                          "price": price, "fee": fee, "amount": price + fee, "payer": None, "seq": n,
+                                          "parties": named[:2] if 0 < len(named) <= 2 and (dealer or len(named) == 2)
+                                          else [], "dealer": bool(dealer), "incomplete": True})
                     rep["how"]["unsure"] += 1
+                    credit_owner(p, "a settlement without items", t)  # the venue's fee, whoever paid it
                 record(t)
                 continue
             if dealer:
@@ -483,10 +530,13 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
                 if deal is None:  # no listing fits: cash direction and fee payer unknown, the whole amount is unsure
                     if fee or price:
                         sides = sorted({str(i.get("frm")) for i in items} | {str(i.get("to")) for i in items})
+                        teams_in = [x for x in sides if x in led]
                         rep["unsure"].append({"event": e.get("id"), "tick": t, "ref": items[0].get("ref"),
                                               "buyer": sides[0], "seller": sides[-1], "price": price, "fee": fee,
-                                              "amount": price + fee, "payer": None, "seq": n})
+                                              "amount": price + fee, "payer": None, "seq": n,
+                                              "parties": teams_in if len(teams_in) == 2 else [], "dealer": False})
                         rep["how"]["unsure"] += 1
+                        credit_owner(p, ", ".join(i.get("ref") or "?" for i in items), t)  # whoever paid it
                     else:
                         rep["how"]["no fee"] += 1
                     record(t)
@@ -521,7 +571,7 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
                 rep["unsure"].append({"event": e.get("id"), "tick": t, "ref": items[0].get("ref"), "buyer": buyer,
                                       "seller": seller, "price": price, "fee": p.get("fee"), "amount": p.get("fee"),
                                       "payer": acceptor, "seq": n})
-                acceptor = forced.get(e.get("id"), acceptor)
+                acceptor = forced[e.get("id")] if isinstance(forced.get(e.get("id")), str) else acceptor
             rep["how"][how] += 1
             refs = ", ".join(i.get("ref") or "?" for i in items)
             move(buyer, t, -price, f"bought {refs} from {seller}")

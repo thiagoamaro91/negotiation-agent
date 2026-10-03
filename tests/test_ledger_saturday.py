@@ -60,6 +60,14 @@ class Venues(unittest.TestCase):
         self.assertEqual(led["t03"]["refunds"], 250)
         self.assertIsNone(led["t03"]["venue"])
 
+    def test_the_venue_owner_gets_the_fee_even_when_its_payer_is_unknown(self):
+        swap = two_way(0, 2, (5, "LAV-08", "t01", "t02"), (6, "SAL-01", "t02", "t01"))
+        swap["venue"] = "v20"
+        led = ledger.build(feed((1, "venue.opened", {"venue": "v20", "owner": "t03", "bond": 250, "name": "x"}),
+                                (2, "settlement", swap)))
+        self.assertEqual((led["t03"]["cash"], led["t03"]["cash_unsure"]), (400 - 270 + 2, 0))
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (2, 2))
+
     def test_a_fee_on_a_team_venue_goes_to_its_owner_and_el_rastro_keeps_its_own(self):
         led = ledger.build(feed(
             (1, "venue.opened", {"venue": "v20", "owner": "t03", "bond": 250}),
@@ -245,6 +253,44 @@ class WhoPaysTheFee(unittest.TestCase):
         for team, possible in (("t01", (0, 2)), ("t02", (408, 410)), ("t03", (408, 410))):
             for real in possible:
                 self.assertLessEqual(abs(real - led[team]["cash"]), led[team]["cash_unsure"], (team, real))
+
+    def test_a_settlement_of_unknown_direction_counts_as_an_unknown_in_the_consistency_pass(self):
+        # t01 buys from t02 (10 P + an unsure 2 P fee), then an unmatched 10 P package with t03 whose cash may have
+        # gone to t01, then t01 spends 390 P: t01 can afford it either way if t03 paid it, so the fee is not pinned
+        rep = {}
+        led = ledger.build(feed(
+            (2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+            (3, "settlement", two_way(10, 0, (70, "RET-01", "t01", "t03"), (71, "LAV-10", "t03", "t01"))),
+            (5, "settlement", {"persona": "picaros", "price": 390, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]})),
+            report=rep)
+        self.assertEqual(rep["settled"], [])
+        for team, possible in (("t01", (8, 10)), ("t02", (408, 410))):
+            for real in possible:
+                self.assertLessEqual(abs(real - led[team]["cash"]), led[team]["cash_unsure"], (team, real))
+
+    def test_an_unknown_left_out_of_the_search_pins_nothing_it_touches(self):
+        # two unsure fees of t01, either could have moved; with room for one unknown only, the kept one must not be
+        # pinned just because the other was held at the old rule
+        rows = ((2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+                (3, "settlement", settlement("t03", "t01", "SAL-02", 10, "rastro", fee=2, asset=62)),
+                (5, "settlement", {"persona": "picaros", "price": 378, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]}))
+        saved = ledger.MAX_FLIP_COMBOS
+        try:
+            ledger.MAX_FLIP_COMBOS = 2
+            led = ledger.build(feed(*rows))
+        finally:
+            ledger.MAX_FLIP_COMBOS = saved
+        self.assertEqual((led["t02"]["cash_unsure"], led["t03"]["cash_unsure"]), (2, 2))
+
+    def test_a_settlement_without_known_sides_pins_nothing(self):
+        rep = {}
+        ledger.build(feed(
+            (2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+            (3, "settlement", settlement("t03", "t01", "SAL-02", 10, "rastro", fee=2, asset=62)),
+            (4, "settlement", {"persona": "picaros", "price": 410, "items": [{"id": 91, "ref": "RET-09", "frm": "picaros", "to": "t03"}]}),
+            (5, "settlement", {"persona": "picaros", "price": 378, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]}),
+            (6, "settlement", {"persona": None, "price": 50, "fee": 3, "items": []})), report=rep)
+        self.assertEqual(rep["settled"], [])  # without it, both fees are pinned (test_the_consistency_pass_checks_...)
 
     def test_a_settlement_without_items_is_reported_not_fatal(self):
         rep = {}
