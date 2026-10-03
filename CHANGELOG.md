@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026-10-04] Sunday autopilot and handoff
+
+### Changed
+- `tools/factory_sunday.json`: the dealer bots are on (#35 and #38 are merged) and their notes no longer say "off"; the duel `todo` is gone (the params path stays: `plan` says `MISSING` until the Duels III file merges); the duel session window is 165 game minutes (was 120) so a crash late in a wave is still relaunched even if the game clock runs two game hours per wall hour (Duels III is 216 ticks, 108 game minutes at that speed), and it closes before the Final's own window opens (21.483 h); dealer gates keep 25 game minutes (was 12) clear of a duel wave, since a run is 40 ticks, 20 game minutes at that speed. The Telegram notifier stays `null`: its one line is in the handoff.
+- `docs/plans/sunday-runbook.md` and `README.md` follow the dealers being on.
+
+### Added
+- `docs/plans/sunday-preflight.md`: ten read-only checks for 08:40 on the Mini, the 08:55 command, the expected 09:01 `status`, a 09:05 clock-speed read, and one action per alert.
+- `docs/plans/sunday-night-handoff.md`: what the night built, what is on the Mini, what needs a yes or a key on Sunday, the timeline with the human-decision moments, and the stop rules.
+- `tests/test_factory.py`: the dealers-on test replaces the dealers-off one, and a new test pins the duel window (outlasts a wave at either clock speed, no overlap with the Final's); 3 mutations caught (window 120, window 180, quiet window 12) plus a dealer switched off again.
+
 ## [2026-10-03] Dashboard: Rivals and Market panels
 
 ### Added

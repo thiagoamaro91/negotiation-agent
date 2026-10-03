@@ -139,7 +139,22 @@ class Rendering(unittest.TestCase):
         self.assertEqual(argv[argv.index("--duel-ticks") + 1], "12")
         self.assertEqual(argv[argv.index("--late-poll") + 1], "4")
         self.assertEqual(argv[argv.index("--until") + 1], "15:05")
-        self.assertEqual(argv[argv.index("--idle-ticks") + 1], "480")          # 120 min at 15 s
+        self.assertEqual(argv[argv.index("--idle-ticks") + 1], "660")          # the 165 min window at 15 s
+
+    def test_duel_window_outlasts_a_wave_on_a_game_clock_of_either_speed(self):
+        """A crashed duel bot is relaunched only while its window is open (game minutes). Duels III is two rounds of
+        34 duels, four at a time, 12 ticks each: 216 ticks, which is 108 game minutes if the clock runs two game
+        hours per wall hour at 15 s ticks (30 game seconds a tick) and 54 if it runs one. The window must be well
+        past the longer one (x1.5: gaps between rounds), yet closed before the Final opens its own, so that the two
+        never overlap (inside an overlap the first wave would be picked and the Final's own checks skipped)."""
+        sess = next(x for x in self.CFG["processes"] if x["name"] == "duel")["session"]
+        ideal_ticks = 2 * -(-34 // 4) * 12
+        for game_s_per_tick in (15, 30):
+            wave_h = 1.5 * ideal_ticks * game_s_per_tick / 3600
+            self.assertEqual(f.session_pick(sess, [DUELS3, FINAL], 18.65 + wave_h), (DUELS3, True), game_s_per_tick)
+        self.assertLess(18.65 + sess["window_min"] / 60, 21.65 - sess["lead_min"] / 60)
+        self.assertEqual(f.session_pick(sess, [DUELS3, FINAL], 21.65 - sess["lead_min"] / 60 + 0.01), (FINAL, True))
+        self.assertEqual(f.session_pick(sess, [DUELS3, FINAL], 22.55), (FINAL, True))      # the freeze warning
 
     def test_dealer_flags_are_explicit(self):
         for p in self.CFG["processes"]:
@@ -561,17 +576,24 @@ class ReviewMissingInput(Sandbox):
 # --- third round: fewer capabilities, each fail-closed -----------------------------------------------------------------
 
 class Round3Dealers(Sandbox):
-    def test_dealers_are_off_by_default_and_up_says_why(self):
+    def test_the_sunday_dealers_are_on_and_up_starts_each_one_that_has_a_step(self):
+        """PR #35 and #38 are merged: no dealer is switched off, and none still says it waits for #35."""
         cfg = f.load_config(f.CONFIG)
         dealers = [p for p in cfg["processes"] if p["kind"] == "steps"]
         self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar"})
         for p in dealers:
-            self.assertIs(p.get("enabled"), False, p["name"])
-            self.assertIn("#35", p.get("note", ""), p["name"])
+            self.assertIsNot(p.get("enabled"), False, p["name"])
+            self.assertNotIn("Off:", p.get("note", ""), p["name"])
+            # a run is at most 40 ticks = 10 wall min = 20 game min if the clock runs two game hours per wall hour
+            self.assertGreaterEqual(p["gates"]["duel_quiet_min"], 20, p["name"])
         _, out, started = self.up(f.CONFIG)
-        for name in ("abuela", "chato", "pilar"):
-            self.assertRegex(out, rf"off +{name}: .*#35")
-            self.assertFalse([c for c in started if f" keep {name} " in c[-1]])
+        for p in dealers:
+            keeper = [c for c in started if f" keep {p['name']} " in c[-1]]
+            if f.pending_steps(p, []):
+                self.assertEqual(len(keeper), 1, (p["name"], out))
+            else:                                       # every step off: up says so instead of starting an idle keeper
+                self.assertRegex(out, rf"skip +{p['name']}: no enabled step")
+                self.assertEqual(keeper, [])
 
     def test_exit_zero_without_a_marker_is_retried_then_reported(self):
         cfg = self.config(dict(DEALER, max_attempts=2))

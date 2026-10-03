@@ -1,5 +1,5 @@
 {
-  "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that depends on a teammate's open pull request or on a decision at 08:55. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Gates doors_open and clock_running default to true; only the keyless feed and the watchdog opt out. Processes are matched by script basename plus mode token. The dealers are off until PR #35 lands; a dealer step that exits non-zero, or exits 0 without a deal or nothing-to-do marker max_attempts times (default 3), is not relaunched. Dealer commands come from section 7 of the Saturday dealer audit.",
+  "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that is still open: `plan` prints every one under its command, and docs/plans/sunday-preflight.md wants none left at 08:40. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Gates doors_open and clock_running default to true; only the keyless feed and the watchdog opt out. Processes are matched by script basename plus mode token. The dealer bots are on (PR #35 and its follow-up #38 merged: duel lock checked before every accept, pause-safe waits, distinct exit statuses); a dealer step that exits non-zero, or exits 0 without a deal or nothing-to-do marker max_attempts times (default 3), is not relaunched. Dealer commands come from section 7 of the Saturday dealer audit.",
   "base_url": "https://bazaar.causaprima.ai",
   "tmux_session": "factory",
   "python": null,
@@ -7,7 +7,7 @@
   "until_margin_min": 5,
   "bus": {"session": "thiago-mini-factory", "where": "mini"},
   "notify_cmd": null,
-  "todo_notify_cmd": "Set to the Mini's send-only Telegram notifier as an argv list, e.g. [\"/opt/homebrew/bin/python3\", \"<path>/projects/telegram-bot/notify.py\"]; the alert text is appended as the last argument and it gets no secrets from the factory, so it must read its own token. Path and CLI not verified from this repo.",
+  "notify_cmd_howto": "notify_cmd stays null until Thiago sets it on the Mini (the one line is in docs/plans/sunday-night-handoff.md): an argv list; the alert text is appended as its last argument and the factory gives it no secrets, so it must read its own token (the Mini keeps it in ~/.config/telegram-notify.env, which tools/mini/tunnel-agent.sh already uses).",
   "processes": [
     {
       "name": "feed",
@@ -30,29 +30,30 @@
       "log": "logs/broker/{date}.jsonl",
       "stale_ticks": 4,
       "bench_watch": true,
-      "note": "Reads its own key from ~/.bazaar/broker.env (--key-file default). Market Tests at game hours 17.0, 19.0 and 21.0 come from the schedule; status alerts on any dropped match or no match in a test. Market audit fix 5 (shorter timeouts at 15 s) is not merged: works without it."
+      "note": "Reads its own key from ~/.bazaar/broker.env (--key-file default). The Market Tests (game hours 14.65 hard, 15.0, 17.0, 19.0, 21.0) come from the schedule; status alerts on any dropped match or no match in a test. --policy stall is the safe fallback: the stall's exact rule.",
+      "todo": "WP2: set the broker policy for the hard Market Test here once the broker-hard PR is merged (name and flags from its report); until then this stays on stall."
     },
     {
       "name": "duel",
       "kind": "session",
       "required": true,
       "gates": {"doors_open": true, "clock_running": true},
-      "session": {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120},
+      "session": {"event": {"action": "duels"}, "lead_min": 10, "window_min": 165},
       "params": "docs/duel-lab/duel-params-duels3.json",
       "cmd": ["{python}", "-u", "agent/duel.py", "run", "--params", "{params}", "--duel-ticks", "{duel_ticks}",
               "--late-poll", "4", "--idle-ticks", "{idle_ticks}", "--until", "{until}"],
       "match": ["agent/duel.py", "run"],
       "log": "logs/duel/{date}.jsonl",
       "stale_ticks": 8,
-      "todo": "params file does not exist yet: Hector's duel.py rewrite and params (PR #33, docs/duel-lab/duel-params-duels2-final.json) must merge first; copy the final file to this path. --duel-ticks comes from the schedule event (12 for Duels III and the Final) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit. Re-check the flag names after the rewrite merges."
+      "note": "One run per wave (Duels III, then the Final): --duel-ticks comes from the schedule event (12 for both) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit; --idle-ticks is the window at 15 s ticks and --until the day's close plus 5 min. The window (165 game min) outlasts a wave even if the game clock runs two game hours per wall hour (216 ticks = 108 game min) and closes before the Final's own window opens (21.483 h), so the two never overlap and a crash is relaunched in either wave."
     },
     {
       "name": "abuela",
       "kind": "steps",
-      "enabled": false,
-      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "todo": "WP4: replace the steps listed above with docs/plans/factory-dealer-steps-sunday.json once it lands, then delete this line.",
       "required": false,
-      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/abuela.py", "run"],
       "log": "logs/abuela/{date}.jsonl",
       "stale_ticks": null,
@@ -77,10 +78,10 @@
     {
       "name": "chato",
       "kind": "steps",
-      "enabled": false,
-      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "todo": "WP4: replace the steps listed above with docs/plans/factory-dealer-steps-sunday.json once it lands, then delete this line.",
       "required": false,
-      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/chato.py", "run"],
       "exclude": ["pilar"],
       "log": "logs/chato/{date}.jsonl",
@@ -112,10 +113,10 @@
     {
       "name": "pilar",
       "kind": "steps",
-      "enabled": false,
-      "note": "Off: needs pull request #35 (dealer bots: duel lock checked before every accept, pause-safe waits, distinct exit statuses) merged and deployed. After that, set enabled to true and run up --yes; or run the step commands by hand. A step counts as done only on a deal or a nothing-to-do line in this dealer's log.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "todo": "WP4: replace the steps listed above with docs/plans/factory-dealer-steps-sunday.json once it lands, then delete this line.",
       "required": false,
-      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/chato.py", "pilar"],
       "log": "logs/pilar/{date}.jsonl",
       "stale_ticks": null,
