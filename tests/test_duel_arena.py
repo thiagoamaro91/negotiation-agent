@@ -350,3 +350,64 @@ class ForcedDayModes(unittest.TestCase):
         sp.act(0, {"our_offer": None, "our_msgs": []})
         out = sp.act(1, {"our_offer": (150, 10), "our_msgs": [(1, 150, 10)]})
         self.assertEqual(out["say"][1], 5)                   # not the midpoint of its day and ours
+
+
+class Duels2Field(unittest.TestCase):
+    """The Duels II refit (WP1, Duels III): the rival mix, our real weights per role and the rival's day by role."""
+
+    def session(self, seed=0, **extra):
+        with knobs(**{**arena.DUELS2_MODS, **extra}):
+            return arena.make_session(seed, arena.SESSIONS[3], [k for k in arena.KINDS
+                                                                 if arena.DUELS2_WEIGHTS.get(k, 0) > 0],
+                                      arena.DUELS2_WEIGHTS)
+
+    def test_the_mix_is_the_68_duels_of_duels2(self):
+        self.assertEqual(sum(arena.DUELS2_WEIGHTS.values()), 68)
+        self.assertEqual({k: len(v) for k, v in arena.DUELS2_DAYS_W.items()}, {"buyer": 34, "seller": 34})
+
+    def test_weights_come_from_that_roles_real_weights(self):
+        lo = {r: min(v) for r, v in arena.DUELS2_DAYS_W.items()}
+        hi = {r: max(v) for r, v in arena.DUELS2_DAYS_W.items()}
+        ws = {"buyer": [], "seller": []}
+        for seed in range(4):
+            for dl in self.session(seed):
+                rrole = "buyer" if dl.role == "seller" else "seller"
+                for role, w in ((dl.role, dl.days["ours"][1]), (rrole, dl.days["rival"][1])):
+                    self.assertTrue(lo[role] - 0.01 <= w <= hi[role] + 0.01, (role, w))
+                    ws[role].append(w)
+        med = {r: sorted(v)[len(v) // 2] for r, v in ws.items()}
+        self.assertGreater(med["buyer"], med["seller"] + 0.5)      # buyers pay more per day than sellers earn
+
+    def test_the_rivals_day_mode_follows_its_role(self):
+        for dl in self.session(1, RIVAL_DMODE_ROLE={"buyer": {"best": 1}, "seller": {"flex": 1}}):
+            self.assertEqual(dl.rival.p.get("dmode"), "best" if dl.rival.role == "buyer" else "flex")
+        modes = {}
+        for seed in range(6):
+            for dl in self.session(seed):
+                modes.setdefault(dl.rival.role, set()).add(dl.rival.p.get("dmode"))
+        self.assertEqual(modes["buyer"], {"best", "flex", "mid"})
+        self.assertEqual(modes["seller"], {"best", "flex", "mid", "random"})
+
+    def test_the_refit_never_touches_the_scenario_rng(self):
+        def shape(ds):
+            return sorted((d.id, d.pair, d.role, d.kind, d.our_limit, d.rival_limit) for d in ds)
+        with knobs(PAIR_SEEN=0.0):
+            base = arena.make_session(2, arena.SESSIONS[3], [k for k in arena.KINDS
+                                                             if arena.DUELS2_WEIGHTS.get(k, 0) > 0],
+                                      arena.DUELS2_WEIGHTS)
+        self.assertEqual(shape(self.session(2)), shape(base))
+
+
+class MatrixDuels2(unittest.TestCase):
+    def test_the_matrix_plays_the_duels2_mix_in_its_days_world_and_restores_the_globals(self):
+        import duel_matrix as matrix
+        jobs = [j for j in matrix.jobs_for({"p": {}}, [0], 3) if j[0] == "mix: Duels II field"]
+        self.assertEqual({j[1] for j in jobs}, {"robust", "confirmed"})
+        for j in jobs:
+            self.assertIs(j[6]["mods"]["DAYS_W_EMP"], arena.DUELS2_DAYS_W)
+            self.assertIs(j[6]["mods"]["RIVAL_DMODE_ROLE"], arena.DUELS2_DMODE)
+            self.assertIs(j[6]["weights"], arena.DUELS2_WEIGHTS)
+        before = (arena.DAYS_W_EMP, arena.RIVAL_DMODE_ROLE, arena.PAIR_SEEN, arena.ARENA_DAYS)
+        row, col, name, summ, per_seed = matrix.cell(jobs[-1])
+        self.assertEqual((arena.DAYS_W_EMP, arena.RIVAL_DMODE_ROLE, arena.PAIR_SEEN, arena.ARENA_DAYS), before)
+        self.assertEqual(summ["n"], 68)

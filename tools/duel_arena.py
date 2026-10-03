@@ -36,6 +36,7 @@ Usage (from the repo root):
     python3 tools/duel_arena.py --session 2 --params ~/lab/duel/best_params_duels2.json
     python3 tools/duel_arena.py --session 2 --pair-seen 0 --weights duels1 --params a.json --params b.json
     python3 tools/duel_arena.py --session 2 --sessions 40 --days-lab --params a.json   # days world stress lab
+    python3 tools/duel_arena.py --session 3 --weights duels2 --days-mode buyer:0,seller:10 --params a.json  # Duels III
 """
 from __future__ import annotations
 
@@ -71,6 +72,21 @@ WEIGHTS = {"steady": 2, "fast": 1, "cycler": 1, "oneshot": 1, "llm": 1, "absent"
 # and took our last chance (tft-like), 2 never spoke but took our offer (silent), 7 never spoke nor took (absent).
 DUELS1_WEIGHTS = {"linear": 13, "steady": 5, "fast": 4, "oneshot": 1, "tft": 2, "silent": 2, "absent": 7,
                   "cycler": 0, "llm": 0, "hardliner": 0, "deadline": 0}
+# Duels II (Saturday 21:16-23:00, our 68 duels of server session 3; tools/duel_field_read.py, docs/duel-lab/
+# duels3-params.md): 28 conceded every tick (linear), 8 stepped (steady), 8 jumped then held (fast), 11 spoke once
+# (oneshot), 5 moved only after we did (tft), 8 never spoke: 3 took our offer (silent), 5 never did (absent).
+DUELS2_WEIGHTS = {"linear": 28, "steady": 8, "fast": 8, "oneshot": 11, "tft": 5, "silent": 3, "absent": 5,
+                  "cycler": 0, "llm": 0, "hardliner": 0, "deadline": 0}
+# Our 68 Duels II weights (your_days_weight, primas per day), 34 per role: buyers pay more per day than sellers earn.
+DUELS2_DAYS_W = {
+    "buyer": [1.23, 1.28, 1.33, 1.45, 1.62, 1.83, 1.86, 1.89, 1.9, 2.51, 2.7, 2.78, 3.05, 3.23, 3.32, 3.39, 3.44,
+              3.61, 4.21, 4.22, 4.23, 4.29, 4.54, 4.84, 4.99, 5.32, 5.53, 6.41, 6.83, 7.49, 7.52, 7.72, 8.76, 8.91],
+    "seller": [0.58, 0.86, 0.92, 0.95, 1.12, 1.21, 1.3, 1.43, 1.58, 1.7, 1.74, 1.81, 1.82, 1.97, 2.25, 2.26, 2.32,
+               2.34, 2.35, 2.36, 2.64, 2.75, 2.91, 3.03, 3.11, 3.25, 3.44, 3.67, 3.71, 4.17, 4.54, 5.62, 5.84, 6.24]}
+# The day the Duels II rivals that spoke ended on, by the rival's role: 31 rival buyers (best day 0) kept day 0 22
+# times, sat on our day 10 4, on day 5 or 3 5; 29 rival sellers (best day 10) moved to our day 0 13 times, kept day 10
+# 12, sat on day 5 2, wandered 2. Sellers give the day away, buyers keep it (buyers' weights are the larger ones).
+DUELS2_DMODE = {"buyer": {"best": 22, "flex": 4, "mid": 5}, "seller": {"best": 12, "flex": 13, "mid": 2, "random": 2}}
 # Share of duels whose paired limit duel.mirror_limit finds. Friday: the pair was (odd, odd + 1), same rival team.
 # Duels I: 0 of 34 (pairs are (even, odd) with a different rival in each, and the limits are unrelated: 2360 / 2361).
 PAIR_SEEN = 1.0
@@ -102,11 +118,13 @@ ARENA_DAYS = ""
 # knobs come from their own random.Random (seed, pair), never from the scenario rng, so default runs replay the same.
 DAYS_W = (0.0, 4.0)       # per-day weight range in primas (rescales the uniform(0, 4) draw: lo + w / 4 x (hi - lo))
 DAYS_W_REL = None         # (lo, hi): the weight is instead that fraction of the item's base cost C per day
+DAYS_W_EMP = None         # {role: sorted weights}: the weight is that role's empirical quantile at the uniform draw
 DAYS_COMPAT = 0.0         # share of rival pairs whose two sides want the same best day (0 or 10, at random)
 # Rival day behaviour, weights over modes (one mode per rival team): "best" (always its own best day), "flex" (ours
 # if we named one, else its best), "mid" (day 5), "random" (a fresh day 0-10 each message), "ignore" (weight 0 on
 # days; ours if we named one, else day 0). None: each rival's own "flex" flag decides, as fitted.
 RIVAL_DMODE = None
+RIVAL_DMODE_ROLE = None   # {rival role: {mode: weight}}: the mode by the rival's role (same draw), over RIVAL_DMODE
 DMODES = ("best", "flex", "mid", "random", "ignore")
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
@@ -655,20 +673,20 @@ def make_session(seed: int, sess: dict, kinds: list, weights: dict = None) -> li
         base = 2 * k + 1                                  # pairs are (odd, odd + 1), as on the server
         roles = ["seller", "buyer"] if rng.random() < 0.5 else ["buyer", "seller"]
         world = days_world(seed, k, C) if two else None   # the days knobs, from their own rng
-        if world and world["mode"] is not None:
-            rp = {**rp, "dmode": world["mode"]}
         for j, role in enumerate(roles):
             s, h = rng.uniform(1 - SCALE, 1 + SCALE), rng.uniform(-SHIFT, SHIFT)
             cost, value = max(1, round(C * s + h)), max(2, round(V * s + h))
             ours, theirs = (cost, value) if role == "seller" else (value, cost)
-            days = None
+            days, rmode, rpj = None, None, rp
             if two:
                 rrole = "buyer" if role == "seller" else "seller"
+                rmode = world["modes"][rrole]
+                rpj = {**rp, "dmode": rmode} if rmode is not None else rp
                 best = world["best"]
-                rw = 0.0 if world["mode"] == "ignore" else round(world["w"](wts[rrole]), 2)
-                days = {"ours": (best[role], round(world["w"](wts[role]), 2)), "rival": (best[rrole], rw)}
-            dl = Duel(base + j, k, role, ours, theirs, kind, rp, T, decay, issues, days)
-            if two and world["mode"] == "random":
+                rw = 0.0 if rmode == "ignore" else round(world["w"](wts[rrole], rrole), 2)
+                days = {"ours": (best[role], round(world["w"](wts[role], role), 2)), "rival": (best[rrole], rw)}
+            dl = Duel(base + j, k, role, ours, theirs, kind, rpj, T, decay, issues, days)
+            if two and rmode == "random":
                 dl.rival.drng = random.Random((seed * 1_000_003 + k) * 2 + j)
             out.append(dl)
     rng.shuffle(out)
@@ -687,25 +705,43 @@ def days_world(seed: int, k: int, C: float) -> dict:
     best = {"buyer": fb, "seller": fs}
     if u_compat < DAYS_COMPAT:
         best = {"buyer": shared, "seller": shared}
-    mode = None
-    if RIVAL_DMODE:
-        modes = [m for m in DMODES if RIVAL_DMODE.get(m, 0) > 0]
-        total, acc = sum(RIVAL_DMODE[m] for m in modes), 0.0
-        mode = modes[-1]
-        for m in modes:
-            acc += RIVAL_DMODE[m] / total
-            if u_mode < acc:
-                mode = m
-                break
-    if DAYS_W_REL is not None:
+    mode = _pick_mode(RIVAL_DMODE, u_mode) if RIVAL_DMODE else None
+    modes = {"buyer": mode, "seller": mode}
+    if RIVAL_DMODE_ROLE:
+        modes = {r: _pick_mode(RIVAL_DMODE_ROLE[r], u_mode) for r in ("buyer", "seller")}
+    if DAYS_W_EMP is not None:
+        wmap = lambda w, role=None: _quantile(DAYS_W_EMP[role], w / 4.0)   # noqa: E731
+    elif DAYS_W_REL is not None:
         lo, hi = DAYS_W_REL
-        wmap = lambda w: (lo + (w / 4.0) * (hi - lo)) * C   # noqa: E731
+        wmap = lambda w, role=None: (lo + (w / 4.0) * (hi - lo)) * C   # noqa: E731
     elif tuple(DAYS_W) != (0.0, 4.0):
         lo, hi = DAYS_W
-        wmap = lambda w: lo + (w / 4.0) * (hi - lo)   # noqa: E731
+        wmap = lambda w, role=None: lo + (w / 4.0) * (hi - lo)   # noqa: E731
     else:
-        wmap = lambda w: w   # noqa: E731
-    return {"best": best, "mode": mode, "w": wmap}
+        wmap = lambda w, role=None: w   # noqa: E731
+    return {"best": best, "mode": mode, "modes": modes, "w": wmap}
+
+
+def _pick_mode(weights: dict, u: float) -> str:
+    """The day mode a uniform draw u falls on, over these {mode: weight} (DMODES order)."""
+    modes = [m for m in DMODES if weights.get(m, 0) > 0]
+    total, acc = sum(weights[m] for m in modes), 0.0
+    for m in modes:
+        acc += weights[m] / total
+        if u < acc:
+            return m
+    return modes[-1]
+
+
+def _quantile(xs: list, u: float) -> float:
+    """The u-quantile (0..1) of the sorted list xs, interpolated between neighbours."""
+    pos = max(0.0, min(1.0, u)) * (len(xs) - 1)
+    i = min(int(pos), len(xs) - 2)
+    return xs[i] + (xs[i + 1] - xs[i]) * (pos - i)
+
+
+# The Duels II field as a world: its rival mix, its weights and the rival's day (module overrides; PAIR_SEEN 0).
+DUELS2_MODS = {"DAYS_W_EMP": DUELS2_DAYS_W, "RIVAL_DMODE_ROLE": DUELS2_DMODE, "PAIR_SEEN": 0.0}
 
 
 # ---------------------------------------------------------------- one session
@@ -1253,8 +1289,10 @@ def main() -> None:
     ap.add_argument("--slot-busy", type=float, default=0.0)
     ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
                     "(default PAIR_SEEN = 1; Duels I: 0)")
-    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend"],
-                    help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend", "duels2"],
+                    help="rival mix: Friday-fitted WEIGHTS, the Duels I mix (DUELS1_WEIGHTS), or duels2: the Duels II "
+                    "field (DUELS2_WEIGHTS with its days world, DUELS2_MODS: real weights per role, the rivals' day, "
+                    "paired limit hidden)")
     ap.add_argument("--days-mode", default="", help='two issues: "" robust (duel.py run before --days-confirmed), '
                     '"confirmed", or a --days-best value such as "buyer:10,seller:0"')
     ap.add_argument("--json", action="store_true", help="print the summaries as JSON")
@@ -1266,7 +1304,12 @@ def main() -> None:
     if a.pair_seen is not None:
         PAIR_SEEN = a.pair_seen
     ARENA_DAYS = a.days_mode
-    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS, "blend": BLEND_WEIGHTS}.get(a.weights)
+    if a.weights == "duels2":
+        globals().update(DUELS2_MODS)
+        if a.pair_seen is not None:
+            PAIR_SEEN = a.pair_seen
+    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS, "blend": BLEND_WEIGHTS,
+               "duels2": DUELS2_WEIGHTS}.get(a.weights)
     kinds = [k for k in KINDS if (weights or WEIGHTS).get(k, 0) > 0] if weights else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}

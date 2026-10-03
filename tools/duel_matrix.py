@@ -23,11 +23,16 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import duel_arena as arena  # noqa: E402
 
-MIXES = {"Duels I field": "duels1", "likely field": "field"}
+MIXES = {"Duels II field": "duels2", "Duels I field": "duels1", "likely field": "field"}
 
 
 def mix_weights(name: str):
-    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS}[name]
+    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS, "duels2": arena.DUELS2_WEIGHTS}[name]
+
+
+def mix_mods(name: str) -> dict:
+    """Module overrides a mix brings with it: the Duels II field also has its days world (arena.DUELS2_MODS)."""
+    return {k: v for k, v in arena.DUELS2_MODS.items() if k != "PAIR_SEEN"} if name == "duels2" else {}
 
 
 def mix_kinds(name: str) -> list:
@@ -39,7 +44,7 @@ def cell(job: tuple) -> tuple:
     """One cell: (row, column, policy) -> per-seed mean scores and the summary."""
     row, col, pname, params, seeds, session, world = job
     g = vars(arena)
-    saved = {k: g[k] for k in world["mods"]}
+    saved = {k: g[k] for k in set(world["mods"]) | {"PAIR_SEEN", "ARENA_DAYS"}}
     g.update(world["mods"])
     arena.PAIR_SEEN = 0.0
     arena.ARENA_DAYS = world["days_mode"]
@@ -57,7 +62,7 @@ def jobs_for(policies: dict, seeds, session: int) -> list:
     out = []
     for mode, days_mode in (("robust", ""), ("confirmed", "confirmed")):
         for label, mix in MIXES.items():
-            w = {"mods": {}, "days_mode": days_mode, "weights": mix_weights(mix), "kinds": mix_kinds(mix)}
+            w = {"mods": mix_mods(mix), "days_mode": days_mode, "weights": mix_weights(mix), "kinds": mix_kinds(mix)}
             out += [(f"mix: {label}", mode, n, p, seeds, session, w) for n, p in policies.items()]
     for kind in arena.KINDS:
         if kind == "absent":
