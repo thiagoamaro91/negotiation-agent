@@ -1324,6 +1324,7 @@ class Desk:
         self.shadow_counts: dict = {}     # watch: cards a would-be buy brought in
         self.shadow_gone: set = set()     # watch: our assets a would-be sale or swap handed over
         self.swap_dupes: list = []        # run: a second live swap of ours asking the same card (cancelled)
+        self.bid_dupes: list = []         # run: a second live bid of ours on the same card (cancelled)
         self.cancelled_ids: set = set()   # run: offers of ours we cancelled (never cancelled twice, never re-read)
         self._duels_tick, self._duels_why = None, None   # GET /api/duels, read once per tick
         self.said: dict = {}              # last logged decision per offer/card (log on change only)
@@ -1459,16 +1460,24 @@ class Desk:
                 if b.get("offer") is not None and snap["tick"] >= b.get("expires", 10 ** 9):
                     b["offer"] = None
             return
+        self.bid_dupes = []
         if self.mode != "run":
             return
         live = {}
-        for o in snap["mine"]:
-            if o.get("maker") != snap["me_id"] or o.get("status") != "open" or (o.get("venue") or HOME) != self.cfg.bid_venue:
+        # never a conversation offer: a dealer bot's offer in a thread (venue None) looks like a bid and was cancelled
+        for o in sorted(snap["mine"], key=lambda o: o.get("id") or 0):
+            if o.get("maker") != snap["me_id"] or o.get("status") != "open" or o.get("thread") is not None \
+                    or (o.get("venue") or HOME) != self.cfg.bid_venue or o.get("id") in self.cancelled_ids:
                 continue
             types = (o.get("want") or {}).get("types") or []
-            cash = (o.get("give") or {}).get("cash")
-            if len(types) == 1 and isinstance(types[0], str) and types[0].startswith("card:") and _int_cash(cash):
+            give = o.get("give") or {}
+            cash = give.get("cash")
+            if len(types) == 1 and isinstance(types[0], str) and types[0].startswith("card:") and _int_cash(cash) \
+                    and not give.get("assets") and not give.get("types"):
                 ref = types[0][5:]
+                if ref in live:   # a second live bid of ours on the same card: cancelled in execute()
+                    self.bid_dupes.append({"card": ref, "offer": o["id"]})
+                    continue
                 old = self.bidbook.get(ref) or {}
                 live[ref] = {"offer": o["id"], "price": cash, "to": o.get("to"), "since": old.get("since", snap["tick"]),
                              "anchor": old.get("anchor", cash)}
@@ -1593,6 +1602,7 @@ class Desk:
         # cancels first (a stale bid or swap must not fill while we buy), then the accept, then new bids and swaps
         swaps = res.get("swaps") or []
         cancels = [("cancel", b) for b in res["bids"] if b["action"] in ("cancel", "replace")]
+        cancels += [("cancel", {**d, "dupe": True}) for d in self.bid_dupes]
         cancels += [("cancel", {**d, "kind": "myswap", "dupe": True}) for d in self.swap_dupes]
         cancels += [("cancel", s) for s in swaps if s["action"] in ("cancel", "replace")]
         posts = [("post", b) for b in res["bids"] if b["action"] in ("post", "replace")]

@@ -434,6 +434,24 @@ class DeskLoop(unittest.TestCase):
             self.assertEqual((venue, to, exp), ("rastro", None, 30))
         self.assertEqual(self.lease.snapshot()["accept"]["desk"], "market")
 
+    def test_run_leaves_dealer_thread_offers_alone_and_cancels_duplicate_bids(self):
+        # live 2026-10-03: chato.py's offer in its El Chato thread (venue None) was read as our LAV-09 bid and cancelled
+        def ours(oid, cash, **kw):
+            return {"id": oid, "maker": "t03", "status": "open", "to": "t04", "thread": None, "venue": "rastro",
+                    "give": {"cash": cash, "assets": [], "types": []},
+                    "want": {"cash": 0, "assets": [], "types": ["card:LAV-09"]}, **kw}
+        d, k = self.desk("run", [], [card(1, "LAV-07")])
+        k.my_offers = lambda: {"offers": [ours(2954, 65), ours(2972, 65),
+                                          ours(2987, 64, thread=335, venue=None, to="chato")]}
+        snap = d.snapshot(d.public.clock())
+        d.sync_bids(snap)
+        self.assertEqual(d.bidbook["LAV-09"]["offer"], 2954)
+        self.assertEqual(d.bid_dupes, [{"card": "LAV-09", "offer": 2972}])
+        d.tick(d.public.clock())
+        cancels = [w[1] for w in k.writes if w[0] == "cancel"]
+        self.assertNotIn(2987, cancels)                           # the dealer bot's offer is never ours to touch
+        self.assertIn(2972, cancels)                              # the duplicate bid goes
+
     def test_run_respects_stop(self):
         (self.dir / "STOP").touch()
         d, k = self.desk("run", [listing(1, "SAL-05", 5)], [])
