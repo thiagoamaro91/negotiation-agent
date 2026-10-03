@@ -76,6 +76,8 @@ NODES = {
     "rastro-seller": {"label": "Rastro seller", "layer": "bots", "where": "Mac Mini"},
     "lease": {"label": "Lease", "layer": "bots", "where": "Mac Mini"},
     "concierge": {"label": "Concierge", "layer": "bots", "where": "Mac Mini"},
+    "recorder": {"label": "Feed recorder", "layer": "bots", "where": "Mac Mini"},
+    "live-views": {"label": "Live views (live.py)", "layer": "bots", "where": "Mac Mini"},
     "teams": {"label": "Other teams", "layer": "world"},
     "dealers": {"label": "Dealers", "layer": "world"},
     "rastro": {"label": "El Rastro", "layer": "world"},
@@ -102,7 +104,7 @@ DEALER_WORDS = ("pilar", "chato", "picaros", "pícaros", "abuela", "taller", "wo
 DATA = {
     "d-me": {"label": "Account /api/me", "kind": "live", "key": "team", "fresh": "live:score.state.json",
              "readers": ["dealer-bots", "rastro-seller", "market-desk", "lane-c-trades", "lane-d-ladder", "conductor",
-                         "thiago-air-f8"]},
+                         "thiago-air-f8", "live-views"]},
     "d-value": {"label": "Private value /api/me/value", "kind": "live", "key": "team", "fresh": None,
                 "readers": ["dealer-bots", "market-desk", "lane-c-trades", "lane-d-ladder"]},
     "d-duels": {"label": "Duels /api/duels", "kind": "live", "key": "team", "fresh": "repo:logs/duel/*.jsonl",
@@ -112,7 +114,7 @@ DATA = {
     "d-v20": {"label": "v20 book", "kind": "live", "key": "broker", "fresh": "repo:logs/state/desk-broker.json",
               "readers": ["broker"]},
     "d-feed": {"label": "Public feed", "kind": "live", "key": None, "fresh": "repo:logs/feed/feed.jsonl",
-               "readers": ["market-desk", "rastro-seller", "lane-c-trades", "lane-d-ladder"]},
+               "readers": ["market-desk", "rastro-seller", "lane-c-trades", "lane-d-ladder"], "writers": ["recorder"]},
     "d-params": {"label": "duel-params.json", "kind": "config", "key": None, "fresh": "repo:results/duel-params.json",
                  "readers": ["duel"]},
     "d-floors": {"label": "rastro_floors.json", "kind": "config", "key": None, "fresh": "repo:agent/rastro_floors.json",
@@ -120,8 +122,16 @@ DATA = {
     "d-snap": {"label": "me.json snapshot", "kind": "snapshot", "key": None, "fresh": "repo:logs/state/me.json",
                "readers": ["market-desk"]},
     "d-decisions": {"label": "decisions.jsonl", "kind": "live", "key": None, "fresh": "live:decisions.jsonl",
-                    "readers": ["conductor", "thiago-air-f8"]},
+                    "readers": ["conductor", "thiago-air-f8"],
+                    "writers": ["lane-c-trades", "lane-d-ladder", "conductor", "thiago-air-f8"]},
 }
+# A lane's own words say when it reads data ("Watch cash for 7 minutes", "Final API read for the report").
+READ_VERB = re.compile(r"^(?:\w+: )?(read|check|show|list|look|watch|find|inspect|rebuild|final api read|wait|review)\b", re.I)
+READ_TOPICS = [("d-me", re.compile(r"\b(cash|state|holdings|spares|api read|score|ladder points|account)\b", re.I)),
+               ("d-books", re.compile(r"\b(offers?|bids?|asks?|book|listings?)\b", re.I)),
+               ("d-feed", re.compile(r"\bfeed\b", re.I)),
+               ("d-decisions", re.compile(r"\bdecisions?\b", re.I))]
+READ_GAP = 60.0  # at most one read per source and reader per minute: the broker alone reads its book every tick
 
 
 def redact(s) -> str:
@@ -187,6 +197,13 @@ def agents_event(source: str, key: str, day: dt.date, line: str) -> dict | None:
     if msg:
         return event(source, key, ts, src, node_id(msg.group(1)), "msg", sub + msg.group(2))
     return event(source, key, ts, src, None, "act", sub + text)
+
+
+def lane_reads(ev: dict) -> list:
+    if not ev or ev["kind"] != "act" or not READ_VERB.match(ev["text"]):
+        return []
+    return [dict(ev, id=hashlib.sha1((ev["id"] + did).encode()).hexdigest()[:16], src=did, dst=ev["src"], kind="read")
+            for did, pat in READ_TOPICS if pat.search(ev["text"])]
 
 
 def _secs(line: str):
@@ -264,13 +281,22 @@ def bot_event(source: str, key: str, folder: str, r: dict) -> dict | None:
         if ev == "say":
             return E("teams", "offer", f"duel {d}: offers {price}" + (f", {r['days']} days" if r.get("days") else ""),
                      r.get("step"))
+        if ev == "rival":
+            offer = r.get("offer") if isinstance(r.get("offer"), dict) else {}
+            return E("duel", "read", f"duel {d}: reads the rival's offer, {offer.get('price')}", None, "d-duels")
+        if ev == "hold":
+            return E("duel", "read", f"duel {d}: reads the duel and holds", None, "d-duels")
         if ev == "accept":
             resp = r.get("resp") if isinstance(r.get("resp"), dict) else {}
             return E("teams", "deal", f"duel {d}: accepts {resp.get('price', price)}")
         if ev == "result":
             return E("teams", "result", f"duel {d}: {r.get('status')} at {price}, our surplus {r.get('our_surplus')}")
-        return None  # hold and rival: the rival's words stay out
+        return None  # the rival's words never enter
     if node == "broker":
+        if ev == "book":
+            book = r.get("book") if isinstance(r.get("book"), dict) else {}
+            n = len(book.get("offers") or []) + len(book.get("bench_offers") or [])
+            return E("broker", "read", f"reads the v20 book, {n} offers", None, "d-v20")
         if ev == "matched":
             return E("bench", "match", f"crosses {r.get('sell')} with {r.get('buy')} at {r.get('price')}")
         if ev == "dropped":
@@ -306,6 +332,9 @@ def bot_event(source: str, key: str, folder: str, r: dict) -> dict | None:
         if ev in ("not_held", "bid_below_floor"):
             return E("rastro", "skip", f"{ev.replace('_', ' ')}: {r.get('card', '')}")
         return None
+    if node == "market-desk" and ev == "decision":
+        return E("market-desk", "read", f"weighs {r.get('kind')} {r.get('card')} at {r.get('price')} on {r.get('venue')}",
+                 None, "d-books")
     if node == "market-desk" and ev == "sent":
         return E("rastro", "offer", f"{r.get('op')} {r.get('kind')} {r.get('card')} at {r.get('price')}")
     if node == "lease" and ev == "grant":
@@ -501,6 +530,7 @@ class Folder:
             ev = agents_event(name, str(off), day, line)
             if ev:
                 out.append(ev)
+                out += lane_reads(ev)
         d["day"], d["last"] = day.isoformat(), last
         return out
 
@@ -545,6 +575,10 @@ class Folder:
             if view.exists():
                 day = dt.datetime.fromtimestamp(view.stat().st_mtime, LOCAL_TZ).date()
                 for p in score_view_points(view.read_text(errors="replace"), day):
+                    rd = event("score.view.log", f"read|{p['ts']}", p["ts"], "d-me", "live-views", "read",
+                               f"reads /api/me: score {p.get('score')}")
+                    if rd:
+                        out.append(rd)
                     if prev and all(p.get(k) == prev.get(k) for k in SCORE_KEYS):
                         continue
                     ev = score_event("score.view.log", p["ts"], p, prev)
@@ -558,11 +592,59 @@ class Folder:
         except (OSError, ValueError):
             return out
         s, prev = snap.get("prev") or {}, self.st.get("score_last")
+        if snap.get("keyed") and snap.get("keyed") != self.st.get("score_keyed"):
+            self.st["score_keyed"] = snap.get("keyed")
+            rd = event("score.state.json", f"read|{snap.get('keyed')}", snap.get("keyed"), "d-me", "live-views", "read",
+                       f"reads /api/me: score {s.get('score')}")
+            if rd:
+                out.append(rd)
         if s and not (prev and all(s.get(k) == prev.get(k) for k in SCORE_KEYS)):
             ev = score_event("score.state.json", snap.get("keyed") or self.now(), s, prev)
             if ev:
                 out.append(ev)
                 self.st["score_last"] = {k: s.get(k) for k in SCORE_KEYS}
+        return out
+
+    def feed(self) -> list:
+        out = []
+        for off, line in self._new_lines(self.repo / "logs" / "feed" / "feed.jsonl"):
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            ev = event("feed.jsonl", str(off), r.get("seen_at"), "recorder", "d-feed", "collect", f"records {r.get('type')}")
+            if ev:
+                out.append(ev)
+        return out
+
+    def updates(self) -> list:
+        """A hand-set file or a snapshot that changes (new duel params, new floors, a fresh me.json) is news."""
+        out, seen = [], self.st.setdefault("mtimes", {})
+        for did, d in DATA.items():
+            if d["kind"] == "live" or not d["fresh"]:
+                continue
+            base, pat = d["fresh"].split(":", 1)
+            path = (self.live if base == "live" else self.repo) / pat
+            try:
+                mt = path.stat().st_mtime
+            except OSError:
+                continue
+            if seen.get(did) != mt:
+                seen[did] = mt
+                ev = event("mtime", f"{did}|{mt}", mt, did, None, "update", f"{d['label']} changed")
+                if ev:
+                    out.append(ev)
+        return out
+
+    def throttle(self, evs: list) -> list:
+        last, out = self.st.setdefault("last_read", {}), []
+        for e in evs:
+            if e["kind"] in ("read", "collect"):
+                k, t = f"{e['src']}>{e['dst']}", dt.datetime.fromisoformat(e["ts"]).timestamp()
+                if t - last.get(k, 0) < READ_GAP:
+                    continue
+                last[k] = t
+            out.append(e)
         return out
 
     def team_bus(self, every: float = 60.0) -> list:
@@ -577,8 +659,8 @@ class Folder:
     def fold(self) -> list:
         out = self.agents("agents.log") + self.agents("agents-mini.log")
         out += self.jsonl(self.live / "decisions.jsonl", decision_event)
-        out += self.bots() + self.score() + self.team_bus()
-        return sorted(out, key=lambda e: e["ts"])
+        out += self.bots() + self.score() + self.feed() + self.updates() + self.team_bus()
+        return self.throttle(sorted(out, key=lambda e: e["ts"]))
 
 
 def out_dir_ok(out: Path) -> bool:

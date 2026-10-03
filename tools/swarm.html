@@ -11,7 +11,7 @@
 :root {
   --bg: #0b1020; --panel: #121a2e; --panel2: #18223a; --line: #263252; --ink: #e9edf6; --muted: #8f9bb8;
   --gold: #ffc44d; --claude: #6ea0ff; --bus: #b48cff; --bot: #3dcdb6; --world: #ff7a5c; --people: #e9edf6;
-  --good: #3ddc97; --bad: #ff5d6c;
+  --good: #3ddc97; --bad: #ff5d6c; --data: #7dd3fc;
   --display: "Archivo", "Helvetica Neue", Arial, sans-serif; --body: "Public Sans", -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme: dark;
@@ -102,7 +102,7 @@ footer { border-top: 1px solid var(--line); padding: 10px 20px 12px; display: gr
     <div class="banner" id="banner" role="status"><b id="b-title"></b><span id="b-text"></span></div>
   </div>
   <aside>
-    <h2><span data-i="feed">Qué está pasando</span><span id="count"></span></h2>
+    <h2><span data-i="feed">Qué está pasando</span><label style="cursor:pointer"><input type="checkbox" id="reads"> <span data-i="showReads">lecturas</span></label></h2>
     <div id="feed" aria-live="polite"></div>
     <div class="foot" id="foot"></div>
   </aside>
@@ -125,33 +125,34 @@ const q = p => T ? `${p}${p.includes('?') ? '&' : '?'}t=${encodeURIComponent(T)}
 const NS = 'http://www.w3.org/2000/svg';
 const SETS = {LAV: 'Lavapiés', LAT: 'La Latina', SAL: 'Salamanca', MAL: 'Malasaña', RET: 'Retiro', CHA: 'Chamberí'};
 const I18N = {
-  es: {title: 'Enjambre', live: 'En vivo', replay: 'Repetición', score: 'puntos', rank: 'puesto', neg: 'negociación', feed: 'Qué está pasando', negpts: 'puntos de negociación',
+  es: {title: 'Enjambre', live: 'En vivo', replay: 'Repetición', score: 'puntos', rank: 'puesto', neg: 'negociación', feed: 'Qué está pasando', showReads: 'lecturas', negpts: 'puntos de negociación',
        play: '▶ Reproducir', pause: '❚❚ Pausa', page: 'completa', events: 'eventos', updated: 'actualizado', source: 'Fuente única', lock: 'duelo en curso', stop: 'STOP activo',
        bands: {people: 'Personas', team: 'Agentes Claude del Team 3', sessions: 'Sesiones en el bus', hub: 'Bus', bots: 'Bots de Python (Mac Mini)', data: 'Datos con los que deciden (según el código)', world: 'Juego'},
        publicBadge: 'Vista pública · sin valores privados ni texto interno', pageN: 'Página completa', reads: 'lo leen', withKey: 'con clave', noKey: 'sin clave', brokerKey: 'clave de broker', config: 'config a mano', snapshot: 'foto', ago: 'hace', live_: 'en vivo',
        data: {'d-me': 'Cuenta /api/me', 'd-value': 'Valor privado', 'd-duels': 'Duelos /api/duels', 'd-books': 'Libros de ofertas', 'd-v20': 'Libro de v20', 'd-feed': 'Feed público', 'd-params': 'duel-params.json', 'd-floors': 'rastro_floors.json', 'd-snap': 'Foto me.json', 'd-decisions': 'decisions.jsonl'},
-       kinds: {msg: 'mensaje', bus: 'bus', decision: 'decisión', deal: 'trato', offer: 'oferta', duel: 'duelo', match: 'cruce', announce: 'anuncio', score: 'marcador', act: 'acción', say: 'dice', life: 'arranque', result: 'resultado', skip: 'descarta', grant: 'permiso', error: 'error'}},
-  en: {title: 'Swarm', live: 'Live', replay: 'Replay', score: 'score', rank: 'rank', neg: 'negotiation', feed: 'What is happening', negpts: 'negotiation points',
+       kinds: {read: 'lee', collect: 'recoge', update: 'cambia', msg: 'mensaje', bus: 'bus', decision: 'decisión', deal: 'trato', offer: 'oferta', duel: 'duelo', match: 'cruce', announce: 'anuncio', score: 'marcador', act: 'acción', say: 'dice', life: 'arranque', result: 'resultado', skip: 'descarta', grant: 'permiso', error: 'error'}},
+  en: {title: 'Swarm', live: 'Live', replay: 'Replay', score: 'score', rank: 'rank', neg: 'negotiation', feed: 'What is happening', showReads: 'reads', negpts: 'negotiation points',
        play: '▶ Play', pause: '❚❚ Pause', page: 'complete', events: 'events', updated: 'updated', source: 'Single source', lock: 'duel running', stop: 'STOP on',
        bands: {people: 'People', team: "Team 3's Claude agents", sessions: 'Sessions on the bus', hub: 'Bus', bots: 'Python bots (Mac Mini)', data: 'Data they decide with (from the code)', world: 'Game'},
        publicBadge: 'Public view · no private values or internal text', pageN: 'Page complete', reads: 'read by', withKey: 'keyed', noKey: 'keyless', brokerKey: 'broker key', config: 'hand-set config', snapshot: 'snapshot', ago: '', live_: 'live',
        data: {},
-       kinds: {msg: 'message', bus: 'bus', decision: 'decision', deal: 'deal', offer: 'offer', duel: 'duel', match: 'match', announce: 'announce', score: 'score', act: 'action', say: 'says', life: 'start/stop', result: 'result', skip: 'skip', grant: 'grant', error: 'error'}}
+       kinds: {read: 'reads', collect: 'collects', update: 'changes', msg: 'message', bus: 'bus', decision: 'decision', deal: 'deal', offer: 'offer', duel: 'duel', match: 'match', announce: 'announce', score: 'score', act: 'action', say: 'says', life: 'start/stop', result: 'result', skip: 'skip', grant: 'grant', error: 'error'}}
 };
 let lang = 'es'; try { lang = localStorage.getItem('swarm-lang') || 'es'; } catch (e) {}
 const tr = k => I18N[lang][k];
-const KCOL = {msg: '--claude', bus: '--bus', decision: '--gold', deal: '--good', offer: '--world', duel: '--world', match: '--bot', announce: '--bot', score: '--gold', act: '--muted', say: '--claude', life: '--muted', result: '--good', skip: '--muted', grant: '--bot', error: '--bad'};
+const KCOL = {read: '--data', collect: '--data', update: '--data', msg: '--claude', bus: '--bus', decision: '--gold', deal: '--good', offer: '--world', duel: '--world', match: '--bot', announce: '--bot', score: '--gold', act: '--muted', say: '--claude', life: '--muted', result: '--good', skip: '--muted', grant: '--bot', error: '--bad'};
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const col = k => css(KCOL[k] || '--muted');
 
 let META = {nodes: {}}, ALL = [], next = 0, mode = 'live';
-const READS = new Map(), DECIDES = new Set(['decision', 'deal', 'offer', 'match', 'duel', 'announce']);
+const LINES = new Map(), DATAKINDS = new Set(['read', 'collect']), BUS_SESSIONS = new Set();
 const nodes = new Map(), edges = new Map();
 let layoutKey = '';
 
 /* ---------- nodes and layout ---------- */
 function bandOf(id) {
   if (/^d-/.test(id)) return 'data';
+  if (BUS_SESSIONS.has(id) && !META.nodes[id]) return 'sessions';
   const m = META.nodes[id];
   if (m) return m.layer === 'claude' ? 'team' : m.layer;
   if (/^lane-/.test(id)) return 'team';
@@ -205,12 +206,10 @@ function layout() {
     y += rowH * rows[bi];
   });
   const gE = el('g', {id: 'edges'}, svg); el('g', {id: 'pulses'}, svg); const gN = el('g', {id: 'nodes'}, svg);
-  READS.clear();
-  Object.entries(META.data || {}).forEach(([did, d]) => (d.readers || []).forEach(r => {
-    const a = nodes.get(did), b = nodes.get(r); if (!a || !b) return;
-    const path = el('path', {class: 'read', d: curve(a, b), stroke: css('--muted'), 'stroke-opacity': b.seen ? .35 : .08}, gE);
-    (READS.get(r) || READS.set(r, []).get(r)).push({did, path});
-  }));
+  LINES.clear();
+  const line = (from, to) => { const a = nodes.get(from), b = nodes.get(to); if (!a || !b) return;
+    LINES.set(from + '>' + to, el('path', {class: 'read', d: curve(a, b), stroke: css('--muted'), 'stroke-opacity': (a.seen && b.seen) ? .5 : .1}, gE)); };
+  Object.entries(META.data || {}).forEach(([did, d]) => { (d.readers || []).forEach(r => line(did, r)); (d.writers || []).forEach(w => line(w, did)); });
   edges.forEach(e => { e.path = el('path', {class: 'edge', d: curve(nodes.get(e.a), nodes.get(e.b)), stroke: col(e.kind)}, gE); });
   const stroke = {people: '--people', team: '--claude', sessions: '--bus', hub: '--bus', bots: '--bot', data: '--muted', world: '--world'};
   nodes.forEach(n => {
@@ -235,9 +234,18 @@ function relayoutIfNeeded() { const key = [...nodes.keys()].join('|') + '@' + (d
 /* ---------- playing events ---------- */
 let clockMs = Date.now();
 function apply(e, animate) {
+  if (e.source === 'bus') BUS_SESSIONS.add(e.src);
   ensure(e.src); ensure(e.dst); relayoutIfNeeded();
   const t = Date.parse(e.ts), a = nodes.get(e.src), b = e.dst && nodes.get(e.dst);
   [a, b].forEach(n => { if (n) { n.last = t; if (!n.seen) { n.seen = true; n.g && n.g.classList.remove('off'); } } });
+  if (b && DATAKINDS.has(e.kind)) {
+    const key = e.src + '>' + e.dst; let p = LINES.get(key);
+    if (!p) { p = el('path', {class: 'read', d: curve(a, b), stroke: css('--muted'), 'stroke-opacity': .35}, document.getElementById('edges')); LINES.set(key, p); }
+    p.setAttribute('stroke-opacity', .5);
+    if (animate) { pulse(a, b, css('--data'), 800); flash(p); heat(a); heat(b); }
+    if (animate) addFeed(e);
+    return;
+  }
   if (b && a !== b) {
     const key = e.src + '>' + e.dst; let ed = edges.get(key);
     if (!ed) { ed = {a: e.src, b: e.dst, n: 0, kind: e.kind, last: t}; edges.set(key, ed); ed.path = el('path', {class: 'edge', d: curve(a, b), stroke: col(e.kind)}, document.getElementById('edges')); }
@@ -245,14 +253,13 @@ function apply(e, animate) {
     if (animate) pulse(a, b, col(e.kind));
   }
   if (animate) { [a, b].forEach(n => n && heat(n)); if (!b) ripple(a, col(e.kind)); }
-  if (animate && DECIDES.has(e.kind)) (READS.get(e.src) || []).forEach(r => {
-    const now = performance.now(); if (r.t && now - r.t < 2500) return; r.t = now;
-    r.path.setAttribute('stroke-opacity', .35); pulse(nodes.get(r.did), a, css('--muted'), 700); heat(nodes.get(r.did));
-  });
+  if (e.kind === 'update' && animate) ripple(a, css('--data'));
   if (e.score) setScore(e.score);
   if (animate || mode === 'live') addFeed(e);
   if (animate && e.highlight) star(e);
 }
+function flash(p) { p.setAttribute('stroke', css('--data')); p.setAttribute('stroke-opacity', .95); p.setAttribute('stroke-dasharray', '0'); clearTimeout(p.tm);
+  p.tm = setTimeout(() => { p.setAttribute('stroke', css('--muted')); p.setAttribute('stroke-opacity', .5); p.setAttribute('stroke-dasharray', '2 4'); }, 1400); }
 function heat(n) { if (!n.g) return; n.g.classList.add('hot'); n.g.setAttribute('filter', 'url(#glow)'); clearTimeout(n.tm); n.tm = setTimeout(() => { n.g.classList.remove('hot'); n.g.removeAttribute('filter'); }, 1100); }
 function pulse(a, b, color, dur = 900) {
   const g = document.getElementById('pulses'); if (!g) return;
@@ -280,6 +287,7 @@ function setScore(s) {
 function hms(iso) { return iso.slice(11, 19); }
 function addFeed(e) {
   if (META.public && !e.text) return;
+  if (DATAKINDS.has(e.kind) && !document.getElementById('reads').checked) return;
   const feed = document.getElementById('feed'), d = document.createElement('div');
   d.className = 'ev' + (e.highlight ? ' hl' : '');
   const who = labelOf(e.src) + (e.dst ? ' → ' + labelOf(e.dst) : '');
@@ -318,7 +326,7 @@ let started = false;
 async function meta() {
   try { const r = await fetch(q('/meta')); META = await r.json(); } catch (e) { return; }
   document.body.classList.toggle('public', !!META.public); ensureData(); if (mode === 'live') { layoutKey = ''; relayoutIfNeeded(); }
-  const hb = META.desks || {}, parts = [`${tr('source')}: ${(META.events_file || 'swarm-events.jsonl').replace(/^\/Users\/[^/]+/, '~')} · ${ALL.length} ${tr('events')}`];
+  const hb = META.desks || {}, parts = [`${tr('source')}: ${(META.events_file || 'swarm-events.jsonl').replace(/^\/(Users|home)\/[^/]+/, '~')} · ${ALL.length} ${tr('events')}`];
   Object.entries(hb).forEach(([k, v]) => parts.push(`${labelOf(k)}: tick ${v.tick ?? '–'} · ${v.time ? hms(v.time) : '–'}`));
   if (META.duel_lock) parts.push('⚑ ' + tr('lock')); if (META.stop) parts.push('⚑ ' + tr('stop'));
   document.getElementById('foot').innerHTML = parts.map(p => `<div>${esc(p)}</div>`).join('');
@@ -336,7 +344,7 @@ function updateDays() {
 function loadDay() {
   const d = document.getElementById('day').value; DAY = ALL.filter(e => e.ts.startsWith(d)).sort((a, b) => a.ts.localeCompare(b.ts));
   if (!DAY.length) return;
-  rStart = Date.parse(DAY[0].ts) - 60000; rEnd = Date.parse(DAY[DAY.length - 1].ts) + 60000;
+  const first = DAY.find(e => !DATAKINDS.has(e.kind)) || DAY[0]; rStart = Date.parse(first.ts) - 60000; rEnd = Date.parse(DAY[DAY.length - 1].ts) + 60000;
   drawTimeline(); seek(rStart);
   document.getElementById('stars').innerHTML = DAY.filter(e => e.highlight && e.src !== 'game').map((e, i) =>
     `<button type="button" class="star" data-t="${Date.parse(e.ts)}">${esc(starTitle(e))} · ${hms(e.ts).slice(0, 5)}</button>`).join(' ');
@@ -344,7 +352,7 @@ function loadDay() {
 }
 function reset() { nodes.clear(); edges.clear(); layoutKey = ''; document.getElementById('feed').innerHTML = ''; lastScore = null; ['s-score', 's-rank', 's-neg'].forEach(i => document.getElementById(i).textContent = '–'); }
 function seek(t) {
-  reset(); ensureData(); DAY.forEach(e => { ensure(e.src); ensure(e.dst); }); relayoutIfNeeded();
+  reset(); ensureData(); DAY.forEach(e => { if (e.source === 'bus') BUS_SESSIONS.add(e.src); ensure(e.src); ensure(e.dst); }); relayoutIfNeeded();
   nodes.forEach(n => { if (n.band === 'data') return; n.seen = false; n.g && n.g.classList.add('off'); });
   rt = t; ri = 0; while (ri < DAY.length && Date.parse(DAY[ri].ts) <= t) { apply(DAY[ri], false); ri++; }
   DAY.slice(Math.max(0, ri - 25), ri).forEach(e => addFeed(e));
@@ -385,14 +393,14 @@ function setMode(m) {
   mode = m; document.body.classList.toggle('live-only', m === 'live');
   document.getElementById('m-live').setAttribute('aria-pressed', m === 'live'); document.getElementById('m-replay').setAttribute('aria-pressed', m === 'replay');
   setPlaying(false); reset();
-  if (m === 'replay') { requestAnimationFrame(loadDay); return; }
+  if (m === 'replay') { setTimeout(loadDay, 0); return; }
   ensureData(); const today = ALL.length ? ALL[ALL.length - 1].ts.slice(0, 10) : ''; ALL.filter(e => e.ts.startsWith(today)).forEach(e => apply(e, false));
   ALL.slice(-30).forEach(e => addFeed(e));
 }
 function paintText() {
   document.querySelectorAll('[data-i]').forEach(n => { const v = tr(n.dataset.i); if (typeof v === 'string') n.textContent = v; });
   document.getElementById('lang').textContent = lang === 'es' ? 'EN' : 'ES'; document.documentElement.lang = lang;
-  document.getElementById('legend').innerHTML = ['msg', 'bus', 'decision', 'deal', 'offer', 'match', 'score'].map(k => `<span><i style="background:${col(k)}"></i>${esc(tr('kinds')[k])}</span>`).join('')
+  document.getElementById('legend').innerHTML = ['msg', 'bus', 'decision', 'deal', 'offer', 'match', 'score', 'read'].map(k => `<span><i style="background:${col(k)}"></i>${esc(tr('kinds')[k])}</span>`).join('')
     + `<span>┄ ${esc(tr('bands').data)}</span>`;
   document.getElementById('play').textContent = tr(playing ? 'pause' : 'play'); layoutKey = ''; relayoutIfNeeded();
 }
