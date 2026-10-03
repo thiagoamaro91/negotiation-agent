@@ -59,8 +59,8 @@ Strategy (all constants overridable from the command line):
     Chato, the seller and the buyer): `run` rewrites results/duel.lock every tick while any of our duels is live.
     Format: ONE line, the expiry as epoch seconds (e.g. `1759485123.4`), LOCK_TICKS ticks ahead; fresh while that
     time is in the future; deleted when no duel is live and on exit. Honour it by reading float(first token).
-    agent/rastro_seller.py defers its accepts and agent/chato.py refuses to start while it is fresh.
-    agent/abuela.py does NOT check it. It is a local file: it only covers bots running from this checkout.
+    agent/rastro_seller.py defers its accepts; agent/chato.py and agent/abuela.py refuse to start while it is fresh.
+    It is a local file: it only covers bots running from this checkout.
   - Tuning: every constant below can be set on the command line or from a JSON file (`--params path.json`, keys
     = flag names with underscores or the constant names, e.g. {"accept_any_ticks": 3, "RATIOS": [1.55, 1.22]}).
     Precedence: built-in default < JSON < explicit flag. The run_start log line records the values used.

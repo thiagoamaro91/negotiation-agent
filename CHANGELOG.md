@@ -33,3 +33,21 @@
 ### Fixed
 - `fix(chato)`: `--cap` can only lower our limit, never raise it above our private value. Buys above our value (LAT-06 at 28 and LAT-07 at 29, worth 27.5 to us) earned zero ladder credit.
 - `tools/snapshot.py`: reads the duel id from the `duel` key, not `id`.
+
+## [2026-10-03]
+
+### Changed
+- `agent/duel.py`: retuned from the Friday duel analysis (`docs/analysis-friday/duels.md`); replaces the 3-message draft.
+  - Silent by default: holds while the rival moved toward us within the last `--stall-ticks` (3) ticks, and speaks only to a stalled rival (offer outside our limit or thin) or a silent one. Max 2 messages per duel (`--max-msgs`, was 3).
+  - Accept window: any offer strictly inside our limit in the last `--accept-any-ticks` (3, was 2) ticks, widened to the number of our open duels whose deadlines are within `--near-ticks` (2), since the team gets one accept per tick. Several acceptable at once: biggest surplus first, unless a duel would otherwise lose its slot. A lone duel whose rival is still conceding waits to deadline-2 and keeps deadline-1 as the retry (`--no-window-wait` takes the slot at once).
+  - The paired duel's limit is used as a soft estimate of the rival's limit: it sizes the anchor and an early accept (`--early-share` 0.85 of the pie when the pie is above `--early-min-pie` 2), never moves us across our own limit. An absent rival gets one offer at `--absent-at` (0.5) of the clock.
+  - Every tuning constant is a CLI flag and can also come from `--params file.json`; explicit flags win over the JSON. The `run_start` log line records the values used.
+  - New: `watch --once` (one read-only pass) and `selftest` (rule fuzz plus scripted rival archetypes; `--n`, `--seed`).
+  - `run` writes `results/duel.lock` (one line: expiry in epoch seconds, `--lock-ticks` 3 ticks ahead) while any of our duels is live, and deletes it when none is live and on exit.
+- `agent/rastro_seller.py`: defers every accept (logged `defer_duel_lock`) while `results/duel.lock` is fresh; listing, renewing and messaging go on.
+- `agent/chato.py` and `agent/abuela.py`: `run` refuses to start (warning, exit 0) while `results/duel.lock` is fresh.
+- `agent/rastro_floors.json`: Saturday start/floor prices.
+
+### Added
+- `agent/chato.py`: `--anchor N` (absolute first bid, overrides the anchor fraction), `--step N` (primas per round when buying, default 1), `--max-bid N` (highest number we send when buying; his final is still taken up to `--cap`). `plan` prints the bid ladder; a buy is skipped while spendable cash is below `--anchor`.
+- `agent/abuela.py`: `--reserve N` (cash we never spend below, default 280) and `--cap N` (only lowers our limit below our private value).
