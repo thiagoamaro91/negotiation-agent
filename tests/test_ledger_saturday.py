@@ -187,6 +187,18 @@ class WhoPaysTheFee(unittest.TestCase):
     """The rules that tell the acceptor when the price alone is not enough (Saturday's whole feed: 105 fees told by
     price, 1 by the board, 9 packages or swaps, 2 unsure of which 1 settled by the consistency pass)."""
 
+    def test_a_listing_counts_only_if_it_fits_the_whole_trade_and_its_recipient(self):
+        # t02's ask is for t04 (or carries a second card); t01's bid names the asset itself. The seller took the bid,
+        # so the fee is t02's: 408 / 390, known
+        bid = listed(1, "t01", give_cash=10)
+        bid["offer"]["want"]["assets"] = [{"id": 77, "kind": "card"}]
+        for ask in (listed(2, "t02", give_ids=(77, 78), want_cash=10, to="t04"),   # restricted, two cards
+                    listed(2, "t02", give_ids=(77,), want_cash=10, to="t04"),       # restricted
+                    listed(2, "t02", give_ids=(77, 78), want_cash=10)):             # two cards
+            led = ledger.build(feed((1, "offer.listed", bid), (1, "offer.listed", ask),
+                                    (2, "settlement", settlement("t02", "t01", "MAL-04", 10, "rastro", fee=2, asset=77))))
+            self.assertEqual((led["t02"]["cash"], led["t01"]["cash"], led["t02"]["cash_unsure"]), (408, 390, 0), ask)
+
     def test_an_offer_taken_on_its_last_tick_still_counts(self):
         # t15's bid 1513 (21 P for MAL-06) expired at tick 102; t07 sold into it and it settled at 103
         led = ledger.build(feed(
@@ -268,11 +280,12 @@ class WhoPaysTheFee(unittest.TestCase):
             for real in possible:
                 self.assertLessEqual(abs(real - led[team]["cash"]), led[team]["cash_unsure"], (team, real))
 
-    def test_an_unknown_left_out_of_the_search_pins_nothing_it_touches(self):
-        # two unsure fees of t01, either could have moved; with room for one unknown only, the kept one must not be
-        # pinned just because the other was held at the old rule
+    def test_a_group_too_big_to_weigh_pins_nothing(self):
+        # the constrained two-trade case (fully pinned when weighed: see test_the_consistency_pass_checks_...), with
+        # room for two combinations only: the old rule stays and nothing of the group is pinned
         rows = ((2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
                 (3, "settlement", settlement("t03", "t01", "SAL-02", 10, "rastro", fee=2, asset=62)),
+                (4, "settlement", {"persona": "picaros", "price": 410, "items": [{"id": 91, "ref": "RET-09", "frm": "picaros", "to": "t03"}]}),
                 (5, "settlement", {"persona": "picaros", "price": 378, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]}))
         saved = ledger.MAX_FLIP_COMBOS
         try:
@@ -281,6 +294,21 @@ class WhoPaysTheFee(unittest.TestCase):
         finally:
             ledger.MAX_FLIP_COMBOS = saved
         self.assertEqual((led["t02"]["cash_unsure"], led["t03"]["cash_unsure"]), (2, 2))
+
+    def test_fees_linked_through_a_team_are_weighed_together(self):
+        # t01 buys from t02 (fee X), t02 buys from t03 (fee Y), both unsure. t01 then spends all but its fee, and t02
+        # all but one fee: only "X moves to t02 and Y moves to t03" keeps everyone at or above zero. Weighed apart (each
+        # with the other held at the old rule) neither would be pinned; weighed as one group both are
+        rep = {}
+        led = ledger.build(feed(
+            (2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+            (3, "settlement", settlement("t03", "t02", "SAL-02", 10, "rastro", fee=2, asset=62)),
+            (5, "settlement", {"persona": "picaros", "price": 390, "items": [{"id": 91, "ref": "RET-09", "frm": "picaros", "to": "t01"}]}),
+            (6, "settlement", {"persona": "picaros", "price": 397, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t02"}]})),
+            report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"], led["t03"]["cash"]), (0, 1, 408))
+        self.assertEqual(sorted(u["tick"] for u in rep["settled"]), [2, 3])
+        self.assertEqual([led[t]["cash_unsure"] for t in ("t01", "t02", "t03")], [0, 0, 0])
 
     def test_a_settlement_without_known_sides_pins_nothing(self):
         rep = {}
@@ -388,6 +416,17 @@ class Grants(unittest.TestCase):
         led = ledger.build(feed((1, "schedule.fired", {"action": "grant_all", "note": self.SATURDAY})))
         self.assertEqual({t: r["cash"] for t, r in led.items()}, {t: 550 for t in TEAMS})
         self.assertEqual(led["t01"]["grants"], 150)
+
+    def test_a_grant_told_only_in_an_announcement_counts_once(self):
+        payday = {"text": "Payday in Madrid: every team gets 400 primas, a second starting purse."}
+        led = ledger.build(feed((5, "announcement", payday)))
+        self.assertEqual([led[t]["cash"] for t in TEAMS], [800, 800, 800])
+        both = ledger.build(feed((5, "schedule.fired", {"action": "grant_all", "note": "x", "cash": 400}),
+                                 (5, "announcement", payday)))
+        self.assertEqual([both[t]["cash"] for t in TEAMS], [800, 800, 800])
+        words = ledger.build(feed((5, "announcement", {"text": "Play resumes now."}),
+                                  (5, "venue.announcement", payday)))  # a team's own venue cannot pay anyone
+        self.assertEqual([words[t]["cash"] for t in TEAMS], [400, 400, 400])
 
     def test_a_scheduled_grant_reads_its_params(self):
         schedule = {"upcoming": [{"action": "grant_all", "note": "Sunday money", "params": {"cash": 120}}]}
