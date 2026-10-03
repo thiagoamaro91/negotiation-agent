@@ -40,11 +40,12 @@ the log: an `accept` event with `left=1` followed by a `result` event with `stat
 
 - `rival ... late=True`: an offer the late read saw that the first read had missed. **If none appears in a whole
   wave while rivals post at the end, the server shows a message only from the next tick**, and the late read cannot
-  gain anything: it still costs nothing (see the stress row "server shows same-tick messages only next tick").
+  gain anything; it costs nothing either (table "Server behaviours" below), so it can stay on.
 - `accept ... late=True`: accepts taken in the late read. Next to the `result` they say what the late read earned.
-- `late_skipped`, `error where=late`: a late read that did not happen. That tick's accept moves to the next tick's
-  first read. `late_off`: two in a row, so the late read switched itself off for the rest of the run (behaviour is
-  then the safe file's, plus the other two flags).
+- `error where=late attempt=N`: a read of the late pass failed and was retried. `late_skipped`, or errors on every
+  attempt: the late read did not happen, and that tick's accept moves to the next tick's first read. `late_off`: two
+  in a row, so the late read switched itself off for the rest of the run (behaviour is then the safe file's, plus
+  the other two flags).
 
 ## How each change was judged
 
