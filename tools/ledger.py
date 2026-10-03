@@ -2,10 +2,20 @@
 
 Everyone starts with 400 P (kit/RULES.md). From there the public feed shows every move of cash:
 - dealer settlements (packs and cards bought from or sold to a dealer, at the settled price);
-- team-to-team settlements (the buyer pays the price; the El Rastro fee is paid by whoever accepted, i.e. the team
-  that did not post the matching listing; when that cannot be told, by the buyer);
-- venue openings (a 250 P bond + 20 P), cash gifts and the organisers' grants.
-Checked against our own account: Team 3's rebuilt cash equals /api/me exactly at ticks 72 and 93.
+- team-to-team settlements (the buyer pays the price; the fee is paid by whoever accepted, i.e. the team that did not
+  post the matching listing; when that cannot be told, by the buyer). El Rastro keeps its fee; a fee charged on a
+  team's own venue goes to that venue's owner;
+- venue openings (a 250 P bond + 20 P; the free starter stalls of Saturday tick 201 cost nothing, "bond": 0 and
+  "starter": true), bond refunds on venue.closed ("refund"), cash gifts and the organisers' grants. A grant's cash
+  comes from the event, else from the schedule entry with the same note, else from the note itself ("150 primas":
+  the Saturday allowance fired at tick 165 with no cash field and had left the schedule by then).
+
+Holes in the recording: our recorder lost ticks 49-118 on Friday to DNS errors (logs/feed-vm/README.md).
+Wherever two consecutive events are more than a tick apart, build() fills the hole from the complete copies in
+GAP_SOURCES (logs/feed-vm/feed.jsonl), matched by event id.
+
+Checked against our own account: Team 3's rebuilt cash equals the real one at every row of logs/score.jsonl from
+tick 33 to tick 630 (Friday and Saturday). `--json` carries that comparison as "check_history".
 
 Cards are only partly visible: a team's starting hand (11 commons, 3 uncommons, 1 rare) and its pack pulls stay
 hidden until it lists, sells or trades them, so "known cards" is a lower bound.
@@ -19,6 +29,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -26,7 +37,55 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import value_inference as vi  # noqa: E402
 
 START_CASH = 400
+VENUE_BOND = 250
 VENUE_FEE = 20
+HOUSE_VENUES = (None, "rastro")
+GAP_SOURCES = (vi.ROOT / "logs" / "feed-vm" / "feed.jsonl",)  # complete copies of stretches our recorder missed
+GAP_TICKS = 1  # two consecutive events further apart than this: a hole in the recording, filled from GAP_SOURCES
+PRIMAS = re.compile(r"(\d+)\s*primas", re.IGNORECASE)
+_source_cache: dict = {}
+
+
+def _source_rows(path: Path) -> list:
+    """A gap source's events, parsed once per file version (brain.py rebuilds the ledger every cycle)."""
+    try:
+        st = path.stat()
+    except OSError:
+        return []
+    key = (st.st_mtime_ns, st.st_size)
+    hit = _source_cache.get(str(path))
+    if hit and hit[0] == key:
+        return hit[1]
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    _source_cache[str(path)] = (key, rows)
+    return rows
+
+
+def gaps(events: list) -> list:
+    """Holes in a recording: (id before, tick before, id after, tick after) for consecutive events > GAP_TICKS apart."""
+    out = []
+    for a, b in zip(events, events[1:]):
+        if "id" in a and "id" in b and b["tick"] - a["tick"] > GAP_TICKS:
+            out.append((a["id"], a["tick"], b["id"], b["tick"]))
+    return out
+
+
+def fill_gaps(events: list, sources: tuple = GAP_SOURCES) -> list:
+    """The events plus every event of `sources` that falls inside one of their holes (by id), in (tick, id) order.
+    Without a hole, or without a source covering it, the events come back unchanged."""
+    holes = gaps(events)
+    if not holes:
+        return events
+    have = {e.get("id") for e in events}
+    extra = []
+    for path in sources:
+        for e in _source_rows(Path(path)):
+            if e.get("id") not in have and any(lo < e["id"] < hi for lo, _, hi, _ in holes):
+                extra.append(e)
+                have.add(e["id"])
+    if not extra:
+        return events
+    return sorted(events + extra, key=lambda e: (e["tick"], e["id"]))
 
 
 def listings(events: list) -> dict:
@@ -45,22 +104,39 @@ def listings(events: list) -> dict:
 
 
 def grant_cash(schedule: dict | None, payload: dict) -> int:
-    """Cash per team of a fired grant: from the event itself, or from the schedule entry with the same note."""
+    """Cash per team of a fired grant: from the event itself, from the schedule entry with the same note, or from the
+    note's own "<n> primas" (a fired entry leaves the schedule, so the live schedule no longer has it)."""
     if payload.get("cash"):
         return int(payload["cash"])
     for u in (schedule or {}).get("upcoming", []):
         if u.get("action") == "grant_all" and u.get("note") == payload.get("note"):
-            return int((u.get("params") or {}).get("cash") or 0)
-    return 0
+            cash = (u.get("params") or {}).get("cash")
+            if cash:
+                return int(cash)
+    m = PRIMAS.search(payload.get("note") or "")
+    return int(m.group(1)) if m else 0
 
 
-def build(events: list, schedule: dict | None = None, upto: int | None = None) -> dict:
+def venue_cost(payload: dict) -> int:
+    """What opening a venue took from its owner: the bond (250 P unless the event says otherwise) + 20 P; a starter
+    stall is free."""
+    if payload.get("starter"):
+        return 0
+    bond = payload.get("bond")
+    return (VENUE_BOND if bond is None else int(bond)) + VENUE_FEE
+
+
+def build(events: list, schedule: dict | None = None, upto: int | None = None, fill: bool = True) -> dict:
+    if fill:
+        events = fill_gaps(events)
     teams = sorted({e["payload"]["team"] for e in events if e["type"] == "team.joined"})
     led = {t: {"cash": START_CASH, "dealer_spent": 0, "dealer_earned": 0, "team_bought": 0, "team_sold": 0,
-               "fees": 0, "bonds": 0, "gifts": 0, "grants": 0, "trades": 0, "unlocked": [], "venue": None,
+               "fees": 0, "fees_earned": 0, "bonds": 0, "refunds": 0, "gifts": 0, "grants": 0, "trades": 0,
+               "unlocked": [], "venue": None,
                "cards_in": collections.Counter(), "cards_out": collections.Counter(), "moves": [], "history": []}
            for t in teams}
     posted = listings(events)
+    owners: dict = {}  # venue id -> owning team
     gifted_at = set()
 
     def record(tick: int) -> None:
@@ -85,16 +161,18 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None) -
             price = p.get("price") or 0
             dealer = p.get("persona")
             if dealer:
-                for i in items:
+                for i in items[:1]:  # one price per settlement, its direction from the first item
                     if i.get("to") in led:
                         move(i["to"], t, -price, f"bought {i.get('ref')} from {dealer}")
                         led[i["to"]]["dealer_spent"] += price
-                        led[i["to"]]["cards_in"][i.get("ref")] += 1
                     elif i.get("frm") in led:
                         move(i["frm"], t, price, f"sold {i.get('ref')} to {dealer}")
                         led[i["frm"]]["dealer_earned"] += price
+                for i in items:  # every card of a lot moves
+                    if i.get("to") in led:
+                        led[i["to"]]["cards_in"][i.get("ref")] += 1
+                    if i.get("frm") in led:
                         led[i["frm"]]["cards_out"][i.get("ref")] += 1
-                    break  # one price per settlement
                 record(t)
                 continue
             ins = collections.defaultdict(list)
@@ -126,6 +204,10 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None) -
             fee = p.get("fee") or 0
             if fee:
                 move(acceptor, t, -fee, f"fee on {refs} (accepted)")
+                owner = owners.get(p.get("venue")) if p.get("venue") not in HOUSE_VENUES else None
+                if owner in led:
+                    move(owner, t, fee, f"fee earned on {refs} at {p.get('venue')}")
+                    led[owner]["fees_earned"] += fee
             for team, side in ((buyer, "team_bought"), (seller, "team_sold")):
                 if team in led:
                     led[team][side] += price
@@ -138,10 +220,22 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None) -
                 if seller in led:
                     led[seller]["cards_out"][i.get("ref")] += 1
         elif kind == "venue.opened" and p.get("owner") in led:
-            cost = int(p.get("bond") or 250) + VENUE_FEE
-            move(p["owner"], t, -cost, f"opened venue {p.get('name')}")
-            led[p["owner"]]["bonds"] += cost
-            led[p["owner"]]["venue"] = p.get("venue")
+            owner = p["owner"]
+            owners[p.get("venue")] = owner
+            cost = venue_cost(p)
+            if cost:
+                move(owner, t, -cost, f"opened venue {p.get('name')}")
+            led[owner]["bonds"] += cost
+            led[owner]["venue"] = p.get("venue")
+        elif kind == "venue.closed":
+            owner = owners.get(p.get("venue"))
+            refund = int(p.get("refund") or 0)
+            if owner in led:
+                if refund:
+                    move(owner, t, refund, f"bond back on venue {p.get('venue')}")
+                    led[owner]["refunds"] += refund
+                if led[owner]["venue"] == p.get("venue"):
+                    led[owner]["venue"] = None
         elif kind == "gift.given" and p.get("team") in led:
             for ref in p.get("cards") or []:
                 led[p["team"]]["cards_in"][ref] += 1
@@ -157,11 +251,16 @@ def build(events: list, schedule: dict | None = None, upto: int | None = None) -
                     led[team]["grants"] += cash
         elif kind == "level.unlocked" and p.get("team") in led:
             led[p["team"]]["unlocked"].append(p.get("persona"))
-        if kind in ("settlement", "venue.opened", "gift.given", "schedule.fired"):
+        if kind in ("settlement", "venue.opened", "venue.closed", "gift.given", "schedule.fired"):
             record(t)
     for team in led:
         led[team]["known_cards"] = {r: n for r, n in (led[team]["cards_in"] - led[team]["cards_out"]).items() if n > 0}
     return led
+
+
+def cash_at(hist: list, tick: int) -> int:
+    """A team's rebuilt cash at the end of a tick, from its history."""
+    return next((c for tk, c in reversed(hist) if tk <= tick), START_CASH)
 
 
 def check_us(led: dict) -> dict | None:
@@ -170,9 +269,32 @@ def check_us(led: dict) -> dict | None:
         return None
     me = vi.load_me()
     tick = me.get("tick")
-    hist = led.get(vi.US, {}).get("history", [])
-    rebuilt = next((c for tk, c in reversed(hist) if tk <= tick), START_CASH)
+    rebuilt = cash_at(led.get(vi.US, {}).get("history", []), tick)
     return {"tick": tick, "real": me["cash"], "rebuilt": rebuilt, "ok": rebuilt == me["cash"]}
+
+
+def score_rows() -> list:
+    """Our real cash over time (tools/snapshot.py): the feed directory's copy, else the committed logs/score.jsonl."""
+    rows = vi.rows("score.jsonl")
+    if rows:
+        return rows
+    path = vi.ROOT / "logs" / "score.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def check_history(led: dict, rows: list, upto: int | None = None) -> list:
+    """Our rebuilt cash against every real snapshot (tick, cash) up to the feed's last tick."""
+    hist = led.get(vi.US, {}).get("history", [])
+    out = []
+    for r in rows:
+        tick, real = r.get("tick"), r.get("cash")
+        if tick is None or real is None or (upto is not None and tick > upto):
+            continue
+        rebuilt = cash_at(hist, tick)
+        out.append({"tick": tick, "real": real, "rebuilt": rebuilt, "ok": rebuilt == real})
+    return out
 
 
 def main() -> None:
@@ -180,12 +302,16 @@ def main() -> None:
     ap.add_argument("--team")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
-    events = vi.rows("feed.jsonl")
-    led = build(events, vi.public("schedule"))
+    raw = vi.rows("feed.jsonl")
+    events = fill_gaps(raw)
+    holes = {"found": gaps(raw), "left": gaps(events)}
+    led = build(events, vi.public("schedule"), fill=False)
     chk = check_us(led)
+    hist = check_history(led, score_rows(), events[-1]["tick"])
     if args.json:
         out = {t: {k: v for k, v in r.items() if k not in ("cards_in", "cards_out")} for t, r in led.items()}
-        print(json.dumps({"tick": events[-1]["tick"], "check": chk, "teams": out}, indent=1, default=str))
+        print(json.dumps({"tick": events[-1]["tick"], "check": chk, "check_history": hist, "gaps": holes,
+                          "teams": out}, indent=1, default=str))
         return
     if args.team:
         r = led[args.team]
@@ -194,8 +320,16 @@ def main() -> None:
         print(f"\n{args.team}: cash {r['cash']} P; known cards {r['known_cards']}")
         return
     print(f"feed up to tick {events[-1]['tick']}; every team started with {START_CASH} P")
+    for lo_id, lo, hi_id, hi in holes["found"]:
+        state = "still open" if (lo_id, lo, hi_id, hi) in holes["left"] else "filled from " + ", ".join(
+            str(Path(s).relative_to(vi.ROOT)) for s in GAP_SOURCES)
+        print(f"recording hole between ticks {lo} and {hi}: {state}")
     if chk:
         print(f"check: Team 3 rebuilt {chk['rebuilt']} P vs real {chk['real']} P at tick {chk['tick']} -> {'OK' if chk['ok'] else 'MISMATCH'}")
+    bad = [h for h in hist if not h["ok"]]
+    if hist:
+        print(f"history: {len(hist) - len(bad)}/{len(hist)} snapshots match"
+              + "".join(f"; tick {h['tick']} real {h['real']} rebuilt {h['rebuilt']}" for h in bad))
     print(f"{'team':5} {'cash':>5} {'dealers':>8} {'teams+':>7} {'teams-':>7} {'fees':>5} {'bond':>5} {'trades':>6}  unlocked / venue")
     for t, r in sorted(led.items(), key=lambda x: -x[1]["cash"]):
         print(f"{t:5} {r['cash']:5} {r['dealer_earned'] - r['dealer_spent']:+8} {r['team_sold']:7} {r['team_bought']:7} "
