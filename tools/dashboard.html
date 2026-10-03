@@ -113,6 +113,38 @@ svg.spark { width: 100%; height: 70px; display: block; }
 .empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
 .celfoot { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
 .side { white-space: normal; }
+
+/* Duels: what our duel bot is doing. Our limits never reach the page: only how far an offer sits inside or outside them. */
+.duel { margin-bottom: 14px; border-color: rgba(110,160,255,0.45); }
+.duelcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; }
+.dcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 7px; min-width: 0; }
+.dcard.on { border-color: var(--ours); box-shadow: 0 0 0 1px rgba(110,160,255,0.22); }
+.dcard.off { opacity: 0.65; }
+.dcard .hd { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.dcard .t { font-family: var(--display); font-stretch: 85%; font-weight: 800; font-size: 16px; overflow-wrap: anywhere; }
+.dsub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.dsub b { color: var(--ink); font-weight: 600; }
+.dprices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dprice { display: grid; gap: 2px; }
+.dprice .l { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.dprice .v { font-family: var(--display); font-stretch: 80%; font-size: 26px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.dprice.us .v { color: var(--ours); } .dprice.them .v { color: var(--her); }
+.dprice .v small { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--muted); }
+.gauge { position: relative; height: 22px; margin: 2px 0 0; }
+.gauge .track { position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, rgba(255,93,108,0.55), rgba(255,93,108,0.15) 49%, rgba(61,220,151,0.15) 51%, rgba(61,220,151,0.55)); }
+.gauge .lim { position: absolute; left: 50%; top: 2px; width: 2px; height: 18px; margin-left: -1px; background: var(--gold); }
+.gauge .pt { position: absolute; top: 5px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--bg); }
+.gauge .pt.us { background: var(--ours); } .gauge .pt.them { background: var(--her); }
+.gscale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.gscale span:nth-child(2) { color: var(--gold); }
+.dnote { font-size: 12.5px; color: var(--ink); }
+.dnote .tag { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.dmove { font-family: var(--mono); font-size: 11px; color: var(--good); }
+.st.dlive { color: var(--ours); border-color: var(--ours); }
+.st.no_deal, .st.unknown { color: var(--muted); }
+.brk.waiting { color: var(--gold); border-color: rgba(255,196,77,0.45); }
+.brk.stopped { color: var(--muted); }
+.dot.wait { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
 </style>
 </head>
 <body>
@@ -126,6 +158,8 @@ svg.spark { width: 100%; height: 70px; display: block; }
 </div>
 
 <div class="kpis" id="kpis"></div>
+
+<div class="panel duel" id="duels"><h2>Duels · our bot</h2><span class="muted">connecting</span></div>
 
 <div class="panel cel" id="cel"><h2>La Celestina · our venue</h2><span class="muted">connecting</span></div>
 
@@ -363,6 +397,96 @@ function renderCelestina(c) {
     <div class="celfoot">${foot.join(" · ")}</div>${errs.length ? `<div class="err">${errs.join(" · ")}</div>` : ""}`;
 }
 
+// Duels: what agent/duel.py is doing, from its log on the bots' machine. Rival aliases, items and message text come
+// from other teams: every string goes through esc(). Our limits are not in /data; the gauge only shows how far an
+// offer sits inside (right, green) or outside (left, red) our limit, in percent of it.
+const DUEL_GAUGE = 40;  // the gauge spans -40% .. +40% around our limit
+const duelPos = (g) => 50 + Math.max(-DUEL_GAUGE, Math.min(DUEL_GAUGE, g)) * 50 / DUEL_GAUGE;
+const duelResult = (x) => x == null ? "-" : Math.abs(x) <= 1.5 ? `${Math.round(x * 100)}%` : fmt(x, 2);
+const duelRole = (r) => r === "buyer" ? "we buy" : r === "seller" ? "we sell" : esc(r || "?");
+
+function duelBot(b, lock) {
+  const st = b.state || "missing";
+  const label = { alive: "bot live", waiting: "bot up · waiting for duels", stale: "bot STALE", stopped: "bot stopped",
+    missing: "no duel log today" }[st] || esc(st);
+  const dot = st === "alive" ? "" : st === "waiting" ? "wait" : st === "stale" ? "stale" : "off";
+  const bits = [label];
+  if (b.age != null) bits.push(`last line ${fmt(b.age, 0)}s ago`);
+  if (b.mode && b.mode !== "run") bits.push(`mode ${esc(b.mode)}: nothing is sent`);
+  if (st === "stopped" && b.stop_why) bits.push(esc(b.stop_why));
+  const cls = st === "alive" ? "alive" : st === "waiting" ? "waiting" : st === "stale" ? "stale" : st === "stopped" ? "stopped" : "missing";
+  const lk = lock || {};
+  const lockTxt = lk.state === "on" ? `accept lock on · ${esc(lk.expires_in ?? "?")}s` : lk.state === "expired" ? "accept lock expired" : "accept lock off";
+  return `<span class="brk ${cls}"><span class="dot ${dot}"></span>${bits.join(" · ")}</span><span class="pill">${lockTxt}</span>`;
+}
+
+function duelGauge(r) {
+  if (r.our_gap == null && r.rival_gap == null) return `<div class="dsub">no prices on the table yet</div>`;
+  const pt = (g, who) => g == null ? "" : `<span class="pt ${who}" style="left:${duelPos(g).toFixed(1)}%" title="${who === "us" ? "our offer" : "their offer"}: ${Math.abs(g)}% ${g >= 0 ? "inside" : "outside"} our limit"></span>`;
+  let say = "";
+  if (r.rival_gap != null) {
+    const g = r.rival_gap;
+    say = `<span class="chip ${g > 0 ? "good" : "bad"}">their offer ${g === 0 ? "sits at" : Math.abs(g) + "% " + (g > 0 ? "inside" : "outside")} our limit</span>`;
+  }
+  return `<div class="gauge"><span class="track"></span><span class="lim"></span>${pt(r.rival_gap, "them")}${pt(r.our_gap, "us")}</div>
+    <div class="gscale"><span>outside</span><span>our limit</span><span>inside</span></div>${say}`;
+}
+
+function duelCard(r) {
+  const live = r.status === "live";
+  const price = (p, dd, two) => p == null ? "-" : `${esc(p)}${two && dd != null ? ` <small>day ${esc(dd)}</small>` : ""}`;
+  const left = r.left == null ? "" : r.left <= 0 ? " · at deadline" : ` · <b>${esc(r.left)}</b> ticks left`;
+  const act = r.action ? `<span class="tag">${esc(r.action.replace("_", " "))}</span> ` : "";
+  return `<div class="dcard ${live ? "on" : "off"}">
+    <div class="hd"><span class="t">#${esc(r.duel)} ${esc(r.rival || "?")}</span><span class="st ${live ? "dlive" : "unknown"}">${live ? "live" : "no news"}</span></div>
+    <div class="dsub">${duelRole(r.role)} · ${esc(r.item || "?")}${r.two_issues ? " · price + days" : ""} · round <b>${esc(r.round ?? 0)}</b>${left}</div>
+    <div class="dprices"><div class="dprice us"><span class="l">us${r.our_would ? " (would)" : ""}</span><span class="v">${price(r.our_price, r.our_days, r.two_issues)}</span></div>
+      <div class="dprice them"><span class="l">them</span><span class="v">${price(r.rival_price, r.rival_days, r.two_issues)}</span></div></div>
+    ${duelGauge(r)}
+    <div class="dnote">${act}${esc(r.note || (live ? "watching" : "bot restarted or stopped: waiting for news on this duel"))}${r.moving ? ` <span class="dmove">· rival moving</span>` : ""}</div>
+    ${r.text ? `<div class="quote"><b>last message:</b> ${esc(r.text)}</div>` : ""}
+  </div>`;
+}
+
+function renderDuels(v) {
+  const title = `<h2>Duels · our bot</h2>`;
+  if (v.error) { $("duels").innerHTML = `${title}<span class="err">${esc(v.error)}</span>`; return; }
+  const n = v.counts || {}, b = v.bot || {};
+  const avg = v.avg_result == null ? "" : `<span class="pill" title="mean of the server's result per finished duel; a no deal counts as 0">avg result <b>${duelResult(v.avg_result)}</b> over ${esc(v.scored)}</span>`;
+  const head = `<div class="celhd">${title}${duelBot(b, v.lock)}
+    <span class="pill">live <b>${esc(n.live ?? 0)}</b> · finished <b>${esc(n.finished ?? 0)}</b> · today <b>${esc(n.total ?? 0)}</b> · deals <b>${esc(n.deals ?? 0)}</b></span>${avg}</div>`;
+
+  if (!v.exists || !n.total) {
+    const why = !v.exists
+      ? "No duel log for today yet. Duels I runs about 12:01 to 13:35, Duels II starts about 18:30."
+      : b.state === "stopped" ? "The duel bot ran today but saw no duel; it is stopped now."
+      : "The duel bot is up and waiting for its first duel.";
+    $("duels").innerHTML = `${head}<div class="empty">${esc(why)}</div><div class="celfoot">${esc(v.file || "")}</div>`;
+    return;
+  }
+
+  const live = (v.live || []);
+  const cards = live.length ? `<div class="duelcards">${live.map(duelCard).join("")}</div>` : `<div class="empty">No duel live right now.</div>`;
+
+  const fRows = (v.finished || []).map((f) => {
+    const out = f.deal ? `<span class="st deal">deal</span>` : `<span class="st ${esc(f.status)}">${esc((f.status || "").replace("_", " "))}</span>`;
+    const pr = f.price == null ? "-" : `${esc(f.price)} P${f.days != null ? ` · day ${esc(f.days)}` : ""}`;
+    return `<tr><td class="n">#${esc(f.duel)}</td><td>${esc(f.rival || "?")}</td><td>${duelRole(f.role)}</td><td>${out}</td><td class="n">${pr}</td><td class="n">${esc(f.round ?? "-")}</td><td class="n">${duelResult(f.result)}</td><td class="n muted">${esc(f.time || "")}</td></tr>`;
+  }).join("");
+  const finished = fRows
+    ? `<div class="tablewrap"><table><tr><th class="n">Duel</th><th>Rival</th><th>Role</th><th>Outcome</th><th class="n">Price</th><th class="n">Rounds</th><th class="n" title="the server's result for the duel">Result</th><th class="n">At</th></tr>${fRows}</table></div>${n.finished > (v.finished || []).length ? `<div class="celfoot">showing ${(v.finished || []).length} of ${esc(n.finished)}</div>` : ""}`
+    : `<div class="empty">No duel finished yet.</div>`;
+
+  const foot = [`tick ${esc(v.tick ?? "-")}`, `refused ${esc(v.refused ?? 0)} · errors ${esc(v.errors ?? 0)}`];
+  if (v.last_error) foot.push(`last ${esc(v.last_error.event)} ${esc(v.last_error.time)}${v.last_error.duel != null ? " #" + esc(v.last_error.duel) : ""}: ${esc(v.last_error.what || v.last_error.where || "")} ${esc(v.last_error.msg || "")}`);
+  foot.push(esc(v.file || ""));
+
+  $("duels").innerHTML = `${head}
+    <div><div class="celsub">Live now <b>${esc(n.live ?? 0)}</b>${n.unknown ? ` · no news <b>${esc(n.unknown)}</b>` : ""} <span class="muted" style="text-transform:none;letter-spacing:0">· dot on the gauge: <span style="color:var(--ours)">us</span>, <span style="color:var(--her)">them</span>; gold line = our limit (never shown as a number)</span></div>${cards}</div>
+    <div><div class="celsub">Finished <b>${esc(n.finished ?? 0)}</b></div>${finished}</div>
+    <div class="celfoot">${foot.join(" · ")}</div>`;
+}
+
 function render(d) {
   const c = d.clock || {};
   $("round").innerHTML = `<b>${esc(c.round_name || "")}</b>`;
@@ -378,6 +502,9 @@ async function tick() {
     $("err").textContent = d.error ? "server: " + d.error : "";
     if (d.celestina) {
       try { renderCelestina(d.celestina); } catch (e) { $("cel").innerHTML = `<h2>La Celestina · our venue</h2><span class="err">${esc(String(e))}</span>`; }
+    }
+    if (d.duels) {
+      try { renderDuels(d.duels); } catch (e) { $("duels").innerHTML = `<h2>Duels · our bot</h2><span class="err">${esc(String(e))}</span>`; }
     }
     if (d.me) { last = d; render(d); }
     const stale = d.age == null || d.age > 15;

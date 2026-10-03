@@ -16,6 +16,12 @@ The broker's side comes from the files agent/broker.py writes: the heartbeat log
 checkout, which may not be this one:
 
     python3 tools/dashboard.py --broker-root ~/bazaar      # or BROKER_ROOT=~/bazaar; default: this repo
+
+Duels panel (read-only, local files only, no game API call): what agent/duel.py is doing, from its log
+logs/duel/<YYYY-MM-DD>.jsonl (duel_new, rival, hold, say / would_say, accept / would_accept, result, error, refused,
+run_start / run_end / stop) and its accept-slot lock results/duel.lock, both under the same --broker-root (alias
+--bots-root). The page may be screen-shared, so our limits never leave this process: only relative gaps (how far an
+offer sits inside or outside our limit, in percent) reach /data.
 """
 from __future__ import annotations
 
@@ -23,6 +29,7 @@ import argparse
 import json
 import math
 import os
+import re
 import secrets
 import socket
 import sys
@@ -39,7 +46,7 @@ from bazaar_sdk import Bazaar, BazaarError  # noqa: E402
 
 PAGE = ROOT / "tools" / "dashboard.html"
 HISTORY = ROOT / "logs" / "dashboard_history.jsonl"
-STATE: dict = {"data": None, "error": None, "updated": 0.0, "celestina": None}
+STATE: dict = {"data": None, "error": None, "updated": 0.0, "celestina": None, "duels": None}
 LOCK = threading.Lock()
 TEAM = "t03"
 
@@ -305,6 +312,317 @@ class Celestina:
                 "stale_after": CEL_STALE_AFTER}
 
 
+# ---------------------------------------------------------------- Duels: what agent/duel.py is doing (pure parts)
+#
+# The panel may be screen-shared or shown to judges, so the view is built from an ALLOWLIST of output keys and never
+# carries a private number: no limit, no paired limit, no soft pie, no surplus in primas, no planned next number and
+# no raw `why` text (it quotes surpluses). Our limit only shows as a relative gap: how far an offer sits inside (+) or
+# outside (-) it, in whole percent.
+
+DUEL_STALE_AFTER = 120.0  # seconds without a log line, while duels are live, before the bot shows as stale
+DUEL_FINISHED = 40        # finished duels listed on the panel (the counts cover the whole day)
+DUEL_TEXT = 100           # characters of the last message shown (untrusted: other teams write it)
+DUEL_ROW_EVENTS = ("hold", "say", "would_say", "accept", "would_accept", "accept_skipped", "refused", "bug_skip")
+DUEL_ERRORS = ("error", "refused", "bug_skip")
+DUEL_DEAL = ("deal", "settled", "accepted", "closed", "done")
+
+# decide()'s `why` strings, by prefix, as fixed phrases (the raw strings carry surpluses and our next number)
+DUEL_WHY = (
+    ("accepted, waiting", "accepted, waiting to settle"),
+    ("deadline", "deadline"),
+    ("early", "early accept: rival offer is good enough"),
+    ("endgame window", "endgame: only the last chance may still go out"),
+    ("endgame", "endgame accept: offer inside our limit"),
+    ("walk", "walk: no zone of agreement"),
+    ("message budget", "message budget spent, listening"),
+    ("rival silent: listening", "rival silent, listening"),
+    ("rival silent: our one offer", "rival silent, our one offer stands"),
+    ("rival moved", "rival is moving toward us, listening"),
+    ("rival offer inside", "acceptable offer, waiting for the endgame"),
+    ("last message kept", "keeping our last message for the last chance"),
+    ("our number", "our number stands"),
+    ("rival surplus", "taking the offer instead of another round"),
+    ("last chance", "last chance offer"),
+    ("absent rival", "absent rival: our one offer"),
+    ("anchor", "anchor: rival stalled"),
+    ("rival offer changed", "rival offer changed, accept skipped"),
+)
+
+
+def duel_why(why) -> str | None:
+    if not isinstance(why, str) or not why:
+        return None
+    w = why.strip().lower()
+    for prefix, phrase in DUEL_WHY:
+        if w.startswith(prefix):
+            return phrase
+    return " ".join(re.sub(r"[-+]?\d+(?:\.\d+)?", "", why).split())[:60] or None
+
+
+def _price_days(x) -> tuple:
+    """(price, days) from a rival_offer dict, a bare number, or a decide() row's [price, days] list."""
+    if isinstance(x, dict):
+        if isinstance(x.get("offer"), dict):
+            return _price_days(x["offer"])
+        p, dd = x.get("price"), x.get("days")
+        return (p if _num(p) else None), (dd if _num(dd) else None)
+    if isinstance(x, (list, tuple)) and x:
+        p, dd = x[0], (x[1] if len(x) > 1 else None)
+        return (p if _num(p) else None), (dd if _num(dd) else None)
+    if _num(x):
+        return x, None
+    return None, None
+
+
+def gap_pct(role, limit, price) -> int | None:
+    """How far `price` sits inside (+) or outside (-) our limit, in whole percent of it. Never the limit itself."""
+    if not (_num(limit) and _num(price)) or limit <= 0 or role not in ("buyer", "seller"):
+        return None
+    return round(((price - limit) if role == "seller" else (limit - price)) / limit * 100)
+
+
+def _ts_epoch(ts) -> float | None:
+    try:
+        return time.mktime(time.strptime(str(ts)[:19], "%Y-%m-%dT%H:%M:%S"))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def new_duel_state() -> dict:
+    return {"duels": {}, "seq": 0, "running": False, "mode": None, "started": None, "ended": None, "stop_why": None,
+            "runs": 0, "last_ts": None, "last_event": None, "tick": None, "errors": 0, "refused": 0,
+            "last_error": None}
+
+
+def _duel(st: dict, did) -> dict:
+    rec = st["duels"].get(did)
+    if rec is None:
+        rec = st["duels"][did] = {
+            "id": did, "role": None, "item": None, "rival": None, "issues": [], "limit": None, "deadline": None,
+            "status": "live", "rounds": None, "rival_price": None, "rival_days": None, "our_price": None,
+            "our_days": None, "our_would": False, "action": None, "why": None, "moving": None, "left": None,
+            "tick": None, "result": None, "price": None, "days": None, "text": None, "done_seq": None, "done_ts": None}
+    return rec
+
+
+def fold_duel_log(st: dict, lines) -> dict:
+    """Adds lines of logs/duel/<date>.jsonl (agent/duel.py via runlog) to the running summary `st`. A duel is live from
+    its first per-duel line until its "result"; a (re)start or stop of the bot marks unresolved duels "unknown" until a
+    later line about them shows they are still live (a restarted run logs duel_new again for every live duel)."""
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(row, dict):
+            continue
+        ev = row.get("event")
+        st["last_ts"], st["last_event"] = row.get("ts") or st["last_ts"], ev
+        if _num(row.get("tick")):
+            st["tick"] = max(st["tick"] or 0, int(row["tick"]))
+        if ev in ("run_start", "run_end", "stop"):
+            for rec in st["duels"].values():
+                if rec["status"] == "live":
+                    rec["status"] = "unknown"
+            if ev == "run_start":
+                st.update(running=True, mode=row.get("mode"), started=str(row.get("ts") or "")[11:19], ended=None,
+                          stop_why=None)
+                st["runs"] += 1
+            else:
+                st.update(running=False, ended=str(row.get("ts") or "")[11:19])
+                if ev == "stop":
+                    st["stop_why"] = str(row.get("why") or "")[:80]
+            continue
+        if ev in DUEL_ERRORS:
+            st["errors" if ev != "refused" else "refused"] += 1
+            st["last_error"] = {"time": str(row.get("ts") or "")[11:19], "event": ev, "duel": row.get("duel"),
+                                "where": row.get("where") or row.get("action"),
+                                "what": str(row.get("code") or row.get("kind") or "")[:60],
+                                "msg": re.sub(r"[-+]?\d+(?:\.\d+)?", "n", str(row.get("msg") or ""))[:120]}
+        did = row.get("duel")
+        if did is None or isinstance(did, (dict, list)):
+            continue
+        rec = _duel(st, did)
+        if ev == "result":
+            rec.update(status=str(row.get("status") or "finished"), result=row.get("result"),
+                       price=row.get("price"), days=row.get("days"), done_ts=str(row.get("ts") or "")[11:19])
+            if row.get("rounds") is not None:
+                rec["rounds"] = row.get("rounds")
+            for k in ("role", "rival"):
+                rec[k] = row.get(k) or rec[k]
+            if _num(row.get("limit")):
+                rec["limit"] = row["limit"]
+            st["seq"] += 1
+            rec["done_seq"] = st["seq"]
+            continue
+        if rec["status"] == "unknown":
+            rec["status"] = "live"
+        if ev == "duel_new":
+            for k, src in (("role", "role"), ("item", "item"), ("rival", "rival"), ("deadline", "deadline")):
+                if row.get(src) is not None:
+                    rec[k] = row[src]
+            if isinstance(row.get("issues"), list):
+                rec["issues"] = [str(i) for i in row["issues"]]
+            if _num(row.get("limit")):
+                rec["limit"] = row["limit"]
+        elif ev == "rival":
+            rec["rival_price"], rec["rival_days"] = _price_days(row.get("offer"))
+            if row.get("rounds") is not None:
+                rec["rounds"] = row.get("rounds")
+            if rec["our_price"] is None:  # a restarted run: our standing offer as the server holds it
+                rec["our_price"], rec["our_days"] = _price_days(row.get("your_offer"))
+            if row.get("text") is not None:
+                rec["text"] = str(row.get("text"))[:DUEL_TEXT]
+        elif ev in DUEL_ROW_EVENTS:
+            for k in ("role",):
+                rec[k] = row.get(k) or rec[k]
+            if _num(row.get("limit")):
+                rec["limit"] = row["limit"]
+            if _num(row.get("tick")):
+                rec["tick"] = int(row["tick"])
+            if _num(row.get("left")):
+                rec["left"] = int(row["left"])
+            if row.get("rival") is not None and ev != "bug_skip":
+                p, dd = _price_days(row.get("rival"))
+                if p is not None:
+                    rec["rival_price"], rec["rival_days"] = p, dd
+            if ev in ("say", "would_say") and _num(row.get("price")):
+                rec["our_price"], rec["our_days"] = row["price"], row.get("days")
+                rec["our_would"] = ev == "would_say"
+            if "moving" in row:
+                rec["moving"] = bool(row.get("moving"))
+            rec["action"] = ev
+            rec["why"] = duel_why(row.get("why")) if ev not in ("refused", "bug_skip") else \
+                f"{row.get('action') or ev} refused" if ev == "refused" else "safety skip"
+    return st
+
+
+def _is_deal(rec: dict) -> bool:
+    return rec.get("price") is not None or str(rec.get("status") or "").lower() in DUEL_DEAL
+
+
+def _two(rec: dict) -> bool:
+    return "days" in (rec.get("issues") or [])
+
+
+def duel_live_row(rec: dict, now_tick) -> dict:
+    two = _two(rec)
+    left = rec["left"]
+    if left is not None and _num(now_tick) and rec["tick"] is not None:
+        left = left - (now_tick - rec["tick"])
+    elif _num(rec.get("deadline")) and _num(now_tick):
+        left = rec["deadline"] - now_tick
+    return {"duel": rec["id"], "rival": rec["rival"], "role": rec["role"], "item": rec["item"], "two_issues": two,
+            "status": rec["status"], "round": rec["rounds"], "left": left, "deadline": rec["deadline"],
+            "our_price": rec["our_price"], "our_days": rec["our_days"] if two else None, "our_would": rec["our_would"],
+            "rival_price": rec["rival_price"], "rival_days": rec["rival_days"] if two else None,
+            "our_gap": gap_pct(rec["role"], rec["limit"], rec["our_price"]),
+            "rival_gap": gap_pct(rec["role"], rec["limit"], rec["rival_price"]),
+            "action": rec["action"], "note": rec["why"], "moving": rec["moving"], "text": rec["text"]}
+
+
+def duel_done_row(rec: dict) -> dict:
+    res = rec["result"] if _num(rec["result"]) else None
+    return {"duel": rec["id"], "rival": rec["rival"], "role": rec["role"], "item": rec["item"],
+            "status": rec["status"], "deal": _is_deal(rec), "price": rec["price"] if _num(rec["price"]) else None,
+            "days": rec["days"] if _two(rec) and _num(rec["days"]) else None, "round": rec["rounds"],
+            "result": res, "time": rec["done_ts"]}
+
+
+def lock_view(path: Path, now: float) -> dict:
+    """results/duel.lock as agent/duel.py writes it: one line, the expiry in epoch seconds."""
+    try:
+        text = path.read_text()
+    except OSError:
+        return {"state": "off"}
+    try:
+        exp = float(text.split()[0])
+    except (ValueError, IndexError):
+        return {"state": "expired"}
+    return {"state": "on", "expires_in": round(exp - now)} if exp > now else {"state": "expired"}
+
+
+def duel_view(st: dict, now: float, lock: dict | None = None, exists: bool = True,
+              stale_after: float = DUEL_STALE_AFTER, keep: int = DUEL_FINISHED) -> dict:
+    """The panel's payload, built from an allowlist: nothing private (see the section comment)."""
+    recs = list(st["duels"].values())
+    live = [r for r in recs if r["status"] in ("live", "unknown")]
+    done = sorted((r for r in recs if r["done_seq"] is not None), key=lambda r: -r["done_seq"])
+    last = _ts_epoch(st["last_ts"]) if st["last_ts"] else None
+    age = round(max(0.0, now - last), 1) if last is not None else None
+    n_live = sum(1 for r in live if r["status"] == "live")
+    if not exists:
+        state = "missing"
+    elif not st["running"]:
+        state = "stopped"
+    elif n_live and (age is None or age > stale_after):
+        state = "stale"
+    else:
+        state = "alive" if n_live else "waiting"
+    scored = [r["result"] if _num(r["result"]) else 0.0 for r in done if _num(r["result"]) or not _is_deal(r)]
+    deals = [r for r in done if _is_deal(r)]
+    deal_scores = [r["result"] for r in deals if _num(r["result"])]
+    rows = sorted((duel_live_row(r, st["tick"]) for r in live),
+                  key=lambda x: (x["status"] != "live", x["left"] if _num(x["left"]) else 1e9, str(x["duel"])))
+    return {"bot": {"state": state, "mode": st["mode"], "age": age, "last_event": st["last_event"],
+                    "started": st["started"], "ended": st["ended"], "stop_why": st["stop_why"], "runs": st["runs"]},
+            "lock": lock or {"state": "off"}, "tick": st["tick"],
+            "counts": {"live": n_live, "unknown": len(live) - n_live, "finished": len(done), "total": len(recs),
+                       "deals": len(deals)},
+            "avg_result": round(sum(scored) / len(scored), 4) if scored else None, "scored": len(scored),
+            "avg_result_deals": round(sum(deal_scores) / len(deal_scores), 4) if deal_scores else None,
+            "live": rows, "finished": [duel_done_row(r) for r in done[:keep]],
+            "errors": st["errors"], "refused": st["refused"], "last_error": st["last_error"],
+            "stale_after": stale_after}
+
+
+# ---------------------------------------------------------------- Duels: files
+
+class DuelLogTail:
+    """Follows logs/duel/<today>.jsonl like BrokerLogTail: only new whole lines, new state on a new or shrunk file."""
+
+    CHUNK = 16 << 20
+
+    def __init__(self):
+        self.path, self.pos, self.state = None, 0, new_duel_state()
+
+    def read(self, path: Path) -> bool:
+        """Folds what was added since the last read into self.state. False when the file does not exist."""
+        if path != self.path:
+            self.path, self.pos, self.state = path, 0, new_duel_state()
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return False
+        if size < self.pos:
+            self.pos, self.state = 0, new_duel_state()
+        if size > self.pos:
+            with path.open("rb") as f:
+                f.seek(self.pos)
+                chunk = f.read(min(size - self.pos, self.CHUNK))
+            end = chunk.rfind(b"\n")
+            if end >= 0:
+                self.pos += end + 1
+                fold_duel_log(self.state, chunk[:end + 1].decode("utf-8", "replace").splitlines())
+        return True
+
+
+class Duels:
+    """The Duels panel: agent/duel.py's log (logs/duel/<date>.jsonl) and accept-slot lock (results/duel.lock), both
+    under the bots' checkout (--broker-root). Local files only: no game API call."""
+
+    def __init__(self, root: Path):
+        self.root = Path(root)
+        self.tail = DuelLogTail()
+
+    def snapshot(self, now: float | None = None) -> dict:
+        now = time.time() if now is None else now
+        path = self.root / "logs" / "duel" / (time.strftime("%Y-%m-%d", time.localtime(now)) + ".jsonl")
+        exists = self.tail.read(path)
+        return {"file": path.name, "exists": exists,
+                **duel_view(self.tail.state, now, lock_view(self.root / "results" / "duel.lock", now), exists)}
+
+
 def build(b: Bazaar, url: str, catalog: dict, history: list) -> dict:
     me = b.me()
     threads = b.my_threads().get("threads", [])
@@ -415,13 +733,26 @@ def celestina_step(cel: Celestina) -> None:
         STATE["celestina"] = snap
 
 
-def poller(b: Bazaar | None, url: str, interval: float, cel: Celestina | None = None) -> None:
-    if b is None:  # no team key: only the keyless La Celestina panel runs
+def duels_step(duels: Duels) -> None:
+    """The Duels panel, apart from build(): local files only, and an error here must not blank the other panels."""
+    try:
+        snap = duels.snapshot()
+    except Exception as e:
+        snap = {"error": repr(e)[:300]}
+    with LOCK:
+        STATE["duels"] = snap
+
+
+def poller(b: Bazaar | None, url: str, interval: float, cel: Celestina | None = None,
+           duels: Duels | None = None) -> None:
+    if b is None:  # no team key: only the keyless panels run (La Celestina, Duels)
         with LOCK:
-            STATE["error"] = "no BAZAAR_KEY: keyed panels are off, La Celestina only"
+            STATE["error"] = "no BAZAAR_KEY: keyed panels are off, La Celestina and Duels only"
         while True:
             if cel is not None:
                 celestina_step(cel)
+            if duels is not None:
+                duels_step(duels)
             time.sleep(interval)
     catalog, cat_at, history = None, 0.0, []
     score_log = ROOT / "logs" / "score.jsonl"
@@ -456,6 +787,8 @@ def poller(b: Bazaar | None, url: str, interval: float, cel: Celestina | None = 
                 STATE["error"] = repr(e)[:300]
         if cel is not None:
             celestina_step(cel)
+        if duels is not None:
+            duels_step(duels)
         time.sleep(interval)
 
 
@@ -482,7 +815,7 @@ def serve(port: int, token: str | None, host: str) -> None:
             if u.path == "/data":
                 with LOCK:
                     body = json.dumps({**(STATE["data"] or {}), "error": STATE["error"], "celestina": STATE["celestina"],
-                                       "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None})
+                                       "duels": STATE["duels"], "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None})
                 return self._send(200, body.encode(), "application/json")
             return self._send(404, b"not found", "text/plain")
 
@@ -495,17 +828,20 @@ def main() -> None:
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--lan", action="store_true", help="listen on all interfaces, behind a random token")
     ap.add_argument("--interval", type=float, default=4.0)
-    ap.add_argument("--broker-root", default=os.environ.get("BROKER_ROOT") or str(ROOT),
-                    help="checkout whose logs/ the broker writes (heartbeat, event log); env BROKER_ROOT; "
-                         "default: this repo")
+    ap.add_argument("--broker-root", "--bots-root", dest="broker_root",
+                    default=os.environ.get("BROKER_ROOT") or str(ROOT),
+                    help="checkout the bots run from: the broker's logs/ (heartbeat, event log) and the duel bot's "
+                         "logs/duel/ and results/duel.lock; env BROKER_ROOT; default: this repo")
     args = ap.parse_args()
     url = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai").rstrip("/")
     key = os.environ.get("BAZAAR_KEY", "").strip()
     b = Bazaar(url, key) if key else None
     broker_root = Path(args.broker_root).expanduser().resolve()
     print(f"La Celestina: broker files under {broker_root}/logs", flush=True)
+    print(f"Duels: duel bot files under {broker_root}/logs/duel and {broker_root}/results", flush=True)
     cel = Celestina(url, broker_root)
-    threading.Thread(target=poller, args=(b, url, args.interval, cel), daemon=True).start()
+    duels = Duels(broker_root)
+    threading.Thread(target=poller, args=(b, url, args.interval, cel, duels), daemon=True).start()
     # DASH_TOKEN (in .env) keeps the shared link stable across restarts, e.g. behind `tailscale funnel 8765`
     token = os.environ.get("DASH_TOKEN") or (secrets.token_urlsafe(8) if args.lan else None)
     host = "0.0.0.0" if args.lan else "127.0.0.1"
