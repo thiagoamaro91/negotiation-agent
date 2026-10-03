@@ -1,0 +1,107 @@
+{
+ "duel": 93,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "El Tren Fantasma",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 83,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 144,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 1166,
+  "price": 133,
+  "tick": 143,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 132,
+   "from": "Rival Luna",
+   "text": "Thank you for meeting me. I can offer 74 P.",
+   "price": 74,
+   "days": null
+  },
+  {
+   "tick": 133,
+   "from": "Rival Luna",
+   "text": "I appreciate your move. 76 P is where I can be.",
+   "price": 76,
+   "days": null
+  },
+  {
+   "tick": 134,
+   "from": "Rival Luna",
+   "text": "Let us close quickly: 78 P.",
+   "price": 78,
+   "days": null
+  },
+  {
+   "tick": 135,
+   "from": "Rival Luna",
+   "text": "A step towards you: 82 P.",
+   "price": 82,
+   "days": null
+  },
+  {
+   "tick": 136,
+   "from": "Rival Luna",
+   "text": "I think 86 P is fair for both of us.",
+   "price": 86,
+   "days": null
+  },
+  {
+   "tick": 137,
+   "from": "Rival Luna",
+   "text": "Thank you for meeting me. I can offer 92 P.",
+   "price": 92,
+   "days": null
+  },
+  {
+   "tick": 138,
+   "from": "Rival Luna",
+   "text": "I appreciate your move. 98 P is where I can be.",
+   "price": 98,
+   "days": null
+  },
+  {
+   "tick": 139,
+   "from": "Rival Luna",
+   "text": "Let us close quickly: 106 P.",
+   "price": 106,
+   "days": null
+  },
+  {
+   "tick": 140,
+   "from": "Rival Luna",
+   "text": "A step towards you: 114 P.",
+   "price": 114,
+   "days": null
+  },
+  {
+   "tick": 141,
+   "from": "Rival Luna",
+   "text": "I think 124 P is fair for both of us.",
+   "price": 124,
+   "days": null
+  },
+  {
+   "tick": 143,
+   "from": "Rival Luna",
+   "text": "Thank you for meeting me. I can do 133 P.",
+   "price": 133,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

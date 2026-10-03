@@ -1,0 +1,37 @@
+{
+ "duel": 29,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Taxi Blanco",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 79,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 132,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 434,
+  "price": 82,
+  "tick": 124,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 124,
+   "from": "Rival Luna",
+   "text": "Opening bid. Let's find a fair price.",
+   "price": 82,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}
