@@ -116,6 +116,51 @@ class TestText(unittest.TestCase):
         self.assertNotIn("http", t)                             # no web link: agents read the feed
         self.assertNotIn("Open bids on El Rastro", t)           # never send sellers to El Rastro
 
+    def test_our_own_offers_never_make_a_pair(self):
+        ours_ask = [ask("MAL-04", 7, oid=50, maker="t03"), bid("MAL-04", 7, oid=51)]
+        self.assertEqual(an.near_market_pairs(ours_ask, {}), [])                 # maker shown as t03
+        self.assertEqual(an.near_market_pairs([ask("MAL-04", 7, oid=52), bid("MAL-04", 7, oid=53)],
+                                              {52: "t03", 53: "t16"}), [])        # named t03 by the feed
+        both = [ask("MAL-04", 6, oid=54), ask("MAL-04", 7, oid=55), bid("MAL-04", 7, oid=56)]
+        (p,) = an.near_market_pairs(both, {54: "t03", 55: "t09", 56: "t16"})   # ours skipped, the next ask pairs
+        self.assertEqual(p[2][1], 55)
+
+    def test_our_old_offers_are_known_by_their_pseudonym_or_our_offer_list(self):
+        old = ask("MAL-04", 7, oid=100, maker="mOURS")            # ours, listed before the feed window
+        recent = ask("LAT-01", 9, oid=101, maker="mOURS")         # ours, the feed names it
+        theirs = bid("MAL-04", 7, oid=102, maker="mT16")
+        books = {"rastro": [old, recent, theirs], "v07": [ask("SAL-01", 5, venue="v07", oid=103, maker="mOURS")]}
+        names = an.learn_pseudonyms(books, {101: "t03", 102: "t16"})
+        self.assertEqual(names[100], "t03")                       # same pseudonym on the same venue: ours
+        self.assertNotIn(103, names)                              # pseudonyms are per venue: not linked
+        self.assertEqual(an.near_market_pairs([old, theirs], names), [])
+        self.assertEqual(len(an.near_market_pairs([old, theirs], {102: "t16"})), 1)  # without it, it would pair
+        me = {"offers": [dict(old, maker="t03"), dict(bid("X", 1, oid=104), maker="t13", to="t03")]}
+        self.assertEqual(an.our_offer_ids(me), {100})             # offers addressed to us are not ours
+
+    def test_recorded_feed_keeps_only_listings_and_survives_bad_lines(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "feed.jsonl"
+            f.write_text('{"type": "offer.listed", "actor": "t03", "payload": {"offer": {"id": 7, "maker": "t03"}}}\n'
+                         'not json "offer.listed"\n{"type": "settlement", "payload": {}}\n')
+            self.assertEqual(an.offer_makers(an.recorded_events(f)), {7: "t03"})
+            self.assertEqual(an.recorded_events(Path(d) / "missing.jsonl"), [])
+
+    def test_crossing_claims_and_orders_count_v20s_fee(self):
+        book = [ask("MAL-04", 10, oid=60), bid("MAL-04", 11, oid=61)]
+        names = {60: "t09", 61: "t16"}
+        self.assertIn("they already cross on v20's terms", an.build_text(book, 1, names=names, exclude=()))
+        t = an.build_text(book, 1, names=names, exclude=(), fee=(500, 1))       # 10 + 1 + 1 = 12 > 11
+        self.assertIn("1 P apart on v20's terms", t)
+        self.assertIn("5 % fee, 1 P per card", t)
+        self.assertNotIn("0 % fee", t)
+        order = an.take_order(ask("LAT-07", 26, oid=62), fee=(500, 1))           # 26 + ceil(1.3) + 1 = 29
+        self.assertIn('"give": {"cash": 29}', order)
+        order = an.take_order(bid("LAT-07", 26, oid=63), fee=(500, 1))           # 24 + 2 + 1 = 27 > 26; 23 + 2 + 1 = 26
+        self.assertIn('"want": {"cash": 23}', order)
+        self.assertIsNone(an.take_order(bid("LAT-07", 1, oid=64), fee=(0, 1)))  # no whole price leaves room
+
     def test_a_swap_is_never_promised_to_the_broker(self):
         t = an.build_text([], 0, venue_offers=[swap("LAT-07", "LAT-01", venue="v20", maker="t15", oid=31)])
         self.assertIn("t15 swaps LAT-07 for any LAT-01 (offer 31), taken by accepting it", t)
@@ -124,8 +169,10 @@ class TestText(unittest.TestCase):
 
     def test_pairs_variant_names_both_sides_and_falls_back_to_the_book(self):
         t = an.build_text(BOOK, 1, names=NAMES)
-        self.assertTrue(t.startswith("Buyer and seller a few P apart"))
-        self.assertIn("MAL-04: t09 asks 8 P on El Rastro (offer 1), t16 bids 7 P on El Rastro (offer 2)", t)
+        self.assertTrue(t.startswith("Buyer and seller close, nobody crossing them"))
+        self.assertIn("MAL-04: t09 asks 8 P on El Rastro (offer 1), t16 bids 7 P on El Rastro (offer 2), "
+                      "1 P apart on v20's terms", t)
+        self.assertNotIn("matches them at the midpoint the tick they meet", t)   # no promise for a gap
         none = [ask("LAT-06", 30), bid("LAT-06", 6)]
         self.assertEqual(an.build_text(none, 1, venue_offers=self.V20), an.build_text(none, 0, venue_offers=self.V20))
 
