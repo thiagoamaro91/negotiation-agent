@@ -55,6 +55,15 @@ The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Add
 - **The SDK repeats refused writes:** with `wait_on_tick=True` (the default) a write refused with `wait_for_tick` is sent again on the next tick. For `POST /api/duels/{id}/accept` that accepts whatever the rival's standing offer is by then. `duel.py` and `rastro_seller.py` pass `wait_on_tick=False`; `abuela.py` and `chato.py` use the default.
 - **Game hours look like wall hours:** the schedule pins Saturday 4.0 to 09:00 and 18.0 to 23:00, Sunday 18.0 to 09:00 and 24.0 to 15:00. Fourteen game hours in fourteen wall hours at 30 s ticks (and six in six at 15 s) only fit if a game hour is a wall hour whatever the tick length. To confirm with `t_hours` at 09:00.
 
+## Saturday, Duels I and midday (ticks ~440-630)
+
+- **Selling to a dealer fills a ladder slot,** the same as buying from one (Chato sells at 14, Saturday morning).
+- **Ladder value gate:** a dealer deal on the wrong side of our private value earns no ladder credit, however much of the dealer's range it captures (Friday data, [analysis-friday/score.md](analysis-friday/score.md) section 4a: LAT-06 at 28 against a value of 27.5 scored +0). Every dealer sell floor must sit above our value.
+- **Market Test bench offers all carry maker `"bench"`** (tick ~442). A broker that drops same-maker pairs drops every bench pair: the 11:50 test scored efficiency 0.449 against the stall's ~0.9 for that reason (fixed in PR #22).
+- **Duels need no cash:** Duels I ran with 95 P in hand, and bids are not escrowed.
+- **Duels I (t03, to tick 630):** 31 finished, 25 deals, duel_points 16.24. All 21 of our accepts came with 1-3 ticks left; 5 of the 6 no-deals were rivals who never spoke, while our last offer stayed short of our limit. Summary on the bus (#5968797627).
+- **The clock can pause mid-duel** (`/api/clock` `paused: true` at tick 630, ~13:25). `results/duel.lock` is refreshed per tick, so it goes stale during a pause while duels are still live. A dealer bot gated only on the lock would start inside the duel window: gate on `paused` and on unfinished duels too.
+
 ## Open questions for the organisers
 
 - The judges' criteria (40 of the 100 points).
