@@ -17,7 +17,7 @@ So the bench policy (pure: plan() never touches the network) is:
      the stall earns; nothing is risked on a guess.
   3. Expiries that tell traders apart AND that real departures have confirmed (TRUST_AFTER offers gone, none more than
      EXPIRY_TRUST_MAX ticks before the expiry it showed; a lie switches this off for the rest of the process):
-     - a trader whose offer expires within the margin (EXPIRY_MARGIN, widened by the earliest departure seen) is
+     - a trader whose offer expires within the margin (learned from the departures seen; EXPIRY_MARGIN before) is
        leaving: it keeps its full estimated value; every other trader can wait (FUTURE_KNOWN = 1), so its priority is
        shrunk to the estimated clearing price;
      - estimated limits: a relaxed quote is extrapolated along a linear path whose slope ties each patience to one
@@ -76,8 +76,9 @@ PATIENT = (8, 16)       # ... the rest 8-16 (a session is 16 ticks)
 P_MAX = 16
 FUTURE = 0.8            # share of a staying trader's surplus we expect it to earn later if we pass on it now
 EXPIRY_FIELDS = ("expires_tick", "leaves_tick", "deadline_tick")  # a bench offer's last tick, if the book shows one
-EXPIRY_MARGIN = 2       # a trader whose offer expires within this many ticks is treated as leaving now; the margin
-                        # grows to (the earliest departure seen before a shown expiry) + 1
+EXPIRY_MARGIN = 2       # a trader whose offer expires within this many ticks is treated as leaving now, until
+                        # departures are seen; then the margin is (the earliest departure relative to its expiry) + 1:
+                        # 0 when offers stay through their expiry tick, 1 when they are gone at it, 3 if 2 ticks early
 EXPIRY_TRUST_MAX = 3    # an offer gone more than this many ticks before its expiry: expiries carry no timing at all
 TRUST_AFTER = 3         # expiries steer the timing only after this many offers left the book close to their expiry
 FUTURE_KNOWN = 1.0      # FUTURE when the run's offers show different expiries (who leaves when is then known)
@@ -271,7 +272,8 @@ class Tracker:
     def __init__(self):
         self.traders: dict = {}  # offer id -> trader
         self.ended: list = []    # traders that left the book, for the session log
-        self.early = 0           # most ticks an offer left the book before the expiry it showed
+        self.early = None        # most ticks an offer left the book before the expiry it showed (-1: one tick
+                                 # after it, as when the expiry is the last tick on the book); None: none left yet
         self.departed = 0        # offers that left the book (not matched by us) while showing an expiry
 
     def observe(self, book: dict, tick: int, ours=()) -> None:
@@ -305,7 +307,8 @@ class Tracker:
                 self.ended.append(tr)
                 if tr["end"] == "gone" and tr.get("expires") is not None:
                     self.departed += 1
-                    self.early = max(self.early, tr["expires"] - tick)
+                    e = tr["expires"] - tick
+                    self.early = e if self.early is None else max(self.early, e)
 
     def run_done(self, run: str, tick, quiet: int = RUN_QUIET) -> bool:
         """Every offer of the run has left the book, the last one at least `quiet` ticks ago."""
@@ -354,7 +357,9 @@ class BenchPolicy:
         p = self.p
         e = estimate(tr["side"], tr["quotes"], tick, self.prior, p["smax"], p["firm_shade"], p["first_shade"])
         if p["use_expiry"] and tr.get("expires") is not None:
-            if tr["expires"] - tick <= max(p["expiry_margin"], self.tracker.early + 1):
+            early = self.tracker.early
+            margin = p["expiry_margin"] if early is None else max(0, early + 1)  # learned from real departures
+            if tr["expires"] - tick <= margin:
                 e["leave"] = 1.0
             elif known:
                 e["leave"] = 0.0
@@ -381,7 +386,7 @@ class BenchPolicy:
         p = self.p
         exps = {trs[oid].get("expires") for _, oid in asks + bids}
         known = (p["use_expiry"] and None not in exps and len(exps) > 1  # expiries that tell traders apart ...
-                 and self.tracker.departed >= p["trust_after"] and self.tracker.early <= p["trust_max"])  # ...
+                 and self.tracker.departed >= p["trust_after"] and (self.tracker.early or 0) <= p["trust_max"])
         # and have been checked against real departures (and did not lie by much)
         if not known and p["blind"] == "stall":
             return stall_run(asks, bids, book), "stall:blind"
@@ -537,6 +542,7 @@ class Desk:
         self.policy_name = policy_name
         self.policy = BenchPolicy() if policy_name == "ours" else None
         self.tracker = self.policy.tracker if self.policy is not None else Tracker()  # quote paths for the log
+        self.restore()
         self.state = None
         self.tick = None
         self.last_clock = 0.0
@@ -655,10 +661,24 @@ class Desk:
                 self.log.event("bench_run_end", tick=tick, bench_run=run, traders=rows,
                                matched=sum(1 for r in rows if r["end"] == "matched") // 2)
 
+    def restore(self) -> None:
+        """What an earlier process learned today about expiries (a supervised restart must not start blind)."""
+        try:
+            hb = json.loads(self.heartbeat.read_text())
+            learned = hb.get("learned") or {}
+            if learned.get("day") == time.strftime("%Y-%m-%d") and isinstance(learned.get("departed"), int):
+                self.tracker.departed = learned["departed"]
+                if learned.get("early") is None or isinstance(learned.get("early"), int):
+                    self.tracker.early = learned.get("early")
+        except (OSError, ValueError, AttributeError):
+            pass
+
     def beat(self, what: str) -> None:
         hb = {"agent": "broker", "mode": self.mode, "policy": self.policy_name, "pid": os.getpid(), "tick": self.tick,
               "what": what, "time": time.strftime("%Y-%m-%dT%H:%M:%S"), "epoch": round(self.now(), 1),
               "reads": self.reads, "read_errors_in_a_row": self.errors, "last_decision": self.last_decision,
+              "learned": {"day": time.strftime("%Y-%m-%d"), "departed": self.tracker.departed,
+                          "early": self.tracker.early},
               **self.counts}
         try:
             self.heartbeat.parent.mkdir(parents=True, exist_ok=True)

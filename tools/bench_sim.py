@@ -28,7 +28,8 @@ Assumptions (each one is a knob of a scenario below; `--scenarios all` sweeps th
   A7 Ids. A trader keeps its offer id ("b12-7") for the whole session and the price moves in place. ids=requote
      gives a new id every tick, so nothing can be tracked: the policy must fall back to the stall, not below it.
   A9 Expiry. By default a bench offer shows no expiry (the conservative case: who leaves when must be guessed).
-     expiry=exact: each offer shows expires_tick = its trader's last tick; end: every offer shows the session's last
+     expiry=exact: each offer shows expires_tick = its trader's last tick (gone_at: the tick after it, the other
+     reading of an expiry); end: every offer shows the session's last
      tick (no information); early: the trader really leaves up to early_max (2) ticks BEFORE the tick its offer
      shows (early4: up to 4).
   A8 Score. Efficiency = gains realised between TRUE limits / the best possible gains, the max-weight matching on
@@ -101,6 +102,7 @@ SCENARIOS = {
     "requote_ids": {"ids": "requote"}, "makers": {"makers": True},
     # A9 expiry shown in the book
     "expiry_exact": {"expiry": "exact"}, "expiry_end": {"expiry": "end"}, "expiry_early": {"expiry": "early"},
+    "expiry_gone_at": {"expiry": "gone_at"}, "hard_expiry_gone_at": {**HARD, "expiry": "gone_at"},
     "expiry_early4": {"expiry": "early", "early_max": 4},
     "hard_expiry_exact": {**HARD, "expiry": "exact"}, "hard_expiry_early": {**HARD, "expiry": "early"},
     # hard, with the same twists
@@ -203,6 +205,8 @@ def offer(tr: dict, oid: str, q: int, sc: dict, t0: int = 0) -> dict:
     last = min(tr["a"] + tr["P"] - 1, TICKS - 1)
     if sc["expiry"] == "exact":
         o["expires_tick"] = t0 + last
+    elif sc["expiry"] == "gone_at":  # the other reading of an expiry: the first tick it is no longer there
+        o["expires_tick"] = t0 + last + 1
     elif sc["expiry"] == "end":
         o["expires_tick"] = t0 + TICKS - 1
     elif sc["expiry"] == "early":

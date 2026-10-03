@@ -300,6 +300,16 @@ class LiveLoop(unittest.TestCase):
             self.assertEqual(sorted(t["id"] for t in ends[0]["traders"]), ["b5-1", "b5-2"])
             self.assertEqual([q for _, q in ends[0]["traders"][0]["quotes"]], [30, 31])
 
+    def test_a_restart_keeps_what_was_learned_about_expiries_today(self):
+        fake = FakeBroker(book_of([buyer("b1-1", 30, expires_tick=3), seller("b1-2", 40, expires_tick=5)]))
+        desk, _ = self.desk(fake)
+        self.loop(desk, 3)
+        fake.tick, fake.book_now = 2, book_of([seller("b1-2", 40, expires_tick=5)])  # b1-1 left before tick 3
+        self.loop(desk, 3)
+        self.assertEqual((desk.tracker.departed, desk.tracker.early), (1, 1))
+        again, _ = self.desk(fake)  # a new process, same heartbeat file
+        self.assertEqual((again.tracker.departed, again.tracker.early), (1, 1))
+
     def test_an_accepted_match_is_not_sent_twice_while_it_settles(self):
         fake = FakeBroker(book_of([seller("b1-1", 20), buyer("b1-2", 30)]), refuse=False)
         desk, _ = self.desk(fake, "stall")
