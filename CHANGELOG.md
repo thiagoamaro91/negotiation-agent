@@ -47,6 +47,7 @@
 - `agent/rastro_seller.py`: defers every accept (logged `defer_duel_lock`) while `results/duel.lock` is fresh; listing, renewing and messaging go on.
 - `agent/chato.py` and `agent/abuela.py`: `run` refuses to start (warning, exit 0) while `results/duel.lock` is fresh.
 - `agent/rastro_floors.json`: Saturday start/floor prices.
+- `agent/market_desk.py`: swaps are opt-in (`--swap-fills`, `--swap-posts`; the old `--no-swap-*` flags are accepted as no-ops). Swap fills only on El Rastro unless `--swap-team-venue`. A swap never gives a last copy (`--sell-first-copies` does not apply) nor any asset in `agent/rastro_floors.json` (every line, re-read every tick, last good set kept if the file breaks) unless `--swap-seller-spares`. A swap fill keeps cash minus live bids minus the fee at 200 P or more.
 
 ### Added
 - `agent/chato.py`: `--anchor N` (absolute first bid, overrides the anchor fraction), `--step N` (primas per round when buying, default 1), `--max-bid N` (highest number we send when buying; his final is still taken up to `--cap`). `plan` prints the bid ladder; a buy is skipped while spendable cash is below `--anchor`.

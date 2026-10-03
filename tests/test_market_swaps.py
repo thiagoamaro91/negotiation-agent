@@ -34,6 +34,7 @@ def cfg(**kw):
     kw.setdefault("bids", False)
     kw.setdefault("min_cash", 0)
     kw.setdefault("swap_post", False)
+    kw.setdefault("swap_fill", True)          # swaps are opt-in (Config defaults both off); these tests opt in
     return md.Config(**kw)
 
 
@@ -66,7 +67,7 @@ class SwapFee(unittest.TestCase):
         h = {"LAV-08": two("LAV-08", 5, 6)}
         r = run({"rastro": [swap(1, "SAL-04", "LAV-08")]}, h)
         self.assertEqual((rec(r, 1)["fee"], rec(r, 1)["price"]), (2, 0))
-        r = run({"v02": [swap(1, "SAL-04", "LAV-08", venue="v02")]}, h)
+        r = run({"v02": [swap(1, "SAL-04", "LAV-08", venue="v02")]}, h, cfg(swap_team_venue=True))
         self.assertEqual(rec(r, 1)["fee"], 0)
 
 
@@ -74,7 +75,7 @@ class FillGainRule(unittest.TestCase):
     # SAL-04 (13 to us) for our spare LAV-06 (40 x 0.25 = 10): 13 - 10 - fee vs need max(3, 1.3) = 3
     def test_boundary(self):
         h = {"LAV-06": two("LAV-06", 5, 6)}
-        r = run({"v02": [swap(1, "SAL-04", "LAV-06", venue="v02")]}, h)     # 13 - 10 - 0 = 3 >= 3
+        r = run({"v02": [swap(1, "SAL-04", "LAV-06", venue="v02")]}, h, cfg(swap_team_venue=True))  # 13-10-0 = 3
         self.assertEqual(rec(r, 1)["action"], "take")
         self.assertEqual((rec(r, 1)["gain"], rec(r, 1)["give_value"]), (3.0, 10.0))
         r = run({"rastro": [swap(1, "SAL-04", "LAV-06")]}, h)                # 13 - 10 - 2 = 1 < 3
@@ -91,13 +92,11 @@ class FillGainRule(unittest.TestCase):
         self.assertEqual(rec(run({"rastro": [swap(1, "MAL-01", "LAT-02")]}, h), 1)["action"], "skip")
 
     def test_ten_percent_of_value(self):
-        # LAV-09 (112, need 11.2) for our only MAL-09 (49) in a --sell-first-copies set: 112 - 49 - 2 = 61
-        h = {"MAL-09": [card(5, "MAL-09")]}
-        c = cfg(sell_first_copies=("MAL",))
-        self.assertEqual(rec(run({"rastro": [swap(1, "LAV-09", "MAL-09")]}, h, c), 1)["action"], "take")
-        # LAV-06 (40, need 4) for our only MAL-10 (49): 40 - 49 - 2 < 4
-        h = {"MAL-10": [card(5, "MAL-10")]}
-        self.assertEqual(rec(run({"rastro": [swap(1, "LAV-06", "MAL-10")]}, h, c), 1)["action"], "skip")
+        # LAV-09 (112) for our spare LAV-10 (112 x 0.25 = 28): 112 - 28 - 2 = 82 vs need max(3, frac x 112)
+        h = {"LAV-10": two("LAV-10", 5, 6)}
+        self.assertEqual(rec(run({"rastro": [swap(1, "LAV-09", "LAV-10")]}, h), 1)["action"], "take")
+        r = run({"rastro": [swap(1, "LAV-09", "LAV-10")]}, h, cfg(margin_frac=0.74))     # need 82.88 > 82
+        self.assertIn("below need 82.9", rec(r, 1)["reason"])
 
     def test_never_a_card_we_hold(self):
         h = {"LAV-09": [card(1, "LAV-09")], "MAL-02": two("MAL-02", 5, 6)}
@@ -110,13 +109,22 @@ class FillGainRule(unittest.TestCase):
         r = run({"rastro": [swap(1, "LAV-09", "MAL-02")]}, {})
         self.assertIn("no copy of MAL-02", rec(r, 1)["reason"])
 
-    def test_cash_floor_does_not_apply(self):
-        # min cash 280 with 100 in hand blocks buys and bids, not a swap (it moves no cash; the 2 P fee is capped)
+    def test_hard_cash_floor_200(self):
+        # --min-cash (280, for buys and bids) does not apply to a swap, but the hard 200 P floor does:
+        # cash - live bids - fee must stay >= 200
         h = {"MAL-02": two("MAL-02", 5, 6)}
-        r = run({"rastro": [swap(1, "MAL-01", "MAL-02")]}, h, cfg(min_cash=280), cash=100)
-        self.assertEqual(rec(r, 1)["action"], "take")
-        r = run({"rastro": [swap(1, "MAL-01", "MAL-02")]}, h, cfg(min_cash=280), cash=1)
+        o = {"rastro": [swap(1, "MAL-01", "MAL-02")]}
+        self.assertEqual(md.Config().swap_cash_floor, 200)
+        self.assertEqual(rec(run(o, h, cfg(min_cash=280), cash=202), 1)["action"], "take")      # 202 - 2 = 200
+        r = run(o, h, cfg(min_cash=280), cash=201)                                             # 201 - 2 = 199
+        self.assertIn("cash after swap fee 199 < floor 200", rec(r, 1)["reason"])
+        self.assertIsNone(r["accept"])
+        r = run(o, h, cash=1)
         self.assertIn("fee 2 > cash 1", rec(r, 1)["reason"])
+        # cash promised to our live bids counts: 260 - 60 - 2 = 198
+        r = run(o, h, cash=260, bidbook={"LAT-09": {"offer": 501, "price": 60}})
+        self.assertIn("cash after swap fee 198 < floor 200", rec(r, 1)["reason"])
+        self.assertIn("< floor 100", rec(run(o, h, cfg(swap_cash_floor=100), cash=99), 1)["reason"])
 
 
 class FillProtection(unittest.TestCase):
@@ -128,11 +136,25 @@ class FillProtection(unittest.TestCase):
             self.assertIn("protected", rec(r, 1)["reason"])
             self.assertIsNone(r["accept"])
 
-    def test_single_copy_only_for_listed_sets(self):
+    def test_never_a_last_copy_even_with_sell_first_copies(self):
+        # a sale may give a single MAL copy with --sell-first-copies MAL; a swap never gives a last copy
         h = {"MAL-08": [card(5, "MAL-08")]}
-        self.assertIn("not a spare", rec(run({"rastro": [swap(1, "SAL-09", "MAL-08")]}, h), 1)["reason"])
-        r = run({"rastro": [swap(1, "SAL-09", "MAL-08")]}, h, cfg(sell_first_copies=("MAL",)))
-        self.assertEqual((r["accept"]["offer"], r["accept"]["asset"]), (1, 5))
+        for c in (cfg(), cfg(sell_first_copies=("MAL",))):
+            r = run({"rastro": [swap(1, "SAL-09", "MAL-08")]}, h, c)
+            self.assertIn("not a spare", rec(r, 1)["reason"])
+            self.assertIsNone(r["accept"])
+        r = run({"rastro": [bid(2, "MAL-08", 60)]}, h, cfg(sell_first_copies=("MAL",)))   # the sale still may
+        self.assertEqual((r["accept"]["side"], r["accept"]["asset"]), ("sell", 5))
+
+    def test_seller_config_assets_never_go_in_a_fill(self):
+        h = {"LAV-08": two("LAV-08", 5, 6)}
+        o = {"rastro": [swap(1, "SAL-09", "LAV-08")]}
+        r = run(o, h, reserved={6})
+        self.assertIn("#6 is in rastro_seller's config", rec(r, 1)["reason"])
+        self.assertIsNone(r["accept"])
+        h3 = {"LAV-08": two("LAV-08", 5, 6) + [card(7, "LAV-08", 12)]}
+        self.assertEqual(run(o, h3, reserved={7})["accept"]["asset"], 6)                  # another spare may go
+        self.assertEqual(run(o, h, cfg(swap_seller_spares=True), reserved={6})["accept"]["asset"], 6)
 
     def test_keeps_lowest_serial_and_specific_asset(self):
         h = {"LAV-08": two("LAV-08", 5, 6)}
@@ -206,11 +228,32 @@ class FillStructure(unittest.TestCase):
         self.assertIsNone(r["accept"])
         self.assertEqual(rec(r, 1)["action"], "skip")
 
+    def test_swaps_off_by_default(self):
+        c = md.Config()
+        self.assertEqual((c.swap_fill, c.swap_post, c.swap_team_venue), (False, False, False))
+        h = {"LAV-08": two("LAV-08", 5, 6), "MAL-06": two("MAL-06", 3, 4)}
+        r = run({"rastro": [swap(1, "SAL-09", "LAV-08")]}, h, md.Config(bids=False, min_cash=0))
+        self.assertIsNone(r["accept"])
+        self.assertEqual(rec(r, 1)["action"], "skip")
+        self.assertIn("swap fills off (--swap-fills", rec(r, 1)["reason"])
+        self.assertEqual(r["swaps"], [])                                      # nothing posted either
+
+    def test_fills_on_el_rastro_only_without_the_team_venue_flag(self):
+        h = {"LAV-08": two("LAV-08", 5, 6)}
+        for vid in ("v02", "v09"):                                            # a team venue, an unknown one
+            r = run({vid: [swap(1, "SAL-09", "LAV-08", venue=vid)]}, h)
+            self.assertIn(f"swap on {vid}: fills on rastro only", rec(r, 1)["reason"])
+            self.assertIsNone(r["accept"])
+        r = run({"v02": [swap(1, "SAL-09", "LAV-08", venue="v02")]}, h, cfg(swap_team_venue=True))
+        self.assertEqual(r["accept"]["offer"], 1)
+        r = run({"rastro": [swap(1, "SAL-09", "LAV-08")]}, h)
+        self.assertEqual(r["accept"]["offer"], 1)
+
 
 class FillCaps(unittest.TestCase):
     def test_fee_cap_on_an_unknown_venue(self):
         h = {"LAV-08": two("LAV-08", 5, 6)}
-        r = run({"v09": [swap(1, "SAL-09", "LAV-08", venue="v09")]}, h)      # unknown venue: worst fee 10
+        r = run({"v09": [swap(1, "SAL-09", "LAV-08", venue="v09")]}, h, cfg(swap_team_venue=True))  # worst fee 10
         self.assertIn("swap fee 10 > max 3", rec(r, 1)["reason"])
 
     def test_partner_per_hour(self):
@@ -277,12 +320,17 @@ class OurSwaps(unittest.TestCase):
         self.assertEqual(posts(run({}, self.HOLD, self.cfg(swap_post=False))), [])
 
     def test_gain_rule_boundary(self):
-        # our only SAL-01 (13, --sell-first-copies SAL) for a LAV common (16): 16 - 13 = 3 = need -> post;
-        # for a SAL or LAT common (13, 11) it falls short; MAL commons (7) are under --swap-min-value
-        res = run({}, {"SAL-01": [card(1, "SAL-01")]}, self.cfg(sell_first_copies=("SAL",), swap_max=10))
-        self.assertEqual(sorted(s["card"] for s in posts(res)), ["LAV-01"])  # one copy given: one swap
-        self.assertEqual(posts(res)[0]["record"]["gain"], 3.0)
-        res = run({}, {"SAL-01": [card(1, "SAL-01")]}, self.cfg(sell_first_copies=("SAL",), margin_min=3.01))
+        # our spare SAL-01 (13 x 0.25 = 3.25) for a LAV rare (112, --swap-any-rarity): 112 - 3.25 = 108.75
+        h = {"SAL-01": two("SAL-01", 1, 2)}
+        res = run({}, h, self.cfg(margin_min=108.75, swap_max=10, swap_any_rarity=True))
+        self.assertEqual(len(posts(res)), 1)                                  # one copy given: one swap
+        self.assertIn(posts(res)[0]["card"], ("LAV-09", "LAV-10"))
+        self.assertEqual((posts(res)[0]["asset"], posts(res)[0]["record"]["gain"]), (2, 108.75))
+        self.assertEqual(posts(run({}, h, self.cfg(margin_min=108.76, swap_max=10, swap_any_rarity=True))), [])
+
+    def test_never_posts_a_last_copy_even_with_sell_first_copies(self):
+        one = {"SAL-01": [card(1, "SAL-01")], "MAL-08": [card(3, "MAL-08")]}
+        res = run({}, one, self.cfg(sell_first_copies=("SAL", "MAL"), swap_max=10))
         self.assertEqual(posts(res), [])
 
     def test_never_offers_a_held_cards_last_protected_copy(self):
@@ -380,13 +428,54 @@ class SwapDeskLoop(unittest.TestCase):
     setUp = base.DeskLoop.setUp          # a temp lease 25 s into tick 100 (no inherited tests)
     tearDown = base.DeskLoop.tearDown
 
-    def desk(self, mode, board, assets, **kw):
+    def desk(self, mode, board, assets, seller_config=None, **kw):
         keyed = base.FakeKeyed(board, assets)
         kw.setdefault("swap_max", 2)
+        kw.setdefault("swap_fill", True)      # opt in, as --swap-fills / --swap-posts would
+        kw.setdefault("swap_post", True)
         c = md.Config(min_cash=0, bids=False, **kw)
         d = md.Desk(mode, c, base.FakePublic(board), keyed=keyed, lease=self.lease, log=base.MemLog(),
-                    heartbeat=self.dir / "desk-market.json", out=self.lines.append, seller_config=None)
+                    heartbeat=self.dir / "desk-market.json", out=self.lines.append, seller_config=seller_config)
         return d, keyed
+
+    def seller_file(self, *lines):
+        path = self.dir / "rastro_floors.json"
+        path.write_text(json.dumps({"venue": "rastro", "cards": list(lines)}))
+        return path
+
+    def test_every_seller_config_line_is_reserved_even_disabled(self):
+        path = self.seller_file({"asset_id": 6, "card": "LAV-08", "floor": 20, "enabled": False},
+                                {"asset_id": "8", "card": "MAL-06", "floor": 6})
+        self.assertEqual(md.seller_assets(path), {6, 8})
+        assets = self.ASSETS + [card(7, "MAL-06", 1), card(8, "MAL-06", 9)]
+        d, k = self.desk("run", [swap(1, "SAL-09", "LAV-08")], assets, seller_config=path)
+        res = d.tick(d.public.clock())
+        self.assertIsNone(res["accept"])                                       # fill path: #6 stays
+        self.assertIn("#6 is in rastro_seller's config", rec(res, 1)["reason"])
+        self.assertEqual([w for w in k.writes if w[0] in ("accept", "list")], [])   # post path: #6 and #8 stay
+
+    def test_seller_config_is_reread_every_tick_and_kept_when_broken(self):
+        path = self.seller_file({"asset_id": 6, "card": "LAV-08", "floor": 20})
+        d, k = self.desk("watch", [], self.ASSETS, seller_config=path, swap_fill=False, swap_post=False)
+        d.tick(d.public.clock())
+        self.assertEqual(d.reserved, {6})
+        self.seller_file({"asset_id": 6, "card": "LAV-08"}, {"asset_id": 5, "card": "LAV-08"})
+        d.tick(d.public.clock())
+        self.assertEqual((d.reserved, d.last_snap["reserved"]), ({5, 6}, {5, 6}))     # an edit during the day
+        path.write_text("{not json")
+        d.tick(d.public.clock())
+        self.assertEqual(d.reserved, {5, 6})                                    # malformed: last good set
+        self.assertEqual(sum(1 for ln in self.lines if "seller config" in ln and "unreadable" in ln), 1)
+        self.assertEqual([r["kept"] for r in d.log.rows if r["event"] == "seller_config_unreadable"], [[5, 6]])
+        d.tick(d.public.clock())                                                # same error: logged once
+        self.assertEqual(sum(1 for ln in self.lines if "unreadable" in ln), 1)
+        path.unlink()
+        d.tick(d.public.clock())
+        self.assertEqual(d.reserved, {5, 6})                                    # missing: last good set
+        self.assertEqual(sum(1 for ln in self.lines if "unreadable" in ln), 2)
+        self.seller_file({"asset_id": 5, "card": "LAV-08"})
+        d.tick(d.public.clock())
+        self.assertEqual(d.reserved, {5})
 
     ASSETS = [card(5, "LAV-08", 1), card(6, "LAV-08", 9)]
 
@@ -409,7 +498,8 @@ class SwapDeskLoop(unittest.TestCase):
         self.assertEqual(d.swapbook[want["cards"][0]]["asset"], 6)
 
     def test_run_swap_venue_and_expiry_flags(self):
-        d, k = self.desk("run", [], self.ASSETS, swap_venue="v03", swap_expires=120)
+        d, k = self.desk("run", [], self.ASSETS, swap_venue="v03", swap_expires=120,
+                         swap_team_venue=True)
         d.tick(d.public.clock())
         _, give, want, venue, to, exp = next(w for w in k.writes if w[0] == "list")
         self.assertEqual((venue, exp), ("v03", 120))
@@ -500,6 +590,30 @@ class SwapDeskLoop(unittest.TestCase):
 
 
 class Cli(unittest.TestCase):
+    def parse(self, *argv):
+        import argparse
+        ap = argparse.ArgumentParser()
+        md.add_config_args(ap)
+        return md.build_config(ap.parse_args(list(argv)))
+
+    def test_swaps_are_opt_in_flags(self):
+        c = self.parse()
+        self.assertEqual((c.swap_fill, c.swap_post, c.swap_team_venue), (False, False, False))
+        c = self.parse("--swap-fills", "--swap-posts")
+        self.assertEqual((c.swap_fill, c.swap_post), (True, True))
+        c = self.parse("--swap-fills")
+        self.assertEqual((c.swap_fill, c.swap_post), (True, False))
+        c = self.parse("--no-swap-fills", "--no-swap-posts")                   # old flags: accepted, no-ops
+        self.assertEqual((c.swap_fill, c.swap_post), (False, False))
+        self.assertTrue(self.parse("--swap-team-venue").swap_team_venue)
+        import argparse
+        ap = argparse.ArgumentParser()
+        md.add_config_args(ap)
+        text = ap.format_help()
+        self.assertIn("--swap-fills", text)
+        self.assertIn("--swap-posts", text)
+        self.assertNotIn("--no-swap-fills", text)
+
     def test_team_venue_needs_its_flag(self):
         import contextlib
         import io
