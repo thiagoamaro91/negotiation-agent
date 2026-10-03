@@ -362,8 +362,166 @@ class Deadline(Rival):
         return e == self.T - self.p["at"]
 
 
+# ---------------------------------------------------------------- the likely field (Saturday research)
+# Strategies the other teams most plausibly built in two days with an AI coding assistant, as rivals to test against:
+# Faratin, Sierra & Jennings 1998 time-dependent tactics (Boulware, Conceder), de Jonge 2022 MiCRO, split the
+# difference, an ANAC-style day logroller, and an emulator of a prompt-driven LLM agent. The ranges are priors, not
+# measurements: no team has played a two-issue duel yet. FIELD_WEIGHTS mixes them with the Duels I shapes.
+
+class Boulware(Steady):
+    """Time-dependent, holds near its anchor and concedes late (tau ** beta with beta > 1); AC_next."""
+    kind = "boulware"
+
+
+class Conceder(Steady):
+    """Time-dependent, concedes most of the way early (beta < 1); AC_next."""
+    kind = "conceder"
+
+
+class Greedy(Silent):
+    """Never speaks; takes the first offer that clears its limit."""
+    kind = "greedy"
+
+
+class MiCRO(Rival):
+    """de Jonge (IJCAI 2022): concedes one fixed step only when we have made at least as many distinct offers as it
+    has bids; otherwise repeats its last bid. Accepts AC_next (base class)."""
+    kind = "micro"
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.m, self.made = self.p["m0"], 0
+
+    def margin(self, e, view):
+        return self.m if e >= self.p["e0"] else None
+
+    def speaks(self, e, view):
+        if e < self.p["e0"]:
+            return False
+        ours = len({(x[1], x[2]) for x in view["our_msgs"]})
+        if self.made == 0:
+            self.made = 1
+        elif ours >= self.made and self.m > self.p["m_floor"]:
+            self.m = max(self.p["m_floor"], self.m - self.p["step"])
+            self.made += 1
+        return True
+
+
+class Splitter(Rival):
+    """Split the difference: answers each new offer of ours with the midpoint of its last price and ours (and the
+    midpoint day), never past its floor; accepts when ours is within tol of its own last number, or at the end."""
+    kind = "split"
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.last, self.seen = None, 0
+
+    def act(self, e, view):
+        p, ours = self.p, view["our_offer"]
+        if e < p["e0"]:
+            return {}
+        if ours is not None and p.get("takes", True) and self.utility(*ours) >= 0:
+            if self.T - e <= 1 or (self.last is not None
+                                   and self.utility(*ours) >= self.utility(*self.last) - p["tol"] * self.L):
+                return {"accept": True}
+        if self.last is None:
+            day = self.day_for(ours)
+            self.last = (self.price(p["m0"], day), day)
+            return {"say": self.last}
+        if ours is not None and len(view["our_msgs"]) > self.seen:
+            self.seen = len(view["our_msgs"])
+            day = self.last[1]
+            if day is not None and ours[1] is not None:
+                day = int(round((day + ours[1]) / 2))
+            mid = (self.last[0] + ours[0]) / 2
+            floor = self.price(p["m_floor"], day)
+            price = max(floor, int(math.ceil(mid))) if self.role == "seller" else min(floor, int(math.floor(mid)))
+            self.last = (price, day)
+            return {"say": self.last}
+        return {}
+
+
+class Logroller(Steady):
+    """ANAC-style: a Boulware price target plus a frequency read of our day (the HardHeaded rule): once we have kept
+    the same day over two offers, it offers our day and asks its own days cost back in price (iso-utility for it)."""
+    kind = "logroll"
+
+    def act(self, e, view):
+        self._msgs = view["our_msgs"]
+        return super().act(e, view)
+
+    def day_for(self, ours):
+        if self.days is None:
+            return None
+        m = getattr(self, "_msgs", [])
+        if len(m) >= 2 and m[-1][2] is not None and m[-1][2] == m[-2][2]:
+            return m[-1][2]
+        return self.days[0]
+
+
+class LLMFair(Rival):
+    """A prompt-driven LLM agent: a round-number anchor, shrinking big steps after we speak (some ticks it 'thinks'
+    and says nothing), takes a 'fair' offer near the middle of the two openings, over-accepts near the deadline, and
+    often misreads the day (its dmode: echoes ours, says 5, holds its own or picks at random)."""
+    kind = "llmfair"
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.last, self.first, self.their_open, self.seen, self.moves = None, None, None, 0, 0
+        self.rng = random.Random(self.p.get("seed", 0) * 7 + limit_key(self.L))
+
+    def _round(self, price: float) -> int:
+        r = self.p["round"]
+        return int(math.ceil(price / r) * r) if self.role == "seller" else int(math.floor(price / r) * r)
+
+    def act(self, e, view):
+        p, ours = self.p, view["our_offer"]
+        if e < p["e0"]:
+            return {}
+        if ours is not None and self.their_open is None:
+            self.their_open = ours[0]
+        if ours is not None and p.get("takes", True) and self.utility(*ours) >= 0:
+            if self.T - e <= 2 or (self.last is not None and self.utility(*ours) >= self.utility(*self.last)):
+                return {"accept": True}
+            if self.first is not None and self.their_open is not None:
+                fair = (self.first[0] + self.their_open) / 2
+                good = ours[0] >= fair if self.role == "seller" else ours[0] <= fair
+                near = abs(ours[0] - fair) <= p["fair"] * abs(self.first[0] - self.their_open)
+                if good or near:
+                    return {"accept": True}
+        if self.last is None:
+            day = self.day_for(ours)
+            self.last = self.first = (self._round(self.price(p["m0"], day)), day)
+            return {"say": self.last}
+        if ours is not None and len(view["our_msgs"]) > self.seen:
+            self.seen = len(view["our_msgs"])
+            if self.rng.random() < p["skip"]:
+                return {}
+            day = self.day_for(ours)
+            gap = abs(self.last[0] - ours[0])
+            step = gap * max(0.08, p["big"] * 0.6 ** self.moves)
+            self.moves += 1
+            raw = self.last[0] - step if self.role == "seller" else self.last[0] + step
+            floor = self.price(p["m_floor"], day)
+            price = max(floor, self._round(raw)) if self.role == "seller" else min(floor, self._round(raw))
+            self.last = (price, day)
+            return {"say": self.last}
+        return {}
+
+
+def limit_key(L: int) -> int:
+    return int(L) % 997
+
+
 KINDS = {"steady": Steady, "fast": Fast, "cycler": Cycler, "oneshot": OneShot, "llm": LLM, "absent": Absent,
-         "silent": Silent, "hardliner": Hardliner, "linear": Linear, "tft": TitForTat, "deadline": Deadline}
+         "silent": Silent, "hardliner": Hardliner, "linear": Linear, "tft": TitForTat, "deadline": Deadline,
+         "boulware": Boulware, "conceder": Conceder, "greedy": Greedy, "micro": MiCRO, "split": Splitter,
+         "logroll": Logroller, "llmfair": LLMFair}
+FIELD = ["boulware", "conceder", "greedy", "micro", "split", "logroll", "llmfair"]
+# The likely field (research priors, Saturday 19:00): ~40% time-dependent, 15% stepped, 15% LLM agents, 10% jump and
+# hold, 10% silent or absent, the rest reactive or clever. Kinds left out weigh 0.
+FIELD_WEIGHTS = {"linear": 25, "boulware": 8, "conceder": 7, "steady": 15, "llmfair": 15, "fast": 10, "absent": 5,
+                 "silent": 3, "greedy": 2, "tft": 2, "split": 3, "logroll": 2, "micro": 3}
 
 
 def rival_params(kind: str, rng: random.Random, T: int) -> dict:
@@ -404,6 +562,28 @@ def _kind_params(kind: str, rng: random.Random, T: int, u, end: dict, flex: bool
     if kind == "deadline":
         return {"m": u(0.0, 0.12), "at": rng.choice([1, 2, 2, 3]), "flex": flex, "end_margin": u(0.0, 0.05),
                 "end_ticks": 2}
+    # the likely field (designed strategies: they all accept)
+    if kind == "boulware":
+        return {"m0": u(0.3, 0.6), "m_end": u(0.0, 0.05), "beta": u(3.0, 7.0), "every": 1, "e0": rng.randint(0, 1),
+                "flex": flex, "takes": True, **end}
+    if kind == "conceder":
+        return {"m0": u(0.25, 0.5), "m_end": u(0.0, 0.08), "beta": u(0.2, 0.5), "every": 1, "e0": rng.randint(0, 1),
+                "flex": flex, "takes": True, **end}
+    if kind == "greedy":
+        return {"m_acc": 0.0, "e0": 0, "takes": True}
+    if kind == "micro":
+        return {"m0": u(0.3, 0.6), "step": u(0.03, 0.08), "m_floor": u(0.0, 0.05), "e0": rng.randint(0, 1),
+                "flex": flex, "takes": True}
+    if kind == "split":
+        return {"m0": u(0.3, 0.6), "m_floor": u(0.0, 0.05), "tol": u(0.03, 0.1), "e0": rng.randint(0, 1),
+                "flex": flex, "takes": True}
+    if kind == "logroll":
+        return {"m0": u(0.3, 0.5), "m_end": u(0.0, 0.05), "beta": u(2.0, 4.0), "every": 1, "e0": rng.randint(0, 1),
+                "flex": False, "takes": True, **end}
+    if kind == "llmfair":
+        return {"m0": u(0.3, 1.0), "big": u(0.15, 0.25), "m_floor": u(0.0, 0.05), "fair": u(0.05, 0.1),
+                "skip": 0.25, "round": rng.choice([5, 10]), "e0": rng.randint(0, 1), "seed": rng.randint(0, 10 ** 6),
+                "dmode": rng.choices(["flex", "mid", "best", "random"], weights=[3, 2, 3, 2])[0], "takes": True}
     return {}
 
 
@@ -1044,7 +1224,7 @@ def main() -> None:
     ap.add_argument("--slot-busy", type=float, default=0.0)
     ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
                     "(default PAIR_SEEN = 1; Duels I: 0)")
-    ap.add_argument("--weights", default="friday", choices=["friday", "duels1"],
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field"],
                     help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
     ap.add_argument("--days-mode", default="", help='two issues: "" robust (duel.py run before --days-confirmed), '
                     '"confirmed", or a --days-best value such as "buyer:10,seller:0"')
@@ -1057,7 +1237,8 @@ def main() -> None:
     if a.pair_seen is not None:
         PAIR_SEEN = a.pair_seen
     ARENA_DAYS = a.days_mode
-    weights = DUELS1_WEIGHTS if a.weights == "duels1" else None
+    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS}.get(a.weights)
+    kinds = [k for k in KINDS if (weights or WEIGHTS).get(k, 0) > 0] if weights else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}
     for p in a.params:
@@ -1067,7 +1248,7 @@ def main() -> None:
               f"visible. Cells: mean score per duel.\n")
         print(days_lab(policies, seeds, a.session))
         return
-    rows = {n: summary(evaluate(p, seeds, a.session, rounds_rule=a.rounds_rule, late_look=a.late_look,
+    rows = {n: summary(evaluate(p, seeds, a.session, kinds=kinds, rounds_rule=a.rounds_rule, late_look=a.late_look,
                                 slot_busy=a.slot_busy, weights=weights)) for n, p in policies.items()}
     if a.json:
         print(json.dumps(rows, indent=1))
