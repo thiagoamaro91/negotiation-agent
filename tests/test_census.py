@@ -62,8 +62,9 @@ class Server:
     `script[id]` is a list of (status, headers, body) answered first, whatever the key."""
 
     def __init__(self, cards, clock=None, schedule=None, feed=None, key=FAKE_KEY, script=None, fail=(), boom=None,
-                 timer=None):
+                 timer=None, live=False):
         self.cards, self.key, self.script, self.fail, self.boom = cards, key, script or {}, set(fail), boom
+        self.live = live   # the clock runs with the fake time: tick and t_hours advance (a game hour is a wall hour)
         self.clock = clock if clock is not None else {"tick": 1700, "doors": "closed", "t_hours": 13.4,
                                                        "tick_seconds": 30.0}
         self.schedule = schedule if schedule is not None else {"upcoming": []}
@@ -76,18 +77,34 @@ class Server:
     def keyed_ids(self):
         return [i for i, h in self.card_calls() if h.get("X-Team-Key")]
 
+    def calls_between(self, a, b):
+        """Every request of any kind sent in [a, b)."""
+        return [(u, t) for u, _, t in self.calls if t is not None and a <= t < b]
+
+    def clock_now(self):
+        c = dict(self.clock)
+        if self.live and self.timer is not None:
+            dt = self.timer.now() - T0
+            c["tick"] = int(self.clock["tick"] + dt // self.clock["tick_seconds"])
+            c["t_hours"] = self.clock["t_hours"] + dt / 3600
+        return c
+
     def __call__(self, url, headers, timeout=15.0):
         self.calls.append((url, dict(headers), self.timer.now() if self.timer else None))
         path = url[len(URL):]
         for p in self.fail:
             if path.startswith(p):
                 return 500, {}, b'{"error": "boom"}'
+        if path in self.script and self.script[path]:
+            return self.script[path].pop(0)
         if path == "/api/clock":
-            return 200, {}, json.dumps(self.clock).encode()
+            return 200, {}, json.dumps(self.clock_now()).encode()
         if path == "/api/schedule":
-            return 200, {}, json.dumps(self.schedule).encode()
+            sched = self.schedule(self.timer.now()) if callable(self.schedule) else self.schedule
+            return 200, {}, json.dumps(sched).encode()
         if path.startswith("/api/feed"):
-            return 200, {}, json.dumps(self.feed).encode()
+            feed = self.feed(self.timer.now()) if callable(self.feed) else self.feed
+            return 200, {}, json.dumps(feed).encode()
         i = int(path.rsplit("/", 1)[1])
         if self.boom == i:
             raise KeyboardInterrupt
@@ -414,17 +431,19 @@ class TestMarketCheck(Base):
     def test_open_doors_with_no_test_near_runs_and_pauses_for_a_later_one(self):
         sched = {"upcoming": [{"at_hours": 12.5833 + 6 / 3600 + 120 / 3600, "action": "bench",
                                "params": {"ticks": 16}}]}                # quiet window opens ~6 s into the walk
-        server = Server(deck(range(1, 11)), clock=self.OPEN, schedule=sched)
+        server = Server(deck(range(1, 11)), clock=self.OPEN, schedule=sched, live=True)
         code, lines = self.walk(server)
         self.assertEqual(code, 0)
         self.assertTrue(any("quiet window" in x for x in lines))
         self.assertTrue(any(s >= 600 for s in self.clock.sleeps))
+        bench = T0 + 126
+        self.assertEqual(server.calls_between(bench - 120, bench + 600), [])   # no request of any kind
 
-    def test_closed_doors_need_only_the_clock(self):
+    def test_closed_doors_skip_the_feed(self):
         server = Server(deck(range(1, 4)))
         self.walk(server)
         public = [u for u, _, _ in server.calls if "/api/cards/" not in u]
-        self.assertEqual(public, [URL + "/api/clock", URL + "/api/clock"])  # start and end
+        self.assertEqual(public, [URL + "/api/clock", URL + "/api/schedule", URL + "/api/clock"])  # start, end
 
     def test_manual_quiet_window_holds_even_the_first_request(self):
         start = time.strftime("%H:%M", time.localtime(T0 - 60))
@@ -433,12 +452,112 @@ class TestMarketCheck(Base):
         code, _ = self.walk(server, "--quiet", f"{start}-{end}")
         self.assertEqual(code, 0)
         self.assertGreaterEqual(server.calls[0][2], T0 + 540)
+        self.assertEqual(server.calls_between(T0 - 600, T0 + 570), [])        # zero calls of any kind
 
     def test_parse_quiet_runs_past_midnight(self):
         [(a, b)] = census.parse_quiet("23:50-00:10", T0)
         self.assertEqual(b - a, 20 * 60)
         with self.assertRaises(ValueError):
             census.parse_quiet("25:00-26:00", T0)
+
+
+class TestSilenceReview(Base):
+    """The three Market Test findings of the #57 review, each with a fake clock, and the --until hard stop."""
+    OPEN = {"tick": 100, "doors": "open", "t_hours": 12.0, "tick_seconds": 30.0}
+
+    def test_1_a_retried_feed_cannot_leave_a_stale_tick(self):
+        # the feed answers 503 Retry-After 180; meanwhile a Market Test starts at tick 106 (T0 + 180). The old code
+        # placed it with the clock read before the retry (tick 100), dropped it and sent card requests during it.
+        def feed(t):
+            return {"events": [{"type": "bench.started", "tick": 106, "payload": {"start_tick": 106, "ticks": 16}}]
+                    if t >= T0 + 180 else []}
+        server = Server(deck(range(1, 11)), clock=self.OPEN, live=True, feed=feed,
+                        script={"/api/feed?limit=1000": [(503, {"Retry-After": "180"}, b"")]})
+        code, lines = self.walk(server)
+        self.assertEqual(code, 3)
+        self.assertEqual(server.card_calls(), [])
+        urls = [u for u, _, _ in server.calls]
+        self.assertEqual(urls[-1], URL + "/api/clock")                      # the anchor clock comes after the feed
+        self.assertLess(max(i for i, u in enumerate(urls) if "/api/feed" in u), len(urls) - 1)
+
+    def test_1_the_feed_tick_above_a_clock_tick_is_kept_not_dropped(self):
+        clock = {"tick": 100, "tick_seconds": 30.0}
+        events = [{"type": "bench.started", "payload": {"start_tick": 106, "ticks": 16}}]
+        [(a, b)] = census.running_windows(events, clock, T0)
+        self.assertLessEqual(a, T0)
+        self.assertGreaterEqual(b, T0 + 600)
+
+    def test_2_closed_doors_stop_before_the_opening(self):
+        # doors closed, opening at T0 + 600: a slow scan must not run into the opening; the status is re-read
+        # every 2 min meanwhile, and nothing is sent from 2 min before the opening
+        opens = T0 + 600
+        clock = {"tick": 1445, "doors": "closed", "t_hours": 13.363, "tick_seconds": 30.0,
+                 "next_opens": census.datetime.datetime.fromtimestamp(opens).astimezone().isoformat()}
+        server = Server(deck(range(1, 2000)), clock=clock)
+        code, lines = self.walk(server)
+        self.assertEqual(code, 3)
+        self.assertTrue(any("doors open at" in x for x in lines))
+        self.assertEqual(server.calls_between(opens - 120, opens + 86400), [])
+        clocks = [t for u, _, t in server.calls if u.endswith("/api/clock")]
+        self.assertGreaterEqual(len(clocks), 4)                             # T0, +120, +240, +360
+        self.assertTrue(all(b - a <= 125 for a, b in zip(clocks, clocks[1:])))
+        [partial] = list(self.out.glob("cards-*-partial.jsonl"))
+        self.assertGreater(len(partial.read_text().splitlines()), 400)      # progress kept for --resume
+
+    def test_2_open_doors_refresh_and_catch_a_newly_scheduled_test(self):
+        # the schedule announces a Market Test only at T0 + 150 (for T0 + 400): a status read once at start would miss
+        # it; the 2 min refresh places it and the walk is silent from T0 + 280 to T0 + 1000
+        def sched(t):
+            return {"upcoming": [{"at_hours": 12.0 + 400 / 3600, "action": "bench", "params": {"ticks": 16}}]
+                    if t >= T0 + 150 else []}
+        server = Server(deck(range(1, 900)), clock=self.OPEN, live=True, schedule=sched)
+        code, _ = self.walk(server)
+        self.assertEqual(code, 0)
+        self.assertEqual(server.calls_between(T0 + 280, T0 + 1000), [])
+        self.assertGreater(max(t for _, _, t in server.calls), T0 + 1000)   # the walk went on after it
+
+    def test_3_cached_window_refuses_with_zero_requests(self):
+        (self.out / census.STATUS_FILE).write_text(json.dumps({"windows": [[T0 - 60, T0 + 600]]}))
+        server = Server(deck(range(1, 4)))
+        code, lines = self.walk(server)
+        self.assertEqual(code, 3)
+        self.assertEqual(server.calls, [])                                  # zero transport calls of any kind
+        self.assertTrue(any("no request sent" in x for x in lines))
+
+    def test_3_the_previous_run_caches_tomorrows_windows(self):
+        # Saturday night (closed): the schedule places Sunday's 10:17 Market Test from day_opens; a top-up started
+        # inside it on Sunday is refused with no request
+        sun9 = time.mktime((2026, 10, 4, 9, 0, 0, 0, 0, -1))
+        sched = {"upcoming": [
+            {"at_hours": 13.363, "action": "day_closes", "wall": "x"},
+            {"at_hours": 13.363, "action": "day_opens", "params": {"tick_seconds": 15.0},
+             "wall": census.datetime.datetime.fromtimestamp(sun9).astimezone().isoformat()},
+            {"at_hours": 14.65, "action": "bench", "params": {"ticks": 16}}]}
+        self.walk(Server(deck(range(1, 6)), schedule=sched))
+        [base] = list(self.out.glob("cards-*-t*.json"))
+        sunday = Clock(sun9 + 1.287 * 3600 + 60)                          # 10:18:13, a minute into the session
+        server = Server(deck(range(1, 6)), timer=sunday)
+        code = census.main(["ids", "1,2", "--base", str(base), "--out", str(self.out), "--url", URL], fetch=server,
+                           sleep=sunday.sleep, now=sunday.now, key_loader=lambda: FAKE_KEY, say=[].append)
+        self.assertEqual(code, 3)
+        self.assertEqual(server.calls, [])
+
+    def test_until_stops_cleanly_and_resume_finishes(self):
+        until = time.strftime("%H:%M", time.localtime(T0 + 90))           # 23:07, 90 s after the start
+        server = Server(deck(range(1, 300)))
+        code, lines = self.walk(server, "--until", until)
+        self.assertEqual(code, 6)
+        stop = T0 + 90
+        self.assertEqual(server.calls_between(stop, stop + 86400), [])
+        [partial] = list(self.out.glob("cards-*-partial.jsonl"))
+        n = len(partial.read_text().splitlines())
+        self.assertTrue(80 <= n <= 90, n)
+        self.assertEqual(list(self.out.glob("cards-*-t*.json")), [])
+        self.assertTrue(any("--resume" in x for x in lines))
+        server = Server(deck(range(1, 300)))
+        self.assertEqual(self.walk(server, "--resume")[0], 0)
+        self.assertEqual(min(server.keyed_ids()), n + 1)
+        self.assertEqual(self.snapshot()["meta"]["found"], 299)
 
 
 class TestSelftest(unittest.TestCase):

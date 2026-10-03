@@ -9,6 +9,13 @@
 - Market Test silence: `--quiet` windows pause before every request; at start the clock is read, and with the doors open the schedule and the feed place the Market Tests as `tools/announce.py` does: no start inside one or when that status cannot be read (exit 3, `--skip-market-check` overrides), and a pause for the ones ahead.
 - `tests/test_census.py`: 31 offline tests (end of the id space and the `--expect-max` anchor, 429/5xx backoff, failed ids kept and retried on resume, resume after midnight, re-finalize with no request, top-up merge, per-team summary and totals, history file, key fallback once per run and never shown, redaction of errors and payloads, the Market Test start check, quiet windows, selftest).
 
+### Fixed (Codex review of #57 at a950079: 3 MAJORs, all Market Test silence)
+- Stale clock: with the doors open the clock is read again after the feed, and every window is placed from that read and its sampling time, so a retried schedule or feed request (a 503 with Retry-After 180) can no longer leave an old tick that drops a Market Test the feed shows; a `bench.started` above the clock's tick is kept, never dropped.
+- No refresh: the status (clock, schedule, and feed with the doors open) is read again every 2 min before the next card request, card retries included; with the doors closed the run stops 2 min before the next opening (exit 3, resume once the doors are open), and a refresh that fails stops the run (exit 3, progress kept).
+- Requests before the gate: local evidence comes first with no request at all: a start inside a window cached by the previous run (`<out>/census-status.json`, written at every status read, Sunday's sessions placed from the schedule's `day_opens` wall time) is refused, and the `--quiet` windows hold every request.
+- New `--until HH:MM`: hard stop at that local time, the partial file kept, exit 6; `--resume` continues.
+- `tests/test_census.py`: 38 tests, with a fake-clock test for each finding (all fail on a950079) and tests asserting zero requests of any kind inside a silence.
+
 ## [2026-10-03] Dashboard: Rivals and Market panels
 
 ### Added

@@ -26,23 +26,29 @@ End of the id space. The walk stops after `--stop-after` consecutive 404s above 
 from ending the walk early). `--max-id` is a hard cap; reaching it without that run of 404s exits 4.
 
 Market Test silence (team rule: no API call during a Market Test). `--quiet "22:34-22:50,09:32-09:45"` pauses before
-any request inside those local wall-clock windows. At start, after any manual window, GET /api/clock: doors not open
-means nothing ticks, so no Market Test. With the doors open the clock says nothing about Market Tests, so the schedule
-(upcoming "bench") and the feed ("bench.started") are read and placed as tools/announce.py does (2 min before a
-session to 10 min after); the run refuses to start inside one (exit 3), refuses when that status cannot be read, and
-pauses in the windows still ahead. `--skip-market-check` overrides, only for an operator who knows.
+any request inside those local wall-clock windows. Local evidence comes first, with no request: a start inside a
+window cached by the previous run (<out>/census-status.json) is refused. Then GET /api/clock and /api/schedule and,
+with the doors open, /api/feed and the clock again (the windows are placed from a clock read after the feed): each
+Market Test ("bench" in the schedule, "bench.started" in the feed) is silent from 2 min before to 10 min after, as in
+tools/announce.py. The run refuses to start inside one (exit 3), pauses for the ones ahead, reads the status again
+every 2 min, stops when it cannot be read (exit 3), and with the doors closed stops 2 min before the next opening
+(exit 3: resume once the doors are open). `--skip-market-check` overrides all of it, only for an operator who knows.
+`--until HH:MM` is a hard stop (exit 6); the partial file keeps everything read.
 
 Files in --out (default logs/census):
   cards-<date>-partial.jsonl   one line per id as it goes (scrubbed raw payload), the basis of --resume
   cards-<date>-t<tick>.json    meta, cards [{id, ref, name, rarity, set, serial, owner}], packs, teams
                                {team: {cards, by_ref}}, other_owners (dealers, no owner): no history
   cards-<date>-t<tick>-history.json   {id: history}, only with --with-history
+  census-status.json           the last Market Test windows read, the next run's local evidence
 Exit: 0 done; 1 done with ids in `errors` (run --resume retries them); 2 bad input; 3 Market Test on or unknown;
-4 id space may go past --max-id; 5 stopped (key refused, no key, too many errors in a row); 130 interrupted.
+4 id space may go past --max-id; 5 stopped (key refused, no key, too many errors in a row); 6 --until reached;
+130 interrupted.
 """
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import math
 import os
@@ -69,7 +75,8 @@ QUIET_BEFORE_S = 120       # Market Test silence, as tools/announce.py: from 2 m
 QUIET_AFTER_S = 600        # to 10 min after it
 QUIET_TAIL_S = 120         # or 2 min after its last tick, whichever is later
 BENCH_TICKS = 16           # a session's length when the schedule or the feed does not say
-HORIZON_H = 3.0            # schedule sessions placed this many game hours ahead (a game hour is a wall hour)
+STATUS_REFRESH_S = 120     # the Market Test status is read again this often (before the next card request)
+STATUS_FILE = "census-status.json"   # in --out: the last status's windows, the next run's local evidence
 
 
 class Fatal(Exception):
@@ -131,11 +138,19 @@ def retry_delay(headers: dict, data, attempt: int) -> float:
     return min(BACKOFF_CAP_S, 2.0 ** attempt)
 
 
+class Stopped(Fatal):
+    """--until reached: every id read so far is in the partial file; --resume continues."""
+
+    def __init__(self, message: str):
+        super().__init__(message, 6)
+
+
 class Reader:
-    """One paced GET at a time, quiet windows honoured before each one; keyless until the server asks for a key."""
+    """One paced GET at a time; keyless until the server asks for a key. Before every request: the hard stop
+    (--until), the quiet windows and, before a card request, the Market Test guard (`gate`, set by Guard)."""
 
     def __init__(self, url=URL, fetch=http_fetch, key_loader=load_key, sleep=time.sleep, now=time.time,
-                 rate=1.0, max_retries=8, quiet=(), say=print):
+                 rate=1.0, max_retries=8, quiet=(), say=print, until=None):
         self.url, self.fetch, self.key_loader = url.rstrip("/"), fetch, key_loader
         self.sleep, self.now, self.say = sleep, now, say
         self.interval = 1.0 / rate if rate and rate > 0 else 0.0
@@ -145,6 +160,8 @@ class Reader:
         self.last_start = None
         self.requests = 0
         self.paused_s = 0.0
+        self.until = until      # epoch of --until, or None
+        self.gate = None        # Guard.gate: True when it refreshed the Market Test status (the caller loops)
 
     def clean(self, text) -> str:
         """Credential-shaped text redacted (tools/redaction.py), and the loaded key itself whatever its shape."""
@@ -153,28 +170,46 @@ class Reader:
             s = s.replace(self.key, "[redacted]")
         return s
 
-    def wait_quiet(self) -> None:
+    def check_until(self) -> None:
+        if self.until is not None and self.now() >= self.until:
+            raise Stopped(f"reached --until {hhmm(self.until)}: stopping; every id read so far is in the partial "
+                          "file, run again with --resume")
+
+    def wait_quiet(self) -> bool:
+        """Sleep through any quiet window `now` falls in, never past --until. No request. True when it slept."""
+        slept = False
         while True:
+            self.check_until()
             end = quiet_until(self.quiet, self.now())
             if end is None:
-                return
-            wait = max(1.0, end - self.now())
+                return slept
+            stop = end if self.until is None else min(end, self.until)
+            wait = max(1.0, stop - self.now())
             self.say(f"census: quiet window until {hhmm(end)}: pausing {wait:.0f} s")
             self.sleep(wait)
             self.paused_s += wait
+            slept = True
 
-    def _pace(self) -> None:
-        self.wait_quiet()
-        if self.last_start is not None and self.interval:
-            gap = self.interval - (self.now() - self.last_start)
-            if gap > 0:
-                self.sleep(gap)
-        self.wait_quiet()
+    def _pace(self, gated: bool) -> None:
+        """Hold a request until the pace allows it, no quiet window covers it and, for a card (`gated`), the Market
+        Test status is fresh. Loops: a pause or the guard's own refresh requests move the clock."""
+        while True:
+            self.check_until()
+            if self.last_start is not None and self.interval:
+                gap = self.interval - (self.now() - self.last_start)
+                if gap > 0:
+                    self.sleep(gap)
+                    continue
+            if self.wait_quiet():
+                continue
+            if gated and self.gate is not None and self.gate():
+                continue
+            break
         self.last_start = self.now()
 
-    def _once(self, path: str, keyed: bool):
+    def _once(self, path: str, keyed: bool, gated: bool = False):
         """(status, headers, parsed JSON or None, error text or None); status 0 = no answer."""
-        self._pace()
+        self._pace(gated)
         headers = {"X-Team-Key": self.key} if keyed and self.key else {}
         self.requests += 1
         try:
@@ -217,7 +252,7 @@ class Reader:
         path = f"/api/cards/{int(i)}"
         attempt = 0
         while True:
-            status, hdrs, data, err = self._once(path, keyed=self.keyed)
+            status, hdrs, data, err = self._once(path, keyed=self.keyed, gated=True)
             if status == 200:
                 return {"id": i, "status": 200, "raw": scrub(data)}
             if status == 404:
@@ -282,34 +317,59 @@ def session_end(start: float, ticks, tick_s: float) -> float:
     return max(start + QUIET_AFTER_S, start + ticks * tick_s + QUIET_TAIL_S)
 
 
-def schedule_windows(schedule: dict, clock: dict, now: float) -> list:
-    """Upcoming Market Tests (schedule action "bench") as wall-clock windows, as tools/announce.py places them: a game
-    hour is a wall hour; only sessions within HORIZON_H and before the day closes."""
+def parse_iso(text):
     try:
-        t_now = float(clock["t_hours"])
-    except (KeyError, TypeError, ValueError):
-        return []
-    try:
-        tick_s = float(clock.get("tick_seconds") or 30.0)
+        return datetime.datetime.fromisoformat(str(text)).timestamp()
     except (TypeError, ValueError):
-        tick_s = 30.0
+        return None
+
+
+def parse_until(text: str, now: float):
+    """--until HH:MM: the next such local wall-clock time (tomorrow when it has passed today)."""
+    if not text:
+        return None
+    [(at, _)] = parse_quiet(f"{text}-{text}", now)
+    return at if at > now else at + 86400
+
+
+def _num(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def schedule_windows(schedule: dict, clock: dict, clock_at: float, is_open: bool = True) -> list:
+    """Every upcoming Market Test (schedule action "bench") as a wall-clock window, from QUIET_BEFORE_S before it to
+    QUIET_AFTER_S after (as tools/announce.py). A game hour is a wall hour within a day: today's sessions are placed
+    from the clock as sampled at `clock_at` (doors open), a later day's from its day_opens wall time. A session with
+    no anchor (doors closed, before any day_opens) cannot be placed and is skipped. The guard refreshes every
+    STATUS_REFRESH_S, so a paused clock moves the windows later."""
+    t_now = clock.get("t_hours") if isinstance(clock, dict) else None
+    tick_s = clock.get("tick_seconds") if isinstance(clock, dict) else None
+    tick_s = float(tick_s) if _num(tick_s) and tick_s > 0 else 30.0
+    anchor = (clock_at, float(t_now), tick_s) if is_open and _num(t_now) else None
+    order = {"day_closes": 0, "day_opens": 1}
+    events = [e for e in (schedule or {}).get("upcoming") or [] if isinstance(e, dict) and _num(e.get("at_hours"))]
     out = []
-    for ev in sorted((schedule or {}).get("upcoming") or [], key=lambda e: e.get("at_hours", 0)):
-        at = ev.get("at_hours")
-        if not isinstance(at, (int, float)) or at - t_now > HORIZON_H:
-            continue
-        if ev.get("action") == "day_closes":
-            break
-        if ev.get("action") == "bench":
-            start = now + (at - t_now) * 3600
-            end = session_end(start, (ev.get("params") or {}).get("ticks"), tick_s)
-            if end > now:
+    for ev in sorted(events, key=lambda e: (e["at_hours"], order.get(e.get("action"), 2))):
+        at, action, params = ev["at_hours"], ev.get("action"), ev.get("params") or {}
+        if action == "day_closes":
+            anchor = None
+        elif action == "day_opens":
+            wall = parse_iso(ev.get("wall"))
+            ts = params.get("tick_seconds")
+            anchor = (wall, at, float(ts) if _num(ts) and ts > 0 else tick_s) if wall is not None else None
+        elif action == "bench" and anchor is not None:
+            a_epoch, a_hours, a_tick_s = anchor
+            start = a_epoch + (at - a_hours) * 3600      # in the past when the session has already begun
+            end = session_end(start, params.get("ticks"), a_tick_s)
+            if end > clock_at:
                 out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
     return out
 
 
-def running_windows(events: list, clock: dict, now: float) -> list:
-    """Market Tests already started (the schedule lists only upcoming ones): every bench.started in the feed."""
+def running_windows(events: list, clock: dict, clock_at: float) -> list:
+    """Market Tests already started (the schedule lists only upcoming ones): every bench.started in the feed, placed
+    from the clock sampled at `clock_at`. The clock is read after the feed, so a start tick above the clock's tick
+    should not happen; if it does, the session is taken as starting at `clock_at` (never dropped)."""
     try:
         tick, tick_s = int(clock["tick"]), float(clock["tick_seconds"])
     except (KeyError, TypeError, ValueError):
@@ -320,44 +380,128 @@ def running_windows(events: list, clock: dict, now: float) -> list:
             continue
         pl = e.get("payload") or {}
         st = pl.get("start_tick", e.get("tick"))
-        if not isinstance(st, int) or st > tick:
+        if not isinstance(st, int):
             continue
         ticks = pl.get("ticks") if isinstance(pl.get("ticks"), int) and pl.get("ticks") > 0 else BENCH_TICKS
-        start = now - (tick - st) * tick_s
-        end = max(session_end(start, ticks, tick_s), now + (st + ticks - tick) * tick_s + QUIET_TAIL_S)
-        if end > now:
+        start = clock_at - max(0, tick - st) * tick_s
+        end = max(session_end(start, ticks, tick_s), clock_at + (st + ticks - tick) * tick_s + QUIET_TAIL_S)
+        if end > clock_at:
             out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
     return out
 
 
-def start_check(reader: Reader, skip: bool) -> dict:
-    """GET /api/clock (after any manual quiet window). Doors not open: no Market Test can run. Doors open: refuse
-    inside a Market Test window, refuse when the schedule or the feed cannot be read (fail closed), and add the
-    windows still ahead to the reader's pauses. Returns the clock ({} when skipped and unreadable)."""
+def load_status(path) -> list:
+    """The Market Test windows the previous run cached ([(start, end)] epochs), or []."""
     try:
-        clock = reader.public("/api/clock")
-    except Fatal:
-        if skip:
-            return {}
-        raise Fatal("Market Test status unknown: GET /api/clock failed; not starting (--skip-market-check overrides)", 3)
-    clock = clock if isinstance(clock, dict) else {}
-    if skip or (clock.get("doors") not in (None, "open")):
-        return clock
-    try:
-        schedule = reader.public("/api/schedule")
-        events = (reader.public("/api/feed?limit=1000") or {}).get("events") or []
-    except Fatal as e:
-        raise Fatal(f"Market Test status unknown ({e}); not starting (--skip-market-check overrides)", 3)
-    at = reader.now()
-    windows = schedule_windows(schedule, clock, at) + running_windows(events, clock, at)
-    end = quiet_until(windows, at)
-    if end is not None:
-        raise Fatal(f"a Market Test is on or starts within {QUIET_BEFORE_S // 60} min (silence until {hhmm(end)}); "
-                    "not starting", 3)
-    reader.quiet += [w for w in windows if w[1] > at]
-    if windows:
-        reader.say("census: will pause for Market Tests at " + ", ".join(f"{hhmm(a)}-{hhmm(b)}" for a, b in windows))
-    return clock
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return [(float(a), float(b)) for a, b in data.get("windows") or []]
+    except (OSError, ValueError, TypeError, AttributeError):
+        return []
+
+
+class Guard:
+    """The Market Test status for the whole run (team rule: no API call during a Market Test).
+
+    Local evidence first, with no request: the --quiet windows and the windows the previous run cached in
+    <out>/census-status.json; a start inside a cached window is refused. Then GET /api/clock and /api/schedule and,
+    with the doors open, /api/feed and the clock AGAIN: every window is placed from a clock read after the feed, so a
+    retried request in between cannot leave a stale tick. The status is refreshed every STATUS_REFRESH_S before the
+    next card request; with the doors closed the run stops QUIET_BEFORE_S before the next opening (the status can
+    only be read with the doors open), and a refresh that fails stops the run (exit 3, progress kept)."""
+
+    def __init__(self, reader: Reader, cache: Path | None, skip: bool):
+        self.reader, self.cache, self.skip = reader, cache, skip
+        self.manual = list(reader.quiet)
+        self.windows: list = []
+        self.valid_until = None   # epoch until which the status holds; None = never read
+        self.stop_at = None       # doors closed: the run stops here (next opening - QUIET_BEFORE_S)
+        self.opens = None
+        self.clock: dict = {}
+        self.refreshes = 0
+
+    def local_check(self) -> None:
+        """No request: refuse inside a cached Market Test window, pause for the cached ones still ahead."""
+        if self.skip or self.cache is None:
+            return
+        now = self.reader.now()
+        cached = load_status(self.cache)
+        end = quiet_until(cached, now)
+        if end is not None:
+            raise Fatal(f"the previous run's schedule ({self.cache.name}) places a Market Test until {hhmm(end)}: "
+                        "not starting, no request sent", 3)
+        self.reader.quiet = self.manual + [w for w in cached if w[1] > now]
+
+    def _closing_stop(self) -> Fatal:
+        return Fatal(f"the doors open at {hhmm(self.opens)} and the Market Test status can only be read once they are "
+                     f"open: stopping; progress kept, run again with --resume after {hhmm(self.opens)}", 3)
+
+    def refresh(self) -> None:
+        r = self.reader
+        try:
+            clock = r.public("/api/clock")
+            clock = clock if isinstance(clock, dict) else {}
+            clock_at = r.now()
+            schedule = r.public("/api/schedule")
+            is_open = clock.get("doors") in (None, "open")
+            events = []
+            if is_open:
+                events = (r.public("/api/feed?limit=1000") or {}).get("events") or []
+                clock = r.public("/api/clock")    # after the feed: its tick covers every bench.started just read
+                clock = clock if isinstance(clock, dict) else {}
+                clock_at = r.now()
+                is_open = clock.get("doors") in (None, "open")
+        except Stopped:
+            raise
+        except Fatal as e:
+            raise Fatal(f"Market Test status unknown ({e}); stopping, progress kept (--skip-market-check overrides)", 3)
+        windows = schedule_windows(schedule, clock, clock_at, is_open)
+        if is_open:
+            windows += running_windows(events, clock, clock_at)
+        self.windows, self.clock = windows, clock
+        self.valid_until, self.stop_at, self.opens = clock_at + STATUS_REFRESH_S, None, None
+        if not is_open:
+            self.opens = parse_iso(clock.get("next_opens"))
+            if self.opens is not None:
+                self.stop_at = self.opens - QUIET_BEFORE_S
+                self.valid_until = min(self.valid_until, self.stop_at)
+        self.refreshes += 1
+        r.quiet = self.manual + windows
+        if self.cache is not None:
+            try:
+                write_json(self.cache, {"saved_at": iso(clock_at), "clock_at": clock_at, "doors": clock.get("doors"),
+                                        "tick": clock.get("tick"), "windows": [[a, b] for a, b in windows]})
+            except OSError:
+                pass
+        if self.stop_at is not None and clock_at >= self.stop_at:
+            raise self._closing_stop()
+
+    def start(self) -> dict:
+        """The first status read. Refuses inside a Market Test window (exit 3). Returns the clock."""
+        if self.skip:
+            self.clock = read_clock(self.reader)
+            return self.clock
+        self.refresh()
+        end = quiet_until(self.windows, self.reader.now())
+        if end is not None:
+            raise Fatal(f"a Market Test is on or starts within {QUIET_BEFORE_S // 60} min (silence until {hhmm(end)}); "
+                        "not starting", 3)
+        ahead = [w for w in self.windows if w[1] > self.reader.now()]
+        if ahead:
+            self.reader.say("census: will pause for Market Tests at " + ", ".join(f"{hhmm(a)}-{hhmm(b)}" for a, b in ahead))
+        return self.clock
+
+    def gate(self) -> bool:
+        """Before every card request (Reader._pace): stop before the opening when the doors are closed, refresh a
+        stale status. True when it refreshed."""
+        if self.skip:
+            return False
+        now = self.reader.now()
+        if self.stop_at is not None and now >= self.stop_at:
+            raise self._closing_stop()
+        if self.valid_until is None or now >= self.valid_until:
+            self.refresh()
+            return True
+        return False
 
 
 # ---------------------------------------------------------------- payload, partial file, snapshot
@@ -570,8 +714,21 @@ def make_reader(args, deps) -> Reader:
         quiet = parse_quiet(args.quiet, deps["now"]())
     except ValueError:
         raise Fatal(f"--quiet: cannot read {args.quiet!r} (expected HH:MM-HH:MM,...)", 2)
+    try:
+        until = parse_until(args.until, deps["now"]())
+    except ValueError:
+        raise Fatal(f"--until: cannot read {args.until!r} (expected HH:MM)", 2)
     return Reader(args.url, deps["fetch"], key_loader, deps["sleep"], deps["now"], args.rate, args.max_retries,
-                  quiet, deps["say"])
+                  quiet, deps["say"], until)
+
+
+def begin(reader: Reader, out: Path, args) -> tuple:
+    """Local evidence first (cached windows, --quiet: no request), then the first Market Test status read."""
+    guard = Guard(reader, out / STATUS_FILE, args.skip_market_check)
+    reader.gate = guard.gate
+    guard.local_check()
+    reader.wait_quiet()
+    return guard, guard.start()
 
 
 def finish(reader: Reader, entries: dict, histories: dict, meta: dict, out: Path, args, date: str,
@@ -603,8 +760,7 @@ def cmd_run(args, deps) -> int:
     out.mkdir(parents=True, exist_ok=True)
     partial = pick_partial(out, args, date, topup=False, say=say)
     done = read_partial(partial) if args.resume else {}
-    reader.wait_quiet()
-    clock = start_check(reader, args.skip_market_check)
+    guard, clock = begin(reader, out, args)
     say(f"census: run from id 1 into {out} at {args.rate:g} request/s (tick {clock.get('tick')}, "
         f"doors {clock.get('doors')}){'; ' + str(len(done)) + ' ids in the partial file' if done else ''}")
     stats = walk(reader, range(1, args.max_id + 1), done, partial, args, say, end_detect=True)
@@ -623,7 +779,8 @@ def cmd_run(args, deps) -> int:
             "found": stats["found"], "not_found": stats["not_found"], "resumed_ids": stats["resumed"],
             "end": stats["end"], "highest_found": stats["highest_found"], "stop_after": args.stop_after,
             "max_id": args.max_id, "expect_max": args.expect_max, "unparsed_ids": sorted(unparsed),
-            "errors": stats["errors"], "partial": str(partial)}
+            "errors": stats["errors"], "partial": str(partial),
+            "status_refreshes": guard.refreshes}
     path = finish(reader, entries, histories, meta, out, args, date)
     snap_meta = json.loads(path.read_text(encoding="utf-8"))["meta"]
     say(f"census: wrote {path} | cards {snap_meta['cards_total']} (team-owned {snap_meta['cards_team_owned']}, "
@@ -669,8 +826,7 @@ def cmd_ids(args, deps) -> int:
     out.mkdir(parents=True, exist_ok=True)
     partial = pick_partial(out, args, date, topup=True, say=say)
     done = read_partial(partial) if args.resume else {}
-    reader.wait_quiet()
-    clock = start_check(reader, args.skip_market_check)
+    guard, clock = begin(reader, out, args)
     say(f"census: top-up of {len(ids)} ids over {base_path.name} (tick {clock.get('tick')})")
     stats = walk(reader, ids, done, partial, args, say, end_detect=False)
     entries = {**base_cards, **base_packs}
@@ -696,7 +852,8 @@ def cmd_ids(args, deps) -> int:
             "base": str(base_path), "base_tick": (base.get("meta") or {}).get("tick_end"),
             "tick_start": clock.get("tick"), "doors_start": clock.get("doors"), "ids_walked": len(ids),
             "ids": ids, "found": stats["found"], "not_found": stats["not_found"], "moved": changed, "added": added,
-            "removed": removed, "unparsed_ids": sorted(unparsed), "errors": stats["errors"], "partial": str(partial)}
+            "removed": removed, "unparsed_ids": sorted(unparsed), "errors": stats["errors"], "partial": str(partial),
+            "status_refreshes": guard.refreshes}
     path = finish(reader, entries, histories, meta, out, args, date, avoid=base_path)
     say(f"census: wrote {path} | {len(ids)} ids re-read | moved {len(changed)} | added {len(added)} | removed "
         f"{len(removed)} | errors {len(stats['errors'])}")
@@ -743,6 +900,8 @@ def cmd_selftest(args, deps) -> int:
     def fake(url, headers, timeout=15.0):
         if url.endswith("/api/clock"):
             return 200, {}, json.dumps({"tick": 9, "doors": "closed"}).encode()
+        if url.endswith("/api/schedule"):
+            return 200, {}, b'{"upcoming": []}'
         if not headers.get("X-Team-Key"):
             return 401, {}, b'{"error": "bad_key"}'
         i = int(url.rsplit("/", 1)[1])
@@ -789,6 +948,7 @@ def build_parser() -> argparse.ArgumentParser:
                            help="stop after this many ids fail in a row (default 10)")
     walk_opts.add_argument("--skip-market-check", action="store_true",
                            help="start without the Market Test check (only when you know none is on)")
+    walk_opts.add_argument("--until", help="HH:MM local: stop there (partial file kept, exit 6); --resume continues")
     walk_opts.add_argument("--env-file", help="file holding BAZAAR_KEY= (default the repo's .env)")
     walk_opts.add_argument("--url", default=URL, help="server (default BAZAAR_URL or https://bazaar.causaprima.ai)")
     sub = ap.add_subparsers(dest="mode", required=True)
