@@ -242,7 +242,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         log("open", thread=tid, side=side, item=item, value=value)
 
     rnd = 0           # rounds spent (one per tick); lock deferrals and clock pauses (inside wait_tick) cost none
-    stall = 0         # reads in a row in which his price did not improve (the --max-bid pin listens while it does)
+    stall = 0         # reads since his price last improved or we last moved (the --max-bid pin listens meanwhile)
     end_refusals = 0  # refused accepts once the round budget is spent
 
     def tick(free: bool = False) -> None:
@@ -352,6 +352,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
                 ours = nxt
                 answered = o["id"]
                 said += 1
+                stall = 0  # our move restarts his window: a late answer to our capped bid is still heard
                 log("say", thread=tid, price=ours, her=her)
                 tick()
                 continue

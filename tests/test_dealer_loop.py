@@ -84,6 +84,36 @@ class TestThread335Replay(BotCase):
         self.assertEqual(r["result"], "deal")
         self.assertEqual(b.accepts[0][1], 87)                    # took it only once it stopped improving
 
+    def test_late_answer_to_our_capped_bid_is_still_heard(self):
+        # he holds 97 through our 60..80 (no improvement for 6 reads), then answers our 84 one tick late with 90:
+        # the 2-tick window starts at our own move, so the old hold does not close the thread before his answer
+        class Lagging(Thread):
+            lag = None
+
+            def say(self, tid, text="", price=None, offer=None, topic=None):
+                if price != 84:
+                    return super().say(tid, text, price=price)
+                self.calls.append(("say", price, self.tick))
+                self.says.append(price)
+                self.moved, self.lag = True, 1                   # no answer this tick nor the next
+                return {}
+
+            def wait_tick(self):
+                c = super().wait_tick()
+                if self.lag is not None:
+                    if self.lag == 0:
+                        self.post(90)
+                        self.lag = None
+                    else:
+                        self.lag -= 1
+                return c
+        b = Lagging("chato", side="buy", item="LAV-09", opening=97, replies=[97] * 6, expiry=4, cash=383)
+        r = chato.negotiate(b, buy_target("LAV-09", 93.0), False)
+        self.assertEqual(b.says, [60, 64, 68, 72, 76, 80, 84])
+        self.assertEqual(self.events("max_bid_no_deal"), [])
+        self.assertEqual(r["result"], "deal")
+        self.assertEqual(b.accepts[0][1], 90)
+
 
 class TestEndOfBudget(BotCase):
     def test_sell_takes_her_bid_inside_the_floor_when_rounds_run_out(self):
