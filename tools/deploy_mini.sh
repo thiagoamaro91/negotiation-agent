@@ -12,6 +12,9 @@ if [ "${1:-}" = "--page" ]; then
   exit 0
 fi
 
+# Rivals panel: the offline feed tools (ledger.py fills Friday's recording hole from logs/feed-vm/feed.jsonl);
+# value_inference.py caches keyless reads under ~/bazaar-dashboard/logs/public, created below.
 tar czf - tools/dashboard.py tools/dashboard.html kit/bazaar_sdk.py tools/mini \
-  | ssh mini "/bin/bash -c 'mkdir -p ~/bazaar-dashboard && tar xzf - -C ~/bazaar-dashboard'"
+    tools/ledger.py tools/value_inference.py tools/price_index.py logs/feed-vm/feed.jsonl \
+  | ssh mini "/bin/bash -c 'mkdir -p ~/bazaar-dashboard/logs/public && tar xzf - -C ~/bazaar-dashboard'"
 ssh -n mini "/bin/bash ~/bazaar-dashboard/tools/mini/install.sh"

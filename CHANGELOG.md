@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026-10-03] Dashboard: Rivals and Market panels
+
+### Added
+- `tools/dashboard.py` + `tools/dashboard.html`: a Rivals panel with all 18 teams from public data only, in a sortable table (rank, score with a negotiating / market split bar, level and unlocked dealers, cash rebuilt by `tools/ledger.py` with a sparkline, album and pages, known cards as a lower bound, inferred favourite and least liked set from `tools/value_inference.py`, deals, trades, venue). Click a row to see the known cards by set, a heat strip of the inferred multipliers, the rarest card and the last 8 cash moves. Below the table: cash vs score (one dot per team, ours in gold) and "who wants what" (per set, which of the other 17 teams favour it or like it least). A Market panel lists every venue (owner, mechanism, fee, trades, volume, fees, traders) and the 15 most traded cards between teams (count, last, median, range). A trust line compares our rebuilt cash with `/api/me`; past 10 P the cash column greys out.
+- The panels run in their own thread: `/api/leaderboard` and `/api/venues` read keylessly every 15 s, and the feed tools rerun only when `feed.jsonl` changed, at most every 20 s. A failed source keeps its last good value and shows its error, so a broken feed never blanks the other panels. New `--feed DIR` (or `BAZAAR_FEED`); default `<broker root>/logs/feed`.
+- Privacy: the block is built from an allowlist. Our row carries the leaderboard and our rebuilt cash only (no inferred multipliers, known cards or moves), "who wants what" never counts us, and nothing reads `logs/state/me*.json`.
+- `tools/deploy_mini.sh` also ships `tools/ledger.py`, `tools/value_inference.py`, `tools/price_index.py` and `logs/feed-vm/feed.jsonl` (the ledger's Friday gap source), and creates `logs/public/`.
+- `tests/test_dashboard_rivals.py`: 12 tests (18 rows, nothing private in our row or anywhere in the block, who-wants-what skips us and weak signals, trust states, partial feed line, an exception or `SystemExit` stays in the rivals block, a bad feed keeps the last good result; one end-to-end test runs when `BAZAAR_FEED` is set).
+
+### Fixed
+- `tools/dashboard.html` at phone width: panels, duel cards and status pills no longer push the page sideways.
+
 ## [2026-10-03] Ledger: Saturday cash
 
 ### Fixed
