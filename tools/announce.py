@@ -592,8 +592,9 @@ class Gate:
             events = get(f"{URL}/api/feed?limit=1000").get("events", [])
         except Silenced:
             return False
-        except Exception:
-            events = []
+        except Exception as e:  # without the feed a session already running cannot be ruled out: status unknown
+            print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
+            return False
         now = self.clock()
         self.windows = (self.manual + quiet_windows(schedule, clock, now)
                         + active_windows(list(events) + list(extra_events), clock, now))

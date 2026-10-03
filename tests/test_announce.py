@@ -542,6 +542,16 @@ class TestSilenceGate(unittest.TestCase):
         started = -10 * 30                                             # 10 ticks of 30 s before t = 0
         self.assertGreaterEqual(posts[0][0], started + an.QUIET_AFTER_S)
 
+    def test_a_feed_failure_during_an_active_market_test_never_posts(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        state["events"] = [{"type": "bench.started", "tick": 90, "payload": {"start_tick": 90, "ticks": 16}}]
+        down = lambda url, st: "/api/feed" in url and st["now"] < 400        # the feed is down while it runs
+        run_loop(["run", "--yes", "--count", "1", "--every-min", "1", "--exclude", ""],
+                 market(state, fail=[down]), state, posts)
+        self.assertEqual(len(posts), 1)
+        self.assertGreaterEqual(posts[0][0], 400)                         # never while the status was unknown
+        self.assertEqual([u for t, u in state["calls"] if t < 400 and "/api/venues" in u], [])
+
     def test_game_hours_are_wall_hours_at_any_tick_length(self):
         sched = {"upcoming": [{"at_hours": 11.0, "action": "bench"}]}
         for tick_s in (15.0, 30.0, 60.0):
@@ -651,17 +661,20 @@ class TestCli(unittest.TestCase):
     def test_a_failed_feed_or_venue_index_read_never_cancels_the_run(self):
         import tempfile
         import unittest.mock as um
-        state = {"tick": 100, "now": 0.0}
+        state = {"tick": 100, "now": 0.0, "prev": []}
         posts = []
 
         def get_json(url):
+            status_read = state["prev"][-2:] == ["schedule", "clock"]   # the gate's own feed read: it answers
+            state["prev"].append("schedule" if url.endswith("/api/schedule") else
+                                 "clock" if url.endswith("/api/clock") else "other")
             if url.endswith("/api/clock"):
                 return {"tick": state["tick"]}
-            if "/api/feed" in url or url.endswith("/api/venues"):
-                raise TimeoutError("slow")
+            if ("/api/feed" in url and not status_read) or url.endswith("/api/venues"):
+                raise TimeoutError("slow")                              # the composing reads fail
             if url.endswith("/api/venues/v20/offers"):
                 return {"offers": [ask("LAT-07", 26, venue="v20", maker="t15", oid=5)]}
-            return {"offers": []}
+            return {"offers": [], "events": [], "upcoming": []}
 
         def sleep(_):
             state["now"] += an.POLL_S
