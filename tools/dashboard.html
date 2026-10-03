@@ -196,9 +196,17 @@ svg.scat g.pt:hover circle.m { stroke: var(--ink); stroke-width: 2; }
 .wbar.f { background: var(--div-hi); } .wbar.l { background: var(--div-lo); }
 .want td { white-space: normal; }
 .tlist { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.mktgrid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+@media (max-width: 1000px) { .mktgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 700px) {
   body { padding: 12px 16px 28px; }
   .hs { display: none; }
+  /* phone: the older panels' cards and status pills must not push the page sideways */
+  .panel, .duelcards, .convs { grid-template-columns: minmax(0, 1fr); }
+  .celhd > *, .brk, .pill { max-width: 100%; }
+  .brk, .pill { white-space: normal; flex-wrap: wrap; }
+  #rivtbl tr.rx > td > div { position: sticky; left: 10px; max-width: calc(100vw - 64px); }
+  svg.scat text { font-size: 14px; }
 }
 </style>
 </head>
@@ -585,7 +593,7 @@ function splitBar(r) {
 
 function rivTrust(tr) {
   tr = tr || {};
-  if (tr.state === "ok") return `Cash is rebuilt from the public feed; ours matches /api/me (<b>${esc(tr.real)} P</b> at tick ${esc(tr.tick)}, feed tick ${esc(tr.feed_tick)}).`;
+  if (tr.state === "ok") return `Cash is rebuilt from the public feed; ours ${tr.diff ? `is within <b>${esc(Math.abs(tr.diff))} P</b> of` : "matches"} /api/me (rebuilt ${esc(tr.rebuilt)} vs real <b>${esc(tr.real)} P</b> at tick ${esc(tr.tick)}, feed tick ${esc(tr.feed_tick)}).`;
   if (tr.state === "off") return `<span class="chip bad">cash estimate off</span> Cash is rebuilt from the public feed, and ours is <b>${esc(Math.abs(tr.diff))} P</b> ${tr.diff > 0 ? "above" : "below"} /api/me (rebuilt ${esc(tr.rebuilt)} vs real ${esc(tr.real)} P at tick ${esc(tr.tick)}, feed tick ${esc(tr.feed_tick)}): the cash column is greyed out, read it as a rough guide.`;
   return `Cash is rebuilt from the public feed; not checked against /api/me in this run (no key here). Feed tick ${esc(tr.feed_tick ?? "-")}.`;
 }
@@ -600,6 +608,7 @@ function rivDetail(r, v) {
     const c = cards[ref] || {};
     return `<span class="cc ${esc(c.rarity || "")}" title="${esc(c.name || ref)}${c.rarity ? " · " + esc(c.rarity) : ""}">${esc(ref.split("-")[1] || ref)}${n > 1 ? `<small>×${esc(n)}</small>` : ""}</span>`;
   }).join("")}</div>`).join("") || `<div class="empty">No card of theirs seen in the feed yet.</div>`;
+  const packs = Object.entries(r.packs || {}).map(([p, n]) => `${esc(p)}${n > 1 ? " ×" + esc(n) : ""}`).join(", ");
   const rar = r.rarest ? `rarest <b>${esc(r.rarest.ref)}</b> ${esc(r.rarest.name || "")} · #${esc(r.rarest.serial ?? "?")}/${esc(r.rarest.print_run ?? "?")} ${esc(r.rarest.rarity || "")}` : "rarest card not shown";
   const heat = inf ? `<div class="heat" style="--n:${sets.length}">${sets.map((s) => `<div style="background:${multColor(inf.exp[s])}" title="${esc(s)}: expected multiplier ${fmt(inf.exp[s], 2)}"><b>${fmt(inf.exp[s], 2)}</b>${esc(s)}</div>`).join("")}</div>
     <div class="rivnote">favourite <b>${esc(inf.fav)}</b> ${Math.round(inf.p_fav * 100)}% · least liked <b>${esc(inf.least)}</b> ${Math.round(inf.p_least * 100)}%<br>${esc(inf.confidence)} confidence · ${fmt(inf.choices, 1)} choice-equivalents · ${esc(inf.evidence)} pieces of evidence</div>`
@@ -608,7 +617,7 @@ function rivDetail(r, v) {
   const money = r.money ? `<div class="rivnote" style="margin-top:6px">dealers spent ${esc(mn.dealer_spent)} · earned ${esc(mn.dealer_earned)} P<br>teams bought ${esc(mn.team_bought)} · sold ${esc(mn.team_sold)} P · fees ${esc(mn.fees)} · bonds ${esc(mn.bonds)}${mn.grants ? " · grants " + esc(mn.grants) : ""}${mn.gifts ? " · gifts " + esc(mn.gifts) : ""}</div>` : "";
   const moves = (r.moves || []).map((m) => `<div class="mv"><span class="muted">t${esc(m.tick)}</span><span class="${m.delta > 0 ? "up" : "dn"}">${esc(signed(m.delta))}</span><span>${esc(m.what)}</span></div>`).join("") || `<div class="empty">No cash move in the feed.</div>`;
   return `<div class="rxgrid">
-    <div><div class="celsub">Known cards <b>${esc(r.known_n ?? 0)}</b> · lower bound (starting hand and packs stay hidden)</div>${chips}<div class="rivnote">${rar}</div></div>
+    <div><div class="celsub">Known cards <b>${esc(r.known_n ?? 0)}</b> · lower bound (starting hand and packs stay hidden)</div>${chips}<div class="rivnote">${rar}${packs ? `<br>unopened packs seen: ${packs}` : ""}</div></div>
     <div><div class="celsub">What they value · inferred</div>${heat}${money}</div>
     <div><div class="celsub">Last cash moves</div>${moves}</div></div>`;
 }
@@ -699,12 +708,12 @@ function renderRivals(v) {
 function renderMarket(v) {
   const title = `<h2>Market · venues and team-to-team prices</h2>`;
   if (v.error) { $("market").innerHTML = `${title}<span class="err">${esc(v.error)}</span>`; return; }
-  const vRows = (v.venues || []).map((x) => `<tr class="${x.owner === "t03" ? "us" : ""}"><td>${esc(x.name || x.venue)} <span class="lb-sub">${esc(x.venue)}</span></td><td>${esc(x.owner_name || x.owner || "-")}</td><td>${esc(x.mechanism || (x.house ? "posted" : "-"))}</td><td class="n">${esc(celFee(x).replace("fee ", ""))}</td><td class="n">${esc(x.trades ?? 0)}</td><td class="n">${esc(x.volume ?? 0)}</td><td class="n">${esc(x.fees ?? 0)}</td><td class="n">${esc(x.traders ?? 0)}</td><td>${x.status === "open" ? "" : `<span class="st">${esc(x.status)}</span>`}</td></tr>`).join("");
-  const venues = vRows ? `<div class="tablewrap"><table><tr><th>Venue</th><th>Owner</th><th>Mechanism</th><th class="n">Fee</th><th class="n">Trades</th><th class="n">Volume</th><th class="n">Fees</th><th class="n">Traders</th><th></th></tr>${vRows}</table></div>` : `<div class="empty">${v.venues_error ? "Cannot read /api/venues right now." : "No venue listed."}</div>`;
+  const vRows = (v.venues || []).map((x) => `<tr class="${x.owner === "t03" ? "us" : ""}"><td class="side">${esc(x.name || x.venue)}<br><span class="lb-sub">${esc(x.venue)} · ${esc(x.owner_name || x.owner || "-")}</span></td><td>${esc(x.mechanism || (x.house ? "posted" : "-"))}</td><td class="n">${esc(celFee(x).replace("fee ", ""))}</td><td class="n">${esc(x.trades ?? 0)}</td><td class="n">${esc(x.volume ?? 0)}</td><td class="n">${esc(x.fees ?? 0)}</td><td class="n">${esc(x.traders ?? 0)}</td><td>${x.status === "open" ? "" : `<span class="st">${esc(x.status)}</span>`}</td></tr>`).join("");
+  const venues = vRows ? `<div class="tablewrap"><table><tr><th>Venue · owner</th><th>Mech.</th><th class="n">Fee</th><th class="n">Trades</th><th class="n">Volume</th><th class="n">Fees</th><th class="n">Traders</th><th></th></tr>${vRows}</table></div>` : `<div class="empty">${v.venues_error ? "Cannot read /api/venues right now." : "No venue listed."}</div>`;
   const pr = v.prices || {}, cards = v.cards || {};
   const pRows = (pr.rows || []).map((p) => `<tr><td class="mono"><span class="cc ${esc(p.rarity || "")}">${esc(p.ref)}</span></td><td>${esc(p.name || (cards[p.ref] || {}).name || "")}</td><td class="n">${esc(p.n)}</td><td class="n">${esc(p.last)} P <span class="lb-sub">t${esc(p.last_tick)}</span></td><td class="n">${fmt(p.median, p.median % 1 ? 1 : 0)}</td><td class="n">${esc(p.low)}-${esc(p.high)}</td></tr>`).join("");
   const prices = pRows ? `<div class="tablewrap"><table><tr><th>Card</th><th>Name</th><th class="n">Trades</th><th class="n">Last</th><th class="n">Median</th><th class="n">Range</th></tr>${pRows}</table></div><div class="celfoot">single-card trades between teams in the feed: ${esc(pr.trades ?? 0)} over ${esc(pr.cards ?? 0)} cards; most traded first</div>` : `<div class="empty">No team-to-team trade in the feed yet.</div>`;
-  $("market").innerHTML = `${title}<div class="celgrid"><div><div class="celsub">Venues <b>${esc((v.venues || []).length)}</b> · by volume</div>${venues}</div><div><div class="celsub">Card prices between teams · top ${esc((pr.rows || []).length)}</div>${prices}</div></div>`;
+  $("market").innerHTML = `${title}<div class="celgrid mktgrid"><div><div class="celsub">Venues <b>${esc((v.venues || []).length)}</b> · by volume</div>${venues}</div><div><div class="celsub">Card prices between teams · top ${esc((pr.rows || []).length)}</div>${prices}</div></div>`;
 }
 
 function drawRivals(force) {

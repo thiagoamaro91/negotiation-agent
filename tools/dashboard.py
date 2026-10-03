@@ -770,7 +770,7 @@ def venue_rows(venues) -> list:
     return rows
 
 
-def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool, names: dict) -> dict:
+def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool, cards: dict | None = None) -> dict:
     """One team for the panel. Our own row stops at the leaderboard and our rebuilt cash."""
     rarest = lb_row.get("rarest") if isinstance(lb_row.get("rarest"), dict) else None
     row = {**{k: lb_row.get(k) for k in RIV_LB_KEYS}, "name": _text(lb_row.get("name"), 30), "us": us,
@@ -783,8 +783,10 @@ def team_row(lb_row: dict, led_row: dict | None, inferred: dict | None, us: bool
                    own_venue=led_row.get("venue"))
     if us:
         return row
-    known = {str(r): n for r, n in ((led_row or {}).get("known_cards") or {}).items() if n and n > 0}
+    held = {str(r): n for r, n in ((led_row or {}).get("known_cards") or {}).items() if n and n > 0}
+    known = {r: n for r, n in held.items() if not cards or r in cards}  # the ledger also counts packs bought
     row.update(known=known, known_n=sum(known.values()) if led_row else None, inferred=inferred,
+               packs={r: n for r, n in held.items() if r not in known},
                money={k: led_row.get(k) for k in RIV_MONEY_KEYS} if led_row else None,
                moves=[{"tick": m.get("tick"), "delta": m.get("delta"), "what": _text(m.get("what"))}
                       for m in ((led_row or {}).get("moves") or [])[-RIV_MOVES:]][::-1])
@@ -795,11 +797,12 @@ def rivals_view(lb, venues, heavy: dict | None, real: dict | None = None, team: 
     """The panel's payload from the leaderboard, /api/venues and the feed tools' last good result (`heavy`), built
     from an allowlist (see the section comment)."""
     heavy = heavy or {}
-    led, inferred, names = heavy.get("ledger") or {}, heavy.get("inferred") or {}, heavy.get("names") or {}
+    led, inferred = heavy.get("ledger") or {}, heavy.get("inferred") or {}
     lb_rows = [t for t in ((lb or {}).get("teams") or []) if isinstance(t, dict) and t.get("team")]
     have = {t["team"] for t in lb_rows}
     lb_rows += [{"team": t, "name": t} for t in sorted(led) if t not in have]  # no leaderboard yet: feed teams only
-    teams = [team_row(t, led.get(t["team"]), inferred.get(t["team"]), t["team"] == team, names) for t in lb_rows]
+    teams = [team_row(t, led.get(t["team"]), inferred.get(t["team"]), t["team"] == team, heavy.get("cards"))
+             for t in lb_rows]
     teams.sort(key=lambda r: (r["rank"] if _num(r["rank"]) else 1e9, str(r["team"])))
     us_hist = (led.get(team) or {}).get("history") or []
     return {"teams": teams, "sets": heavy.get("in_play") or [],
@@ -857,7 +860,7 @@ class Rivals:
         rarity = {c["id"]: c["rarity"] for s in self.cat["sets"] for c in s["cards"]}
         keep = ("cash", "history", "unlocked", "trades", "venue", "known_cards", "moves") + RIV_MONEY_KEYS
         return {"ledger": {t: {k: r.get(k) for k in keep} for t, r in led.items()}, "in_play": in_play,
-                "inferred": inferred, "names": names, "prices": card_prices(pi.team_trades(events, rarity), names),
+                "inferred": inferred, "prices": card_prices(pi.team_trades(events, rarity), names),
                 "cards": {c["id"]: {"name": _text(c.get("name"), 40), "rarity": c.get("rarity")}
                           for s in self.cat["sets"] for c in s["cards"]},
                 "feed_tick": events[-1].get("tick") if events else None, "events": len(events),
