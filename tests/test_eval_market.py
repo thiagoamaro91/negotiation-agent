@@ -103,6 +103,18 @@ class GraderArithmetic(unittest.TestCase):
         self.assertIsNone(em.verify_evidence(ctx, 3, "MAL-03", 30))
         self.assertIsNone(em.verify_evidence(ctx, 3, "MAL-07", 30))
 
+    def test_a_listing_addressed_to_a_team_or_in_a_thread_is_not_evidence_of_a_fill(self):
+        # Same cash ask as the open one at tick 1 (LAV-09 at 60, bid 70 nets 65), but not open to our bid.
+        addressed = listing(8, 3, 506, "t09", 104, "MAL-03", 8)
+        addressed["payload"]["offer"]["to"] = "t16"
+        threaded = listing(9, 3, 507, "t12", 105, "MAL-07", 8)
+        threaded["payload"]["offer"]["thread"] = 77
+        open_ask = listing(10, 3, 508, "t13", 106, "MAL-04", 8)
+        ctx = em.Context(day() + [addressed, threaded, open_ask], catalog(), me())
+        self.assertIsNone(em.verify_evidence(ctx, 3, "MAL-03", 30))
+        self.assertIsNone(em.verify_evidence(ctx, 3, "MAL-07", 30))
+        self.assertIsNotNone(em.verify_evidence(ctx, 3, "MAL-04", 30))   # the open one still counts
+
     def test_cases_skip_swaps_and_our_own_offers(self):
         ids = set(run("null"))
         self.assertEqual(ids, {"fri-LAV-09", "fri-LAV-06", "fri-MAL-06"})

@@ -231,7 +231,9 @@ def opportunity_gain(o: dict, k: int, values: Values, fee: int) -> float:
 def verify_evidence(ctx: Context, t: int, ref: str, bid_price: int) -> str | None:
     """Re-checks a plausible bid fill: at tick t another team sold `ref` alone for cash at or under what our bid nets
     the seller, or listed it alone for a cash ask (>= 1 P, nothing else wanted) at or under that. A swap listing
-    (want cash 0) is not an ask. Returns a short structural description, or None."""
+    (want cash 0) is not an ask, and neither is a listing addressed to a team (`to` set) or attached to a thread:
+    only an open board listing could have been taken by our bid, the same rule market_desk.check_listing applies.
+    Returns a short structural description, or None."""
     net = bid_price - venue_fee(bid_price, md.DEFAULT_FEE)
     for e in ctx.by_tick.get(t, []):
         p = e.get("payload") or {}
@@ -244,6 +246,8 @@ def verify_evidence(ctx: Context, t: int, ref: str, bid_price: int) -> str | Non
             o = p.get("offer") or {}
             g, w = o.get("give") or {}, o.get("want") or {}
             ga = [a for a in g.get("assets") or [] if isinstance(a, dict)]
+            if o.get("to") not in (None, "") or o.get("thread") is not None:
+                continue   # addressed to one team, or part of a thread: not open to our bid
             if o.get("maker") != ctx.me_id and len(ga) == 1 and ga[0].get("ref") == ref and not g.get("cash") \
                     and not (w.get("assets") or w.get("types") or w.get("cards")) \
                     and isinstance(w.get("cash"), int) and 1 <= w["cash"] <= net:
@@ -799,11 +803,7 @@ def main() -> None:
     else:
         model = (f"policy:{args.policy}@eval_market.py@{ec.file_sha(Path(__file__))}+cash={args.cash}"
                  f"+floor={args.floor}+feed<=t{last_tick}")
-    run = ec.Run(FLOW, variant, model, change=args.change)
-    prior = {r.get("model") for r in run.all_rows()}
-    if prior and prior != {model}:
-        raise SystemExit(f"{run.results} was written by {sorted(prior)}, not {model}: use a new variant "
-                         f"(or move the old results away)")
+    run = ec.Run(FLOW, variant, model, change=args.change)   # refuses a results file written under another label
     system = (f"policy: {args.policy} ({model})\nengine: tools/market_replay.py replay, decide() wrapped by "
               f"tools/eval_market.py (venue fees/owners, released sets and game hours from the feed)\n"
               f"cash at day start {args.cash} · grader floor {args.floor} · missed-good threshold {args.missed_min} P\n"

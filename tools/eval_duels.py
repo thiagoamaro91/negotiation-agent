@@ -338,7 +338,9 @@ def missed_of(rec: Recorder, did, truth, dealt: bool) -> int:
 
 
 def params_label(policy: str, params_path) -> str:
-    name = Path(params_path).name if params_path else "{}"
+    """Policy + duel.py hash + the params file's name AND content hash (a file edited in place keeps its name), so
+    ec.Run refuses to mix rows from two different settings in one variant."""
+    name = f"{Path(params_path).name}@{ec.file_sha(params_path)}" if params_path else "{}"
     base = f"duel.py@{ec.file_sha(ROOT / 'agent' / 'duel.py')}+{name}"
     return base if policy == "duel" else f"{policy}@eval_duels.py+{base}"
 
@@ -732,7 +734,8 @@ def main(argv=None) -> int:
     ap.add_argument("--variant", default="baseline", help="baseline or v1, v2, ...")
     ap.add_argument("--change", default=None, help="non-baseline: one line on what this variant changes")
     ap.add_argument("--params", default=str(BASELINE_PARAMS), help="duel.py --params JSON ('{}' = defaults); "
-                    "default: the file Sunday runs")
+                    "default: docs/duel-lab/duel-params-duels2-final.json, the Duels II file (the baseline of the "
+                    "Duels III climb, not a Sunday file)")
     ap.add_argument("--policy", default="duel", choices=POLICIES, help="duel = agent/duel.py; oracle / null / "
                     "reckless are the harness checks (write them under --out-root, not evals/)")
     ap.add_argument("--reps", type=int, default=1)
@@ -759,6 +762,8 @@ def main(argv=None) -> int:
     label = params_label(a.policy, ppath)
     flow = a.flow
     real = flow != "duels-arena"
+    if not real:   # arena case ids hold only the seed: the format, the visible-pair share and the rival mix go in the label
+        label += f"+arena=s{a.arena_session}:pair{a.pair_seen}:{a.weights}"
     metrics = METRICS + ([VS_REAL] if real else [])
     extra = {"headline": "score", "baseline_params": str(BASELINE_PARAMS.relative_to(ROOT)),
              "runner": "tools/eval_duels.py"}

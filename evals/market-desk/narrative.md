@@ -17,7 +17,10 @@ primary) and `evals/market-desk-319/` is cash 319 (account 169 + allowance); eve
 replay a frozen copy of the share's logs (feed to tick 1200, `me.json` of tick 630) with the grader floor at 0 P
 (the bond is paid; the guardrail now means "never overdraw"), so `cash_floor_breach` only fires on a real overdraft.
 Split: random, stratified by day, seed 7, 60 train / 40 test (`_state.json`); hypotheses came from train only, and
-keep/revert from the paired test Δ. The earlier cash-355 baseline was moved out of the flow dir (scratchpad) because
+keep/revert from the paired test Δ. **Read the "test" columns as directional, not as a held-out test.** The cases are
+card rows graded from one whole-day replay per variant, with cash, the spend caps and the one accept per tick shared
+across the cards of a day, so a train row and a test row of the same day are coupled and the 40 test rows are not 40
+independent draws. The paired 95% CIs treat them as independent, so they are narrower than the evidence supports. The earlier cash-355 baseline was moved out of the flow dir (scratchpad) because
 its model label differs.
 
 What it says. No single round clears the 2 SE bar, so by the protocol the winner is the Sunday baseline. That verdict
@@ -31,3 +34,29 @@ the replay: faster stepping is flat, and the LAV-09 / LAV-10 bid churn costs abo
 memory, `agent/` untouched: stable ranking 0 P in both worlds; no step reset on repost −7 to +7 P, all on non-LAV
 cards), because the replay never shows a seller for those two at our prices. The recommendation is in
 `recommended.md`.
+
+## Review corrections (after the adversarial review of this PR)
+
+**Fill evidence for our bids.** `verify_evidence` (tools/eval_market.py) accepted a cash listing addressed to another
+team (`to` set) or attached to a thread as proof that our bid would have been filled. Such a listing is not open to our
+bid (the desk's own `check_listing` refuses it), so the grader now rejects both. A test fails without the rejection
+(`tests/test_eval_market.py`).
+
+The replay was **not rerun** (the frozen copy of the share's logs is not on disk). I regraded from the stored
+`results.jsonl` rows instead: the only rows with `plausible_fill` are three single-fill cases (`sat-SAL-02` +4.0,
+`sat-RET-08` +5.5, `sat-SAL-09` +11.0 P), the feed shows each of the three listings carries a `to` (t16, t13 and t02 respectively, the SAL-09 one sent to eight teams),
+and a rejected fill scores 0, so their surplus goes to 0. Nothing else in those rows changes. Result, paired vs baseline:
+
+| comparison | as graded in the table above | with addressed listings rejected |
+|---|---|---|
+| cash 60, v8 (and v6 = v2 + team venues), test | +13.2 ± 19.6 P (z +1.3), 30% plausible | **+9.2 ± 18.1 P (z +1.0), 0% plausible** |
+| cash 60, v8, train | +45.9 ± 57.0 P | unchanged |
+| cash 319, v8, test | +79.5 ± 96.0 P (z +1.6) | unchanged (the same fill is in the baseline too) |
+| cash 319, v1 (`--min-cash 100`), test | +80.2 ± 96.6 P (z +1.6) | +69.2 ± 95.0 P (z +1.4) |
+| cash 319, v8 test totals: baseline / v8 | +10.0 / +89.5 P | +6.0 / +85.5 P |
+
+So the 30% "inferred share" of the cash 60 gain was one addressed listing and falls to 0%: what is left of the cash 60
+gain (+9.2 P, within noise) is team-venue trades with no inferred fill. The verdict does not change (no round clears 2
+SE; the baseline is the winner by the protocol) and the cash 60 evidence for v8 is weaker than the table shows. Every
+other row of the table is unchanged. The cases and results on disk were not rewritten; this section holds the
+corrected numbers.

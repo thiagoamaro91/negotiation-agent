@@ -1,11 +1,13 @@
 """tools/eval_broker.py: the harness checks (oracle at the ceiling, null at zero, reckless lights bad_match), the
 replay of a recorded log, the grader's pieces and the output guards. Offline: no key, no network.
 Run: python3 -m unittest tests.test_eval_broker"""
+import io
 import json
 import random
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -170,6 +172,16 @@ class OutputGuards(unittest.TestCase):
     def test_the_output_root_is_never_inside_the_logs(self):
         with tempfile.TemporaryDirectory() as d, self.assertRaises(SystemExit):
             eb.main(["--policy", "null", "--logs", d, "--out-root", str(Path(d) / "out"), "--groups", "synthetic"])
+
+    def test_a_rerun_with_another_policy_in_the_same_variant_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            argv = ["--out-root", str(Path(d) / "out"), "--groups", "synthetic", "--seeds", "1", "--scenarios",
+                    "standard"]
+            with redirect_stdout(io.StringIO()):
+                eb.main(["--policy", "null", *argv])
+            with self.assertRaises(SystemExit) as cm, redirect_stdout(io.StringIO()):
+                eb.main(["--policy", "oracle", *argv])   # same variant dir: cached cases would keep null's scores
+            self.assertIn("use a new variant", str(cm.exception))
 
 
 if __name__ == "__main__":

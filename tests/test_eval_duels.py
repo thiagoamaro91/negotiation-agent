@@ -116,5 +116,42 @@ class OraclePlan(unittest.TestCase):
         self.assertEqual(plan, {1: (10, 90), 2: (9, 70)})
 
 
+class RerunGuard(unittest.TestCase):
+    """A rerun into the same variant with another params file (even one edited in place under the same name) must
+    not report the cached rows under the new settings."""
+
+    def test_params_edited_in_place_are_refused_on_rerun(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            (t / "logs" / "duels").mkdir(parents=True)
+            shutil.copy(FRIDAY_DUELS / f"duel-{DUELS[0]:05d}.json", t / "logs" / "duels")
+            shutil.copy(FRIDAY_DUELS / f"duel-{DUELS[1]:05d}.json", t / "logs" / "duels")
+            params = t / "params.json"
+            params.write_text(ed.BASELINE_PARAMS.read_text())
+            argv = ["--flow", "duels-friday", "--logs", str(t / "logs"), "--out-root", str(t / "out"),
+                    "--params", str(params)]
+            saved = ec.EVALS
+            try:
+                with redirect_stdout(io.StringIO()):
+                    ed.main(argv)
+                    ed.main(argv)   # same settings: resumes, nothing recomputed, no error
+                    edited = json.loads(params.read_text())
+                    edited["last_chance_ticks"] += 1
+                    params.write_text(json.dumps(edited))
+                    with self.assertRaises(SystemExit):
+                        ed.main(argv)
+            finally:
+                ec.EVALS = saved
+
+    def test_the_label_names_the_params_content(self):
+        with tempfile.TemporaryDirectory() as d:
+            a, b = Path(d) / "p.json", Path(d) / "q.json"
+            a.write_text('{"last_chance_ticks": 4}')
+            b.write_text('{"last_chance_ticks": 2}')
+            self.assertNotEqual(ed.params_label("duel", a), ed.params_label("duel", b))
+            a.write_text('{"last_chance_ticks": 2}')
+            self.assertEqual(ed.params_label("duel", a).split("@")[-1], ed.params_label("duel", b).split("@")[-1])
+
+
 if __name__ == "__main__":
     unittest.main()

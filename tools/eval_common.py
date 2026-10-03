@@ -102,11 +102,18 @@ class Run:
         self.errors = self.dir / "errors.jsonl"
         self.policy = policy_label
         self.done = set()
+        prior = set()
         if self.results.exists():
             for line in self.results.read_text().splitlines():
                 if line.strip():
                     r = json.loads(line)
                     self.done.add((r["prompt_id"], r.get("rep", 0)))
+                    prior.add(r.get("model"))
+        if prior and prior != {policy_label}:
+            # A cached (case, rep) is skipped, so a rerun with another policy, params file or code hash would
+            # report the old scores under the new label: refuse, like the market runner always did.
+            raise SystemExit(f"{self.results} was written by {sorted(map(str, prior))}, not {policy_label}: use a "
+                             f"new variant (or move the old results away)")
         if variant != "baseline" and change:
             (self.dir / "change.md").write_text(change.rstrip() + "\n")
         self.rows = []
