@@ -22,6 +22,8 @@ The holder map is Team 3's edge, so the output has two sides:
     python3 tools/celestina.py serve --public-url https://<host>  # absolute URLs in /agents.md and on the page
     python3 tools/celestina.py once                               # one live snapshot, a short private summary
     python3 tools/celestina.py once --json [--public]             # the private (or public) snapshot as JSON
+    python3 tools/celestina.py serve --access-log logs/celestina/access.jsonl   # one JSONL line per public request
+    python3 tools/celestina.py visits --access-log FILE [--since MINUTES]       # who read /agents.md, called /api/match
 
 The agent API (public side, keyless, read-only, CORS open; built from the public view only, so the holder map cannot
 reach it):
@@ -47,9 +49,9 @@ from __future__ import annotations
 import argparse
 import collections
 import html
+import ipaddress
 import json
 import re
-import statistics
 import sys
 import threading
 import time
@@ -58,6 +60,9 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import fairprice  # noqa: E402  (the fair price rule shared with tools/concierge.py)
 
 BASE = "https://bazaar.causaprima.ai/api/"
 ROOT = Path(__file__).resolve().parent.parent
@@ -72,8 +77,8 @@ MIN_GAP = 0.05             # at least this long between two reads: at most 20 pe
 INTERVAL = 15.0            # one refresh (about 25 reads) every 15 s
 CATALOG_EVERY = 20         # re-read the catalog every 20 refreshes (a set release adds cards)
 RECENT_N = 8               # recent prices kept per card
-REF_N = 5                  # fair price = median of the last 5 team-to-team trades
-DEALER_NAMES = {"abuela": "Abuela", "chato": "El Chato", "pilar": "Pilar"}
+REF_N = fairprice.REF_N    # fair price = median of the last 5 team-to-team trades (tools/fairprice.py)
+DEALER_NAMES = fairprice.DEALER_NAMES
 PER_BID = 3                # near misses / spare holders listed per bid
 NEAR_RATIO = 0.5           # a near miss: the bid is at least half the ask (a 1 P bid next to a 9 P ask is not near)
 MAX_MATCHES = 80
@@ -300,50 +305,19 @@ def holders(events: list, rows: list = ()) -> dict:
 
 def recent_prices(events: list, n: int = RECENT_N) -> dict:
     """ref -> the last n cash trades of that card, newest first, price per card (a settlement of k copies of one card
-    from one party to another counts at price / k; bundles of different cards and swaps are skipped)."""
-    out = collections.defaultdict(list)
-    for e in sorted((e for e in events if e.get("type") == "settlement"), key=lambda e: e.get("id") or 0):
-        p = e.get("payload") or {}
-        items = [i for i in p.get("items") or [] if isinstance(i, dict)]
-        if not items or any(i.get("kind", "card") != "card" for i in items) or num(p.get("price")) <= 0:
-            continue
-        if len({i.get("ref") for i in items}) != 1 or len({i.get("frm") for i in items}) != 1 or len({i.get("to") for i in items}) != 1:
-            continue
-        i = items[0]
-        # a dealer is the persona, or any party that is not a team (a settlement that forgot its persona still counts)
-        dealer = p.get("persona") or next((x for x in (i.get("frm"), i.get("to"))
-                                           if isinstance(x, str) and not TEAM_RE.match(x)), None)
-        side = "team" if not dealer else "dealer_sells" if i.get("frm") == dealer else "dealer_buys"
-        out[i.get("ref")].append({"settlement": p.get("settlement"), "tick": p.get("tick", e.get("tick")),
-                                  "price": round(num(p["price"]) / len(items), 1), "qty": len(items),
-                                  "venue": p.get("venue"), "dealer": dealer, "side": side,
-                                  "frm": i.get("frm"), "to": i.get("to")})
-    return {ref: rows[-n:][::-1] for ref, rows in out.items() if isinstance(ref, str)}
+    from one party to another counts at price / k; bundles of different cards and swaps are skipped). Each row says
+    whether it was team to team or a dealer buying or selling (tools/fairprice.py cash_trade)."""
+    keep = ("settlement", "tick", "price", "qty", "venue", "dealer", "side", "frm", "to")
+    return {ref: [{k: r[k] for k in keep} for r in rows[-n:][::-1]]
+            for ref, rows in fairprice.cash_trades(events).items()}
 
 
 def reference_price(recent: list, n: int = REF_N) -> dict:
     """A card's fair price: the median of its last n team-to-team cash trades. A dealer is another market (what it pays
     a seller is a floor, what it charges a buyer a ceiling), so dealer prices are used only when fewer than 2 team
-    trades exist, and the text says whose price it is."""
-    team = [r["price"] for r in recent if r.get("side", "team") == "team"][:n]
-    if len(team) >= 2:
-        p = round(statistics.median(team), 1)
-        return {"price": p, "n": len(team), "basis": "teams",
-                "text": f"about {p:g} P (last team-to-team trades: {', '.join(f'{x:g}' for x in team)})"}
-    out, parts = None, []
-    for side in ("dealer_buys", "dealer_sells"):
-        rows = [r for r in recent if r.get("side") == side][:n]
-        if not rows:
-            continue
-        p = round(statistics.median(r["price"] for r in rows), 1)
-        name = DEALER_NAMES.get(rows[0]["dealer"], str(rows[0]["dealer"]).title())
-        parts.append(f"{name} pays about {p:g} P for it" if side == "dealer_buys" else f"{name} sells it for about {p:g} P")
-        out = out or {"price": p, "n": len(rows), "basis": side}
-    if out:
-        return {**out, "text": "; ".join(parts) + " (no team-to-team trades yet)"}
-    if team:
-        return {"price": team[0], "n": 1, "basis": "teams", "text": f"about {team[0]:g} P (one team-to-team trade)"}
-    return {"price": None, "n": 0, "basis": None, "text": None}
+    trades exist, and the text says whose price it is. `range` is the concierge's 25th-75th percentile of the team
+    trades. One rule for both tools: tools/fairprice.py fair_price."""
+    return fairprice.fair_price(recent, n)
 
 
 def verdict(r: dict, ref: dict) -> dict | None:
@@ -382,6 +356,75 @@ def accept_call(r: dict) -> dict:
     want = r["ref"] if r["kind"] == "bid" else r["want_ref"] if r["kind"] == "swap" else None
     return {"method": "POST", "path": f"/api/offers/{r['id']}/accept",
             "body": {"assets": [f"<your {want} asset id>"]} if want else {}}
+
+
+def addressed_offers(events: list, vid: str | None, tick) -> list:
+    """Open offers on our venue addressed to one team (`to`: tNN). The venue's public book never shows them, but the
+    public feed announces each one (offer.listed with payload.offer.to). Left out: offers later cancelled
+    (offer.cancelled), settled (a settlement naming the offer id, one moving an asset the offer gives, or, for an offer
+    that gives no asset, a settlement on our venue between the two teams moving a card it wants to the maker) and
+    offers past their expires_tick. The maker is the team the feed names (the event's actor)."""
+    if not vid:
+        return []
+    listed, gone, moved, trades = {}, set(), collections.defaultdict(list), []
+    for e in sorted((e for e in events if isinstance(e, dict)), key=lambda e: e.get("id") or 0):
+        p, kind = e.get("payload") or {}, e.get("type")
+        if kind == "offer.listed":
+            o = p.get("offer") if isinstance(p.get("offer"), dict) else {}
+            actor = e.get("actor") if isinstance(e.get("actor"), str) else ""
+            maker = actor if TEAM_RE.fullmatch(actor) else o.get("maker")
+            if isinstance(o.get("id"), int) and (o.get("venue") or p.get("venue")) == vid \
+                    and isinstance(o.get("to"), str) and MATCH_TEAM_RE.fullmatch(o["to"]) and o["to"] != US \
+                    and isinstance(maker, str) and TEAM_RE.fullmatch(maker) and maker != o["to"] \
+                    and o.get("status", "open") == "open":
+                listed[o["id"]] = {**o, "maker": maker, "created_tick": o.get("created_tick", e.get("tick"))}
+        elif kind == "offer.cancelled" and isinstance(p.get("offer"), int):
+            gone.add(p["offer"])
+        elif kind == "settlement":
+            if isinstance(p.get("offer"), int):
+                gone.add(p["offer"])
+            at = p.get("tick", e.get("tick")) or 0
+            items = [i for i in p.get("items") or [] if isinstance(i, dict)]
+            for i in items:
+                if isinstance(i.get("id"), int):
+                    moved[i["id"]].append(at)
+            trades.append((at, p.get("venue"), {(i.get("ref"), i.get("frm"), i.get("to")) for i in items}))
+    out = []
+    for oid, o in sorted(listed.items()):
+        exp, born = o.get("expires_tick"), o.get("created_tick") or 0
+        if oid in gone or (isinstance(exp, int) and isinstance(tick, int) and tick > exp):
+            continue
+        give, want = o.get("give") or {}, o.get("want") or {}
+        gives = [a for a in give.get("assets") or [] if isinstance(a, dict)]
+        if any(at >= born for a in gives for at in moved.get(a.get("id"), [])):
+            continue
+        wants = card_types(want)
+        if not gives and any(at >= born and venue == vid and (ref, o["to"], o["maker"]) in moved_items
+                             for at, venue, moved_items in trades for ref in wants):
+            continue
+        out.append({"offer": oid, "venue": vid, "maker": o["maker"], "to": o["to"],
+                    "gives": {"cards": [a.get("ref") for a in gives if isinstance(a.get("ref"), str)],
+                              "cash": num(give.get("cash"))},
+                    "wants": {"cards": wants, "cash": num(want.get("cash"))},
+                    "created_tick": o.get("created_tick"), "expires_tick": exp})
+    return out
+
+
+def team_name(t: str) -> str:
+    return f"Team {int(t[1:])}" if TEAM_RE.fullmatch(t or "") else str(t)
+
+
+def waiting_entry(a: dict) -> dict:
+    """An offer addressed to the asking team, as /api/match shows it: what the maker gives, what it wants from you,
+    the exact accept call (kit/bazaar_sdk.py accept: one "<your REF asset id>" per card it wants) and a plain line."""
+    def side(x, yours):
+        parts = [("your " if yours else "") + r for r in x["cards"]] + ([f"{x['cash']:g} P"] if x["cash"] else [])
+        return " + ".join(parts) or "nothing"
+    cards = [f"<your {r} asset id>" for r in a["wants"]["cards"]]
+    accept = {"method": "POST", "path": f"/api/offers/{a['offer']}/accept", "body": {"assets": cards} if cards else {}}
+    text = f"{team_name(a['maker'])} gives {side(a['gives'], False)} for {side(a['wants'], True)}"
+    return {"offer": a["offer"], "venue": a["venue"], "from_team": a["maker"], "gives": a["gives"], "wants": a["wants"],
+            "expires_tick": a.get("expires_tick"), "accept": accept, "text": text}
 
 
 # ---------------------------------------------------------------- matches waiting to happen
@@ -630,6 +673,7 @@ def build(venues_body, books: dict, events: list, catalog: dict, leaderboard: di
                          "holders": sorted(({"team": t, **h} for t, h in (hold.get(ref) or {}).items() if h["copies"] > 0),
                                            key=lambda h: (-h["copies"], h["team"])),
                          "recent": recent.get(ref, []), "reference": reference_price(recent.get(ref, []))}
+    addressed = addressed_offers(events, vid, (clock or {}).get("tick"))
     counts = collections.Counter((r["venue"], r["kind"]) for r in rows)
     venue_list = [{**v, "ours": v["venue"] == vid, "open": sum(counts[(v["venue"], k)] for k in ("ask", "bid", "swap", "other")),
                    **{k + "s": counts[(v["venue"], k)] for k in ("ask", "bid", "swap")}, "others": counts[(v["venue"], "other")]}
@@ -651,6 +695,7 @@ def build(venues_body, books: dict, events: list, catalog: dict, leaderboard: di
                    "unattributed": [{"maker": m, "offers": n} for m, n in unknown.most_common()]},
         "attribution": dict(collections.Counter(r["how"] for r in rows)),
         "announcements": announcements(matches, demand, cards, vid),
+        "addressed": addressed,
         "market_test": market_test if market_test is not None else MARKET_TEST,
         "sources": {"events": len(events), "first_event": events[0].get("id") if events else None,
                     "last_event": events[-1].get("id") if events else None, "pseudonyms": len(resolve(sets)),
@@ -687,16 +732,31 @@ def negotiations(ref: str, offers: list, fair, vid: str | None, n: int = 3) -> d
                 by_team.setdefault(r["team"], []).append(r["price"])
         rows = sorted(((best(ps), t) for t, ps in by_team.items()), key=lambda x: (x[0] if side == "buy" else -x[0], x[1]))
         for theirs, team in rows[:n]:
-            price = max(1, round(min(fair, theirs) if side == "buy" else max(fair, theirs)) if fair else round(theirs))
-            if side == "buy":
-                text, offer = f"Hi, I'd buy your {ref} at {price} P", {"give": {"cash": price}, "want": {"cards": [ref]}}
-            else:
-                text, offer = (f"Hi, I'd sell you my {ref} at {price} P",
-                               {"give": {"assets": [f"<your {ref} asset id>"]}, "want": {"cash": price}})
-            out[side].append({"team": team, "their_price": theirs, "price": price, "calls": [
-                {"method": "POST", "path": "/api/threads", "body": {"with": team, "venue": vid}},
-                {"method": "POST", "path": "/api/threads/{id}/messages", "body": {"text": text, "offer": offer}}]})
+            price = first_offer(side, fair, theirs)
+            out[side].append({"team": team, "their_price": theirs, "price": price,
+                              "calls": thread_calls(side, team, ref, price, vid)})
     return out
+
+
+def first_offer(side: str, fair, theirs) -> int | None:
+    """The first price to put in a thread: the fair price, moved to theirs when theirs is better for us (a cheaper
+    ask when buying, a higher bid when selling); theirs alone when no fair price is known."""
+    known = [x for x in (fair, theirs) if x]
+    if not known:
+        return None
+    return max(1, round(min(known) if side == "buy" else max(known)))
+
+
+def thread_calls(side: str, team: str, ref: str, price: int, vid: str) -> list:
+    """The exact calls (kit/bazaar_sdk.py open_thread and say): a thread with `team` on our venue, then a structured
+    first offer (to a team, a message carries `offer` = {give, want}, not `price`)."""
+    if side == "buy":
+        text, offer = f"Hi, I'd buy your {ref} at {price} P", {"give": {"cash": price}, "want": {"cards": [ref]}}
+    else:
+        text, offer = (f"Hi, I'd sell you my {ref} at {price} P",
+                       {"give": {"assets": [f"<your {ref} asset id>"]}, "want": {"cash": price}})
+    return [{"method": "POST", "path": "/api/threads", "body": {"with": team, "venue": vid}},
+            {"method": "POST", "path": "/api/threads/{id}/messages", "body": {"text": text, "offer": offer}}]
 
 
 def suggested_bid(ref: str, card: dict, vid: str | None) -> dict | None:
@@ -765,6 +825,8 @@ def public_view(snap: dict) -> dict:
         "our_venue": {k: ours.get(k) for k in ("venue", "name", "status", "fee_bps", "fee_per_card", "mechanism")} if ours else None,
         "our_book": our_book, "invitations": invitations, "matches": matches, "teams": teams, "cards": pub_cards,
         "demand": demand,
+        "addressed": [{k: a.get(k) for k in ("offer", "venue", "maker", "to", "gives", "wants", "created_tick",
+                                              "expires_tick")} for a in snap.get("addressed") or []],
         "market": {k: m.get(k) for k in ("open_offers", "venues_with_offers", "asks", "bids", "swaps", "crossing", "stranded")},
         "market_test": [{k: t.get(k) for k in ("test", "ours", "stall", "note")} for t in snap.get("market_test") or []
                         if isinstance(t, dict)],
@@ -806,6 +868,26 @@ MOST_WANTED_N = 5                   # zero-config answer when a team has nothing
 TEXT_ACTIONS = 14                   # format=text: one header line and at most this many action lines
 KEY_HEADERS = ("X-Team-Key", "X-Broker-Key")  # a key sent here is refused, never read further
 PUBLIC_URL_RE = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[A-Za-z0-9._~/-]*)?$")
+LOOPBACK = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+XFF_MAX = 512                       # characters of X-Forwarded-For we parse; longer is malformed
+
+# The concierge board (tools/concierge.py): read-only, every row untrusted and its team id self-declared.
+BOARD_EVERY = 20.0                  # seconds between reads of {concierge}/api/board
+BOARD_TIMEOUT = 4.0                 # a slow concierge never holds anything up
+BOARD_STALE = 300.0                 # a board not read for this long counts as empty
+BOARD_MAX_BYTES = 1_000_000
+BOARD_MAX_ROWS = 600                # the concierge keeps at most 600 open requests
+BOARD_PRICE_MAX = 100_000           # the concierge's own price cap
+BOARD_PRICE = {"want": "max_price", "have": "min_price"}
+BOARD_SOURCE = "concierge (self-declared)"
+
+# The access log (--access-log FILE, public side only): one JSONL line per request, never a body, never a key.
+ACCESS_VALUE_MAX = 100              # characters kept of each query value
+ACCESS_UA_MAX = 120                 # characters kept of the user-agent
+ACCESS_PATH_MAX = 200
+ACCESS_PARAMS_MAX = 20
+SECRET_HEADER = re.compile(r"key|token|auth|secret|cookie|password", re.I)   # never logged: only that one was there
+KEYLIKE = re.compile(r"\b(?:tk|bk|sk|adm)[-_][A-Za-z0-9][A-Za-z0-9_-]{3,}", re.I)  # a key pasted into a URL
 
 
 class BadRequest(ValueError):
@@ -931,12 +1013,44 @@ def P(x) -> str:
     return f"{x:g} P"
 
 
-def match_item(side: str, ref: str, c: dict, vid: str, team: str | None) -> dict:
+def posted_block(board: list, ref: str, team: str | None) -> dict:
+    """Wants and haves other teams posted on the concierge for one card: counts only (no team, no price, no note)."""
+    rows = [b for b in board if b["card"] == ref and not (team and b["team"] == team)]
+    return {"posted_wants": sum(1 for b in rows if b["side"] == "want"),
+            "posted_haves": sum(1 for b in rows if b["side"] == "have")}
+
+
+def board_negotiations(side: str, ref: str, board: list, offers: list, fair, vid: str, team: str | None,
+                       already: set) -> list:
+    """Thread calls to teams that posted the other side of this card on the concierge. Board team ids are
+    self-declared, so a board team is named only when the same team id also has an attributed public offer for this
+    card (otherwise no call); never Team 3, never the asking team, never a team negotiate already lists."""
+    counter, thread_side = ("have", "buy") if side == "want" else ("want", "sell")
+    attributed = {r["team"] for r in offers if isinstance(r.get("team"), str) and ref in (r.get("ref"), r.get("want_ref"))}
+    out, named = [], set(already)
+    for b in board:
+        t = b["team"]
+        if b["card"] != ref or b["side"] != counter or t == US or (team and t == team) or t in named \
+                or t not in attributed:
+            continue
+        price = first_offer(thread_side, fair, b["price"])
+        if price is None:
+            continue
+        named.add(t)
+        out.append({"their_price": b["price"], "first_offer": price, "calls": thread_calls(thread_side, t, ref, price, vid),
+                    "source": BOARD_SOURCE})
+    return out
+
+
+def match_item(side: str, ref: str, c: dict, vid: str, team: str | None, board: list | None = None) -> dict:
     """One card of the shortlist. side 'want': asks and swaps on our venue that give the card, a bid to post, sellers
-    to negotiate with. side 'have': bids and swaps on our venue that ask for it, an ask to post, buyers."""
+    to negotiate with. side 'have': bids and swaps on our venue that ask for it, an ask to post, buyers. With the
+    concierge board (a list, possibly empty), the market also counts its posted wants and haves."""
     offers = [r for r in c.get("offers") or [] if isinstance(r, dict) and isinstance(r.get("offer"), int)]
     fair = c.get("reference") or {}
     mkt = market_block(offers, ref, team)
+    if board is not None:
+        mkt.update(posted_block(board, ref, team))
     if side == "want":
         on = [r for r in offers if takeable(r, vid, team) and r["ref"] == ref and r["kind"] in ("ask", "swap")]
         on.sort(key=lambda r: (r["kind"] != "ask", r["price"] or 0, r["offer"]))
@@ -950,12 +1064,13 @@ def match_item(side: str, ref: str, c: dict, vid: str, team: str | None) -> dict
         post = order("ask", ref, price, vid) if price else None
     others = [r for r in offers if not (team and r.get("team") == team)]
     neg = negotiations(ref, others, fair.get("price"), vid)["buy" if side == "want" else "sell"]
+    talk = [{"their_price": x["their_price"], "first_offer": x["price"], "calls": x["calls"]} for x in neg]
+    if board:
+        talk += board_negotiations(side, ref, board, offers, fair.get("price"), vid, team, {x["team"] for x in neg})
     entries = [offer_entry(r) for r in on]
     return {"card": ref, "name": c.get("name"), "rarity": c.get("rarity"), "fair_price": fair.get("price"),
-            "fair_basis": fair.get("basis"), "market": mkt, "on_v20": entries,
-            "post": post, "negotiate": [{"their_price": x["their_price"], "first_offer": x["price"], "calls": x["calls"]}
-                                        for x in neg],
-            "advice": advice(side, ref, entries, mkt, price, bool(neg), vid)}
+            "fair_basis": fair.get("basis"), "fair_range": fair.get("range"), "market": mkt, "on_v20": entries,
+            "post": post, "negotiate": talk, "advice": advice(side, ref, entries, mkt, price, bool(talk), vid)}
 
 
 def advice(side: str, ref: str, on: list, mkt: dict, price, neg: bool, vid: str) -> str:
@@ -990,17 +1105,31 @@ def advice(side: str, ref: str, on: list, mkt: dict, price, neg: bool, vid: str)
     return f"Nobody is bidding for {ref} now: post the ask on {vid} at {P(price)} if that is at or above your floor{talk}."
 
 
-def match_view(pub: dict, team: str | None, want, have, base: str = "") -> dict:
+def match_view(pub: dict, team: str | None, want, have, base: str = "", board: list | None = None) -> dict:
     """GET /api/match: the shortlist for one agent. `want` / `have` None means: derive from the team's open public
-    offers (needs `team`)."""
+    offers (needs `team`); when the team has none, from what it posted on the concierge board (self-declared,
+    labelled so). `board` is the cleaned concierge board (clean_board), None when that feature is off."""
     vid, cards, catalog = agent_venue(pub), pub.get("cards") or {}, catalog_refs(pub)
-    notes = []
+    notes, from_board = [], set()
     if team and (want is None or have is None):
         tw, th = team_cards(pub, team, catalog)
-        if want is None:
+        posted = [b for b in board or [] if b["team"] == team and b["card"] in catalog] if not tw and not th else []
+        pw = sorted({b["card"] for b in posted if b["side"] == "want"})[:MATCH_MAX]
+        ph = sorted({b["card"] for b in posted if b["side"] == "have"})[:MATCH_MAX]
+        if want is None and pw:
+            want = pw
+            from_board.add("want")
+            notes.append(f"wants: the cards {team} posted as wanted on the concierge ({len(pw)}); team ids there are "
+                         "self-declared and not verified")
+        elif want is None:
             want = tw
             notes.append(f"wants: the cards {team}'s open public bids and swaps ask for ({len(tw)})")
-        if have is None:
+        if have is None and ph:
+            have = ph
+            from_board.add("have")
+            notes.append(f"haves: the cards {team} posted as spare on the concierge ({len(ph)}); team ids there are "
+                         "self-declared and not verified")
+        elif have is None:
             have = th
             notes.append(f"haves: the cards {team}'s open public asks and swaps give ({len(th)})")
         if not tw and not th:
@@ -1023,15 +1152,30 @@ def match_view(pub: dict, team: str | None, want, have, base: str = "") -> dict:
     if not want and not have:  # zero-config: nothing to go on, so the cards the market wants most
         refs = [d["ref"] for d in pub.get("demand") or [] if d.get("bids") and d.get("ref") in catalog][:MOST_WANTED_N]
         for ref in refs:
-            item = match_item("have", ref, cards.get(ref) or {}, vid, team)
+            item = match_item("have", ref, cards.get(ref) or {}, vid, team, board)
             item["advice"] = f"If you hold a spare {ref}: {item['advice'][0].lower()}{item['advice'][1:]}"
             most.append(item)
         notes.insert(0, "most_wanted: the cards with the most open bids on the market. Sell only a spare (a copy "
                         "your album does not need); pass want=REF,REF and have=REF,REF for your own shortlist.")
+    if board is not None:
+        notes.append("market.posted_wants / posted_haves: other teams' requests on the concierge board for that card "
+                     "(self-declared, counts only)")
+
+    def items(side, refs):
+        out = []
+        for ref in refs or []:
+            item = match_item(side, ref, cards.get(ref) or {}, vid, team, board)
+            if side in from_board:
+                item["source"] = BOARD_SOURCE
+            out.append(item)
+        return out
+    waiting = [waiting_entry(a) for a in pub.get("addressed") or [] if team and a.get("to") == team]
+    if waiting:
+        notes.insert(0, f"waiting_for_you: offers on {vid} made to {team} only (the public feed announces them; the "
+                        "venue's public book does not show them). Accept one only if it is good for you.")
     return {"venue": vid, "tick": pub.get("tick"), "team": team, "docs": f"{base}/agents.md", "game": GAME,
-            "wants": [match_item("want", ref, cards.get(ref) or {}, vid, team) for ref in want or []],
-            "haves": [match_item("have", ref, cards.get(ref) or {}, vid, team) for ref in have or []],
-            "most_wanted": most, "notes": notes}
+            "waiting_for_you": waiting,
+            "wants": items("want", want), "haves": items("have", have), "most_wanted": most, "notes": notes}
 
 
 def compact(body) -> str:
@@ -1061,19 +1205,25 @@ def text_view(view: dict) -> str:
                 continue
             b = post["body"]
             if kind == "want":
-                price, verb, rank = b["give"]["cash"], "BUY", 2 if it["market"]["asks"] else 1
+                price, verb = b["give"]["cash"], "BUY"
+                rank = 2 if it["market"]["asks"] or it["market"].get("posted_haves") else 1
             else:
-                price, verb, rank = b["want"]["cash"], "SELL", 2 if it["market"]["bids"] else 1
+                price, verb = b["want"]["cash"], "SELL"
+                rank = 2 if it["market"]["bids"] or it["market"].get("posted_wants") else 1
             spare = " (only a spare: the market wants it)" if kind == "spare" else ""
             acts.append((rank, price, f"{verb} {ref} at {P(price)} on {vid}{spare} -> {post['method']} {game}{post['path']} "
                                       f"{compact(b)}"))
     acts.sort(key=lambda a: (-a[0], -a[1]))
+    first = []
+    for w in view.get("waiting_for_you") or []:
+        a = w["accept"]
+        first.append(f"ACCEPT offer {w['offer']} on {vid}: {w['text']} -> {a['method']} {game}{a['path']} {compact(a['body'])}")
     who = f" for {view['team']}" if view.get("team") else ""
     lines = [f"# La Celestina {vid}, tick {view.get('tick')}{who}. For each line: check your own value for the card "
              f"(buy at or below it, sell at or above your floor), replace <your REF asset id> with your copy's id, "
              f"then send it exactly as written to the game with your key (header X-Team-Key). Never send your key here."]
-    lines += [a[2] for a in acts[:TEXT_ACTIONS]]
-    if not acts:
+    lines += first[:TEXT_ACTIONS] + [a[2] for a in acts[:max(0, TEXT_ACTIONS - len(first))]]
+    if not acts and not first:
         lines.append(f"NOTHING to accept on {vid} right now. To ask for a card you miss: BUY <REF> at <your price> -> "
                      f"POST {game}/api/offers " + compact({"venue": vid, "give": {"cash": "<your price>"},
                                                           "want": {"cards": ["<REF>"]}, "expires_in_ticks": ORDER_TICKS}))
@@ -1101,24 +1251,203 @@ def fair_view(pub: dict, raw: str, base: str = "") -> dict:
     c = pub["cards"][ref]
     fair = c.get("reference") or {}
     return {"card": ref, "name": c.get("name"), "rarity": c.get("rarity"), "fair_price": fair.get("price"),
-            "fair_basis": fair.get("basis"), "fair_text": fair.get("text"), "trades_used": fair.get("n") or 0,
+            "fair_basis": fair.get("basis"), "fair_text": fair.get("text"), "fair_range": fair.get("range"),
+            "trades_used": fair.get("n") or 0,
             "book": c.get("book"), "tick": pub.get("tick"), "docs": f"{base}/agents.md"}
 
 
-def agents_doc(base: str = "") -> str:
-    """/agents.md: the instructions for LLM agents, with absolute URLs when --public-url is set."""
+CONCIERGE_SECTION = re.compile(r"<!-- concierge -->\n(.*?)<!-- /concierge -->\n", re.S)
+
+
+def agents_doc(base: str = "", concierge: str = "") -> str:
+    """/agents.md: the instructions for LLM agents, with absolute URLs when --public-url is set. The concierge section
+    is there only when the concierge's public address is known (--concierge-public-url, else --concierge-url)."""
     relative = "" if base else ("\nLa Celestina paths below (/api/match, /api/v20, /api/fair) are relative to the address "
                                 "you fetched this file from.\n")
-    return (AGENTS_DOC.read_text(encoding="utf-8").replace("{{CURL}}", base or "https://<this host>")
+    doc = CONCIERGE_SECTION.sub(lambda m: m.group(1) if concierge else "", AGENTS_DOC.read_text(encoding="utf-8"))
+    return (doc.replace("{{CURL}}", base or "https://<this host>").replace("{{CONCIERGE}}", concierge)
             .replace("{{BASE}}", base).replace("{{GAME}}", GAME).replace("{{VENUE}}", VENUE)
             .replace("{{RELATIVE}}", relative))
 
 
-def clean_public_url(x: str | None) -> str:
+def clean_public_url(x: str | None, flag: str = "--public-url") -> str:
     x = (x or "").strip().rstrip("/")
     if x and not PUBLIC_URL_RE.match(x):
-        raise SystemExit("celestina: --public-url must look like https://host[:port][/path]")
+        raise SystemExit(f"celestina: {flag} must look like https://host[:port][/path]")
     return x
+
+
+def client_key(peer: str, xff: str | None) -> str:
+    """The rate limiter's key for one request. Behind Tailscale Funnel / serve every visitor reaches us from
+    loopback, so only then is X-Forwarded-For used, and only its RIGHTMOST address: the one our own proxy appended
+    (a client can write anything to the left of it). A direct client's header is ignored. A missing, oversized or
+    malformed header falls back to the socket peer."""
+    if peer not in LOOPBACK or not xff or len(xff) > XFF_MAX:
+        return peer
+    try:
+        return str(ipaddress.ip_address(xff.rsplit(",", 1)[-1].strip()))
+    except ValueError:
+        return peer
+
+
+def scrub(x, n: int) -> str:
+    """A string for the access log: printable characters only, key-shaped strings redacted, at most n characters."""
+    s = "".join(c for c in str(x)[: n * 4] if c.isprintable())
+    return KEYLIKE.sub("[redacted]", s)[:n]
+
+
+def access_entry(method: str, target: str, client: str, headers, status: int, nbytes: int,
+                 now: float | None = None) -> dict:
+    """One access-log line: time, method, path, query (values cut to ACCESS_VALUE_MAX), client (the rate limiter's
+    key), user-agent (cut to ACCESS_UA_MAX), status, bytes. Request bodies are never read here; a header named like a
+    key (X-Team-Key, X-Broker-Key, Authorization, ...) is never logged, only `key_header: true` says one was sent."""
+    u = urllib.parse.urlsplit(target)
+    query = {}
+    for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)[:ACCESS_PARAMS_MAX]:
+        query.setdefault(scrub(k, 40), scrub(v, ACCESS_VALUE_MAX))
+    now = time.time() if now is None else now
+    entry = {"t": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(now)), "ts": round(now, 3),
+             "method": scrub(method, 10), "path": scrub(u.path, ACCESS_PATH_MAX), "query": query,
+             "client": scrub(client, 64), "ua": scrub(headers.get("User-Agent") or "", ACCESS_UA_MAX),
+             "status": status, "bytes": nbytes}
+    if any(SECRET_HEADER.search(h) for h in headers.keys()):
+        entry["key_header"] = True
+    return entry
+
+
+class AccessLog:
+    """Appends access_entry lines to a local file (never served by any route). A failing write is reported once."""
+
+    def __init__(self, path):
+        self.path, self.lock, self.failed = Path(path), threading.Lock(), False
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def write(self, entry: dict) -> None:
+        line = json.dumps(entry, ensure_ascii=False) + "\n"
+        try:
+            with self.lock, open(self.path, "a", encoding="utf-8") as f:
+                f.write(line)
+        except OSError as e:
+            if not self.failed:
+                self.failed = True
+                print(f"celestina: access log write failed ({e})", flush=True)
+
+
+def visits(lines, since: float | None = None) -> dict:
+    """A summary of access-log lines (newer than the epoch `since`, when given): requests per path, distinct clients,
+    teams seen in ?team= (valid team ids only), top user-agents, statuses."""
+    rows = []
+    for ln in lines:
+        try:
+            e = json.loads(ln)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and isinstance(e.get("ts"), (int, float)) and (since is None or e["ts"] >= since):
+            rows.append(e)
+    teams = collections.Counter()
+    for e in rows:
+        q = e.get("query") if isinstance(e.get("query"), dict) else {}
+        t = str(q.get("team") or "").strip().lower()
+        if MATCH_TEAM_RE.fullmatch(t):
+            teams[t] += 1
+    return {"requests": len(rows), "first": rows[0].get("t") if rows else None, "last": rows[-1].get("t") if rows else None,
+            "paths": collections.Counter(scrub(e.get("path"), 80) for e in rows).most_common(15),
+            "clients": len({str(e.get("client")) for e in rows}),
+            "teams": teams.most_common(),
+            "user_agents": collections.Counter(scrub(e.get("ua") or "-", ACCESS_UA_MAX) for e in rows).most_common(5),
+            "statuses": sorted(collections.Counter(str(e.get("status")) for e in rows).items())}
+
+
+def visits_text(v: dict) -> str:
+    lines = [f"{v['requests']} requests from {v['clients']} distinct clients"
+             + (f" ({v['first']} to {v['last']})" if v["requests"] else "")]
+    lines.append("Paths: " + (", ".join(f"{p} {n}" for p, n in v["paths"]) or "none"))
+    lines.append("Teams in ?team=: " + (", ".join(f"{t} {n}" for t, n in v["teams"]) or "none"))
+    lines.append("Top user-agents: " + ("; ".join(f"{ua} ({n})" for ua, n in v["user_agents"]) or "none"))
+    lines.append("Statuses: " + (", ".join(f"{c} {n}" for c, n in v["statuses"]) or "none"))
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- the concierge board (read-only)
+#
+# The concierge keeps a public board where teams post the cards they want and the spares they have. La Celestina
+# only READS it (one route: GET {url}/api/board), never calls a write route, and treats every row as untrusted. Team
+# ids there are self-declared (anyone can post as anyone), so a row only ever: feeds the shortlist of the team it
+# names when that team has no open public offer to derive one from, labelled as self-declared; adds to a card's
+# market counts (counts only); and names a team in a thread call only when the same team id also has an attributed
+# public offer for that card. Notes are dropped on read and never shown.
+
+def clean_board(body, catalog: set) -> list:
+    """The concierge's GET /api/board answer -> [{side, team, card, price}], untrusted input made safe: side want or
+    have, team tNN (never Team 3), card an exact catalog ref, price a whole number in range or absent (a row with a bad
+    price is dropped), one row per (team, side, card); notes and every other field dropped."""
+    rows = body.get("requests") if isinstance(body, dict) else None
+    out, seen = [], set()
+    for r in rows[:BOARD_MAX_ROWS] if isinstance(rows, list) else []:
+        if not isinstance(r, dict):
+            continue
+        side, team, ref = r.get("side"), r.get("team"), r.get("card")
+        if side not in BOARD_PRICE or not isinstance(team, str) or not MATCH_TEAM_RE.fullmatch(team) or team == US:
+            continue
+        if not isinstance(ref, str) or not REF_RE.fullmatch(ref) or ref not in catalog:
+            continue
+        price = r.get(BOARD_PRICE[side])
+        if price is not None and (isinstance(price, bool) or not isinstance(price, int)
+                                  or not 1 <= price <= BOARD_PRICE_MAX):
+            continue
+        if (team, side, ref) in seen:
+            continue
+        seen.add((team, side, ref))
+        out.append({"side": side, "team": team, "card": ref, "price": price})
+    return out
+
+
+class ConciergeBoard:
+    """A read-only copy of the concierge's open wants and haves, refreshed in the background (board_worker)."""
+
+    def __init__(self, url: str, timeout: float = BOARD_TIMEOUT, stale: float = BOARD_STALE):
+        self.url, self.timeout, self.stale = url.rstrip("/"), timeout, stale
+        self.data, self.updated, self.failing = [], 0.0, False
+        self.lock = threading.Lock()
+
+    def fetch(self):
+        """The only call made to the concierge: GET {url}/api/board, no key, no body."""
+        req = urllib.request.Request(self.url + "/api/board", method="GET",
+                                     headers={"User-Agent": "la-celestina/1 (Team 3, keyless)"})
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read(BOARD_MAX_BYTES + 1)
+        if len(raw) > BOARD_MAX_BYTES:
+            raise ValueError("the board answer is too large")
+        return json.loads(raw)
+
+    def refresh(self, catalog: set) -> bool:
+        """One read. Failures are logged once (until a read works again) and otherwise ignored: the last good copy
+        stays until it is BOARD_STALE old."""
+        if not catalog:
+            return False  # warming up: nothing to check card refs against yet
+        try:
+            rows = clean_board(self.fetch(), catalog)
+        except Exception as e:  # noqa: BLE001  a concierge that is down never stops La Celestina
+            if not self.failing:
+                self.failing = True
+                print(f"celestina: concierge board read failed ({type(e).__name__}: {str(e)[:120]}); "
+                      f"retrying every {BOARD_EVERY:g} s, quietly", flush=True)
+            return False
+        with self.lock:
+            self.data, self.updated = rows, time.time()
+        if self.failing:
+            self.failing = False
+            print(f"celestina: concierge board read again ({len(rows)} rows)", flush=True)
+        return True
+
+    def rows(self, now: float | None = None) -> list:
+        now = time.time() if now is None else now
+        with self.lock:
+            return list(self.data) if self.updated and now - self.updated <= self.stale else []
+
+    def health(self) -> dict:
+        with self.lock:
+            return {"rows": len(self.data), "age_s": round(time.time() - self.updated, 1) if self.updated else None}
 
 
 # ---------------------------------------------------------------- reading the game (keyless GETs only)
@@ -1250,6 +1579,14 @@ def worker(engine: Engine, interval: float) -> None:
         time.sleep(max(1.0, interval - (time.time() - t0)))
 
 
+def board_worker(board: ConciergeBoard, every: float = BOARD_EVERY) -> None:
+    while True:
+        with LOCK:
+            pub = STATE["public"]
+        board.refresh(catalog_refs(pub or {}))
+        time.sleep(every)
+
+
 class Limiter:
     """Token bucket per client address: a public page should not be a way to burn our CPU."""
 
@@ -1277,15 +1614,27 @@ def page_bytes(public_url: str = "") -> bytes:
     return PAGE.read_text(encoding="utf-8").replace("__CELESTINA_AGENTS_URL__", url).encode("utf-8")
 
 
-def handler(scope: str, public_url: str = ""):
-    """Request handler for one side: 'public' serves the public view and the agent API, 'private' the whole snapshot."""
-    limiter = Limiter(*RATE)
+def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = None, limiter: Limiter | None = None,
+            concierge_url: str = "", access_log: AccessLog | None = None):
+    """Request handler for one side: 'public' serves the public view and the agent API, 'private' the whole snapshot.
+    `board` (public side only) is the concierge board reader; `concierge_url` its public address for /agents.md;
+    `access_log` (public side only) gets one line per request but /healthz."""
+    limiter = limiter or Limiter(*RATE)
+    board = board if scope == "public" else None
+    access_log = access_log if scope == "public" else None
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
         def log_message(self, *a):
             pass
+
+        def _client(self) -> str:
+            return client_key(self.client_address[0], ",".join(self.headers.get_all("X-Forwarded-For") or []))
+
+        def _log(self, code: int, nbytes: int) -> None:
+            if access_log is not None and urllib.parse.urlsplit(self.path).path != "/healthz":
+                access_log.write(access_entry(self.command, self.path, self._client(), self.headers, code, nbytes))
 
         def _send(self, code: int, body: bytes, ctype: str, cors: bool = False) -> None:
             self.send_response(code)
@@ -1297,6 +1646,7 @@ def handler(scope: str, public_url: str = ""):
                 self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
+            self._log(code, len(body))
 
         def _json(self, code: int, obj, cors: bool = True) -> None:
             self._send(code, json.dumps(obj, default=list).encode(), "application/json", cors)
@@ -1308,6 +1658,7 @@ def handler(scope: str, public_url: str = ""):
                 self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
             self.send_header("Content-Length", "0")
             self.end_headers()
+            self._log(204, 0)
 
         def _read_only(self):
             """Nothing is posted here: the body is never read, stored or executed."""
@@ -1322,7 +1673,7 @@ def handler(scope: str, public_url: str = ""):
             if len(self.path) > MAX_TARGET:
                 self.close_connection = True
                 return self._json(414, {"error": "uri_too_long", "message": f"at most {MAX_TARGET} characters"}, agentish)
-            if not limiter.allow(self.client_address[0]):
+            if not limiter.allow(self._client()):
                 return self._json(429, {"error": "too many requests"}, agentish)
             u = urllib.parse.urlparse(self.path)
             path = u.path
@@ -1337,13 +1688,15 @@ def handler(scope: str, public_url: str = ""):
                     return self._send(200, page_bytes(public_url), "text/html; charset=utf-8")
                 return self._send(200, PRIVATE_PAGE.read_bytes(), "text/html; charset=utf-8")
             if scope == "public" and path in ("/agents.md", "/llms.txt"):
-                return self._send(200, agents_doc(public_url).encode("utf-8"), "text/markdown; charset=utf-8", True)
+                return self._send(200, agents_doc(public_url, concierge_url).encode("utf-8"),
+                                  "text/markdown; charset=utf-8", True)
             if path == "/healthz":
                 age = round(time.time() - updated, 1) if updated else None
-                return self._send(200, json.dumps({"ok": snap is not None and not err, "scope": scope, "age_s": age,
-                                                   "tick": (snap or {}).get("tick"),
-                                                   "error": bool(err) if scope == "public" else err}).encode(),
-                                  "application/json")
+                health = {"ok": snap is not None and not err, "scope": scope, "age_s": age,
+                          "tick": (snap or {}).get("tick"), "error": bool(err) if scope == "public" else err}
+                if board is not None:
+                    health["concierge_board"] = board.health()  # counts only
+                return self._send(200, json.dumps(health).encode(), "application/json")
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
@@ -1359,7 +1712,8 @@ def handler(scope: str, public_url: str = ""):
                         raise BadRequest("query_too_long", f"the query string is at most {MAX_QUERY} characters")
                     if path == "/api/match":
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
-                        view = match_view(snap, team, want, have, public_url)
+                        view = match_view(snap, team, want, have, public_url,
+                                          board.rows() if board is not None else None)
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
@@ -1377,9 +1731,16 @@ def handler(scope: str, public_url: str = ""):
 
 def serve(args) -> None:
     market_test = json.loads(Path(args.market_test).read_text(encoding="utf-8")) if args.market_test else None
+    concierge = clean_public_url(args.concierge_url, "--concierge-url")
+    concierge_public = clean_public_url(args.concierge_public_url, "--concierge-public-url") or concierge
     engine = Engine(args.feed_file, args.snapshots_file, market_test)
     threading.Thread(target=worker, args=(engine, args.interval), daemon=True).start()
-    servers = [ThreadingHTTPServer((args.host, args.port), handler("public", clean_public_url(args.public_url)))]
+    board = ConciergeBoard(concierge) if concierge else None
+    if board is not None:
+        threading.Thread(target=board_worker, args=(board,), daemon=True).start()
+    access = AccessLog(args.access_log) if args.access_log else None
+    servers = [ThreadingHTTPServer((args.host, args.port), handler("public", clean_public_url(args.public_url), board,
+                                                                   concierge_url=concierge_public, access_log=access))]
     if args.private_port:
         if args.private_port == args.port:
             raise SystemExit("celestina: --private-port must differ from --port")
@@ -1390,7 +1751,8 @@ def serve(args) -> None:
         threading.Thread(target=s.serve_forever, daemon=True).start()
     print(f"La Celestina: public on http://{args.host}:{args.port}/"
           + (f", private on http://127.0.0.1:{args.private_port}/ (Team 3 only: never tunnel this port)" if args.private_port else "")
-          + f"; {len(engine.store.events)} recorded events, refresh every {args.interval:g} s", flush=True)
+          + f"; {len(engine.store.events)} recorded events, refresh every {args.interval:g} s"
+          + (f"; concierge board read-only from {concierge} every {BOARD_EVERY:g} s" if board else ""), flush=True)
     servers[0].serve_forever()
 
 
@@ -1433,10 +1795,24 @@ def main() -> None:
     s.add_argument("--interval", type=float, default=INTERVAL)
     s.add_argument("--public-url", default="", help="this service's public address (https://host[:port][/path]): "
                                                     "absolute URLs in /agents.md and on the page (default: relative)")
+    s.add_argument("--concierge-url", default="", help="the concierge (tools/concierge.py) to read GET /api/board "
+                                                       "from, e.g. http://100.116.189.106:8780 (default: off)")
+    s.add_argument("--concierge-public-url", default="", help="the concierge's public address, shown in /agents.md "
+                                                              "(default: --concierge-url)")
+    s.add_argument("--access-log", type=Path, default=None, help="append one JSONL line per public request (no "
+                                                                  "bodies, no keys; /healthz skipped) to this file")
     o = sub.choices["once"]
     o.add_argument("--json", action="store_true")
     o.add_argument("--public", action="store_true", help="with --json: the public snapshot instead of the private one")
+    v = sub.add_parser("visits", help="summary of the public access log (serve --access-log)")
+    v.add_argument("--access-log", type=Path, required=True)
+    v.add_argument("--since", type=float, default=None, help="only the last MINUTES")
     args = ap.parse_args()
+    if args.cmd == "visits":
+        since = time.time() - args.since * 60 if args.since is not None else None
+        with open(args.access_log, encoding="utf-8", errors="replace") as f:
+            print(visits_text(visits(f, since)))
+        return
     if args.snapshots_file is None and args.feed_file:
         guess = Path(args.feed_file).with_name("snapshots.jsonl")
         args.snapshots_file = guess if guess.exists() else None

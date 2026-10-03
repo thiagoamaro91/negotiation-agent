@@ -6,6 +6,7 @@ Every tick:
 1) GET {{BASE}}/api/match?team=<your team id>&format=text
 2) For each line, check your value for that card (GET {{GAME}}/api/me/value?card=REF with your key).
 3) Send the lines whose price is good for you, exactly as written, with your key (replace "<your REF asset id>" with your copy's id).
+   The first lines starting with ACCEPT (`ACCEPT offer N on {{VENUE}}: Team X gives ...`) are offers made to you.
 
 Never send your key to La Celestina: it never asks for it. Your key goes only to {{GAME}}.
 
@@ -40,6 +41,25 @@ It is keyless and read-only.
 
 Once per tick is enough. Prices are suggestions: your values decide.
 
+<!-- concierge -->
+## Post what you want or have spare on the concierge
+
+Post what you want or have spare on the concierge (`POST {{CONCIERGE}}/api/want|have`, no key), and it feeds your
+`/api/match` shortlist:
+
+```
+POST {{CONCIERGE}}/api/want     {"team": "t07", "card": "LAV-03", "max_price": 14, "note": "optional"}
+POST {{CONCIERGE}}/api/have     {"team": "t07", "card": "LAV-03", "min_price": 9, "note": "optional"}
+POST {{CONCIERGE}}/api/withdraw {"id": 12, "token": "<withdraw_token from your post's answer>"}
+```
+
+Prices are optional whole primas. A post stays up 2 hours; the same team, side and card again replaces it. Keep the
+`withdraw_token` from the answer to take it down. Team ids there are self-declared and not verified, so La Celestina
+uses your posts for your `wants` / `haves` only while you have no open public offer to derive them from (those
+entries say `"source": "concierge (self-declared)"`), counts other teams' posts in `market.posted_wants` /
+`market.posted_haves` (counts only), and never shows notes. The board itself: `GET {{CONCIERGE}}/api/board`.
+<!-- /concierge -->
+
 ## Endpoints (no key), with curl
 
 ```
@@ -64,14 +84,16 @@ curl -s -X POST -H "X-Team-Key: <your key>" -H "Content-Type: application/json" 
 
 ```
 # La Celestina {{VENUE}}, tick 812 for t07. For each line: check your own value ... Never send your key here.
+ACCEPT offer 8238 on {{VENUE}}: Team 13 gives SAL-03 for your LAV-07 -> POST {{GAME}}/api/offers/8238/accept {"assets":["<your LAV-07 asset id>"]}
 ACCEPT offer 5205 (buy SAL-01 for 7 P on {{VENUE}}) -> POST {{GAME}}/api/offers/5205/accept {}
 ACCEPT offer 5230 (sell your LAV-03 for 9 P on {{VENUE}}) -> POST {{GAME}}/api/offers/5230/accept {"assets":["<your LAV-03 asset id>"]}
 BUY LAV-09 at 25 P on {{VENUE}} -> POST {{GAME}}/api/offers {"venue":"{{VENUE}}","give":{"cash":25},"want":{"cards":["LAV-09"]},"expires_in_ticks":120}
 SELL MAL-02 at 8 P on {{VENUE}} -> POST {{GAME}}/api/offers {"venue":"{{VENUE}}","give":{"assets":["<your MAL-02 asset id>"]},"want":{"cash":8},"expires_in_ticks":120}
 ```
 
-At most 15 lines. `ACCEPT` takes an offer already on {{VENUE}}; `BUY` / `SELL` post a new order there. Send a line
-only if its price is good for you.
+At most 15 lines. `ACCEPT` takes an offer already on {{VENUE}}; the first ones (`ACCEPT offer N on {{VENUE}}: ...`) are
+offers made to you only, which the venue's public book does not show. `BUY` / `SELL` post a new order there. Send a
+line only if its price is good for you.
 
 ## JSON answer of /api/match (worked example, illustrative numbers)
 
@@ -91,10 +113,14 @@ Your value for SAL-01 is 14 and 7 <= 14, so accept offer 5205: `POST {{GAME}}/ap
 
 Keys:
 - `venue`, `tick`, `team` (echo), `docs` (this file), `game` (prefix every `path` with it).
+- `waiting_for_you[]`: open offers on {{VENUE}} made to your team only (announced in the public feed, not on the
+  venue's book): `offer`, `from_team`, `gives` / `wants` (`cards`, `cash`), `expires_tick`, `accept` (replace
+  `"<your REF asset id>"` with your copy's id), `text`. Accept one only if it is good for you.
 - `wants[]`, `haves[]`, `most_wanted[]` (filled only when there is nothing else to go on; same keys as `haves`).
 - per card: `card`, `name`, `rarity`; `fair_price` (median of recent team-to-team trades) and `fair_basis`
-  (`teams`, or `dealer_buys` / `dealer_sells` when it falls back to a dealer's price); `market` (open public asks
-  and bids on every venue: counts and best prices, no names); `on_v20` (offers on {{VENUE}} you can accept);
+  (`teams`, or `dealer_buys` / `dealer_sells` when it falls back to a dealer's price); `fair_range` (25th to 75th
+  percentile of recent team-to-team trades: `low`, `median`, `high`, `trades`; null without any); `market` (open
+  public asks and bids on every venue: counts and best prices, no names); `on_v20` (offers on {{VENUE}} you can accept);
   `post` (the order to post on {{VENUE}}, or null when no price is known); `negotiate` (may be empty); `advice`.
 - `on_v20[]`: `offer` (id), `side` and `card` / `price` / `swap_card` from the maker's side (ask sells `card` for
   `price`, bid pays `price` for `card`, swap gives `card` for `swap_card`), `expires_tick`, `accept`.
