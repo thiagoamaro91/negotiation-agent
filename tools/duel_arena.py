@@ -73,6 +73,11 @@ DUELS1_WEIGHTS = {"linear": 13, "steady": 5, "fast": 4, "oneshot": 1, "tft": 2, 
 # Share of duels whose paired limit duel.mirror_limit finds. Friday: the pair was (odd, odd + 1), same rival team.
 # Duels I: 0 of 34 (pairs are (even, odd) with a different rival in each, and the limits are unrelated: 2360 / 2361).
 PAIR_SEEN = 1.0
+# Two issues. The server's days_meaning wording is unknown, so the arena's names no direction (duel.py then uses its
+# role default and the weight's sign, not its own keyword list). DAYS_FLIP: every side's best day is the opposite of
+# the role default (buyer late, seller early) and the weight shown to us is negative, as a server that signs it would.
+DAYS_WORDING = "primas per day away from your preferred delivery day"
+DAYS_FLIP = False
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
 # duel.py --late-poll (a second read of the duels late in the tick): the share of the rival's same-tick messages that
@@ -426,8 +431,9 @@ def make_session(seed: int, sess: dict, kinds: list, weights: dict = None) -> li
             days = None
             if two:
                 rrole = "buyer" if role == "seller" else "seller"
-                days = {"ours": (0 if role == "buyer" else 10, round(wts[role], 2)),
-                        "rival": (0 if rrole == "buyer" else 10, round(wts[rrole], 2))}
+                fb, fs = (10, 0) if DAYS_FLIP else (0, 10)
+                days = {"ours": (fb if role == "buyer" else fs, round(wts[role], 2)),
+                        "rival": (fb if rrole == "buyer" else fs, round(wts[rrole], 2))}
             out.append(Duel(base + j, k, role, ours, theirs, kind, rp, T, decay, issues, days))
     rng.shuffle(out)
     # keep pairs mostly together: sort by pair with a little jitter so some partners land in the next wave
@@ -467,9 +473,9 @@ def server_view(dl: Duel, sess_no: int, deadline: int) -> dict:
     """The duel as GET /api/duels shows it to us."""
     two = bool(dl.days)
     d = {"duel": dl.id, "session": sess_no, "status": "live", "role": dl.role, "item": f"item-{dl.pair}",
-         "issues": list(dl.issues), "your_days_weight": dl.days["ours"][1] if two else None,
-         "days_meaning": (("each day later costs you this much" if dl.role == "buyer"
-                           else "each day earlier costs you this much") if two else None),
+         "issues": list(dl.issues),
+         "your_days_weight": (-dl.days["ours"][1] if DAYS_FLIP else dl.days["ours"][1]) if two else None,
+         "days_meaning": DAYS_WORDING if two else None,
          "your_limit": dl.our_limit, "limit_meaning": "", "rival": f"Rival {dl.pair}",
          "deadline_tick": deadline, "decay_per_round": dl.decay, "rounds": 0, "your_offer": None,
          "rival_offer": None, "messages": [], "result": None, "price": None, "days": None}
