@@ -66,6 +66,10 @@ WEIGHTS = {"steady": 2, "fast": 1, "cycler": 1, "oneshot": 1, "llm": 1, "absent"
            "hardliner": 1, "linear": 1, "tft": 1, "deadline": 1, "silent": 1}
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
+# duel.py --late-poll (a second read of the duels late in the tick): the share of the rival's same-tick messages that
+# land after that read anyway (slow bots), and the share of late reads that never happen (network, tick over first)
+LATE_MISS = 0.15
+LATE_FAIL = 0.03
 
 
 def cfg_for(params: dict, ticks: int):
@@ -470,6 +474,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
     Each tick follows duel.py's run loop: for every live duel pair_l = mirror_limit, sync_state; then set_windows,
     decide, allocate (one accept per team per tick); then our accept or message (record_say)."""
     rng = random.Random(seed * 7919 + 1)
+    lrng = random.Random(seed * 104729 + 5)       # late-read draws only, so flags off replay the same worlds
     T = sess["ticks"]
     results, every = [], []
     waves = [duels[i:i + sess["concurrent"]] for i in range(0, len(duels), sess["concurrent"])]
@@ -531,16 +536,41 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                 x = byid[d["duel"]]
                 if x["deal"] or dec["action"] != "say":
                     continue
-                duel.record_say(st, dec, d, tick)
-                x["ours"].append((tick, dec["price"], dec["days"]))
-                x["msgs"].append((tick, "us"))
-                d["messages"].append({"tick": tick, "from": "you", "text": "", "price": dec["price"],
-                                      "days": dec["days"]})
-                d["your_offer"] = {"price": dec["price"], "days": dec["days"] if dec["days"] is not None else 0}
+                _post_ours(x, st, dec, d, tick)
+            late = getattr(duel, "late_due", None) and duel.late_due(decisions, cfg)
+            held = []                                     # rival messages that land after our late read
             for did, ra in rival_acts.items():
                 x = byid[did]
                 if not x["deal"] and "say" in ra:
-                    _post_rival(x, ra["say"], tick)
+                    if late and lrng.random() < LATE_MISS:
+                        held.append((x, ra["say"]))
+                    else:
+                        _post_rival(x, ra["say"], tick)
+            if late and lrng.random() >= LATE_FAIL and not busy[tick]:
+                # duel.py --late-poll: the second read of this tick, accepts only (run loop: duel.late_pass)
+                again = []
+                for x in live:
+                    if x["deal"]:
+                        continue
+                    d, st = x["d"], x["st"]
+                    st.pair_l = duel.mirror_limit(d, every)
+                    st.rival_limit = st.pair_l if cfg.mirror else None
+                    duel.sync_state(st, d)
+                    again.append((d, st))
+                duel.set_windows(again, cfg)
+                again = duel.allocate([(d, st, duel.decide(d, st, tick, cfg)) for d, st in again], cfg, late=True)
+                for d, st, dec in again:
+                    if dec["action"] == "accept" and d["rival_offer"] is not None:
+                        st.accepted_at = tick
+                        x = byid[d["duel"]]
+                        x["deal"] = (d["rival_offer"]["price"],
+                                     d["rival_offer"].get("days") if x["dl"].days else None, tick, "us")
+                for d, st, dec in getattr(duel, "late_says", lambda *a: [])(again, cfg, tick):
+                    if not byid[d["duel"]]["deal"]:
+                        _post_ours(byid[d["duel"]], st, dec, d, tick)
+            for x, say in held:
+                if not x["deal"]:
+                    _post_rival(x, say, tick)
             for x in live:
                 x["d"]["rounds"] = rounds_of(x["msgs"], rounds_rule)
                 st = x["st"]
@@ -564,6 +594,14 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
             d["status"] = "deal" if x["deal"] else "no_deal"
             results.append(r)
     return results
+
+
+def _post_ours(x: dict, st, dec: dict, d: dict, tick: int) -> None:
+    duel.record_say(st, dec, d, tick)
+    x["ours"].append((tick, dec["price"], dec["days"]))
+    x["msgs"].append((tick, "us"))
+    d["messages"].append({"tick": tick, "from": "you", "text": "", "price": dec["price"], "days": dec["days"]})
+    d["your_offer"] = {"price": dec["price"], "days": dec["days"] if dec["days"] is not None else 0}
 
 
 def _post_rival(x: dict, say: tuple, tick: int) -> None:
@@ -590,6 +628,32 @@ def friday_duels(log_dir: Path = ROOT / "logs" / "duels") -> list:
     return out
 
 
+def _replay_pass(wave: list, every: list, tick: int, see: int, cfg, late: bool = False) -> list:
+    """One read of the Friday wave at this tick: the rival messages posted before tick `see`, then duel.py's
+    set_windows / decide / allocate."""
+    decisions = []
+    for w in wave:
+        if w["deal"]:
+            continue
+        d = w["d"]
+        theirs = [(t, p) for t, p in w["path"] if t < see]
+        mine = [m for m in d["messages"] if m["from"] == "you"]
+        d["messages"] = sorted(mine + [{"tick": t, "from": d["rival"], "price": p, "days": None, "text": ""}
+                                       for t, p in theirs], key=lambda m: (m["tick"], m["from"] != "you"))
+        if theirs:
+            d["rival_offer"] = {"id": len(theirs), "price": theirs[-1][1], "tick": theirs[-1][0], "days": 0}
+        w["st"].pair_l = duel.mirror_limit(d, every)
+        w["st"].rival_limit = w["st"].pair_l if cfg.mirror else None
+        duel.sync_state(w["st"], d)
+        decisions.append((d, w["st"]))
+    duel.set_windows(decisions, cfg)
+    decisions = [(d, st, duel.decide(d, st, tick, cfg)) for d, st in decisions]
+    if late:
+        return duel.allocate(decisions, cfg, late=True)
+    duel.allocate(decisions, cfg)
+    return decisions
+
+
 def friday_replay(params: dict, ticks: int = 12, late_look: int = 0, files: list = None) -> list:
     """Our policy against the rival price paths Friday's bots actually posted (they do not react to us here, and
     never accept). One accept per tick across duels sharing a deadline. The rival's limit is unknown, so the pie is
@@ -609,25 +673,7 @@ def friday_replay(params: dict, ticks: int = 12, late_look: int = 0, files: list
                  "status": "live", "rounds": 0, "your_offer": None, "rival_offer": None, "messages": []}
             wave.append({"d": d, "path": path, "st": duel.DuelState(d, D - ticks, ticks), "deal": None})
         for tick in range(D - ticks, D):
-            decisions = []
-            for w in wave:
-                if w["deal"]:
-                    continue
-                d = w["d"]
-                see = tick + (1 if late_look and D - tick <= late_look else 0)
-                theirs = [(t, p) for t, p in w["path"] if t < see]
-                mine = [m for m in d["messages"] if m["from"] == "you"]
-                d["messages"] = sorted(mine + [{"tick": t, "from": d["rival"], "price": p, "days": None, "text": ""}
-                                               for t, p in theirs], key=lambda m: (m["tick"], m["from"] != "you"))
-                if theirs:
-                    d["rival_offer"] = {"id": len(theirs), "price": theirs[-1][1], "tick": theirs[-1][0], "days": 0}
-                w["st"].pair_l = duel.mirror_limit(d, every)
-                w["st"].rival_limit = w["st"].pair_l if cfg.mirror else None
-                duel.sync_state(w["st"], d)
-                decisions.append((d, w["st"]))
-            duel.set_windows(decisions, cfg)
-            decisions = [(d, st, duel.decide(d, st, tick, cfg)) for d, st in decisions]
-            duel.allocate(decisions, cfg)
+            decisions = _replay_pass(wave, every, tick, tick + (1 if late_look and D - tick <= late_look else 0), cfg)
             for d, st, dec in decisions:
                 w = next(w for w in wave if w["d"] is d)
                 if dec["action"] == "accept":
@@ -636,6 +682,11 @@ def friday_replay(params: dict, ticks: int = 12, late_look: int = 0, files: list
                     duel.record_say(st, dec, d, tick)
                     d["messages"].append({"tick": tick, "from": "you", "price": dec["price"], "days": None, "text": ""})
                     d["your_offer"] = {"price": dec["price"], "days": 0}
+            if getattr(duel, "late_due", None) and duel.late_due(decisions, cfg):
+                # duel.py --late-poll: the second read sees the rival's message of this tick; accepts only
+                for d, st, dec in _replay_pass(wave, every, tick, tick + 1, cfg, late=True):
+                    if dec["action"] == "accept":
+                        next(w for w in wave if w["d"] is d)["deal"] = (d["rival_offer"]["price"], tick)
         for w in wave:
             d = w["d"]
             pair = duel.mirror_limit(d, every)
