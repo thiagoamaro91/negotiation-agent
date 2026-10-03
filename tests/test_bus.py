@@ -223,42 +223,60 @@ class Ask(unittest.TestCase):
 
 
 class SessionName(unittest.TestCase):
-    def test_writing_needs_a_session_name_and_reading_does_not(self):
-        from unittest import mock
-        with mock.patch.dict(bus.os.environ, {}, clear=False):
-            bus.os.environ.pop("TEAM_BUS_SESSION", None)
-            with mock.patch.object(bus, "GitHub", side_effect=AssertionError("must not reach GitHub")):
-                for argv in (["post", "hi"], ["ask", "ok?", "--wait", "0"], ["claim", "market"], ["release", "market"],
-                             ["--session", "  ", "post", "hi"]):
-                    self.assertEqual(bus.main(argv), 2, argv)
-            with mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
-                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
-                    bus.main(["--session", "hector-mac-brain", "--title", "Panel de dinero e inferencias", "post", "hi"])
-                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
-                    bus.main(["read"])
-            with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "thiago-mini-market", "TEAM_BUS_TITLE": "Mini market"}), \
-                    mock.patch.object(bus, "GitHub", side_effect=RuntimeError("reached GitHub")):
-                with self.assertRaisesRegex(RuntimeError, "reached GitHub"):
-                    bus.main(["post", "hi"])
+    """Hector: every message says which session sent it, by its full name (Codex review of #46 kept old callers working)."""
 
-    def test_a_post_names_the_full_session_on_its_first_line(self):
-        self.assertEqual(bus.signed("hi", "Panel de dinero e inferencias", "hector-mac-brain"),
-                         "FROM: Panel de dinero e inferencias (hector-mac-brain)\nhi")
-        self.assertEqual(bus.signed("FROM: thiago-air-f8 (conductor) | TO: hector\nok", "", "x"),
-                         "FROM: thiago-air-f8 (conductor) | TO: hector\nok")
-        self.assertIsNone(bus.signed("hi", "", "hector-mac-brain"))
+    def run_main(self, argv, env):
         from unittest import mock
-        with mock.patch.dict(bus.os.environ, {"TEAM_BUS_SESSION": "hector-mac-brain"}):
-            bus.os.environ.pop("TEAM_BUS_TITLE", None)
-            with mock.patch.object(bus, "GitHub", side_effect=AssertionError("must not reach GitHub")):
-                self.assertEqual(bus.main(["post", "hi"]), 2)
-                self.assertEqual(bus.main(["ask", "ok?", "--wait", "0"]), 2)
-            sent = []
-            with mock.patch.object(bus.Bus, "post", lambda self, kind, text, to, reply_to=None, extra=None:
-                                   sent.append(text) or {"id": 1, "kind": kind, "to": to, "url": "u"}), \
-                    mock.patch.object(bus, "GitHub", lambda repo, issue: None):
-                self.assertEqual(bus.main(["--title", "Panel de dinero e inferencias", "post", "hi"]), 0)
-            self.assertEqual(sent, ["FROM: Panel de dinero e inferencias (hector-mac-brain)\nhi"])
+        seen = {}
+
+        class FakeBus:
+            def __init__(self, gh, session):
+                seen["session"], self.ident = session, ""
+
+            def post(self, kind, text, to, reply_to=None):
+                seen["text"] = text
+                return {"id": 1, "kind": kind, "to": to, "url": "u"}
+
+            def read(self, last):
+                return []
+
+        with mock.patch.dict(bus.os.environ, env, clear=False), mock.patch.object(bus, "Bus", FakeBus), \
+                mock.patch.object(bus, "GitHub", lambda repo, issue: None):
+            for k in ("TEAM_BUS_SESSION", "TEAM_BUS_TITLE"):
+                if k not in env:
+                    bus.os.environ.pop(k, None)
+            rc = bus.main(argv)
+        return rc, seen
+
+    def test_writing_needs_a_session_name(self):
+        for argv in (["post", "hi"], ["ask", "ok?", "--wait", "0"], ["claim", "market"], ["release", "market"]):
+            self.assertEqual(self.run_main(argv, {})[0], 2, argv)
+        for blank in ("", "  "):  # an explicit blank flag is refused even with the env set
+            self.assertEqual(self.run_main(["--session", blank, "post", "hi"], {"TEAM_BUS_SESSION": "x"})[0], 2)
+
+    def test_a_post_starts_with_the_full_session_name(self):
+        rc, seen = self.run_main(["--title", "Panel de dinero e inferencias", "post", "hi"], {"TEAM_BUS_SESSION": "hector-mac-brain"})
+        self.assertEqual((rc, seen["text"]), (0, "FROM: Panel de dinero e inferencias (hector-mac-brain)\nhi"))
+        rc, seen = self.run_main(["post", "hi"], {"TEAM_BUS_SESSION": "s", "TEAM_BUS_TITLE": "Mini market"})
+        self.assertEqual(seen["text"], "FROM: Mini market (s)\nhi")
+
+    def test_without_a_title_old_callers_still_send_signed_with_the_session_id(self):
+        rc, seen = self.run_main(["--session", "thiago-mini-market", "post", "hi"], {})
+        self.assertEqual((rc, seen["text"]), (0, "FROM: thiago-mini-market\nhi"))
+        rc, seen = self.run_main(["--session", "f8", "post", "FROM: thiago-air-f8 (conductor) | TO: x\nok"], {})
+        self.assertEqual(seen["text"], "FROM: thiago-air-f8 (conductor) | TO: x\nok")
+
+    def test_reads_keep_the_old_session_resolution(self):
+        self.assertEqual(self.run_main(["--session", " padded ", "read"], {})[1]["session"], " padded ")
+        self.assertEqual(self.run_main(["read"], {"TEAM_BUS_SESSION": "from-env"})[1]["session"], "from-env")
+
+    def test_the_reply_line_carries_the_readers_identity(self):
+        msg = {"id": 7, "kind": "ask", "from": "thiagoamaro91", "to": ["hector"], "session": "f8", "human": False,
+               "reply_to": None, "at": "t", "text": "q", "url": "u"}
+        ident = bus.identity("hector-mac-brain", "Panel de dinero e inferencias")
+        self.assertIn("reply: python3 tools/bus.py --session hector-mac-brain --title 'Panel de dinero e inferencias' post",
+                      bus.show(msg, ident))
+        self.assertIn("reply: python3 tools/bus.py post", bus.show(msg))
 
 
 class Board(unittest.TestCase):
