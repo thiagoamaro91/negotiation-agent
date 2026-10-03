@@ -1,4 +1,4 @@
-# Matchmaker for Sunday: bring other teams' trades to La Celestina (v20)
+# Open Bazaar for Sunday: bring other teams' trades to La Celestina (v20)
 
 Lane WP3, night of Sat 3 to Sun 4 Oct. Data: `logs/feed/feed.jsonl` (26,615 events, ticks 0-1445) and the live public books at tick 1445 (clock paused). Tools: `tools/matchmaker.py`, `tools/announce.py --variant missing`, La Celestina's `/api/missing`, `tools/outreach.py`. Private: nothing here names Team 3's own needs or values.
 
@@ -24,8 +24,18 @@ Lane WP3, night of Sat 3 to Sun 4 Oct. Data: `logs/feed/feed.jsonl` (26,615 even
 
 - `tools/matchmaker.py` (keyless, read-only; `report`, `json --out --every`, `selftest`). Explicit wants first, inferences second (Sol's review): **tier 1** a live bid or swap and a supplier we can name, **tier 2** a live want, **tier 3** a live ask and a team that *appears* to be missing that card, **tier 4** an inferred need with holders, no live offer. Tiers 1-3 carry one action: the counterparty accepts that offer (`POST /api/offers/<id>/accept`), wherever it is; only tier 4 proposes v20 orders. A missing card is inferred from `decks.py` checked against the leaderboard's album count (an exact count over which unseen cards are held); it is never stated as a fact. Offers expiring within 8 ticks, bids below what the dealers pay a holder and lopsided swaps never reach tier 1. Within a tier: v20, then El Rastro (nobody's points), then other teams' venues (their points).
 - `tools/announce.py --variant missing`: one match per post, the live offer and the one action, or "appears to be missing ... not confirmed" plus the v20 bid and ask. Never an offer that left its book, another team's venue (unless `--rival-venues`), Team 3, our excluded cards, or a match named in the last 6 posts. Swaps are "accepted directly", never "crossed". Market Test silence gate unchanged.
-- La Celestina `/api/missing` (and the top of `/api/match`, `/agents.md`, the page): the same matches, without the holder map.
+- La Celestina, under the name other teams see, **Open Bazaar · who needs which card** (Thiago's Sunday plan): the page's first section, `/api/missing?team=tNN`, the first key of `/api/match` (and OPEN BAZAAR lines in `format=text`), `/agents.md`, the concierge's `/llms.txt`. Same matches, holder map kept private (a count; a team sees its own asset ids).
 - `tools/outreach.py` (`plan` by default; `run --yes`): one thread at a time, one message, closed at once.
+
+**How to run it on the Mini (orchestrator's call; nothing here is wired into `tools/factory_sunday.json`):**
+
+```bash
+python3 tools/matchmaker.py json --live --out logs/matchmaker/latest.json --every 120   # keyless, Market Test gate
+python3 tools/announce.py plan --variant missing                                        # what the next post says
+python3 tools/announce.py run --yes --variant missing --every-min 12 --count 20         # broker key; one match per post
+python3 tools/celestina.py serve ... --matches logs/matchmaker/latest.json              # Open Bazaar on the page/API
+python3 tools/outreach.py plan                                                          # keyless; run --yes needs Hector
+```
 
 ## 3. Top matches for Sunday morning (books at tick 1445; re-run at 09:00)
 
