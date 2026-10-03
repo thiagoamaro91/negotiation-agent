@@ -491,14 +491,19 @@ def holdings(events: list, teams: set) -> dict:
 
 
 def our_cards(me: dict, events: list) -> collections.Counter:
-    """Our cards: the last snapshot (logs/state/me.json) plus our public settlements after it."""
+    """Our cards: the last snapshot (logs/state/me.json) plus our public settlements, gifts and easter eggs after it."""
     mine = collections.Counter(a["ref"] for a in me["assets"] if a["kind"] == "card")
     for e in events:
         p = e["payload"]
-        if e["type"] == "settlement" and e["tick"] > me.get("tick", 0):
+        if e["tick"] <= me.get("tick", 0):
+            continue
+        if e["type"] == "settlement":
             for i in p.get("items") or []:
                 if i.get("kind") == "card":
                     mine[i["ref"]] += (i.get("to") == US) - (i.get("frm") == US)
+        elif e["type"] in ("gift.given", "egg.given") and p.get("team") == US:
+            for ref in p.get("cards") or []:
+                mine[ref] += 1
     return mine
 
 

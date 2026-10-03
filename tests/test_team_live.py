@@ -171,6 +171,19 @@ class OurAccount(unittest.TestCase):
         self.assertEqual((u["cash"], u["cash_source"], u["relay"]["age_s"]), (92, "ledger", None))
 
 
+class OurCards(unittest.TestCase):
+    def test_gifts_and_eggs_after_the_snapshot_count_and_earlier_ones_do_not(self):
+        us = brain.vi.US
+        events = [{"tick": 600, "type": "gift.given", "payload": {"team": us, "cards": ["LAV-01"]}},
+                  {"tick": 700, "type": "gift.given", "payload": {"team": us, "cards": ["SAL-03"]}},
+                  {"tick": 701, "type": "egg.given", "payload": {"team": us, "cards": ["LAT-13"]}},
+                  {"tick": 702, "type": "gift.given", "payload": {"team": "t09", "cards": ["SAL-03"]}},
+                  {"tick": 703, "type": "settlement", "payload": {"items": [
+                      {"kind": "card", "ref": "LAV-01", "frm": us, "to": "t09"}]}}]
+        mine = brain.vi.our_cards(ME, events)
+        self.assertEqual((mine["LAV-01"], mine["SAL-03"], mine["LAT-13"], mine["SAL-01"]), (1, 1, 1, 1))
+
+
 class InferenceVsTruth(unittest.TestCase):
     def model(self):
         sets = ["LAV", "MAL", "LAT", "SAL", "RET", "CHA"]
