@@ -24,7 +24,7 @@ Read it top to bottom: the clock line, the schedule with wall times, every comma
 cd ~/bazaar && python3 tools/factory.py up --yes
 ```
 
-It reads the bus board, claims each process (`tools/bus.py claim <name> --where mini`), refuses anything already running, claimed on another machine, held by someone else, or missing an input file, prints the `off` entries with their reason, and opens one tmux window per process it starts. If the board or the claim cannot be read (GitHub down), nothing starts: say so in the team chat, then run `up --yes --no-bus`. Starting before 09:00 is safe: every gate waits for the doors and a running clock, and a clock response without explicit `doors` and `paused` values keeps every gate closed.
+It reads the bus board, claims each process (`tools/bus.py --session <its session> claim <name> --where mini`), refuses anything already running, claimed on another machine, held by someone else, or missing an input file, prints the `off` entries with their reason, and opens one tmux window per process it starts. If the board or the claim cannot be read (GitHub down), nothing starts: say so in the team chat, then run `up --yes --no-bus`. Starting before 09:00 is safe: every gate waits for the doors and a running clock, and a clock response without explicit `doors` and `paused` values keeps every gate closed.
 
 ## 09:00 check
 
