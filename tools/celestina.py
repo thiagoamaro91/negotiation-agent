@@ -49,7 +49,8 @@ from pathlib import Path
 
 BASE = "https://bazaar.causaprima.ai/api/"
 ROOT = Path(__file__).resolve().parent.parent
-PAGE = Path(__file__).resolve().parent / "celestina.html"
+PAGE = Path(__file__).resolve().parent / "celestina.html"                   # the public page: one job, find a card
+PRIVATE_PAGE = Path(__file__).resolve().parent / "celestina_private.html"  # Team 3's full map, 127.0.0.1 only
 DEFAULT_FEED = ROOT / "logs" / "feed" / "feed.jsonl"
 US = "t03"
 SIGNATURE = "La Celestina · {vid} · Team 3"
@@ -59,7 +60,8 @@ MIN_GAP = 0.05             # at least this long between two reads: at most 20 pe
 INTERVAL = 15.0            # one refresh (about 25 reads) every 15 s
 CATALOG_EVERY = 20         # re-read the catalog every 20 refreshes (a set release adds cards)
 RECENT_N = 8               # recent prices kept per card
-REF_N = 5                  # reference price = median of the last 5
+REF_N = 5                  # fair price = median of the last 5 team-to-team trades
+DEALER_NAMES = {"abuela": "Abuela", "chato": "El Chato", "pilar": "Pilar"}
 PER_BID = 3                # near misses / spare holders listed per bid
 NEAR_RATIO = 0.5           # a near miss: the bid is at least half the ask (a 1 P bid next to a 9 P ask is not near)
 MAX_MATCHES = 80
@@ -296,19 +298,44 @@ def recent_prices(events: list, n: int = RECENT_N) -> dict:
         if len({i.get("ref") for i in items}) != 1 or len({i.get("frm") for i in items}) != 1 or len({i.get("to") for i in items}) != 1:
             continue
         i = items[0]
+        # a dealer is the persona, or any party that is not a team (a settlement that forgot its persona still counts)
+        dealer = p.get("persona") or next((x for x in (i.get("frm"), i.get("to"))
+                                           if isinstance(x, str) and not TEAM_RE.match(x)), None)
+        side = "team" if not dealer else "dealer_sells" if i.get("frm") == dealer else "dealer_buys"
         out[i.get("ref")].append({"settlement": p.get("settlement"), "tick": p.get("tick", e.get("tick")),
                                   "price": round(num(p["price"]) / len(items), 1), "qty": len(items),
-                                  "venue": p.get("venue"), "dealer": p.get("persona"), "frm": i.get("frm"), "to": i.get("to")})
+                                  "venue": p.get("venue"), "dealer": dealer, "side": side,
+                                  "frm": i.get("frm"), "to": i.get("to")})
     return {ref: rows[-n:][::-1] for ref, rows in out.items() if isinstance(ref, str)}
 
 
 def reference_price(recent: list, n: int = REF_N) -> dict:
-    ps = [r["price"] for r in recent[:n]]
-    return {"price": round(statistics.median(ps), 1) if ps else None, "n": len(ps)}
+    """A card's fair price: the median of its last n team-to-team cash trades. A dealer is another market (what it pays
+    a seller is a floor, what it charges a buyer a ceiling), so dealer prices are used only when fewer than 2 team
+    trades exist, and the text says whose price it is."""
+    team = [r["price"] for r in recent if r.get("side", "team") == "team"][:n]
+    if len(team) >= 2:
+        p = round(statistics.median(team), 1)
+        return {"price": p, "n": len(team), "basis": "teams",
+                "text": f"about {p:g} P (last team-to-team trades: {', '.join(f'{x:g}' for x in team)})"}
+    out, parts = None, []
+    for side in ("dealer_buys", "dealer_sells"):
+        rows = [r for r in recent if r.get("side") == side][:n]
+        if not rows:
+            continue
+        p = round(statistics.median(r["price"] for r in rows), 1)
+        name = DEALER_NAMES.get(rows[0]["dealer"], str(rows[0]["dealer"]).title())
+        parts.append(f"{name} pays about {p:g} P for it" if side == "dealer_buys" else f"{name} sells it for about {p:g} P")
+        out = out or {"price": p, "n": len(rows), "basis": side}
+    if out:
+        return {**out, "text": "; ".join(parts) + " (no team-to-team trades yet)"}
+    if team:
+        return {"price": team[0], "n": 1, "basis": "teams", "text": f"about {team[0]:g} P (one team-to-team trade)"}
+    return {"price": None, "n": 0, "basis": None, "text": None}
 
 
 def verdict(r: dict, ref: dict) -> dict | None:
-    """Is this price fair? An open ask or bid next to the card's reference price (dealer trades included)."""
+    """Is this price fair? An open ask or bid next to the card's fair price (reference_price)."""
     if r["kind"] not in ("ask", "bid") or not ref.get("price") or not r["price"]:
         return None
     x = r["price"] / ref["price"]
@@ -316,9 +343,8 @@ def verdict(r: dict, ref: dict) -> dict | None:
         flag = "high" if x > 1.5 else "bargain" if x < 0.75 else "fair"
     else:
         flag = "generous" if x > 1.25 else "low" if x < 0.6 else "fair"
-    trades = f"{ref['n']} public trade{'s' if ref['n'] != 1 else ''}"
-    return {"ratio": round(x, 2), "flag": flag, "reference": ref["price"], "n": ref["n"],
-            "text": f"{x:.1f}x the reference ({ref['price']:g} P, median of the last {trades})"}
+    return {"ratio": round(x, 2), "flag": flag, "reference": ref["price"], "n": ref["n"], "basis": ref.get("basis"),
+            "text": f"{x:.1f}x the fair price ({ref['price']:g} P: {ref.get('text') or 'no text'})"}
 
 
 def source_url(vid: str) -> str:
@@ -631,6 +657,48 @@ def counter(r: dict, vid: str | None) -> dict | None:
     return None
 
 
+def negotiations(ref: str, offers: list, fair, vid: str | None, n: int = 3) -> dict:
+    """Talk it out on our venue: for each team that publicly sells the card (buy side) or bids for it (sell side), the
+    exact calls a bot makes (kit/bazaar_sdk.py open_thread and say): open a thread with that team on our venue, then a
+    first structured offer at the fair price (to a team, a message carries `offer` = {give, want}, not `price`). A deal
+    reached in that thread settles on our venue. Only teams the public feed attributes; never Team 3 itself (a team
+    cannot trade on its own venue)."""
+    out = {"buy": [], "sell": []}
+    if not vid:
+        return out
+    fair = round(fair) if fair else None
+    for side, kind, best in (("buy", "ask", min), ("sell", "bid", max)):
+        by_team = {}
+        for r in offers:
+            if r["kind"] == kind and r["ref"] == ref and not r["to"] and isinstance(r["team"], str) \
+                    and TEAM_RE.match(r["team"]) and r["team"] != US and r["price"]:
+                by_team.setdefault(r["team"], []).append(r["price"])
+        rows = sorted(((best(ps), t) for t, ps in by_team.items()), key=lambda x: (x[0] if side == "buy" else -x[0], x[1]))
+        for theirs, team in rows[:n]:
+            price = max(1, round(min(fair, theirs) if side == "buy" else max(fair, theirs)) if fair else round(theirs))
+            if side == "buy":
+                text, offer = f"Hi, I'd buy your {ref} at {price} P", {"give": {"cash": price}, "want": {"cards": [ref]}}
+            else:
+                text, offer = (f"Hi, I'd sell you my {ref} at {price} P",
+                               {"give": {"assets": [f"<your {ref} asset id>"]}, "want": {"cash": price}})
+            out[side].append({"team": team, "their_price": theirs, "price": price, "calls": [
+                {"method": "POST", "path": "/api/threads", "body": {"with": team, "venue": vid}},
+                {"method": "POST", "path": "/api/threads/{id}/messages", "body": {"text": text, "offer": offer}}]})
+    return out
+
+
+def suggested_bid(ref: str, card: dict, vid: str | None) -> dict | None:
+    """The bid we suggest to someone missing the card: the cheaper of the lowest public ask and the fair price, else
+    the catalog's book value; with the ready-to-post order for our venue."""
+    ask, fair = (card.get("best_ask") or {}).get("price"), (card.get("reference") or {}).get("price")
+    known = [x for x in (ask, fair) if x]
+    price = max(1, round(min(known))) if known else card.get("book")
+    if not price or not vid:
+        return None
+    return {"price": price, "basis": "ask" if known and ask and round(ask) == price else "fair" if known else "book",
+            "order": order("bid", ref, price, vid)}
+
+
 def public_view(snap: dict) -> dict:
     """The PUBLIC snapshot, cut out of the private one by whitelisting. Open offers are public in every venue's book,
     so they are shown per card and per team (with the team behind them when the feed says so), each with its source
@@ -659,9 +727,14 @@ def public_view(snap: dict) -> dict:
                                 "source": r["source"], "accept": accept_call(r), "counter": counter(r, vid)})
     pub_cards = {}
     for ref, c in cards.items():
-        pub_cards[ref] = {**{k: c.get(k) for k in ("ref", "name", "rarity", "set", "print_run", "minted")},
+        public = [r for r in c.get("offers") or [] if not r["to"]]
+        pub_cards[ref] = {**{k: c.get(k) for k in ("ref", "name", "rarity", "set", "print_run", "minted", "book")},
                           "best_ask": c.get("best_ask"), "best_bid": c.get("best_bid"), "reference": c.get("reference"),
-                          "recent": [{k: t.get(k) for k in ("settlement", "tick", "price", "qty", "venue", "dealer")}
+                          "for_sale": sum(1 for r in public if r["kind"] == "ask" and r["ref"] == ref),
+                          "wanted": sum(1 for r in public if r["kind"] == "bid" and r["ref"] == ref),
+                          "suggested_bid": suggested_bid(ref, c, vid),
+                          "negotiate": negotiations(ref, c.get("offers") or [], (c.get("reference") or {}).get("price"), vid),
+                          "recent": [{k: t.get(k) for k in ("settlement", "tick", "price", "qty", "venue", "dealer", "side")}
                                      for t in c.get("recent") or []],
                           "offers": [brief(r) for r in c.get("offers") or []]}
     teams = [{**{k: t.get(k) for k in ("team", "maker", "name", "rank", "score", "album_filled", "album_slots",
@@ -887,7 +960,8 @@ def handler(scope: str):
             with LOCK:
                 snap, body, err, updated = STATE[scope], STATE[scope + "_bytes"], STATE["error"], STATE["updated"]
             if path in ("/", "/index.html"):
-                return self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+                page = PAGE if scope == "public" else PRIVATE_PAGE
+                return self._send(200, page.read_bytes(), "text/html; charset=utf-8")
             if path == "/healthz":
                 age = round(time.time() - updated, 1) if updated else None
                 return self._send(200, json.dumps({"ok": snap is not None and not err, "scope": scope, "age_s": age,

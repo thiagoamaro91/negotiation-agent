@@ -280,9 +280,78 @@ class Prices(unittest.TestCase):
         r = cel.recent_prices(events)["LAV-01"]
         self.assertEqual([x["price"] for x in r], [10, 30, 9, 8, 7, 6, 5])
         self.assertEqual(r[0]["qty"], 2)
-        self.assertEqual(cel.reference_price(r), {"price": 9, "n": 5})
+        self.assertEqual(cel.reference_price(r), {"price": 9, "n": 5, "basis": "teams",
+                                                  "text": "about 9 P (last team-to-team trades: 10, 30, 9, 8, 7)"})
         self.assertNotIn("LAV-02", cel.recent_prices(events))
-        self.assertEqual(cel.reference_price([]), {"price": None, "n": 0})
+        self.assertEqual(cel.reference_price([]), {"price": None, "n": 0, "basis": None, "text": None})
+
+
+class FairPrice(unittest.TestCase):
+    def test_dealer_trades_never_mix_with_team_trades(self):
+        events = [settle(1, [item(1, "SAL-01", "t02", "t05")], 9, venue="v02"),
+                  settle(2, [item(2, "SAL-01", "t04", "t06")], 7, venue="rastro"),
+                  settle(3, [item(3, "SAL-01", "t13", "abuela")], 6, venue=None, persona="abuela"),  # abuela buys
+                  settle(4, [item(4, "SAL-01", "abuela", "t09")], 12, venue=None, persona="abuela")]  # abuela sells
+        r = cel.recent_prices(events)["SAL-01"]
+        self.assertEqual([x["side"] for x in r], ["dealer_sells", "dealer_buys", "team", "team"])
+        fair = cel.reference_price(r)
+        self.assertEqual((fair["price"], fair["n"], fair["basis"]), (8, 2, "teams"))
+        self.assertEqual(fair["text"], "about 8 P (last team-to-team trades: 7, 9)")
+
+    def test_fewer_than_two_team_trades_fall_back_to_dealer_prices_and_say_so(self):
+        events = [settle(1, [item(1, "SAL-01", "t02", "t05")], 9, venue="v02"),
+                  settle(3, [item(3, "SAL-01", "t13", "abuela")], 6, venue=None, persona="abuela"),
+                  settle(4, [item(4, "SAL-01", "abuela", "t09")], 12, venue=None, persona="abuela")]
+        fair = cel.reference_price(cel.recent_prices(events)["SAL-01"])
+        self.assertEqual((fair["price"], fair["basis"]), (6, "dealer_buys"))
+        self.assertEqual(fair["text"], "Abuela pays about 6 P for it; Abuela sells it for about 12 P (no team-to-team trades yet)")
+        one = cel.reference_price(cel.recent_prices(events[:1])["SAL-01"])
+        self.assertEqual((one["price"], one["n"], one["text"]), (9, 1, "about 9 P (one team-to-team trade)"))
+
+    def test_a_dealer_settlement_without_persona_is_still_a_dealer_trade(self):
+        events = [settle(1, [item(1, "SAL-01", "t02", "t05")], 9, venue="v02"),
+                  settle(2, [item(2, "SAL-01", "t04", "t06")], 7, venue="rastro"),
+                  settle(3, [item(3, "SAL-01", "t13", "abuela")], 2, venue=None)]  # no persona field
+        r = cel.recent_prices(events)["SAL-01"]
+        self.assertEqual((r[0]["side"], r[0]["dealer"]), ("dealer_buys", "abuela"))
+        self.assertEqual(cel.reference_price(r)["price"], 8)
+
+    def test_suggested_bid_is_the_cheaper_of_the_lowest_ask_and_the_fair_price(self):
+        self.assertEqual(cel.suggested_bid("SAL-01", {"best_ask": {"price": 7}, "reference": {"price": 9}}, "v20")["price"], 7)
+        self.assertEqual(cel.suggested_bid("SAL-01", {"best_ask": {"price": 40}, "reference": {"price": 9}}, "v20")["price"], 9)
+        b = cel.suggested_bid("SAL-01", {"best_ask": None, "reference": {"price": None}, "book": 10}, "v20")
+        self.assertEqual((b["price"], b["basis"], b["order"]["body"]["give"]), (10, "book", {"cash": 10}))
+        self.assertIsNone(cel.suggested_bid("SAL-01", {"book": 10}, None))
+
+
+class Negotiate(unittest.TestCase):
+    def rows(self):
+        return cel.consolidate(cel.venue_rows(VENUES), {"rastro": [
+            offer(1, "ma", "rastro", ask("SAL-01", 40, 1)), offer(2, "mb", "rastro", ask("SAL-01", 8, 2)),
+            offer(3, "mc", "rastro", ask("SAL-01", 5, 3)), offer(4, "md", "rastro", ask("SAL-01", 6, 4), to="t09"),
+            offer(5, "me", "rastro", ask("SAL-01", 7, 5)), offer(6, "mf", "rastro", bid("SAL-01", 11))]},
+            {1: "t05", 2: "t07", 4: "t09", 5: cel.US, 6: "t12"}, {}, {})
+
+    def test_thread_calls_on_our_venue_with_attributed_teams_only(self):
+        n = cel.negotiations("SAL-01", self.rows(), 9, "v20")
+        self.assertEqual([(x["team"], x["their_price"], x["price"]) for x in n["buy"]], [("t07", 8, 8), ("t05", 40, 9)])
+        self.assertEqual(n["buy"][1]["calls"], [
+            {"method": "POST", "path": "/api/threads", "body": {"with": "t05", "venue": "v20"}},
+            {"method": "POST", "path": "/api/threads/{id}/messages",
+             "body": {"text": "Hi, I'd buy your SAL-01 at 9 P", "offer": {"give": {"cash": 9}, "want": {"cards": ["SAL-01"]}}}}])
+        self.assertEqual(n["sell"][0]["team"], "t12")
+        self.assertEqual(n["sell"][0]["calls"][1]["body"],
+                         {"text": "Hi, I'd sell you my SAL-01 at 11 P",
+                          "offer": {"give": {"assets": ["<your SAL-01 asset id>"]}, "want": {"cash": 11}}})
+
+    def test_only_team_ids_get_thread_calls(self):
+        rows = cel.consolidate(cel.venue_rows(VENUES), {"rastro": [offer(7, "mz", "rastro", ask("SAL-01", 6, 7))]},
+                               {7: "abuela"}, {}, {})
+        self.assertEqual(cel.negotiations("SAL-01", rows, 9, "v20"), {"buy": [], "sell": []})
+
+    def test_no_venue_no_calls_and_no_fair_price_uses_their_price(self):
+        self.assertEqual(cel.negotiations("SAL-01", self.rows(), 9, None), {"buy": [], "sell": []})
+        self.assertEqual([x["price"] for x in cel.negotiations("SAL-01", self.rows(), None, "v20")["buy"]], [8, 40])
 
 
 class Snapshots(unittest.TestCase):
@@ -321,8 +390,12 @@ class Snapshots(unittest.TestCase):
 
     def test_public_card_is_this_price_fair(self):
         c4 = cel.public_view(snapshot())["cards"]["LAV-04"]
-        self.assertEqual(c4["reference"], {"price": 9, "n": 3})
-        self.assertEqual([(t["settlement"], t["dealer"]) for t in c4["recent"]], [(12, "abuela"), (11, "abuela"), (10, "abuela")])
+        self.assertEqual(c4["reference"], {"price": 9, "n": 3, "basis": "dealer_sells",
+                                           "text": "Abuela sells it for about 9 P (no team-to-team trades yet)"})
+        self.assertEqual([(t["settlement"], t["dealer"], t["side"]) for t in c4["recent"]],
+                         [(12, "abuela", "dealer_sells"), (11, "abuela", "dealer_sells"), (10, "abuela", "dealer_sells")])
+        self.assertEqual((c4["for_sale"], c4["wanted"], c4["suggested_bid"]["price"]), (1, 1, 9))
+        self.assertEqual([x["team"] for x in c4["negotiate"]["buy"]], ["t18"])
         bid4 = next(o for o in c4["offers"] if o["kind"] == "bid")
         self.assertEqual((bid4["verdict"]["ratio"], bid4["verdict"]["flag"]), (0.56, "low"))
 
@@ -346,6 +419,18 @@ class Snapshots(unittest.TestCase):
         self.assertEqual({m["kind"] for m in pub["matches"]}, {"cross", "mirror", "near"})
         self.assertTrue(any(m["kind"] == "spare" for m in snap["matches"]))  # the private side does have them
         self.assertNotIn("holds", json.dumps(pub))
+
+    def test_public_page_does_one_job(self):
+        page = cel.PAGE.read_text(encoding="utf-8")
+        for must in ("Missing a card?", "Which card are you missing?", "Copy order for your agent",
+                     "Negotiate on La Celestina", "Cards people are looking for", "/api/celestina.json",
+                     "Every number comes from the public game feed.", "post your bid on ${esc(v)} instead"):
+            self.assertIn(must, page)
+        # the private and busy views stay off the public page (they may live in the JSON and the private page)
+        for gone in ("D.teams", "D.matches", "D.venues", "market_test", "D.invitations", "holders", "<table"):
+            self.assertNotIn(gone, page)
+        # a failed clipboard write selects the text instead
+        self.assertRegex(page, r"catch \{\s*const r = document\.createRange\(\); r\.selectNodeContents\(pre\);")
 
     def test_public_snapshot_does_not_depend_on_the_holder_map(self):
         snap = snapshot()
@@ -393,7 +478,7 @@ class Orders(unittest.TestCase):
         r = {"kind": "ask", "price": 40}
         v = cel.verdict(r, {"price": 9, "n": 5})
         self.assertEqual((v["ratio"], v["flag"]), (4.44, "high"))
-        self.assertTrue(v["text"].startswith("4.4x the reference (9 P"))
+        self.assertTrue(v["text"].startswith("4.4x the fair price (9 P"))
         self.assertEqual(cel.verdict({"kind": "bid", "price": 9}, {"price": 9, "n": 1})["flag"], "fair")
         self.assertEqual(cel.verdict({"kind": "ask", "price": 5}, {"price": 9, "n": 1})["flag"], "bargain")
         self.assertIsNone(cel.verdict(r, {"price": None, "n": 0}))
@@ -454,7 +539,24 @@ class Server(unittest.TestCase):
             urllib.request.urlopen(self.base + "/api/card/..%2Fetc.json")
         self.assertEqual(cm.exception.code, 404)
         with urllib.request.urlopen(self.base + "/") as r:
-            self.assertIn(b"La Celestina", r.read())
+            page = r.read().decode()
+        self.assertIn("Missing a card?", page)
+        self.assertNotIn("holders", page)
+        self.assertNotIn('type="password"', page)
+
+    def test_private_handler_serves_the_private_page(self):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), cel.handler("private"))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            with urllib.request.urlopen(base + "/") as r:
+                self.assertIn("PRIVATE", r.read().decode())
+            with urllib.request.urlopen(base + "/api/celestina.json") as r:
+                self.assertIsNone(r.headers["Access-Control-Allow-Origin"])
+                self.assertEqual(json.loads(r.read())["scope"], "private")
+        finally:
+            srv.shutdown()
+            srv.server_close()
 
     def test_rate_limit(self):
         lim = cel.Limiter(1.0, 3.0)

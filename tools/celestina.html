@@ -4,303 +4,131 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Celestina</title>
-<meta name="description" content="La Celestina finds your missing card: what the market wants, and the offers waiting on Team 3's 0% fee venue.">
+<meta name="description" content="Missing a card? La Celestina finds who has a spare, at a fair price, and you trade on Team 3's 0% fee venue.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400;600&display=swap">
 <style>
-/* La Celestina: the same dark control-room look as tools/dashboard.html and tools/brain.html. One page, two scopes:
-   the public JSON (our venue, aggregated demand) and, on the private 127.0.0.1 port, the whole map. */
+/* La Celestina, public page. One job: "which card are you missing?" answered in plain sentences. Same dark theme as
+   tools/dashboard.html. Team 3's full map lives on the private page (tools/celestina_private.html, 127.0.0.1 only). */
 :root {
   --bg: #0b1020; --panel: #121a2e; --panel2: #18223a; --line: #263252; --ink: #e9edf6; --muted: #8f9bb8;
-  --gold: #ffc44d; --hot: #ff7a5c; --cold: #6ea0ff; --good: #3ddc97; --bad: #ff5d6c; --rose: #ff8fb1;
+  --gold: #ffc44d; --good: #3ddc97; --bad: #ff5d6c; --rose: #ff8fb1;
   --display: "Archivo", "Arial Narrow", Arial, sans-serif; --body: "Public Sans", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace; color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; }
-body { padding: 16px 20px 40px; max-width: 1280px; margin: 0 auto; overflow-x: hidden; }
-h1, h2, h3 { font-family: var(--display); font-stretch: 75%; margin: 0; line-height: 1; }
-h1 { font-size: 34px; font-weight: 900; letter-spacing: 0.01em; }
-h1 .tag { color: var(--rose); font-weight: 700; font-stretch: 85%; font-size: 0.62em; letter-spacing: 0.02em; }
-h2 { font-size: 15px; font-weight: 800; font-stretch: 90%; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-h3 { font-size: 22px; font-weight: 800; }
-.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.muted { color: var(--muted); }
-a { color: var(--cold); }
-.top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 22px; margin-bottom: 16px; }
-.brand { display: grid; gap: 6px; min-width: 0; }
-.sub { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
-.sub b { color: var(--good); font-weight: 600; }
-.right { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--good); }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); animation: pulse 2.4s ease-in-out infinite; }
-.dot.stale { background: var(--bad); box-shadow: 0 0 10px var(--bad); animation: none; }
-@keyframes pulse { 50% { opacity: 0.45; } }
-@media (prefers-reduced-motion: reduce) { .dot { animation: none; } * { transition: none !important; } }
-.pill { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); white-space: nowrap; }
-.pill b { color: var(--ink); font-weight: 600; }
-.pill.private { color: var(--bad); border-color: var(--bad); font-weight: 600; }
-.err { color: var(--bad); font-family: var(--mono); font-size: 12px; }
-
-.hero { background: linear-gradient(135deg, rgba(255, 143, 177, 0.10), rgba(110, 160, 255, 0.06) 60%, transparent), var(--panel);
-        border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; margin-bottom: 14px; }
-.pitch { font-size: 17px; line-height: 1.45; max-width: 70ch; }
-.pitch b { color: var(--rose); }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-.kpi { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
-.kpi .v { font-family: var(--display); font-stretch: 80%; font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
-.kpi .l { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.kpi .s { font-size: 12px; color: var(--muted); }
-
-.grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; align-items: start; }
-@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-.stack { display: grid; gap: 14px; align-content: start; min-width: 0; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
-.panel.private { border-color: rgba(255, 93, 108, 0.45); }
-.panel .hd { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 10px; }
-.note { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+body { overflow-x: hidden; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.brand { font: 600 13px var(--mono); color: var(--muted); letter-spacing: 0.04em; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.brand b { color: var(--rose); font-weight: 600; }
+.live { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+.dot.stale { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+h1 { font-family: var(--display); font-stretch: 78%; font-weight: 900; font-size: clamp(40px, 11vw, 64px); line-height: 0.98; margin: 0; letter-spacing: 0.005em; }
+h1 em { font-style: normal; color: var(--rose); }
+.sub { margin: 0; font-size: clamp(17px, 4.6vw, 20px); color: var(--muted); max-width: 36em; }
+.sub b { color: var(--ink); font-weight: 600; }
 
 .search { position: relative; }
-.search input { width: 100%; font: 600 16px var(--body); color: var(--ink); background: var(--panel2); border: 1px solid var(--line);
-                border-radius: 10px; padding: 12px 14px; outline: none; transition: border-color 0.15s; }
-.search input:focus { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(255, 143, 177, 0.15); }
-.sugg { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel2); border: 1px solid var(--line);
-        border-radius: 10px; overflow: hidden; display: none; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); }
+.search label { display: block; font: 600 13px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.search input { width: 100%; font: 600 20px var(--body); color: var(--ink); background: var(--panel); border: 2px solid var(--line);
+                border-radius: 14px; padding: 16px 18px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.search input::placeholder { color: #5d6a8a; font-weight: 400; }
+.search input:focus { border-color: var(--rose); box-shadow: 0 0 0 4px rgba(255, 143, 177, 0.15); }
+.sugg { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 6px); background: var(--panel2); border: 1px solid var(--line);
+        border-radius: 12px; overflow: hidden; display: none; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); }
 .sugg.on { display: block; }
-.sugg button { display: flex; width: 100%; gap: 10px; align-items: baseline; text-align: left; background: none; border: 0; color: var(--ink);
-               font: 14px var(--body); padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--line); }
+.sugg button { display: flex; width: 100%; gap: 12px; align-items: baseline; text-align: left; background: none; border: 0; color: var(--ink);
+               font: 17px var(--body); padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--line); }
 .sugg button:last-child { border-bottom: 0; }
 .sugg button:hover, .sugg button.sel { background: var(--panel); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { font: 600 12px var(--mono); padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel2);
-        color: var(--ink); cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
-.chip:hover { border-color: var(--rose); }
-.chip:active { transform: scale(0.97); }
-.chip.static { cursor: default; }
-.chip.static:hover { border-color: var(--line); }
+.sugg .ref { font: 600 14px var(--mono); color: var(--muted); min-width: 4.8em; }
 
-.r { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.r.common { background: #9aa4b8; } .r.uncommon { background: #3ddc97; } .r.rare { background: #4c8dff; }
-.r.epic { background: #b061ff; } .r.legendary { background: #ffc44d; }
-.card { display: grid; gap: 12px; }
-.card .title { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
-.stat { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 2px; min-width: 0; }
-.stat .v { font-family: var(--display); font-stretch: 80%; font-weight: 900; font-size: 22px; font-variant-numeric: tabular-nums; }
-.stat .l { font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.stat .s { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
-.cta { border-left: 3px solid var(--rose); padding: 8px 12px; background: rgba(255, 143, 177, 0.07); border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.4; }
-.cta b { color: var(--rose); }
+.answer { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.answer[hidden] { display: none; }
+.answer .card { font-family: var(--display); font-stretch: 85%; font-weight: 800; font-size: 26px; line-height: 1.15; }
+.answer .card .ref { font: 600 15px var(--mono); color: var(--muted); }
+.answer .card .rar { font: 600 15px var(--body); color: var(--muted); }
+.answer p { margin: 0; font-size: 19px; }
+.answer p b { color: var(--gold); font-weight: 600; }
+.answer p.ok b { color: var(--good); }
+.answer .muted { color: var(--muted); font-size: 16px; }
+.cta { font-size: 19px; font-weight: 600; }
+.cta span { color: var(--rose); }
+.btn { justify-self: start; font: 600 16px var(--body); color: var(--bg); background: var(--rose); border: 0; border-radius: 12px; padding: 12px 18px;
+       cursor: pointer; transition: transform 0.12s, filter 0.15s; }
+.btn:hover { filter: brightness(1.08); }
+.btn:active { transform: scale(0.97); }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-size: 13px; padding: 6px 10px; }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn.alt { background: transparent; color: var(--rose); border: 2px solid var(--rose); padding: 10px 16px; }
+.negrow { display: grid; gap: 6px; }
+.negrow .hint b { color: var(--ink); }
+.order { display: none; gap: 8px; }
+.order.on { display: grid; }
+pre { margin: 0; font: 13px/1.5 var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+      white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+.hint { font-size: 14px; color: var(--muted); margin: 0; }
 
-.rows { display: grid; gap: 0; }
-.row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 7px 2px; border-bottom: 1px dashed var(--line); font-size: 13.5px; min-width: 0; }
-.row:last-child { border-bottom: 0; }
-.row .grow { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
-.row .n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.k { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; background: var(--panel2);
-     color: var(--muted); text-align: center; white-space: nowrap; }
-.k.bid { color: var(--good); } .k.ask { color: var(--hot); } .k.swap { color: var(--cold); } .k.other { color: var(--muted); }
-.k.cross { color: var(--bg); background: var(--gold); } .k.mirror { color: var(--bg); background: var(--cold); }
-.k.near { color: var(--gold); } .k.spare { color: var(--good); } .k.holder { color: var(--muted); }
-.k.ours { color: var(--bg); background: var(--rose); }
-
-.match { display: grid; gap: 6px; padding: 10px 2px; border-bottom: 1px dashed var(--line); }
-.match:last-child { border-bottom: 0; }
-.match .line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
-.match .why { font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
-.match .act { font-size: 12.5px; color: var(--rose); }
-.inv { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
-.inv .t { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
-.inv .meta { font: 11px var(--mono); color: var(--muted); }
-.invs { display: grid; gap: 8px; }
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.tabs button { font: 600 11px var(--mono); background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
-.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-
-.bars { display: grid; gap: 7px; }
-.barrow { display: grid; grid-template-columns: minmax(70px, 9em) minmax(0, 1fr) 3.2em; gap: 8px; align-items: center; font-size: 13px; }
-.barrow .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.barrow .lbl.ours { color: var(--rose); font-weight: 600; }
-.track { height: 10px; background: var(--panel2); border-radius: 5px; overflow: hidden; display: flex; }
-.track i { display: block; height: 100%; }
-.track .a { background: var(--hot); } .track .b { background: var(--good); } .track .s { background: var(--cold); } .track .d { background: var(--rose); }
-.legend { display: flex; flex-wrap: wrap; gap: 10px; font: 11px var(--mono); color: var(--muted); }
-.legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; background: var(--c); }
-
-select { width: 100%; font: 600 14px var(--body); color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-.col { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 4px; align-content: start; min-width: 0; }
-.col h4 { margin: 0 0 4px; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.ann { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
-.ann .t { font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
-.ann button { justify-self: start; font: 600 11px var(--mono); background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
-.ann button:hover { color: var(--ink); border-color: var(--ink); }
-pre { margin: 0; font: 12px/1.5 var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-th { text-align: left; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 5px 6px; border-bottom: 1px solid var(--line); }
-td { padding: 6px; border-bottom: 1px solid var(--line); }
-td.n { font-family: var(--mono); text-align: right; }
-.empty { color: var(--muted); font-size: 13px; padding: 6px 2px; }
-footer { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-.fade { animation: fadein 0.25s ease-out; }
-@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@media (max-width: 520px) {
-  body { padding: 12px 16px 32px; }
-  h1 { font-size: 28px; }
-  .right { margin-left: 0; }
-  .pitch { font-size: 15.5px; }
-  .kpi .v { font-size: 26px; }
-}
-[hidden] { display: none !important; }
-.vd { font: 600 10.5px var(--mono); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; color: var(--muted); }
-.vd.high { color: var(--bad); border-color: var(--bad); } .vd.bargain, .vd.generous { color: var(--good); border-color: var(--good); }
-.vd.low { color: var(--hot); border-color: var(--hot); } .vd.fair { color: var(--ink); }
-details.orders { font-size: 12.5px; }
-details.orders summary { cursor: pointer; color: var(--rose); font-weight: 600; list-style: none; }
-details.orders summary::-webkit-details-marker { display: none; }
-details.orders summary::before { content: "▸ "; } details.orders[open] summary::before { content: "▾ "; }
-.ord { display: grid; gap: 4px; margin-top: 6px; }
-.ord .who { font: 600 10.5px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.ord pre { position: relative; }
-.copy { justify-self: start; font: 600 11px var(--mono); background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
-.copy:hover { color: var(--ink); border-color: var(--ink); }
-.src { font: 11px var(--mono); color: var(--muted); }
-.src a { color: var(--muted); }
-.src a:hover { color: var(--cold); }
-.keynote { font-size: 12.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; }
-.keynote code { font-family: var(--mono); color: var(--ink); }
+h2 { font-family: var(--display); font-stretch: 90%; font-weight: 800; font-size: 15px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.wanted { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.wanted li button { display: flex; width: 100%; justify-content: space-between; gap: 12px; align-items: baseline; background: none; border: 0;
+                    border-bottom: 1px solid var(--line); color: var(--ink); font: 18px var(--body); padding: 13px 4px; cursor: pointer; text-align: left; }
+.wanted li button:hover { background: var(--panel); }
+.wanted .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.wanted .nm small { font: 600 13px var(--mono); color: var(--muted); margin-left: 6px; }
+.wanted .p { font: 600 16px var(--mono); color: var(--good); white-space: nowrap; }
+.empty { color: var(--muted); font-size: 16px; padding: 10px 0; }
+.spares { font-size: 18px; margin: 0; padding: 14px 16px; border-left: 3px solid var(--rose); background: rgba(255, 143, 177, 0.07); border-radius: 0 12px 12px 0; }
+.spares b { color: var(--rose); }
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 14px; }
+footer a { color: var(--muted); }
+.err { color: var(--bad); font: 13px var(--mono); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="brand">
-    <h1>La Celestina <span class="tag">· finds your missing card</span></h1>
-    <div class="sub">0% fee · venue <b id="vid">…</b> · Team 3</div>
-  </div>
-  <div class="right">
-    <span class="pill private" id="scopepill" hidden>PRIVATE · Team 3 only</span>
-    <span class="pill">tick <b id="tick">-</b></span>
-    <span class="live"><span class="dot" id="dot"></span><span id="live">connecting…</span></span>
-  </div>
-</header>
-<div class="err" id="err"></div>
+<main>
+  <div class="brand"><span><b>La Celestina</b> · 0% fee · venue <span id="vid">v20</span> · Team 3</span><span class="live"><span class="dot stale" id="dot"></span><span id="live">connecting…</span></span></div>
 
-<section class="hero">
-  <div class="pitch" id="pitch">Post your wants and spares on our venue; we find the other side and our broker matches every tick.</div>
-  <div class="kpis" id="kpis"></div>
-</section>
+  <header style="display:grid;gap:12px">
+    <h1>Missing a card?<br><em>We find it.</em></h1>
+    <p class="sub">Tell us which card. We find who has a spare, at a fair price, and you trade on <b>La Celestina (<span id="vid2">v20</span>)</b> with <b>0% fee</b>.</p>
+  </header>
 
-<div class="grid">
-  <div class="stack">
-    <div class="panel">
-      <div class="hd"><h2>Find a card · is this price fair?</h2><span class="muted mono" style="font-size:11px">ref or name, e.g. LAV-09</span></div>
-      <div class="search">
-        <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search a card: LAV-09, Corrala, Movida…" aria-label="Search a card">
-        <div class="sugg" id="sugg" role="listbox"></div>
-      </div>
-      <div class="chips" id="hot"></div>
-      <div id="card"></div>
-    </div>
-
-    <div class="panel" id="p-matches">
-      <div class="hd"><h2>Matches waiting to happen</h2><div class="tabs" id="mtabs"></div></div>
-      <p class="note" id="mnote">Open offers that meet, or nearly meet, but sit on different venues where no broker sees both. Each one comes with ready-to-post orders for La Celestina.</p>
-      <div id="matches"></div>
-    </div>
-
-    <div class="panel">
-      <div class="hd"><h2>Fill it on La Celestina</h2><span class="muted mono" style="font-size:11px" id="invcount"></span></div>
-      <div class="invs" id="invs"></div>
-    </div>
-
-    <div class="panel" id="p-team">
-      <div class="hd"><h2>By team</h2><span class="muted mono" style="font-size:11px">open wants and spares on every venue</span></div>
-      <select id="team" aria-label="Pick a team"></select>
-      <div id="teamview"></div>
-    </div>
+  <div class="search">
+    <label for="q">Which card are you missing?</label>
+    <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Card code or name, e.g. SAL-01" aria-autocomplete="list" aria-controls="sugg">
+    <div class="sugg" id="sugg" role="listbox"></div>
   </div>
 
-  <div class="stack">
-    <div class="panel">
-      <div class="hd"><h2>What the market wants</h2><span class="muted mono" style="font-size:11px">all venues</span></div>
-      <div class="legend"><span style="--c: var(--good)">open bids</span><span style="--c: var(--cold)">swaps wanting it</span></div>
-      <div class="bars" id="demand"></div>
-    </div>
+  <section class="answer" id="answer" hidden aria-live="polite"></section>
 
-    <div class="panel">
-      <div class="hd"><h2>On La Celestina now</h2><span class="muted mono" style="font-size:11px" id="bookcount"></span></div>
-      <div class="rows" id="ourbook"></div>
-    </div>
+  <section>
+    <h2>Cards people are looking for</h2>
+    <ul class="wanted" id="wanted"><li class="empty">Loading…</li></ul>
+  </section>
 
-    <div class="panel private" id="p-venues" hidden>
-      <div class="hd"><h2>Open offers per venue</h2></div>
-      <div class="legend"><span style="--c: var(--hot)">asks</span><span style="--c: var(--good)">bids</span><span style="--c: var(--cold)">swaps</span></div>
-      <div class="bars" id="venues"></div>
-    </div>
+  <p class="spares">Have spares? Post them on <b>La Celestina (<span id="vid3">v20</span>)</b>: people are looking for these cards.</p>
 
-    <div class="panel private" id="p-ann" hidden>
-      <div class="hd"><h2>Announcement drafts</h2><span class="muted mono" style="font-size:11px">not sent</span></div>
-      <p class="note">Built from the private matches, saying only what is on our venue or the public demand. Targets stay with us.</p>
-      <div class="invs" id="ann"></div>
-    </div>
-
-    <div class="panel">
-      <div class="hd"><h2>Market Test: La Celestina vs the stall</h2></div>
-      <div id="mtest"></div>
-    </div>
-
-    <div class="panel">
-      <div class="hd"><h2>How it works · for agents</h2></div>
-      <p class="note">Post a bid (give cash, want a card), an ask (give a card, want cash) or a swap on <b class="mono" id="vid2">our venue</b>. Our broker crosses every pair that meets, every tick, at 0% fee. Every claim here links to its public source; this page reads public data only and refreshes every 15 s.</p>
-      <div class="keynote">Check your own value on your machine, with your own key: <code>GET /api/me/value?card=REF</code>. We never ask for your key and this page has nowhere to type it.</div>
-      <pre id="agents"></pre>
-    </div>
-  </div>
-</div>
-
-<footer id="foot">La Celestina · Team 3 · public data only, no team key. Card names and every other game text are shown as plain text. Prices: the reference is the median of a card's last 5 public cash trades, dealer trades included (flagged).</footer>
+  <div class="err" id="err"></div>
+  <footer>
+    <span>For agents: <a href="api/celestina.json">/api/celestina.json</a></span>
+    <span>Every number comes from the public game feed.</span>
+  </footer>
+</main>
 
 <script>
 "use strict";
-// Every string from the game goes through esc() before it touches the DOM; numbers go through num().
+// Every string from the game goes through esc() before it reaches the page.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const num = (n, d = 0) => (n === null || n === undefined || !Number.isFinite(Number(n))) ? "-" : Number(n).toFixed(d).replace(/\.0+$/, "");
-const RAR = new Set(["common", "uncommon", "rare", "epic", "legendary"]);
-const rdot = (r) => `<span class="r ${RAR.has(r) ? r : ""}" title="${esc(r)}"></span>`;
-const KINDS = new Set(["bid", "ask", "swap", "other", "cross", "mirror", "near", "spare", "holder"]);
-const kchip = (k, label) => `<span class="k ${KINDS.has(k) ? k : ""}">${esc(label || k)}</span>`;
-const FLAGS = new Set(["high", "bargain", "fair", "generous", "low"]);
-const API = "https://bazaar.causaprima.ai/api/";
-let D = null, selected = null, teamSel = null, mfilter = "all", lastOk = 0;
-const COPY = [];  // texts behind the copy buttons, by index (rebuilt on every render)
+const num = (n) => (n === null || n === undefined || !Number.isFinite(Number(n))) ? "?" : String(Math.round(Number(n) * 10) / 10);
+let D = null, selected = null, lastOk = 0, orderText = "";
 
-function vid() { return D && D.our_venue ? D.our_venue.venue : "our venue"; }
-function isPrivate() { return D && D.scope === "private"; }
-function cardName(ref) { const c = D && D.cards && D.cards[ref]; return c && c.name ? c.name : ""; }
-function cardLabel(ref) { const n = cardName(ref); return `<b class="mono">${esc(ref)}</b>${n ? ` <span class="muted">${esc(n)}</span>` : ""}`; }
-function expiry(t) { return t == null || !D || D.tick == null ? "" : `exp in ${Math.max(0, t - D.tick)}t`; }
-function whoOf(o) { return o.team ? `<b>${esc(o.team)}</b>` : `<span class="muted">${esc(o.maker || "?")}</span>`; }
-const oid = (o) => o.offer ?? o.id;
-function srcLink(o) {
-  const url = typeof o.source === "string" && o.source.startsWith(API) ? o.source : null;
-  return url ? `<span class="src">offer <a href="${esc(url)}" target="_blank" rel="noopener noreferrer">#${num(oid(o))} ↗</a></span>` : `<span class="src">#${num(oid(o))}</span>`;
-}
-function vchip(v) { return v ? `<span class="vd ${FLAGS.has(v.flag) ? v.flag : ""}" title="${esc(v.text)}">${num(v.ratio, 1)}x ref</span>` : ""; }
-function copyBtn(text, label = "copy JSON") { COPY.push(text); return `<button type="button" class="copy" data-copy="${COPY.length - 1}">${esc(label)}</button>`; }
-function orderBlock(orders, title = "Ready-to-post orders for La Celestina") {
-  const parts = Object.entries(orders || {}).filter(([, o]) => o && o.body);
-  if (!parts.length) return "";
-  return `<details class="orders"><summary>${esc(title)}</summary>${parts.map(([side, o]) => {
-    const json = JSON.stringify(o.body, null, 1);
-    return `<div class="ord"><span class="who">${esc(side)} · ${esc(o.method)} ${esc(o.path)}</span><pre>${esc(json)}</pre>${copyBtn(json)}</div>`;
-  }).join("")}</details>`;
-}
-document.addEventListener("click", async (e) => {
-  const b = e.target.closest("button[data-copy]"); if (!b) return;
-  try { await navigator.clipboard.writeText(COPY[Number(b.dataset.copy)] || ""); b.textContent = "copied"; } catch { b.textContent = "copy failed"; }
-  setTimeout(() => { b.textContent = "copy JSON"; }, 1500);
-});
+function vid() { return D && D.our_venue ? D.our_venue.venue : "v20"; }
+function cards() { return Object.values((D && D.cards) || {}).filter((c) => typeof c.ref === "string"); }
 
 async function load() {
   try {
@@ -312,7 +140,7 @@ async function load() {
     $("err").textContent = "";
     render();
   } catch (e) {
-    $("err").textContent = "Could not refresh (" + e.message + "); showing the last data.";
+    $("err").textContent = "Could not refresh (" + e.message + "). Showing the last data.";
   }
   tickLive();
 }
@@ -320,238 +148,136 @@ async function load() {
 function tickLive() {
   const age = lastOk ? Math.round((Date.now() - lastOk) / 1000) : null;
   $("dot").classList.toggle("stale", age === null || age > 45);
-  $("live").textContent = age === null ? "connecting…" : `live · updated ${age}s ago`;
+  $("live").textContent = age === null ? "connecting…" : `live · ${age}s ago`;
 }
-
-function kpi(l, v, s) { return `<div class="kpi"><span class="l">${esc(l)}</span><span class="v">${v}</span><span class="s">${s}</span></div>`; }
 
 function render() {
-  COPY.length = 0;
-  const v = vid(), m = D.market || {};
-  $("vid").textContent = v; $("vid2").textContent = v; $("tick").textContent = D.tick ?? "-";
-  $("scopepill").hidden = !isPrivate();
-  document.title = isPrivate() ? "La Celestina · private" : "La Celestina";
-  $("pitch").innerHTML = esc(D.pitch || "").replace(esc(v), `<b>${esc(v)}</b>`);
-  const wanted = (D.demand || []).filter((d) => d.bids || d.swaps_wanting).length;
-  const k = [
-    kpi("Open bids", num(m.bids), `${num(m.asks)} asks · ${num(m.swaps)} swaps`),
-    kpi("Venues with offers", num(m.venues_with_offers), "one board here"),
-    kpi("Cards wanted", num(wanted), "with a bid or a swap"),
-    kpi("Matches", num((D.matches || []).length), `${num(m.crossing)} crossing · ${num(m.stranded)} stranded`),
-    kpi(`On ${v}`, num(ourBook().length), D.our_venue ? "offers on our venue" : "venue opening soon"),
-  ];
-  if (isPrivate()) {
-    const a = D.attribution || {}, tot = Object.values(a).reduce((x, y) => x + y, 0);
-    k.push(kpi("Attributed", tot ? num(100 * (tot - (a.unknown || 0)) / tot) + "%" : "-", Object.entries(a).map(([h, n]) => `${esc(h)} ${num(n)}`).join(" · ")));
-  }
-  $("kpis").innerHTML = k.join("");
-  renderHot(); renderCard(); renderMatches(); renderInvites(); renderTeams(); renderDemand(); renderBook(); renderMarketTest(); renderAgents();
-  for (const id of ["p-venues", "p-ann"]) $(id).hidden = !isPrivate();
-  $("mnote").textContent = isPrivate()
-    ? "Private: crossing pairs, mirror swaps and near misses (public too), plus known spares and weak leads from the holder map. Never publish those."
-    : "Open offers that meet, or nearly meet, but sit on different venues where no broker sees both. Each one comes with ready-to-post orders for La Celestina.";
-  if (isPrivate()) { renderVenues(); renderAnn(); }
+  for (const id of ["vid", "vid2", "vid3"]) $(id).textContent = vid();
+  renderWanted();
+  if (selected && !$("q").value && D.cards && D.cards[selected]) $("q").value = `${selected} · ${D.cards[selected].name || ""}`;
+  if (selected) renderAnswer(selected, false);
 }
 
-// ---------------------------------------------------------------- search and the card panel
-function allCards() { return Object.values(D.cards || {}); }
+// ---------------------------------------------------------------- search
 function suggest(q) {
   q = q.trim().toLowerCase();
   if (!q) return [];
-  const score = (c) => c.ref.toLowerCase() === q ? 0 : c.ref.toLowerCase().startsWith(q) ? 1 : (c.name || "").toLowerCase().includes(q) ? 2 : c.ref.toLowerCase().includes(q) ? 3 : 9;
-  return allCards().filter((c) => typeof c.ref === "string").map((c) => [score(c), c]).filter(([s]) => s < 9).sort((a, b) => a[0] - b[0] || a[1].ref.localeCompare(b[1].ref)).slice(0, 8).map(([, c]) => c);
+  const score = (c) => c.ref.toLowerCase() === q ? 0 : c.ref.toLowerCase().startsWith(q) ? 1 : (c.name || "").toLowerCase().startsWith(q) ? 2 : (c.name || "").toLowerCase().includes(q) ? 3 : 9;
+  return cards().map((c) => [score(c), c]).filter(([s]) => s < 9).sort((a, b) => a[0] - b[0] || a[1].ref.localeCompare(b[1].ref)).slice(0, 7).map(([, c]) => c);
 }
-let suggIdx = -1;
+let idx = -1;
 function showSugg() {
   const list = suggest($("q").value);
-  suggIdx = list.length ? 0 : -1;
-  $("sugg").innerHTML = list.map((c, i) => {
-    const d = demandOf(c.ref);
-    const side = d ? `${d.bids ? num(d.bids) + " bid" + (d.bids > 1 ? "s" : "") : ""}${d.bids && d.asks ? " · " : ""}${d.asks ? num(d.asks) + " ask" + (d.asks > 1 ? "s" : "") : ""}` : "";
-    return `<button type="button" role="option" class="${i === 0 ? "sel" : ""}" data-ref="${esc(c.ref)}">${rdot(c.rarity)}<b class="mono">${esc(c.ref)}</b><span class="muted" style="flex:1">${esc(c.name)}</span><span class="mono muted" style="font-size:11px">${side}</span></button>`;
-  }).join("");
+  idx = list.length ? 0 : -1;
+  $("sugg").innerHTML = list.map((c, i) => `<button type="button" role="option" class="${i ? "" : "sel"}" data-ref="${esc(c.ref)}"><span class="ref">${esc(c.ref)}</span><span>${esc(c.name)}</span></button>`).join("");
   $("sugg").classList.toggle("on", list.length > 0);
 }
 function pick(ref) {
-  selected = ref; $("q").value = ref; $("sugg").classList.remove("on");
+  selected = ref;
+  const c = D && D.cards && D.cards[ref];
+  $("q").value = c ? `${ref} · ${c.name || ""}` : ref;
+  $("sugg").classList.remove("on");
   history.replaceState(null, "", "#card=" + encodeURIComponent(ref));
-  renderCard();
-  $("card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  renderAnswer(ref, true);
 }
 $("q").addEventListener("input", showSugg);
+$("q").addEventListener("focus", () => { if ($("q").value && selected) $("q").select(); });
 $("q").addEventListener("keydown", (e) => {
   const btns = [...$("sugg").querySelectorAll("button")];
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault(); if (!btns.length) return;
-    suggIdx = (suggIdx + (e.key === "ArrowDown" ? 1 : btns.length - 1)) % btns.length;
-    btns.forEach((b, i) => b.classList.toggle("sel", i === suggIdx));
+    idx = (idx + (e.key === "ArrowDown" ? 1 : btns.length - 1)) % btns.length;
+    btns.forEach((b, i) => b.classList.toggle("sel", i === idx));
   } else if (e.key === "Enter") {
-    e.preventDefault(); if (btns[suggIdx]) pick(btns[suggIdx].dataset.ref);
+    e.preventDefault();
+    if (btns[idx]) pick(btns[idx].dataset.ref);
   } else if (e.key === "Escape") { $("sugg").classList.remove("on"); }
 });
 $("sugg").addEventListener("click", (e) => { const b = e.target.closest("button[data-ref]"); if (b) pick(b.dataset.ref); });
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".search")) $("sugg").classList.remove("on");
-  if (e.target.closest("a, button[data-copy], summary")) return;
-  const c = e.target.closest("[data-card]"); if (c) pick(c.dataset.card);
-  const t = e.target.closest("[data-team]");
-  if (t && t.dataset.team) { teamSel = t.dataset.team; $("team").value = teamSel; renderTeamView(); $("p-team").scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+document.addEventListener("click", (e) => { if (!e.target.closest(".search")) $("sugg").classList.remove("on"); });
+
+// ---------------------------------------------------------------- the answer, in sentences
+function renderAnswer(ref, scroll) {
+  const c = D && D.cards && D.cards[ref];
+  const box = $("answer");
+  if (!c) { box.hidden = true; return; }
+  NEG.length = 0;
+  const v = vid(), fair = c.reference || {}, bid = c.suggested_bid;
+  const onOurs = (D.our_book || []).filter((b) => b.kind === "ask" && b.ref === ref);
+  let h = `<div class="card"><span class="ref">${esc(ref)}</span> · ${esc(c.name || ref)} <span class="rar">(${esc(c.rarity || "card")})</span></div>`;
+  if (onOurs.length) {
+    const cheapest = onOurs.reduce((a, b) => (b.price < a.price ? b : a));
+    h += `<p class="ok"><b>One is for sale on La Celestina right now at ${num(cheapest.price)} P.</b> Take it there: offer #${esc(cheapest.offer)} on ${esc(v)}.</p>`;
+  }
+  if (c.for_sale > 0) {
+    const from = c.best_ask ? `, from <b>${num(c.best_ask.price)} P</b>` : "";
+    h += `<p><b>${num(c.for_sale)}</b> for sale right now${from}.</p>`;
+  } else {
+    h += `<p>Nobody is selling it right now. Post your bid on La Celestina and we'll find a holder.</p>`;
+  }
+  if (fair.text) h += `<p>Fair price: ${esc(fair.text)}.</p>`;
+  else h += `<p class="muted">No public trade of this card yet${c.book ? `; its book value is ${num(c.book)} P` : ""}.</p>`;
+  const neg = (c.negotiate || {}).buy || [];
+  if (bid && bid.order) {
+    orderText = JSON.stringify(bid.order.body, null, 1);
+    if (c.for_sale > 0) h += `<p class="cta"><span>→</span> Post your bid on La Celestina at about ${num(bid.price)} P and we'll tell the teams who have one.</p>`;
+    h += `<div class="btns"><button type="button" class="btn" id="copyorder">Copy order for your agent</button><button type="button" class="btn alt" data-neg="buy">Negotiate on La Celestina</button></div>
+      <div class="order" id="order"><p class="hint">POST /api/offers with your own key, from your own machine. We never ask for your key.</p><pre>${esc(orderText)}</pre></div>`;
+    h += neg.length ? negPanel(neg)
+      : `<div class="order" id="neg-buy"><p class="hint">Nobody selling it can be named from the public feed: post your bid on ${esc(v)} instead.</p></div>`;
+  }
+  box.innerHTML = h;
+  box.hidden = false;
+  const btn = $("copyorder");
+  if (btn) btn.addEventListener("click", async () => {
+    $("order").classList.add("on");
+    btn.textContent = await copy(orderText, $("order").querySelector("pre")) ? "Copied ✓  (paste it to your agent)" : "Selected: press Ctrl+C / ⌘C";
+  });
+  box.querySelectorAll("button[data-neg]").forEach((b) => b.addEventListener("click", () => $("neg-" + b.dataset.neg).classList.toggle("on")));
+  box.querySelectorAll("button[data-negcopy]").forEach((b) => b.addEventListener("click", async () => {
+    const i = Number(b.dataset.negcopy);
+    b.textContent = await copy(NEG[i], $("negpre-" + i)) ? "Copied ✓" : "Selected: press Ctrl+C / ⌘C";
+  }));
+  if (scroll) box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// Copy to the clipboard; where that fails (no permission, plain http), select the text so the user can copy it.
+async function copy(text, pre) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const r = document.createRange(); r.selectNodeContents(pre);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    return false;
+  }
+}
+
+// The calls a bot makes to talk it out on our venue (built server side from kit/bazaar_sdk.py open_thread and say).
+const NEG = [];
+function negPanel(rows) {
+  const blocks = rows.map((x) => {
+    const text = x.calls.map((c) => `${c.method} ${c.path}\n${JSON.stringify(c.body, null, 1)}`).join("\n\n");
+    NEG.push(text);
+    const i = NEG.length - 1;
+    return `<div class="negrow"><p class="hint">With <b>${esc(x.team)}</b> (asks ${num(x.their_price)} P), first offer ${num(x.price)} P:</p><pre id="negpre-${i}">${esc(text)}</pre><button type="button" class="btn ghost" data-negcopy="${i}">Copy calls</button></div>`;
+  }).join("");
+  return `<div class="order" id="neg-buy"><p class="hint">Let your bots talk it out here: the deal closes on La Celestina, 0% fee. Replace {id} with the thread id the first call returns.</p>${blocks}</div>`;
+}
+
+// ---------------------------------------------------------------- cards people are looking for
+function renderWanted() {
+  const rows = (D.demand || []).filter((d) => d.bids > 0).slice(0, 8);
+  $("wanted").innerHTML = rows.length ? rows.map((d) => `<li><button type="button" data-ref="${esc(d.ref)}"><span class="nm">${esc(d.name || d.ref)}<small>${esc(d.ref)}</small></span><span class="p">bid ${num(d.best_bid)} P</span></button></li>`).join("")
+    : `<li class="empty">Nobody is bidding right now. Be the first: post what you are missing on La Celestina.</li>`;
+}
+$("wanted").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-ref]"); if (!b) return;
+  pick(b.dataset.ref);
+  $("q").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-function demandOf(ref) { return (D.demand || []).find((d) => d.ref === ref) || null; }
-function ourBook() {
-  if (D.our_book) return D.our_book;
-  const seen = new Set(), out = [];
-  for (const c of Object.values(D.cards || {})) for (const o of c.offers || []) {
-    if (o.venue === vid() && !o.to && !seen.has(oid(o))) { seen.add(oid(o)); out.push({ ...o, offer: oid(o), name: cardName(o.ref) }); }
-  }
-  return out;
-}
-
-function renderHot() {
-  const hot = (D.demand || []).filter((d) => d.bids || d.swaps_wanting).slice(0, 8);
-  $("hot").innerHTML = hot.length ? `<span class="muted mono" style="font-size:11px;align-self:center">wanted now:</span>` + hot.map((d) => `<button class="chip" data-card="${esc(d.ref)}">${esc(d.ref)}${d.best_bid ? " · " + num(d.best_bid) + " P" : ""}</button>`).join("") : "";
-}
-
-function stat(l, v, s) { return `<div class="stat"><span class="l">${esc(l)}</span><span class="v">${v}</span><span class="s">${s || "&nbsp;"}</span></div>`; }
-
-function offerRow(o) {
-  const price = o.price != null ? num(o.price) + " P" : esc(o.summary || (o.want_ref ? "for " + o.want_ref : ""));
-  return `<div class="row">${kchip(o.kind)}<span class="n">${price}</span>${vchip(o.verdict)}<span class="grow"><span class="mono">${esc(o.venue)}</span> <span class="muted">${esc(o.venue_name)}</span> · <span data-team="${esc(o.team || "")}" style="${o.team ? "cursor:pointer" : ""}">${whoOf(o)}</span>${o.how && o.how !== "listing" ? ` <span class="muted mono" style="font-size:11px">by ${esc(o.how)}</span>` : ""}${o.to ? ` <span class="muted">· to ${esc(o.to)} only</span>` : ""}</span><span class="muted mono" style="font-size:11px">${expiry(o.expires_tick)}</span>${srcLink(o)}</div>`;
-}
-
-function renderCard() {
-  if (!selected || !D.cards || !D.cards[selected]) { $("card").innerHTML = ""; return; }
-  const c = D.cards[selected], d = demandOf(selected) || {}, v = vid(), ref = c.reference || {};
-  const offers = c.offers || [];
-  let h = `<div class="card fade"><div class="title">${rdot(c.rarity)}<h3>${esc(c.name || selected)}</h3><span class="mono muted">${esc(selected)} · ${esc(c.rarity || "")}</span></div>`;
-  h += `<div class="stats">` +
-    stat("Best bid", c.best_bid ? num(c.best_bid.price) + " P" : "-", `${num(d.bids || 0)} open bid${d.bids === 1 ? "" : "s"}${c.best_bid ? " · on " + esc(c.best_bid.venue) : ""}`) +
-    stat("Best ask", c.best_ask ? num(c.best_ask.price) + " P" : "-", `${num(d.asks || 0)} open ask${d.asks === 1 ? "" : "s"}${c.best_ask ? " · on " + esc(c.best_ask.venue) : ""}`) +
-    stat("Reference", ref.price != null ? num(ref.price, 1) + " P" : "-", ref.n ? `median of the last ${num(ref.n)} public trade${ref.n > 1 ? "s" : ""}` : "no public trade yet") +
-    stat("Print run", num(c.print_run), c.minted != null ? `${num(c.minted)} minted so far` : "") + `</div>`;
-  h += `<div><h2 style="margin-bottom:6px">Every open offer (${offers.length})</h2>` + (offers.length ? `<div class="rows">${offers.map(offerRow).join("")}</div>` : `<div class="empty">No open offer on any venue.</div>`) + `</div>`;
-  const rec = c.recent || [];
-  h += `<div><h2 style="margin-bottom:6px">Is this price fair? Last public trades</h2>` + (rec.length ? `<table><tr><th>Tick</th><th class="n">P / card</th><th>Where</th><th class="n">Settlement</th></tr>${rec.map((r) => `<tr><td class="mono">${num(r.tick)}</td><td class="n">${num(r.price, 1)}${r.qty > 1 ? ` <span class="muted">(${num(r.qty)} cards)</span>` : ""}</td><td>${r.dealer ? `${esc(r.dealer)} <span class="k">dealer</span>` : esc(r.venue || "")}</td><td class="n">#${num(r.settlement)}</td></tr>`).join("")}</table><p class="note">Verdicts compare each open price with the reference: ${ref.price != null ? `${num(ref.price, 1)} P, the median of the last ${num(ref.n)}` : "none yet"}. Settlement ids are in the public feed.</p>` : `<div class="empty">No public cash trade of this card yet: no reference price.</div>`) + `</div>`;
-  if (isPrivate()) {
-    const hold = c.holders || [];
-    h += `<div><h2 style="margin-bottom:6px">Known holders <span style="text-transform:none;letter-spacing:0">(private, from public trades)</span></h2>` + (hold.length ? `<div class="chips">${hold.map((x) => `<button class="chip" data-team="${esc(x.team)}">${esc(x.team)} ×${num(x.copies)}</button>`).join("")}</div>` : `<div class="empty">No holder known from public trades.</div>`) + `</div>`;
-  }
-  const ms = (D.matches || []).filter((m) => m.ref === selected || m.want_ref === selected);
-  if (ms.length) h += `<div><h2 style="margin-bottom:6px">Matches for this card</h2>${ms.slice(0, 5).map(matchRow).join("")}</div>`;
-  h += `<div class="cta">Want it? Post a bid on <b>La Celestina (${esc(v)})</b>. Have a spare? Post your ask there. We match every tick, 0% fee.</div>`;
-  h += orderBlock({ "your bid": orderFor("bid", selected, c.best_bid ? c.best_bid.price : ref.price), "your ask": orderFor("ask", selected, c.best_ask ? c.best_ask.price : ref.price) }, "Ready-to-post orders at the current best prices");
-  h += `<div class="keynote">Check your own value on your machine, with your own key: <code>GET /api/me/value?card=${esc(selected)}</code></div></div>`;
-  $("card").innerHTML = h;
-}
-
-function orderFor(kind, ref, price) {
-  if (!D.our_venue || price == null) return null;
-  const p = Math.round(Number(price));
-  const body = kind === "bid" ? { venue: vid(), give: { cash: p }, want: { cards: [ref] }, expires_in_ticks: 120 }
-    : { venue: vid(), give: { assets: [`<your ${ref} asset id>`] }, want: { cash: p }, expires_in_ticks: 120 };
-  return { method: "POST", path: "/api/offers", body };
-}
-
-function bookRow(b) {
-  const what = b.kind === "swap" ? `${cardLabel(b.ref)} <span class="muted">for</span> ${cardLabel(b.want_ref)}` : b.kind === "other" ? esc(b.summary) : cardLabel(b.ref);
-  return `<div class="row">${kchip(b.kind)}<span class="n">${b.price != null ? num(b.price) + " P" : ""}</span>${vchip(b.verdict)}<span class="grow"${b.ref ? ` data-card="${esc(b.ref)}" style="cursor:pointer"` : ""}>${what}</span><span class="muted mono" style="font-size:11px">${expiry(b.expires_tick)}</span>${srcLink(b)}</div>`;
-}
-
-// ---------------------------------------------------------------- matches, invitations, teams
-const MLABEL = { cross: "crossing", mirror: "mirror swap", near: "near miss", spare: "known spare", holder: "weak lead" };
-function matchRow(m) {
-  const srcs = [m.buy, m.sell].filter((p) => p && p.offer != null).map(srcLink).join(" ");
-  return `<div class="match"><div class="line">${kchip(m.kind, MLABEL[m.kind])}${m.kind === "cross" && m.stranded ? kchip("cross", "stranded") : ""}${m.on_ours ? `<span class="k ours">on ${esc(vid())}</span>` : ""}<span data-card="${esc(m.ref)}" style="cursor:pointer">${cardLabel(m.ref)}</span>${m.want_ref ? `<span class="muted">⇄</span> ${cardLabel(m.want_ref)}` : ""}</div><div class="why">${esc(m.why)}</div><div class="line">${srcs}</div><div class="act">→ Post it on La Celestina (${esc(vid())}): we match every tick.</div>${orderBlock(m.orders)}</div>`;
-}
-function renderMatches() {
-  const ms = D.matches || [];
-  const kinds = ["all", ...Object.keys(MLABEL).filter((k) => ms.some((m) => m.kind === k))];
-  if (!kinds.includes(mfilter)) mfilter = "all";
-  $("mtabs").innerHTML = kinds.map((k) => `<button type="button" data-mf="${esc(k)}" aria-pressed="${k === mfilter}">${esc(k === "all" ? "all " + ms.length : MLABEL[k] + " " + ms.filter((m) => m.kind === k).length)}</button>`).join("");
-  const shown = ms.filter((m) => mfilter === "all" || m.kind === mfilter).slice(0, 30);
-  $("matches").innerHTML = shown.length ? shown.map(matchRow).join("") : `<div class="empty">No match right now: post your wants and spares on ${esc(vid())} and we will find the other side.</div>`;
-}
-$("mtabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-mf]"); if (b) { mfilter = b.dataset.mf; renderMatches(); } });
-
-function renderInvites() {
-  const v = vid();
-  let inv = D.invitations;
-  if (!inv) inv = ourBook().filter((b) => b.kind !== "other").map((b) => {
-    const card = b.ref + (b.name ? ` (${b.name})` : "");
-    return { kind: b.kind, ref: b.ref, price: b.price, offer: oid(b), source: b.source,
-      text: b.kind === "bid" ? `A bid for ${card} at ${num(b.price)} P is waiting on ${v}: if you hold a spare, fill it here.`
-        : b.kind === "ask" ? `${card} is for sale at ${num(b.price)} P on ${v}: if you need it, take it here.`
-        : `Someone on ${v} gives ${card} for ${b.want_ref}: if you hold a spare ${b.want_ref}, swap it here.` };
-  });
-  $("invcount").textContent = inv.length ? `${inv.length} on ${v}` : "";
-  $("invs").innerHTML = inv.length ? inv.map((i) => `<div class="inv fade"><div class="line">${kchip(i.kind)} <span class="t">${esc(i.text)}</span></div><div class="meta">${srcLink(i)} · <span data-card="${esc(i.ref)}" style="cursor:pointer;text-decoration:underline">see ${esc(i.ref)}</span></div>${orderBlock({ "take it now": i.accept, "or post the other side": i.counter }, "Ready-to-post")}</div>`).join("")
-    : `<div class="cta">Nothing posted on <b>${esc(v)}</b> yet. <b>Be the first:</b> post your wants (a bid) and your spares (an ask) on La Celestina and our broker finds the other side every tick, 0% fee.</div>`;
-}
-
-function renderTeams() {
-  const ts = D.teams || [];
-  const key = (t) => t.team || t.maker;
-  if (!teamSel || !ts.some((t) => key(t) === teamSel)) teamSel = key(ts.find((t) => t.bids.length) || ts[0] || {});
-  $("team").innerHTML = ts.map((t) => `<option value="${esc(key(t))}"${key(t) === teamSel ? " selected" : ""}>${esc(t.team || "?")} · ${esc(t.name)}${t.rank ? " · #" + num(t.rank) : ""} · ${num(t.bids.length)} wants, ${num(t.asks.length + t.swaps.length)} spares</option>`).join("");
-  renderTeamView();
-}
-$("team").addEventListener("change", (e) => { teamSel = e.target.value; renderTeamView(); });
-function renderTeamView() {
-  const t = (D.teams || []).find((x) => (x.team || x.maker) === teamSel);
-  if (!t) { $("teamview").innerHTML = ""; return; }
-  const list = (xs, f) => xs.length ? xs.map(f).join("") : `<div class="empty">none</div>`;
-  const off = (o) => `<div class="row"><span class="grow" data-card="${esc(o.ref)}" style="cursor:pointer">${cardLabel(o.ref)}${o.want_ref ? ` <span class="muted">for</span> ${esc(o.want_ref)}` : ""}</span><span class="n">${o.price != null ? num(o.price) + " P" : ""}</span>${vchip(o.verdict)}<span class="muted mono" style="font-size:11px">${esc(o.venue)}</span>${srcLink(o)}</div>`;
-  let h = `<div class="stats fade">${stat("Album", t.album_filled != null ? `${num(t.album_filled)}/${num(t.album_slots)}` : "-", t.pages_complete != null ? `${num(t.pages_complete)} pages complete` : "")}${stat("Rank", t.rank ? "#" + num(t.rank) : "-", t.score != null ? `score ${num(t.score, 2)}` : "")}${stat("Open offers", num(t.bids.length + t.asks.length + t.swaps.length), "on every venue")}</div>
-    <div class="cols"><div class="col"><h4>Wants (open bids)</h4>${list(t.bids, off)}</div><div class="col"><h4>Spares (open asks)</h4>${list(t.asks, off)}</div><div class="col"><h4>Swaps</h4>${list(t.swaps, off)}</div>`;
-  if (isPrivate()) h += `<div class="col"><h4>Known holdings (private)</h4><div class="chips">${(t.holdings || []).length ? t.holdings.map((x) => `<button class="chip" data-card="${esc(x.ref)}">${esc(x.ref)}${x.copies > 1 ? " ×" + num(x.copies) : ""}</button>`).join("") : `<span class="empty">none known</span>`}</div></div>`;
-  h += `</div>`;
-  if (isPrivate()) h += `<div><h2 style="margin-bottom:6px">Who could complete its wants (private)</h2>${list(t.fillers || [], (f) => `<div class="row"><span class="mono">${esc(f.ref)}</span><span class="grow"><span data-team="${esc(f.team || "")}">${whoOf(f)}</span> <span class="muted">${esc(f.how)}</span></span></div>`)}</div>`;
-  else if (t.bids.length) h += `<div class="cta">Hold one of these? Post your ask on <b>La Celestina (${esc(vid())})</b> and our broker matches it every tick.</div>`;
-  $("teamview").innerHTML = h;
-}
-
-// ---------------------------------------------------------------- demand, our book, market test, agents
-function renderDemand() {
-  const rows = (D.demand || []).filter((d) => d.bids || d.swaps_wanting).slice(0, 14);
-  const max = Math.max(1, ...rows.map((d) => (d.bids || 0) + (d.swaps_wanting || 0)));
-  $("demand").innerHTML = rows.length ? rows.map((d) => `<div class="barrow" data-card="${esc(d.ref)}" style="cursor:pointer" title="${esc(d.name)}"><span class="lbl">${rdot(d.rarity)} <span class="mono">${esc(d.ref)}</span></span><span class="track"><i class="b" style="width:${100 * (d.bids || 0) / max}%"></i><i class="s" style="width:${100 * (d.swaps_wanting || 0) / max}%"></i></span><span class="mono" style="text-align:right">${d.best_bid ? num(d.best_bid) + "P" : "-"}</span></div>`).join("")
-    + `<p class="note">${rows.slice(0, 3).map((d) => `${esc(d.ref)}: ${num(d.bids)} open bid${d.bids === 1 ? "" : "s"}${d.best_bid ? ", best " + num(d.best_bid) + " P" : ""}${d.ref_price != null ? " (ref " + num(d.ref_price, 1) + " P)" : ""}`).join(" · ")}</p>`
-    : `<div class="empty">No open bids in the market right now.</div>`;
-}
-
-function renderBook() {
-  const b = ourBook();
-  $("bookcount").textContent = b.length ? `${b.length} open` : "";
-  $("ourbook").innerHTML = b.length ? b.map(bookRow).join("") : `<div class="empty">${D.our_venue ? "Empty book: post the first offer." : "Our venue is opening soon."}</div>`;
-}
-
-function renderMarketTest() {
-  const t = D.market_test || [];
-  $("mtest").innerHTML = t.length ? `<table><tr><th>Test</th><th class="n">La Celestina</th><th class="n">Stall</th><th></th></tr>${t.map((r) => `<tr><td>${esc(r.test)}</td><td class="n">${r.ours == null ? "-" : esc(r.ours)}</td><td class="n">${r.stall == null ? "-" : esc(r.stall)}</td><td class="muted">${esc(r.note || "")}</td></tr>`).join("")}</table><p class="note">Efficiency: the share of the possible gains each venue realised on the same synthetic book.</p>` : `<div class="empty">Results coming after the first Market Test.</div>`;
-}
-
-function renderAgents() {
-  const base = location.origin + location.pathname.replace(/[^/]*$/, "");
-  $("agents").textContent = isPrivate()
-    ? `PRIVATE side (127.0.0.1 only):\nGET ${base}api/celestina.json\n  scope, tick, our_venue, venues[], cards{ref: offers[], holders[], recent[], reference}, matches[] (with spare/holder), teams[] (with holdings, fillers), demand[], announcements[], attribution`
-    : `GET ${base}api/celestina.json   (CORS open, refreshed every 15 s)\n  our_book[]     {offer, kind, ref, price, team, accept, counter}\n  invitations[]  {offer, kind, ref, price, text, accept, counter, source}\n  matches[]      {kind: cross|mirror|near, ref, buy, sell, why, orders{buyer, seller}}\n  teams[]        {team, album_filled, pages_complete, bids[], asks[], swaps[]}\n  cards{ref}     {best_bid, best_ask, reference{price, n}, recent[{settlement, tick, price, venue, dealer}], offers[{..., verdict, source}]}\n  demand[]       {ref, bids, best_bid, asks, best_ask, ref_price}\nGET ${base}api/card/LAV-09.json   one card\n\nTo trade: POST /api/offers {"venue": "${vid()}", ...} with your own key, from your own machine.`;
-}
-
-// ---------------------------------------------------------------- private only: venues, announcements
-function renderVenues() {
-  const vs = (D.venues || []).filter((v) => v.open || v.ours);
-  const max = Math.max(1, ...vs.map((v) => v.open));
-  $("venues").innerHTML = vs.map((v) => `<div class="barrow" title="${esc(v.name)}"><span class="lbl ${v.ours ? "ours" : ""}">${esc(v.venue)} <span class="muted">${esc(v.name)}</span></span><span class="track"><i class="a" style="width:${100 * v.asks / max}%"></i><i class="b" style="width:${100 * v.bids / max}%"></i><i class="s" style="width:${100 * v.swaps / max}%"></i></span><span class="mono" style="text-align:right">${num(v.open)}</span></div>`).join("") || `<div class="empty">No open offers.</div>`;
-}
-
-function renderAnn() {
-  const a = D.announcements || [];
-  $("ann").innerHTML = a.length ? a.slice(0, 12).map((x) => `<div class="ann"><div class="t">${esc(x.text)}</div><div class="mono muted" style="font-size:11px">${esc(x.basis)} · for ${esc((x.targets || []).join(", ") || "everyone")} · ${num(x.text.length)} chars</div>${copyBtn(x.text, "copy text")}</div>`).join("") : `<div class="empty">No draft right now.</div>`;
-}
-
-const h0 = /^#card=([A-Za-z0-9-]{1,12})$/.exec(location.hash);
-if (h0) selected = decodeURIComponent(h0[1]).toUpperCase();
+const fromHash = () => { const m = /^#card=([A-Za-z0-9-]{1,12})$/.exec(location.hash); return m ? decodeURIComponent(m[1]).toUpperCase() : null; };
+selected = fromHash();
+window.addEventListener("hashchange", () => { const r = fromHash(); if (r && D && r !== selected) pick(r); });
 load();
 setInterval(load, 15000);
 setInterval(tickLive, 1000);
