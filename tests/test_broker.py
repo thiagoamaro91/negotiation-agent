@@ -442,6 +442,29 @@ class Offline(unittest.TestCase):
                 open_venue.write_key(f, "bk_other")
             self.assertEqual(brk.load_broker_key(f), FAKE_KEY)
 
+    def test_open_venue_save_key_falls_back_when_the_reserved_file_fails(self):
+        import contextlib
+        import io
+        import open_venue
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "broker.env"
+            ok = open_venue.reserve_key_file(f)
+            self.assertEqual(open_venue.save_key(ok, f, FAKE_KEY), f)
+            self.assertEqual(brk.load_broker_key(f), FAKE_KEY)
+            g = Path(d) / "other" / "broker.env"
+            open_venue.reserve_key_file(g)
+            bad = os.open(str(g), os.O_RDONLY)  # writing through it fails like a full disk would
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                where = open_venue.save_key(bad, g, FAKE_KEY)
+            self.assertNotEqual(where, g)
+            self.assertEqual(where.parent, g.parent)
+            self.assertEqual(where.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(brk.load_broker_key(where), FAKE_KEY)
+            self.assertIn(str(g), err.getvalue())
+            self.assertIn("RECOVERY", err.getvalue())
+            self.assertNotIn(FAKE_KEY, err.getvalue())
+
     def test_open_venue_finds_the_venue_id(self):
         import open_venue
         self.assertEqual(open_venue.venue_id({"venue": "v05", "broker_key": "x"}), "v05")

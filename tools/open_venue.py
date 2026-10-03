@@ -8,8 +8,10 @@ without it.
     python3 tools/open_venue.py plan           # prints the exact request body; sends nothing
     python3 tools/open_venue.py run --yes      # POST /api/venues with the team key from .env (owner's yes only)
 
-`run` writes the broker key it gets back to ~/.bazaar/broker.env (BROKER_KEY=..., mode 600) WITHOUT printing it, and
-prints only the venue id. It refuses to overwrite an existing key file. The key holder then copies that file to the VM
+`run` creates ~/.bazaar/broker.env (mode 600) BEFORE the POST, writes the broker key it gets back into it
+(BROKER_KEY=...) WITHOUT printing it, and prints only the venue id. It refuses to overwrite an existing key file. The
+key is returned only once, so if that write fails it goes to a fallback file next to it (broker.env.recovery-<pid>,
+mode 600) with a recovery message, and only if that fails too is it printed to stderr as the last resort. The key holder then copies that file to the VM
 (~/.bazaar/broker.env, mode 600) where `python3 agent/broker.py run` reads it. The key never passes through a chat.
 """
 from __future__ import annotations
@@ -62,13 +64,53 @@ def venue_id(r: dict):
     return v or r.get("id") or r.get("venue_id")
 
 
-def write_key(path: Path, key: str) -> None:
-    """BROKER_KEY=... in a new file only the owner can read (directory 700, file 600, never overwritten)."""
+def reserve_key_file(path: Path) -> int:
+    """Create the empty key file (directory 700, file 600, never overwritten) and return its open fd. Done BEFORE the
+    POST, so a key returned by the server always has a writable home."""
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.chmod(path, 0o600)
+    return fd
+
+
+def fill_key_file(fd: int, key: str) -> None:
+    """Write BROKER_KEY=... into a reserved fd, flushed to disk, and close it."""
     with os.fdopen(fd, "w") as f:
         f.write(f"BROKER_KEY={key}\n")
-    os.chmod(path, 0o600)
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def write_key(path: Path, key: str) -> None:
+    """BROKER_KEY=... in a new file only the owner can read (directory 700, file 600, never overwritten)."""
+    fill_key_file(reserve_key_file(path), key)
+
+
+def fallback_path(path: Path) -> Path:
+    return path.with_name(f"{path.name}.recovery-{os.getpid()}")
+
+
+def save_key(fd: int, path: Path, key: str) -> Path:
+    """Write the broker key (returned only once) so it can never be lost: the reserved file first; if that fails, a
+    fallback file next to it (mode 600) plus an explicit recovery message; if both fail, print it to stderr as the
+    last resort. Returns the path that holds the key (or the main path when it had to be printed)."""
+    try:
+        fill_key_file(fd, key)
+        return path
+    except Exception as e:  # noqa: BLE001 - anything here would lose a key the server never returns again
+        print(f"WARNING: writing the broker key to {path} FAILED ({type(e).__name__}: {e}). The venue IS open.",
+              file=sys.stderr)
+    fb = fallback_path(path)
+    try:
+        write_key(fb, key)
+        print(f"RECOVERY: the broker key was saved to {fb} (mode 600). Move it into place with:\n"
+              f"    mv '{fb}' '{path}'   (remove the empty or partial {path} first)", file=sys.stderr)
+        return fb
+    except Exception as e:  # noqa: BLE001
+        print(f"WARNING: the fallback {fb} also FAILED ({type(e).__name__}: {e}).", file=sys.stderr)
+    print("LAST RESORT, the key is shown once and only here. Put this line in "
+          f"{path} (mode 600) and clear this terminal:\nBROKER_KEY={key}", file=sys.stderr)
+    return path
 
 
 def cmd_plan(_args) -> None:
@@ -84,17 +126,31 @@ def cmd_run(args) -> None:
         raise SystemExit(f"\nnot sent: add --yes to open the venue ({COST}). Only with the owner's yes in the chat.")
     if key_file.exists():
         raise SystemExit(f"{key_file} already exists: a broker key is there already. Move it away first; not sent.")
-    b = Bazaar(URL, load_team_key(), wait_on_tick=False, retries=0)
+    team_key = load_team_key()
+    try:  # the key file exists and is writable BEFORE we pay: the broker key is only returned once
+        fd = reserve_key_file(key_file)
+    except OSError as e:
+        raise SystemExit(f"cannot create {key_file} ({e}); not sent.")
+    b = Bazaar(URL, team_key, wait_on_tick=False, retries=0)
     try:
         r = b.open_venue(BODY["name"], fee_bps=BODY["fee_bps"], fee_per_card=BODY["fee_per_card"],
                          rules=BODY["rules"], description=BODY["description"])
     except BazaarError as e:  # a refused opening costs nothing
+        os.close(fd)
+        key_file.unlink(missing_ok=True)  # empty placeholder: nothing to keep
         raise SystemExit(f"refused: {e.code} ({e.status}): {e.message[:200]}")
+    except BaseException:
+        os.close(fd)  # unknown outcome: keep the empty file so a blind re-run cannot open a second venue
+        print(f"the request failed with an unknown outcome; check GET /api/venues. {key_file} stays (empty) as a "
+              "guard against opening twice.", file=sys.stderr)
+        raise
     if not isinstance(r, dict) or not r.get("broker_key"):
+        os.close(fd)
         fields = sorted(r) if isinstance(r, dict) else type(r).__name__
-        raise SystemExit(f"opened? the response has no broker_key (fields: {fields}). Check GET /api/venues.")
-    write_key(key_file, str(r["broker_key"]))
-    print(f"venue {venue_id(r)} opened; broker key written to {key_file} (mode 600, not shown)")
+        raise SystemExit(f"opened? the response has no broker_key (fields: {fields}). Check GET /api/venues. "
+                         f"{key_file} stays (empty) as a guard against opening twice.")
+    where = save_key(fd, key_file, str(r["broker_key"]))
+    print(f"venue {venue_id(r)} opened; broker key written to {where} (mode 600, not shown)")
 
 
 def main(argv=None) -> None:
