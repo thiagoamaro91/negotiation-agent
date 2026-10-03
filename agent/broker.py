@@ -90,6 +90,7 @@ READ_EVERY = 0.5        # seconds between book reads (twice a second, as the sta
 CLOCK_EVERY = 1.0       # seconds between clock reads (the broker key allows 5 requests a second)
 PENDING_TICKS = 2       # an offer we matched that still shows after this many ticks is planned again
 REFUSED_TICKS = 1       # a refused pair is not sent again until this many ticks have passed
+RUN_QUIET = 3           # a bench run is summarised in the log once none of its offers has shown for this many ticks
 ERROR_SLEEP = (1, 2, 4, 8, 15)  # seconds to wait after 1, 2, 3, ... read failures in a row
 
 
@@ -305,8 +306,12 @@ class Tracker:
                     self.departed += 1
                     self.early = max(self.early, tr["expires"] - tick)
 
-    def run_done(self, run: str) -> bool:
-        return all(tr["end"] is not None for tr in self.traders.values() if tr["run"] == run)
+    def run_done(self, run: str, tick, quiet: int = RUN_QUIET) -> bool:
+        """Every offer of the run has left the book, the last one at least `quiet` ticks ago."""
+        trs = [tr for tr in self.traders.values() if tr["run"] == run]
+        if not trs or any(tr["end"] is None for tr in trs):
+            return False
+        return tick is None or tick - max(tr.get("gone_tick", tick) for tr in trs) >= quiet
 
 
 class BenchPolicy:
@@ -530,6 +535,7 @@ class Desk:
         self.send_on, self.mode = send, "run" if send else "watch"
         self.policy_name = policy_name
         self.policy = BenchPolicy() if policy_name == "ours" else None
+        self.tracker = self.policy.tracker if self.policy is not None else Tracker()  # quote paths for the log
         self.state = None
         self.tick = None
         self.last_clock = 0.0
@@ -540,7 +546,7 @@ class Desk:
         self.pending: dict = {}  # offer id -> tick we matched it: not planned again while it settles
         self.last_decision: dict = {}
         self.counts = {"sent": 0, "accepted": 0, "refused": 0, "dropped": 0}
-        self.runs_logged: set = set()
+        self.runs_logged: dict = {}  # bench run -> traders already summarised in the log
 
     def step(self) -> float:
         """One loop; returns how long to sleep before the next."""
@@ -563,6 +569,13 @@ class Desk:
             return READ_EVERY
         tick = book.get("tick") if _num(book.get("tick")) else self.tick
         state = book_state(book, tick)
+        if state != self.state and not _num(book.get("tick")) and self.now() - self.last_clock > 0.2:
+            try:  # the book changed and carries no tick: make sure the change is not filed under the old tick
+                self.tick, self.last_clock = self.c.clock().get("tick"), self.now()
+                tick = self.tick
+                state = book_state(book, tick)
+            except Exception as e:
+                self.log.event("read_error", where="clock", error=f"{type(e).__name__}: {e}"[:200])
         if state == self.state:
             self.unlogged += 1
             self.beat("same_book")
@@ -573,6 +586,8 @@ class Desk:
         self.pending = {k: v for k, v in self.pending.items() if tick is None or v is None or tick - v <= PENDING_TICKS}
         matches, dropped, notes = plan_book(book, tick if tick is not None else 0, self.policy, self.refused,
                                             self.pending)
+        if self.policy is None:  # the stall's rule keeps no paths: track them here, for the log
+            self.tracker.observe(book, tick if tick is not None else 0, ours=self.pending)
         for m, why in dropped:
             self.counts["dropped"] += 1
             self.log.event("dropped", tick=tick, match=list(m), why=why)
@@ -627,15 +642,15 @@ class Desk:
             print(f"cannot append the book ({e})", flush=True)
 
     def end_runs(self, tick) -> None:
-        """When a bench run has left the book, log every trader's path and how it ended (refit data)."""
-        if self.policy is None:
-            return
-        tr = self.policy.tracker
-        for run in {t["run"] for t in tr.traders.values()} - self.runs_logged:
-            if tr.run_done(run):
-                self.runs_logged.add(run)
-                rows = [{"id": t["id"], "side": t["side"], "first": t["first"], "last": t["last"], "end": t["end"],
-                         "quotes": t["quotes"]} for t in tr.traders.values() if t["run"] == run]
+        """When a bench run has left the book, log every trader's path and how it ended (refit data). A run that
+        gets new traders after its summary is summarised again."""
+        tr = self.tracker
+        for run in {t["run"] for t in tr.traders.values()}:
+            rows = [{"id": t["id"], "side": t["side"], "first": t["first"], "last": t["last"], "end": t["end"],
+                     "gone": t.get("gone_tick"), "expires": t.get("expires"), "quotes": t["quotes"]}
+                    for t in tr.traders.values() if t["run"] == run]
+            if len(rows) > self.runs_logged.get(run, 0) and tr.run_done(run, tick):
+                self.runs_logged[run] = len(rows)
                 self.log.event("bench_run_end", tick=tick, bench_run=run, traders=rows,
                                matched=sum(1 for r in rows if r["end"] == "matched") // 2)
 
@@ -724,7 +739,8 @@ def cmd_plan(args) -> None:
 def cmd_selftest(args) -> None:
     sys.path.insert(0, str(ROOT / "tools"))
     import bench_sim
-    rc = bench_sim.main(["table", "--seeds", str(args.seeds), "--scenarios", "standard,hard", "--procs",
+    scen = "standard,hard,expiry_exact,hard_expiry_exact,expiry_early4,adversarial"  # blind, then expiries shown
+    rc = bench_sim.main(["table", "--seeds", str(args.seeds), "--scenarios", scen, "--procs",
                          str(args.procs)])
     raise SystemExit(rc)
 

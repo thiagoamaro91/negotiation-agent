@@ -285,6 +285,21 @@ class LiveLoop(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1]["same_reads_before"], 39)  # the identical reads are counted, not stored
 
+    def test_a_run_is_summarised_once_it_is_quiet_with_every_trader(self):
+        for policy in ("ours", "stall"):
+            fake = FakeBroker(book_of([]))
+            desk, log = self.desk(fake, policy)
+            timeline = {1: [buyer("b5-1", 30)], 2: [buyer("b5-1", 31)], 3: [], 4: [seller("b5-2", 50)],
+                        5: [seller("b5-2", 48)]}
+            for t in range(1, 12):
+                fake.tick, fake.book_now = t, book_of(timeline.get(t, []))
+                self.loop(desk, 3)
+            ends = [r for r in log.rows if r["event"] == "bench_run_end"]
+            self.assertEqual(len(ends), 1, policy)  # not at tick 3, when the book was empty for a moment
+            self.assertEqual(ends[0]["tick"], 9)    # three quiet ticks after b5-2 left at tick 6
+            self.assertEqual(sorted(t["id"] for t in ends[0]["traders"]), ["b5-1", "b5-2"])
+            self.assertEqual([q for _, q in ends[0]["traders"][0]["quotes"]], [30, 31])
+
     def test_an_accepted_match_is_not_sent_twice_while_it_settles(self):
         fake = FakeBroker(book_of([seller("b1-1", 20), buyer("b1-2", 30)]), refuse=False)
         desk, _ = self.desk(fake, "stall")
