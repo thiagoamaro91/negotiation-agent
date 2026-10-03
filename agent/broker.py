@@ -279,12 +279,12 @@ class Tracker:
     def observe(self, book: dict, tick: int, ours=()) -> None:
         seen = set()
         for o in book.get("bench_offers") or []:
-            try:
+            try:  # read as bench_quotes reads it: a seller needs only want.cash, a buyer give.cash
                 oid = o["id"]
-                ask, bid = o["want"]["cash"], o["give"]["cash"]
+                ask = o["want"]["cash"]
+                side, q = ("sell", ask) if ask else ("buy", o["give"]["cash"])
             except (KeyError, TypeError):
                 continue
-            side, q = ("sell", ask) if ask else ("buy", bid)
             if not _num(q):
                 continue
             seen.add(oid)
@@ -381,6 +381,8 @@ class BenchPolicy:
 
     def _plan_run(self, book: dict, asks: list, bids: list, tick: int):
         trs = self.tracker.traders
+        if not asks or not bids:
+            return [], "one_side"
         if not any(len(trs[oid]["quotes"]) >= 2 for _, oid in asks + bids if oid in trs):
             return stall_run(asks, bids, book), "stall:no_history"
         p = self.p
