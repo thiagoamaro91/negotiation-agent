@@ -70,7 +70,7 @@ class ViewTest(unittest.TestCase):
 
     def test_our_row_is_leaderboard_and_cash_only(self):
         us = next(r for r in self.v["teams"] if r["us"])
-        for k in ("inferred", "known", "known_n", "moves", "money", "packs"):
+        for k in ("inferred", "known", "known_n", "moves", "money", "packs", "deck"):
             self.assertNotIn(k, us)
         self.assertEqual(us["cash"], 161)
         blob = json.dumps(self.v)
@@ -192,6 +192,137 @@ class IsolationTest(unittest.TestCase):
             self.assertEqual(snap["trust"]["state"], "ok")
 
 
+def ev(tick, kind, **payload):
+    return {"tick": tick, "type": kind, "payload": payload}
+
+
+DECK_CAT = {"sets": [{"id": "LAV", "released": True, "cards": [
+                {"id": "LAV-01", "name": "Uno", "book": 4, "rarity": "common"},
+                {"id": "LAV-06", "name": "La Tabacalera", "book": 9, "rarity": "uncommon"},
+                {"id": "LAV-09", "name": "Nueve", "book": 30, "rarity": "rare"}]},
+                     {"id": "SAL", "released": True, "cards": [
+                         {"id": "SAL-11", "name": "Once", "book": 5, "rarity": "common"}]}],
+            "packs": [{"id": "sobre_barrio", "slots": [{}, {}, {}]}]}
+N = 15  # tools/decks.py STARTER: starter ids per team, in join order
+
+
+def deck_events():
+    """t14 joins first (starter ids 1-15), then us (16-30). t14 lists id 3 (LAV-01), buys LAV-09 from a dealer as id
+    900 and is given LAV-06 (no id); we list id 20 (SAL-11), which must never reach the page."""
+    return [ev(0, "team.joined", team="t14"), ev(0, "team.joined", team="t03"),
+            ev(5, "offer.listed", offer={"maker": "t14",
+                                         "give": {"assets": [{"id": 3, "kind": "card", "ref": "LAV-01"}]}}),
+            ev(6, "settlement", items=[{"id": 900, "kind": "card", "ref": "LAV-09", "frm": "abuela", "to": "t14"}]),
+            ev(7, "gift.given", team="t14", cards=["LAV-06"]),
+            ev(8, "offer.listed", offer={"maker": "t03",
+                                         "give": {"assets": [{"id": 20, "kind": "card", "ref": "SAL-11"}]}})]
+
+
+T14_DECK = {"source": "feed", "cards": {"LAV-01": 1, "LAV-06": 1, "LAV-09": 1}, "named": 3, "total": N + 2,
+            "unnamed": N - 1, "approx": True,
+            "notes": [f"{N - 1} owned, never shown", "0 pack cards unplaced",
+                      "1 named without an id (gift, egg, Workshop)"]}
+
+
+def feed_rows(events=None):
+    by_ref, extra, err = d.feed_decks(deck_events() if events is None else events, DECK_CAT)
+    return d.deck_rows(by_ref, "feed", extra), err
+
+
+class DecksTest(unittest.TestCase):
+    """Each rival row carries its full deck (tools/decks.py today, through deck_rows); ours never does; a failing
+    rebuild falls back to the cards seen in the feed."""
+
+    def view(self, decks, error=None):
+        return d.rivals_view(lb(), venues(), {**heavy(), "decks": decks, "decks_error": error}, None)
+
+    def row(self, v, team):
+        return next(r for r in v["teams"] if r["team"] == team)
+
+    def test_feed_decks_rebuild_each_full_deck(self):
+        decks, err = feed_rows()
+        self.assertIsNone(err)
+        self.assertEqual(decks["t14"], T14_DECK)
+        self.assertNotIn("ids", json.dumps(decks))
+
+    def test_deck_rows_takes_any_ref_mapping_with_its_source(self):
+        """A census of exact ownership ({team: {ref: count}}, no extra) plugs into the same rows."""
+        rows = d.deck_rows({"t14": {"LAV-01": 2, "LAV-09": 1, "bad": 0}}, "census")
+        self.assertEqual(rows["t14"], {"source": "census", "cards": {"LAV-01": 2, "LAV-09": 1}, "named": 3,
+                                       "total": 3, "unnamed": 0, "approx": False, "notes": []})
+        v = self.view(rows)
+        self.assertEqual(self.row(v, "t14")["deck"]["source"], "census")
+
+    def test_a_rival_row_carries_its_full_deck_and_ours_none(self):
+        decks, err = feed_rows()
+        v = self.view(decks, err)
+        self.assertEqual(self.row(v, "t14")["deck"], T14_DECK)
+        self.assertEqual(self.row(v, "t14")["known"], {"LAV-01": 1})  # the feed-seen cards stay alongside
+        self.assertIsNone(self.row(v, "t01")["deck"])                  # not in the rebuild: falls back
+        self.assertNotIn("deck", self.row(v, "t03"))
+        blob = json.dumps(v)
+        self.assertNotIn("SAL-11", blob)
+        self.assertNotIn('"ids"', blob)
+        self.assertIsNone(v["decks_error"])
+
+    def test_untrusted_refs_are_trimmed(self):
+        decks, _ = feed_rows(deck_events() + [ev(9, "gift.given", team="t14", cards=["<script>" + "x" * 200])])
+        self.assertTrue(all(len(r) <= d.RIV_REF for r in decks["t14"]["cards"]))
+
+    def test_a_failing_rebuild_falls_back_to_the_cards_seen(self):
+        orig = d.decks_mod.build
+        try:
+            for exc in (RuntimeError("decks exploded"), SystemExit("no feed")):
+                def boom(*a, _exc=exc, **k):
+                    raise _exc
+                d.decks_mod.build = boom
+                decks, err = feed_rows()
+                self.assertEqual(decks, {})
+                self.assertIn(type(exc).__name__, err)
+                v = self.view(decks, err)
+                self.assertIsNone(self.row(v, "t14")["deck"])
+                self.assertEqual(self.row(v, "t14")["known"], {"LAV-01": 1})
+                self.assertEqual(v["decks_error"], err)
+        finally:
+            d.decks_mod.build = orig
+
+    def test_a_missing_decks_tool_falls_back(self):
+        orig = d.decks_mod, d.DECKS_IMPORT_ERROR
+        try:
+            d.decks_mod, d.DECKS_IMPORT_ERROR = None, "decks tool missing: ModuleNotFoundError('decks')"
+            self.assertEqual(d.feed_decks(deck_events(), DECK_CAT), ({}, {}, d.DECKS_IMPORT_ERROR))
+        finally:
+            d.decks_mod, d.DECKS_IMPORT_ERROR = orig
+
+    def test_compute_reuses_its_events_and_survives_a_failing_rebuild(self):
+        """Rivals.compute end to end on the synthetic feed, offline: catalog preset, schedule read refused."""
+        orig_public, orig_build = d.vi.public, d.decks_mod.build
+        calls = []
+
+        def no_network(*a, **k):
+            raise OSError("no network in this test")
+
+        def spy(events, cat, *a, **k):
+            calls.append(len(events))
+            return orig_build(events, cat, *a, **k)
+        try:
+            d.vi.public = no_network
+            r = d.Rivals("http://127.0.0.1:9", Path(tempfile.gettempdir()))
+            r.cat, r.cat_at = DECK_CAT, time.time()
+            d.decks_mod.build = spy
+            out = r.compute(deck_events(), time.time())
+            self.assertEqual(calls, [len(deck_events())])
+            self.assertEqual(out["decks"]["t14"], T14_DECK)
+            self.assertIsNone(out["decks_error"])
+            d.decks_mod.build = lambda *a, **k: 1 / 0
+            out = r.compute(deck_events(), time.time())
+            self.assertEqual(out["decks"], {})
+            self.assertIn("ZeroDivisionError", out["decks_error"])
+            self.assertIn("t14", out["ledger"])  # the rest of the panel still computed
+        finally:
+            d.vi.public, d.decks_mod.build = orig_public, orig_build
+
+
 @unittest.skipUnless(os.environ.get("BAZAAR_FEED"), "set BAZAAR_FEED to a recorded feed folder")
 class RealFeedTest(unittest.TestCase):
     def test_builder_on_the_recorded_feed(self):
@@ -200,7 +331,9 @@ class RealFeedTest(unittest.TestCase):
         self.assertIsNone(snap["feed_error"])
         self.assertEqual(len(snap["teams"]), 18)
         us = next(t for t in snap["teams"] if t["us"])
-        self.assertFalse({"inferred", "known", "moves", "money", "packs"} & set(us))
+        self.assertFalse({"inferred", "known", "moves", "money", "packs", "deck"} & set(us))
+        self.assertIsNone(snap["decks_error"])
+        self.assertTrue(all(t.get("deck") for t in snap["teams"] if not t["us"]))
         blob = json.dumps(snap)
         for word in ("your_value", "affinity", "multiplier", '"key"'):
             self.assertNotIn(word, blob)
