@@ -1,0 +1,65 @@
+{
+ "id": 564,
+ "kind": "team",
+ "team": "t08",
+ "with": "t03",
+ "venue": "v07",
+ "topic": {
+  "sell": {
+   "assets": [
+    336
+   ]
+  }
+ },
+ "status": "closed",
+ "created_tick": 369,
+ "messages": [
+  {
+   "id": 3782,
+   "tick": 370,
+   "sender": "t08",
+   "text": "¡Hola! Team 8 vende cartas de los sets que buscas: Mercado de la Cebada. Para empezar, Mercado de la Cebada por 15 P, sin pasar por El Rastro.",
+   "offer": {
+    "id": 5577,
+    "maker": "t08",
+    "to": "t03",
+    "venue": "v07",
+    "thread": 564,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 336,
+       "kind": "card",
+       "ref": "LAT-04",
+       "serial": 14,
+       "rarity": "common",
+       "set": "LAT",
+       "print_run": 300
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 374,
+    "created_tick": 370,
+    "final": false
+   }
+  },
+  {
+   "id": 3784,
+   "tick": 370,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

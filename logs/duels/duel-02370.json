@@ -1,0 +1,44 @@
+{
+ "duel": 2370,
+ "session": 2,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 122,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 549,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": {
+  "id": 4603,
+  "price": 132,
+  "tick": 547,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 537,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 149 P.",
+   "price": 149,
+   "days": null
+  },
+  {
+   "tick": 547,
+   "from": "you",
+   "text": "Last word from me: 132 P.",
+   "price": 132,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

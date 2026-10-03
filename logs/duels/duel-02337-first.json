@@ -1,0 +1,37 @@
+{
+ "duel": 2337,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 135,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 504,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3373,
+  "price": 223,
+  "tick": 488,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 488,
+   "from": "Rival Verde",
+   "text": "I can do 223. That is a fair deal for both of us.",
+   "price": 223,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

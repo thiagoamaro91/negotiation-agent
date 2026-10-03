@@ -1,0 +1,37 @@
+{
+ "duel": 2329,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 146,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 475,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2630,
+  "price": 129,
+  "tick": 459,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 459,
+   "from": "Rival Verde",
+   "text": "Happy to sell Mercado de la Paz for 129 primas, ready to sign today.",
+   "price": 129,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

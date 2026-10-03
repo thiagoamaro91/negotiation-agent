@@ -1,0 +1,44 @@
+{
+ "duel": 2369,
+ "session": 2,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Palacio de Cristal",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 95,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 534,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": {
+  "id": 4340,
+  "price": 87,
+  "tick": 532,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 522,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 77 P.",
+   "price": 77,
+   "days": null
+  },
+  {
+   "tick": 532,
+   "from": "you",
+   "text": "Last word from me: 87 P.",
+   "price": 87,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

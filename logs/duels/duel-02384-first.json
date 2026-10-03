@@ -1,0 +1,37 @@
+{
+ "duel": 2384,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 75,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 506,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3440,
+  "price": 74,
+  "tick": 490,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 490,
+   "from": "Rival Verde",
+   "text": "We can do 74 P. Thank you for the talk.",
+   "price": 74,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

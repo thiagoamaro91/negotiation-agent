@@ -1,0 +1,37 @@
+{
+ "duel": 2586,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 129,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 625,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 5491,
+  "price": 137,
+  "tick": 612,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 612,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 137,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

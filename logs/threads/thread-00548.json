@@ -1,0 +1,51 @@
+{
+ "id": 548,
+ "kind": "team",
+ "team": "t14",
+ "with": "t03",
+ "venue": "v02",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 361,
+ "messages": [
+  {
+   "id": 3673,
+   "tick": 361,
+   "sender": "t14",
+   "text": "Hi t03! We're completing our La Latina page and would love your El Mesón de la Cava (LAT-10). We offer 66 P cash, no fees on this venue. Happy to talk if you have a number in mind.",
+   "offer": {
+    "id": 5426,
+    "maker": "t14",
+    "to": "t03",
+    "venue": "v02",
+    "thread": 548,
+    "status": "expired",
+    "give": {
+     "cash": 66,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-10"
+     ]
+    },
+    "expires_tick": 365,
+    "created_tick": 361,
+    "final": false
+   }
+  },
+  {
+   "id": 3680,
+   "tick": 362,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

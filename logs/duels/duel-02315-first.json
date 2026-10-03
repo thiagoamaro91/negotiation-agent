@@ -1,0 +1,37 @@
+{
+ "duel": 2315,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 79,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 491,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3061,
+  "price": 96,
+  "tick": 475,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 475,
+   "from": "Rival Sol",
+   "text": "El Mesón de la Cava is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. I'm offering it at 96 P, and I'd welcome a serious counteroffer from you.",
+   "price": 96,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

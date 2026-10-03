@@ -1,0 +1,63 @@
+{
+ "duel": 2399,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 53,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 551,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 4507,
+  "price": 83,
+  "tick": 541,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 4517,
+  "price": 66,
+  "tick": 541,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 535,
+   "from": "Rival Plata",
+   "text": "Hello, and thank you for meeting me. I would propose 52 P for this one.",
+   "price": 52,
+   "days": null
+  },
+  {
+   "tick": 537,
+   "from": "Rival Plata",
+   "text": "I appreciate it, thank you. Could we close at 62 P, please?",
+   "price": 62,
+   "days": null
+  },
+  {
+   "tick": 541,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 83 P.",
+   "price": 83,
+   "days": null
+  },
+  {
+   "tick": 541,
+   "from": "Rival Plata",
+   "text": "Fair enough, thank you. I will meet you partway at 66 P.",
+   "price": 66,
+   "days": null
+  }
+ ],
+ "result": 12.2,
+ "price": 66,
+ "days": 0
+}

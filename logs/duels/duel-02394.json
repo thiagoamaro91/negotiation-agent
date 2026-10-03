@@ -1,0 +1,121 @@
+{
+ "duel": 2394,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 99,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 550,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4598,
+  "price": 109,
+  "tick": 546,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 534,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 76 P.",
+   "price": 76,
+   "days": null
+  },
+  {
+   "tick": 535,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 79 P.",
+   "price": 79,
+   "days": null
+  },
+  {
+   "tick": 536,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 82 P.",
+   "price": 82,
+   "days": null
+  },
+  {
+   "tick": 537,
+   "from": "Rival Azul",
+   "text": "Cerremos hoy: 84 P.",
+   "price": 84,
+   "days": null
+  },
+  {
+   "tick": 538,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 87 P.",
+   "price": 87,
+   "days": null
+  },
+  {
+   "tick": 539,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 90 P.",
+   "price": 90,
+   "days": null
+  },
+  {
+   "tick": 540,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 93 P.",
+   "price": 93,
+   "days": null
+  },
+  {
+   "tick": 541,
+   "from": "Rival Azul",
+   "text": "Cerremos hoy: 96 P.",
+   "price": 96,
+   "days": null
+  },
+  {
+   "tick": 542,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 98 P.",
+   "price": 98,
+   "days": null
+  },
+  {
+   "tick": 543,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 101 P.",
+   "price": 101,
+   "days": null
+  },
+  {
+   "tick": 544,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 104 P.",
+   "price": 104,
+   "days": null
+  },
+  {
+   "tick": 545,
+   "from": "Rival Azul",
+   "text": "Cerremos hoy: 107 P.",
+   "price": 107,
+   "days": null
+  },
+  {
+   "tick": 546,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 109 P.",
+   "price": 109,
+   "days": null
+  }
+ ],
+ "result": 10.0,
+ "price": 109,
+ "days": 0
+}

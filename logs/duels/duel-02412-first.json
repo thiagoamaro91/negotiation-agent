@@ -1,0 +1,37 @@
+{
+ "duel": 2412,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 99,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 489,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2990,
+  "price": 86,
+  "tick": 473,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 473,
+   "from": "Rival Noche",
+   "text": "Hello! I can do 86. Thank you for your time.",
+   "price": 86,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

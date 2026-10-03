@@ -1,0 +1,114 @@
+{
+ "duel": 2385,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 174,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 521,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4011,
+  "price": 140,
+  "tick": 516,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 505,
+   "from": "Rival Rojo",
+   "text": "We can do 164 P. Thank you for the talk.",
+   "price": 164,
+   "days": null
+  },
+  {
+   "tick": 506,
+   "from": "Rival Rojo",
+   "text": "161 P works well for us.",
+   "price": 161,
+   "days": null
+  },
+  {
+   "tick": 507,
+   "from": "Rival Rojo",
+   "text": "Our offer is 158 P.",
+   "price": 158,
+   "days": null
+  },
+  {
+   "tick": 508,
+   "from": "Rival Rojo",
+   "text": "Let's meet at 155 P, fair for both.",
+   "price": 155,
+   "days": null
+  },
+  {
+   "tick": 509,
+   "from": "Rival Rojo",
+   "text": "152 P, and we close now.",
+   "price": 152,
+   "days": null
+  },
+  {
+   "tick": 510,
+   "from": "Rival Rojo",
+   "text": "We move to 150 P.",
+   "price": 150,
+   "days": null
+  },
+  {
+   "tick": 511,
+   "from": "Rival Rojo",
+   "text": "We can do 148 P. Thank you for the talk.",
+   "price": 148,
+   "days": null
+  },
+  {
+   "tick": 512,
+   "from": "Rival Rojo",
+   "text": "146 P works well for us.",
+   "price": 146,
+   "days": null
+  },
+  {
+   "tick": 513,
+   "from": "Rival Rojo",
+   "text": "Our offer is 144 P.",
+   "price": 144,
+   "days": null
+  },
+  {
+   "tick": 514,
+   "from": "Rival Rojo",
+   "text": "Let's meet at 143 P, fair for both.",
+   "price": 143,
+   "days": null
+  },
+  {
+   "tick": 515,
+   "from": "Rival Rojo",
+   "text": "141 P, and we close now.",
+   "price": 141,
+   "days": null
+  },
+  {
+   "tick": 516,
+   "from": "Rival Rojo",
+   "text": "We move to 140 P.",
+   "price": 140,
+   "days": null
+  }
+ ],
+ "result": 34.0,
+ "price": 140,
+ "days": 0
+}

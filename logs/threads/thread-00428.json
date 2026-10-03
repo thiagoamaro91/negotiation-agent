@@ -1,0 +1,36 @@
+{
+ "id": 428,
+ "kind": "team",
+ "team": "t13",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 246,
+ "messages": [
+  {
+   "id": 2892,
+   "tick": 246,
+   "sender": "t13",
+   "text": "Hola team t03, come list and trade on El Club · Where Madrid Trades (venue v03): just a 1% fee with no per-card charge, versus 5% + 1 P per card at El Rastro. Matching is at a fair midpoint, with the best pairs filled first, so we'd love to see your cards there!",
+   "offer": null
+  },
+  {
+   "id": 2897,
+   "tick": 247,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, MAL-06 at 22 P, LAV-01 at 6 P, LAV-03 at 6 P, LAV-05 at 6 P, MAL-02 at 6 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  },
+  {
+   "id": 2918,
+   "tick": 249,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, MAL-06 at 22 P, LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

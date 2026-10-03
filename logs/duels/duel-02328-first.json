@@ -1,0 +1,37 @@
+{
+ "duel": 2328,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 91,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 475,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2629,
+  "price": 114,
+  "tick": 459,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 459,
+   "from": "Rival Sol",
+   "text": "Happy to buy Mercado de la Paz at 114 today. Shall we close fast?",
+   "price": 114,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

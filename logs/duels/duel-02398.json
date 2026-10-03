@@ -1,0 +1,63 @@
+{
+ "duel": 2398,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 151,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 505,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 3539,
+  "price": 97,
+  "tick": 495,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 3556,
+  "price": 127,
+  "tick": 495,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 489,
+   "from": "Rival Sol",
+   "text": "Hello, and thank you for meeting me. I would propose 156 P for this one.",
+   "price": 156,
+   "days": null
+  },
+  {
+   "tick": 491,
+   "from": "Rival Sol",
+   "text": "I appreciate it, thank you. Could we close at 135 P, please?",
+   "price": 135,
+   "days": null
+  },
+  {
+   "tick": 495,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 97 P.",
+   "price": 97,
+   "days": null
+  },
+  {
+   "tick": 495,
+   "from": "Rival Sol",
+   "text": "Fair enough, thank you. I will meet you partway at 127 P.",
+   "price": 127,
+   "days": null
+  }
+ ],
+ "result": 22.6,
+ "price": 127,
+ "days": 0
+}

@@ -1,0 +1,44 @@
+{
+ "duel": 2501,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 120,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 580,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4944,
+  "price": 119,
+  "tick": 565,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 564,
+   "from": "Rival Azul",
+   "text": "I can do 120. Let's close it quickly.",
+   "price": 120,
+   "days": null
+  },
+  {
+   "tick": 565,
+   "from": "Rival Azul",
+   "text": "I can do 119. Let's close it quickly.",
+   "price": 119,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

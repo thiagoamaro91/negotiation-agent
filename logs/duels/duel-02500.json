@@ -1,0 +1,135 @@
+{
+ "duel": 2500,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 135,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 565,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4912,
+  "price": 166,
+  "tick": 563,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 549,
+   "from": "Rival Rojo",
+   "text": "I can do 136. Let's close it quickly.",
+   "price": 136,
+   "days": null
+  },
+  {
+   "tick": 550,
+   "from": "Rival Rojo",
+   "text": "I can do 139. Let's close it quickly.",
+   "price": 139,
+   "days": null
+  },
+  {
+   "tick": 551,
+   "from": "Rival Rojo",
+   "text": "I can do 142. Let's close it quickly.",
+   "price": 142,
+   "days": null
+  },
+  {
+   "tick": 552,
+   "from": "Rival Rojo",
+   "text": "I can do 145. Let's close it quickly.",
+   "price": 145,
+   "days": null
+  },
+  {
+   "tick": 553,
+   "from": "Rival Rojo",
+   "text": "I can do 147. Let's close it quickly.",
+   "price": 147,
+   "days": null
+  },
+  {
+   "tick": 554,
+   "from": "Rival Rojo",
+   "text": "I can do 150. Let's close it quickly.",
+   "price": 150,
+   "days": null
+  },
+  {
+   "tick": 555,
+   "from": "Rival Rojo",
+   "text": "I can do 153. Let's close it quickly.",
+   "price": 153,
+   "days": null
+  },
+  {
+   "tick": 556,
+   "from": "Rival Rojo",
+   "text": "I can do 155. Let's close it quickly.",
+   "price": 155,
+   "days": null
+  },
+  {
+   "tick": 557,
+   "from": "Rival Rojo",
+   "text": "I can do 157. Let's close it quickly.",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 558,
+   "from": "Rival Rojo",
+   "text": "I can do 160. Let's close it quickly.",
+   "price": 160,
+   "days": null
+  },
+  {
+   "tick": 559,
+   "from": "Rival Rojo",
+   "text": "I can do 162. Let's close it quickly.",
+   "price": 162,
+   "days": null
+  },
+  {
+   "tick": 560,
+   "from": "Rival Rojo",
+   "text": "I can do 164. Let's close it quickly.",
+   "price": 164,
+   "days": null
+  },
+  {
+   "tick": 561,
+   "from": "Rival Rojo",
+   "text": "I can do 165. Let's close it quickly.",
+   "price": 165,
+   "days": null
+  },
+  {
+   "tick": 562,
+   "from": "Rival Rojo",
+   "text": "I can do 166. Let's close it quickly.",
+   "price": 166,
+   "days": null
+  },
+  {
+   "tick": 563,
+   "from": "Rival Rojo",
+   "text": "I can do 166. Let's close it quickly.",
+   "price": 166,
+   "days": null
+  }
+ ],
+ "result": 31.0,
+ "price": 166,
+ "days": 0
+}

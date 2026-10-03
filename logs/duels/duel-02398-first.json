@@ -1,0 +1,37 @@
+{
+ "duel": 2398,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 151,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 505,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3416,
+  "price": 156,
+  "tick": 489,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 489,
+   "from": "Rival Sol",
+   "text": "Hello, and thank you for meeting me. I would propose 156 P for this one.",
+   "price": 156,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

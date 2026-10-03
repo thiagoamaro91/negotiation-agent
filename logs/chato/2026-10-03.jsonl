@@ -13,3 +13,25 @@
 {"ts": "2026-10-03T09:38:07", "run": "20261003-093434-ee34", "agent": "chato", "event": "her", "thread": 335, "price": 90, "final": false, "round": 8}
 {"ts": "2026-10-03T09:42:07", "run": "20261003-093434-ee34", "agent": "chato", "event": "max_rounds", "thread": 335, "ours": 84, "her": 90}
 {"ts": "2026-10-03T09:42:07", "run": "20261003-093434-ee34", "agent": "chato", "event": "run_end", "cash": 383, "level": 2, "unlocked": ["abuela", "chato"], "deals": 9, "ladder_points": 0.0, "score": 11.72, "rank": 10}
+{"ts": "2026-10-03T10:43:56", "run": "20261003-104356-fc70", "agent": "chato", "event": "run_start", "operator": "claude-mini", "argv": ["run", "--only", "sell:43", "--max-deals", "1"], "cash": 74, "level": 2, "deals": 12, "reserve": 280, "cap": null, "plan": [{"side": "sell", "item": "MAL-06", "asset_id": 43, "value": 6.4}]}
+{"ts": "2026-10-03T10:43:56", "run": "20261003-104356-fc70", "agent": "chato", "event": "open", "thread": 472, "side": "sell", "item": "MAL-06", "value": 6.4}
+{"ts": "2026-10-03T10:44:16", "run": "20261003-104356-fc70", "agent": "chato", "event": "her", "thread": 472, "price": 13, "final": false, "round": 1}
+{"ts": "2026-10-03T10:44:16", "run": "20261003-104356-fc70", "agent": "chato", "event": "say", "thread": 472, "price": 21, "her": 13}
+{"ts": "2026-10-03T10:44:46", "run": "20261003-104356-fc70", "agent": "chato", "event": "say", "thread": 472, "price": 19, "her": 13}
+{"ts": "2026-10-03T10:45:16", "run": "20261003-104356-fc70", "agent": "chato", "event": "say", "thread": 472, "price": 17, "her": 13}
+{"ts": "2026-10-03T10:45:46", "run": "20261003-104356-fc70", "agent": "chato", "event": "say", "thread": 472, "price": 15, "her": 13}
+{"ts": "2026-10-03T10:46:16", "run": "20261003-104356-fc70", "agent": "chato", "event": "her", "thread": 472, "price": 14, "final": false, "round": 5}
+{"ts": "2026-10-03T10:46:16", "run": "20261003-104356-fc70", "agent": "chato", "event": "accept", "thread": 472, "price": 14, "why": "crossed", "ours": 15}
+{"ts": "2026-10-03T10:46:46", "run": "20261003-104356-fc70", "agent": "chato", "event": "result", "thread": 472, "status": "deal", "price": 14, "reason": null}
+{"ts": "2026-10-03T10:46:46", "run": "20261003-104356-fc70", "agent": "chato", "event": "run_end", "cash": 88, "level": 2, "unlocked": ["abuela", "chato"], "deals": 13, "ladder_points": 0.062, "score": 17.38, "rank": 10}
+{"ts": "2026-10-03T11:22:58", "run": "20261003-112258-2431", "agent": "chato", "event": "run_start", "operator": "claude-mini", "argv": ["run", "--only", "sell:500", "--max-deals", "1"], "cash": 81, "level": 2, "deals": 14, "reserve": 280, "cap": null, "plan": [{"side": "sell", "item": "LAV-08", "asset_id": 500, "value": 12.0}]}
+{"ts": "2026-10-03T11:22:58", "run": "20261003-112258-2431", "agent": "chato", "event": "open", "thread": 590, "side": "sell", "item": "LAV-08", "value": 12.0}
+{"ts": "2026-10-03T11:23:17", "run": "20261003-112258-2431", "agent": "chato", "event": "her", "thread": 590, "price": 13, "final": false, "round": 1}
+{"ts": "2026-10-03T11:23:17", "run": "20261003-112258-2431", "agent": "chato", "event": "say", "thread": 590, "price": 21, "her": 13}
+{"ts": "2026-10-03T11:23:47", "run": "20261003-112258-2431", "agent": "chato", "event": "say", "thread": 590, "price": 19, "her": 13}
+{"ts": "2026-10-03T11:24:17", "run": "20261003-112258-2431", "agent": "chato", "event": "say", "thread": 590, "price": 17, "her": 13}
+{"ts": "2026-10-03T11:24:47", "run": "20261003-112258-2431", "agent": "chato", "event": "say", "thread": 590, "price": 15, "her": 13}
+{"ts": "2026-10-03T11:25:17", "run": "20261003-112258-2431", "agent": "chato", "event": "her", "thread": 590, "price": 14, "final": false, "round": 5}
+{"ts": "2026-10-03T11:25:17", "run": "20261003-112258-2431", "agent": "chato", "event": "accept", "thread": 590, "price": 14, "why": "crossed", "ours": 15}
+{"ts": "2026-10-03T11:25:47", "run": "20261003-112258-2431", "agent": "chato", "event": "result", "thread": 590, "status": "deal", "price": 14, "reason": null}
+{"ts": "2026-10-03T11:25:48", "run": "20261003-112258-2431", "agent": "chato", "event": "run_end", "cash": 95, "level": 2, "unlocked": ["abuela", "chato"], "deals": 15, "ladder_points": 0.071, "score": 17.25, "rank": 14}

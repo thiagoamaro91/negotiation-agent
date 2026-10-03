@@ -1,0 +1,354 @@
+{
+ "id": 590,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    500
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 386,
+ "messages": [
+  {
+   "id": 3985,
+   "tick": 387,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 21 P.",
+   "offer": {
+    "id": 5947,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 391,
+    "created_tick": 387,
+    "final": false
+   }
+  },
+  {
+   "id": 3984,
+   "tick": 387,
+   "sender": "chato",
+   "text": "You again. Teatro Valle-Inclán. Thirteen. Buena carta, fair price.",
+   "offer": {
+    "id": 5946,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 391,
+    "created_tick": 387,
+    "final": false
+   }
+  },
+  {
+   "id": 3991,
+   "tick": 388,
+   "sender": "chato",
+   "text": "You move, I move. 13 P.",
+   "offer": {
+    "id": 5957,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 392,
+    "created_tick": 388,
+    "final": false
+   }
+  },
+  {
+   "id": 3993,
+   "tick": 388,
+   "sender": "t03",
+   "text": "I move, you move. 19 P.",
+   "offer": {
+    "id": 5959,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 19,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 392,
+    "created_tick": 388,
+    "final": false
+   }
+  },
+  {
+   "id": 4001,
+   "tick": 389,
+   "sender": "t03",
+   "text": "Coming down: 17 P.",
+   "offer": {
+    "id": 5972,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 393,
+    "created_tick": 389,
+    "final": false
+   }
+  },
+  {
+   "id": 3999,
+   "tick": 389,
+   "sender": "chato",
+   "text": "You moved two. I moved nothing. Thirteen.",
+   "offer": {
+    "id": 5969,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 393,
+    "created_tick": 389,
+    "final": false
+   }
+  },
+  {
+   "id": 4005,
+   "tick": 390,
+   "sender": "chato",
+   "text": "13 P.",
+   "offer": {
+    "id": 5982,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 394,
+    "created_tick": 390,
+    "final": false
+   }
+  },
+  {
+   "id": 4010,
+   "tick": 390,
+   "sender": "t03",
+   "text": "Fair is fair. 15 P.",
+   "offer": {
+    "id": 5987,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 590,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 394,
+    "created_tick": 390,
+    "final": false
+   }
+  },
+  {
+   "id": 4018,
+   "tick": 391,
+   "sender": "chato",
+   "text": "Fourteen. You moved two, I move one. That is how it works.",
+   "offer": {
+    "id": 6002,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 590,
+    "status": "settled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 500,
+       "kind": "card",
+       "ref": "LAV-08",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "LAV",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 395,
+    "created_tick": 391,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Teatro Valle-Inclán",
+ "closed_reason": null
+}

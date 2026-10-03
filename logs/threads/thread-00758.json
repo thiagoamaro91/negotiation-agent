@@ -1,0 +1,29 @@
+{
+ "id": 758,
+ "kind": "team",
+ "team": "t13",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 530,
+ "messages": [
+  {
+   "id": 5030,
+   "tick": 530,
+   "sender": "t13",
+   "text": "Hola! Team 13 — El Club (v03, listed as 'Mercado Trece'). 0% fee, no per-card charge; the '1%' in the name is stale. Bids and asks cross every tick. Post your spares and want-to-buy bids here. El Rastro takes 5% + 1 P per card. Club welcome: your first trade at El Club today earns a private offer of one of our spare commons at 5 P on El Rastro (they trade at 8-10 P).",
+   "offer": null
+  },
+  {
+   "id": 5036,
+   "tick": 531,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

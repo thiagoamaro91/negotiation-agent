@@ -1,0 +1,44 @@
+{
+ "duel": 2413,
+ "session": 2,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 50,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 579,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": {
+  "id": 5131,
+  "price": 46,
+  "tick": 577,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 567,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 40 P.",
+   "price": 40,
+   "days": null
+  },
+  {
+   "tick": 577,
+   "from": "you",
+   "text": "Last word from me: 46 P.",
+   "price": 46,
+   "days": null
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

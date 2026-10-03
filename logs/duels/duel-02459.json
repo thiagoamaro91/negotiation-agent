@@ -1,0 +1,51 @@
+{
+ "duel": 2459,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 165,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 611,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 5424,
+  "price": 130,
+  "tick": 603,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 597,
+   "from": "Rival Azul",
+   "text": "Hello! I can let it go for 174 P.",
+   "price": 174,
+   "days": null
+  },
+  {
+   "tick": 600,
+   "from": "Rival Azul",
+   "text": "152 P, then.",
+   "price": 152,
+   "days": null
+  },
+  {
+   "tick": 603,
+   "from": "Rival Azul",
+   "text": "How about 130 P?",
+   "price": 130,
+   "days": null
+  }
+ ],
+ "result": 35.0,
+ "price": 130,
+ "days": 0
+}

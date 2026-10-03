@@ -1,0 +1,37 @@
+{
+ "duel": 2437,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 181,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 597,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": {
+  "id": 5228,
+  "price": 148,
+  "tick": 585,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 585,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 148 P.",
+   "price": 148,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,77 @@
+{
+ "duel": 2315,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 79,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 491,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 3137,
+  "price": 50,
+  "tick": 479,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 3409,
+  "price": 72,
+  "tick": 489,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 475,
+   "from": "Rival Sol",
+   "text": "El Mesón de la Cava is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. I'm offering it at 96 P, and I'd welcome a serious counteroffer from you.",
+   "price": 96,
+   "days": null
+  },
+  {
+   "tick": 479,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 50 P.",
+   "price": 50,
+   "days": null
+  },
+  {
+   "tick": 479,
+   "from": "Rival Sol",
+   "text": "Thanks for your interest. The tavern's steady trade, prime location and well-stocked cellar make it worth far more than your offer, but I'm willing to come down to 90 P as a good-faith step. I'd ask you to move meaningfully closer from where you started.",
+   "price": 90,
+   "days": null
+  },
+  {
+   "tick": 485,
+   "from": "Rival Sol",
+   "text": "I've now moved twice, from my opening figure down to 84 P, while your offer hasn't changed. The tavern's steady trade, location and cellar justify that price, so I'd ask you to come up substantially from your starting point.",
+   "price": 84,
+   "days": null
+  },
+  {
+   "tick": 488,
+   "from": "Rival Sol",
+   "text": "I've moved a long way from my opening figure and I'm making one more clear step to 76 P. With time running short, a serious move up from your starting point would let us settle this now.",
+   "price": 76,
+   "days": null
+  },
+  {
+   "tick": 489,
+   "from": "Rival Sol",
+   "text": "I've come down a long way, and 72 P is my final clear offer for the tavern with its steady trade, location and cellar. With so little time left, this is the last chance to close, so I hope you can take it.",
+   "price": 72,
+   "days": null
+  }
+ ],
+ "result": 6.6,
+ "price": 72,
+ "days": 0
+}

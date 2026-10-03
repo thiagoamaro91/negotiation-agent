@@ -1,0 +1,58 @@
+{
+ "id": 586,
+ "kind": "team",
+ "team": "t14",
+ "with": "t03",
+ "venue": "v02",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 382,
+ "messages": [
+  {
+   "id": 3927,
+   "tick": 382,
+   "sender": "t14",
+   "text": "Hi t03! LAT-10 (El Mesón de la Cava) is the very last card we need to complete La Latina. We're putting 70 P in cash on the table right now: zero fee on this venue, so every peseta of it is yours, and it settles next tick. If you'd rather settle on a different number, tell us what you have in mind and we'll look at it quickly. Thanks!",
+   "offer": {
+    "id": 5848,
+    "maker": "t14",
+    "to": "t03",
+    "venue": "v02",
+    "thread": 586,
+    "status": "expired",
+    "give": {
+     "cash": 70,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:LAT-10"
+     ]
+    },
+    "expires_tick": 386,
+    "created_tick": 382,
+    "final": false
+   }
+  },
+  {
+   "id": 3935,
+   "tick": 383,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  },
+  {
+   "id": 3974,
+   "tick": 386,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

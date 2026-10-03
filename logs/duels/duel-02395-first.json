@@ -1,0 +1,37 @@
+{
+ "duel": 2395,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 138,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 566,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4668,
+  "price": 176,
+  "tick": 550,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 550,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 176 P.",
+   "price": 176,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

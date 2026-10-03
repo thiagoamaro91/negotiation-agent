@@ -1,0 +1,37 @@
+{
+ "duel": 2336,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 80,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 490,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3031,
+  "price": 45,
+  "tick": 474,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 474,
+   "from": "Rival Verde",
+   "text": "I can do 45. That is a fair deal for both of us.",
+   "price": 45,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

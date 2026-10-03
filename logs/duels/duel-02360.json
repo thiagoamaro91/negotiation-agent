@@ -1,0 +1,135 @@
+{
+ "duel": 2360,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 154,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 519,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4018,
+  "price": 186,
+  "tick": 517,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 503,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 93 primas. Dime si cerramos.",
+   "price": 93,
+   "days": null
+  },
+  {
+   "tick": 504,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 94 primas. Dime si cerramos.",
+   "price": 94,
+   "days": null
+  },
+  {
+   "tick": 505,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 96 primas. Dime si cerramos.",
+   "price": 96,
+   "days": null
+  },
+  {
+   "tick": 506,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 99 primas. Dime si cerramos.",
+   "price": 99,
+   "days": null
+  },
+  {
+   "tick": 507,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 102 primas. Dime si cerramos.",
+   "price": 102,
+   "days": null
+  },
+  {
+   "tick": 508,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 106 primas. Dime si cerramos.",
+   "price": 106,
+   "days": null
+  },
+  {
+   "tick": 509,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 111 primas. Dime si cerramos.",
+   "price": 111,
+   "days": null
+  },
+  {
+   "tick": 510,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 116 primas. Dime si cerramos.",
+   "price": 116,
+   "days": null
+  },
+  {
+   "tick": 511,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 122 primas. Dime si cerramos.",
+   "price": 122,
+   "days": null
+  },
+  {
+   "tick": 512,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 129 primas. Dime si cerramos.",
+   "price": 129,
+   "days": null
+  },
+  {
+   "tick": 513,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 137 primas. Dime si cerramos.",
+   "price": 137,
+   "days": null
+  },
+  {
+   "tick": 514,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 145 primas. Dime si cerramos.",
+   "price": 145,
+   "days": null
+  },
+  {
+   "tick": 515,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 154 primas. Dime si cerramos.",
+   "price": 154,
+   "days": null
+  },
+  {
+   "tick": 516,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 164 primas. Dime si cerramos.",
+   "price": 164,
+   "days": null
+  },
+  {
+   "tick": 517,
+   "from": "Rival Rojo",
+   "text": "Puedo llegar a 186 primas. Dime si cerramos.",
+   "price": 186,
+   "days": null
+  }
+ ],
+ "result": 32.0,
+ "price": 186,
+ "days": 0
+}

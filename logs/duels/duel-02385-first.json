@@ -1,0 +1,37 @@
+{
+ "duel": 2385,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 174,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 521,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3758,
+  "price": 164,
+  "tick": 505,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 505,
+   "from": "Rival Rojo",
+   "text": "We can do 164 P. Thank you for the talk.",
+   "price": 164,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

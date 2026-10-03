@@ -1,0 +1,121 @@
+{
+ "duel": 2395,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 138,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 566,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4905,
+  "price": 127,
+  "tick": 562,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 550,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 176 P.",
+   "price": 176,
+   "days": null
+  },
+  {
+   "tick": 551,
+   "from": "Rival Noche",
+   "text": "Me muevo para acercarnos: 172 P.",
+   "price": 172,
+   "days": null
+  },
+  {
+   "tick": 552,
+   "from": "Rival Noche",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 168 P.",
+   "price": 168,
+   "days": null
+  },
+  {
+   "tick": 553,
+   "from": "Rival Noche",
+   "text": "Cerremos hoy: 164 P.",
+   "price": 164,
+   "days": null
+  },
+  {
+   "tick": 554,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 159 P.",
+   "price": 159,
+   "days": null
+  },
+  {
+   "tick": 555,
+   "from": "Rival Noche",
+   "text": "Me muevo para acercarnos: 155 P.",
+   "price": 155,
+   "days": null
+  },
+  {
+   "tick": 556,
+   "from": "Rival Noche",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 151 P.",
+   "price": 151,
+   "days": null
+  },
+  {
+   "tick": 557,
+   "from": "Rival Noche",
+   "text": "Cerremos hoy: 147 P.",
+   "price": 147,
+   "days": null
+  },
+  {
+   "tick": 558,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 143 P.",
+   "price": 143,
+   "days": null
+  },
+  {
+   "tick": 559,
+   "from": "Rival Noche",
+   "text": "Me muevo para acercarnos: 139 P.",
+   "price": 139,
+   "days": null
+  },
+  {
+   "tick": 560,
+   "from": "Rival Noche",
+   "text": "Yo ya me he movido. ¿Qué puedes hacer tú? Propongo 134 P.",
+   "price": 134,
+   "days": null
+  },
+  {
+   "tick": 561,
+   "from": "Rival Noche",
+   "text": "Cerremos hoy: 130 P.",
+   "price": 130,
+   "days": null
+  },
+  {
+   "tick": 562,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto y que ganemos los dos: 127 P.",
+   "price": 127,
+   "days": null
+  }
+ ],
+ "result": 11.0,
+ "price": 127,
+ "days": 0
+}

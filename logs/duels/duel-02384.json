@@ -1,0 +1,114 @@
+{
+ "duel": 2384,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 75,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 506,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3677,
+  "price": 92,
+  "tick": 501,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 490,
+   "from": "Rival Verde",
+   "text": "We can do 74 P. Thank you for the talk.",
+   "price": 74,
+   "days": null
+  },
+  {
+   "tick": 491,
+   "from": "Rival Verde",
+   "text": "76 P works well for us.",
+   "price": 76,
+   "days": null
+  },
+  {
+   "tick": 492,
+   "from": "Rival Verde",
+   "text": "Our offer is 79 P.",
+   "price": 79,
+   "days": null
+  },
+  {
+   "tick": 493,
+   "from": "Rival Verde",
+   "text": "Let's meet at 81 P, fair for both.",
+   "price": 81,
+   "days": null
+  },
+  {
+   "tick": 494,
+   "from": "Rival Verde",
+   "text": "83 P, and we close now.",
+   "price": 83,
+   "days": null
+  },
+  {
+   "tick": 495,
+   "from": "Rival Verde",
+   "text": "We move to 85 P.",
+   "price": 85,
+   "days": null
+  },
+  {
+   "tick": 496,
+   "from": "Rival Verde",
+   "text": "We can do 86 P. Thank you for the talk.",
+   "price": 86,
+   "days": null
+  },
+  {
+   "tick": 497,
+   "from": "Rival Verde",
+   "text": "88 P works well for us.",
+   "price": 88,
+   "days": null
+  },
+  {
+   "tick": 498,
+   "from": "Rival Verde",
+   "text": "Our offer is 89 P.",
+   "price": 89,
+   "days": null
+  },
+  {
+   "tick": 499,
+   "from": "Rival Verde",
+   "text": "Let's meet at 90 P, fair for both.",
+   "price": 90,
+   "days": null
+  },
+  {
+   "tick": 500,
+   "from": "Rival Verde",
+   "text": "91 P, and we close now.",
+   "price": 91,
+   "days": null
+  },
+  {
+   "tick": 501,
+   "from": "Rival Verde",
+   "text": "We move to 92 P.",
+   "price": 92,
+   "days": null
+  }
+ ],
+ "result": 17.0,
+ "price": 92,
+ "days": 0
+}

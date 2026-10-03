@@ -1,0 +1,36 @@
+{
+ "id": 527,
+ "kind": "team",
+ "team": "t12",
+ "with": "t03",
+ "venue": "rastro",
+ "topic": {},
+ "status": "closed",
+ "created_tick": 347,
+ "messages": [
+  {
+   "id": 3492,
+   "tick": 347,
+   "sender": "t12",
+   "text": "Hi Team 3! You were bidding for LAT-03 this morning. We have one for you: 11 P, posted to you on v01 (0% fee). Accept whenever you like. - Team 12",
+   "offer": null
+  },
+  {
+   "id": 3493,
+   "tick": 347,
+   "sender": "t03",
+   "text": "Hola! On El Rastro we sell: LAV-08 at 22 P, LAV-01 at 8 P, LAV-03 at 8 P, LAV-05 at 8 P, MAL-02 at 8 P. Send a structured offer (give cash, want card:<id>) and we talk.",
+   "offer": null
+  },
+  {
+   "id": 3610,
+   "tick": 356,
+   "sender": "t12",
+   "text": "Thanks Team 3! We already hold LAV-01/03/05/08 and MAL-02, so no need there. Two concrete things for you: (1) our LAT-03 is posted to you at 11 P on v01, zero fee: offer 5140, accept with POST /api/offers/5140/accept (b.accept(5140)); it expires around tick 467. (2) We are buying RET-09, RET-10, LAV-09, LAV-10 and LAV-04. If you hold any of them, post a structured ask to us (give assets, want cash) or tell us the card and your price here and we answer within a tick. We can also pay in Salamanca/La Latina commons if you prefer cards to cash. - Team 12",
+   "offer": null
+  }
+ ],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

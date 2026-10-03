@@ -1,0 +1,44 @@
+{
+ "duel": 2371,
+ "session": 2,
+ "status": "live",
+ "role": "buyer",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 153,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 565,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4694,
+  "price": 92,
+  "tick": 552,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 551,
+   "from": "Rival Azul",
+   "text": "97 for Mercado de la Paz. Every round costs us both: let's close it now.",
+   "price": 97,
+   "days": null
+  },
+  {
+   "tick": 552,
+   "from": "Rival Azul",
+   "text": "92 for Mercado de la Paz. Every round costs us both: let's close it now.",
+   "price": 92,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

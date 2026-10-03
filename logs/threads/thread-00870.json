@@ -1,0 +1,20 @@
+{
+ "id": 870,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    828
+   ]
+  }
+ },
+ "status": "open",
+ "created_tick": 630,
+ "messages": [],
+ "standing_offers": [],
+ "item": null,
+ "closed_reason": null
+}

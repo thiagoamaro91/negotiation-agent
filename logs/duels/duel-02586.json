@@ -1,0 +1,114 @@
+{
+ "duel": 2586,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 129,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 625,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 5577,
+  "price": 104,
+  "tick": 623,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 612,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 137,
+   "days": null
+  },
+  {
+   "tick": 613,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 134,
+   "days": null
+  },
+  {
+   "tick": 614,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 130,
+   "days": null
+  },
+  {
+   "tick": 615,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 127,
+   "days": null
+  },
+  {
+   "tick": 616,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 131,
+   "days": null
+  },
+  {
+   "tick": 617,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 127,
+   "days": null
+  },
+  {
+   "tick": 618,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 123,
+   "days": null
+  },
+  {
+   "tick": 619,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 119,
+   "days": null
+  },
+  {
+   "tick": 620,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 115,
+   "days": null
+  },
+  {
+   "tick": 621,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 111,
+   "days": null
+  },
+  {
+   "tick": 622,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 108,
+   "days": null
+  },
+  {
+   "tick": 623,
+   "from": "Rival Rojo",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 104,
+   "days": null
+  }
+ ],
+ "result": 25.0,
+ "price": 104,
+ "days": 0
+}

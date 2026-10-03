@@ -1,0 +1,63 @@
+{
+ "duel": 2458,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "Café en Goya",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 87,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 583,
+ "decay_per_round": 0.06,
+ "rounds": 1,
+ "your_offer": {
+  "id": 5158,
+  "price": 135,
+  "tick": 579,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 5118,
+  "price": 101,
+  "tick": 575,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 569,
+   "from": "Rival Azul",
+   "text": "Hi there. 60 P from my side.",
+   "price": 60,
+   "days": null
+  },
+  {
+   "tick": 572,
+   "from": "Rival Azul",
+   "text": "How about 80 P?",
+   "price": 80,
+   "days": null
+  },
+  {
+   "tick": 575,
+   "from": "Rival Azul",
+   "text": "101 P, then.",
+   "price": 101,
+   "days": null
+  },
+  {
+   "tick": 579,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 135 P.",
+   "price": 135,
+   "days": null
+  }
+ ],
+ "result": 13.2,
+ "price": 101,
+ "days": 0
+}

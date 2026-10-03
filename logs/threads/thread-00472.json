@@ -1,0 +1,354 @@
+{
+ "id": 472,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    43
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 308,
+ "messages": [
+  {
+   "id": 3116,
+   "tick": 309,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 21 P.",
+   "offer": {
+    "id": 4510,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 313,
+    "created_tick": 309,
+    "final": false
+   }
+  },
+  {
+   "id": 3115,
+   "tick": 309,
+   "sender": "chato",
+   "text": "Tienda de Discos. Thirteen. That's the price, amigo.",
+   "offer": {
+    "id": 4509,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 313,
+    "created_tick": 309,
+    "final": false
+   }
+  },
+  {
+   "id": 3123,
+   "tick": 310,
+   "sender": "chato",
+   "text": "No. 13 P, and I'm being generous.",
+   "offer": {
+    "id": 4528,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 314,
+    "created_tick": 310,
+    "final": false
+   }
+  },
+  {
+   "id": 3125,
+   "tick": 310,
+   "sender": "t03",
+   "text": "I move, you move. 19 P.",
+   "offer": {
+    "id": 4530,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 19,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 314,
+    "created_tick": 310,
+    "final": false
+   }
+  },
+  {
+   "id": 3132,
+   "tick": 311,
+   "sender": "t03",
+   "text": "Coming down: 17 P.",
+   "offer": {
+    "id": 4541,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 315,
+    "created_tick": 311,
+    "final": false
+   }
+  },
+  {
+   "id": 3130,
+   "tick": 311,
+   "sender": "chato",
+   "text": "You moved two. I moved nothing. Thirteen. Same as before, same as later.",
+   "offer": {
+    "id": 4539,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 315,
+    "created_tick": 311,
+    "final": false
+   }
+  },
+  {
+   "id": 3139,
+   "tick": 312,
+   "sender": "chato",
+   "text": "You move, I move. 13 P.",
+   "offer": {
+    "id": 4560,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 316,
+    "created_tick": 312,
+    "final": false
+   }
+  },
+  {
+   "id": 3142,
+   "tick": 312,
+   "sender": "t03",
+   "text": "Fair is fair. 15 P.",
+   "offer": {
+    "id": 4563,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 472,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 316,
+    "created_tick": 312,
+    "final": false
+   }
+  },
+  {
+   "id": 3148,
+   "tick": 313,
+   "sender": "chato",
+   "text": "You came down two. I come up one. Fourteen. That's me moving, amigo. Your turn.",
+   "offer": {
+    "id": 4577,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 472,
+    "status": "settled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 43,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 2,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 317,
+    "created_tick": 313,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Tienda de Discos",
+ "closed_reason": null
+}

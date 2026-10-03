@@ -1,0 +1,37 @@
+{
+ "duel": 2500,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 135,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 565,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4641,
+  "price": 136,
+  "tick": 549,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 549,
+   "from": "Rival Rojo",
+   "text": "I can do 136. Let's close it quickly.",
+   "price": 136,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

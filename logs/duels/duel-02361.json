@@ -1,0 +1,135 @@
+{
+ "duel": 2361,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Heroína del Dos de Mayo",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 140,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 534,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 4341,
+  "price": 106,
+  "tick": 532,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 518,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 158 primas. Pienso que es justo.",
+   "price": 158,
+   "days": null
+  },
+  {
+   "tick": 519,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 157 primas. Pienso que es justo.",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 520,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 156 primas. Pienso que es justo.",
+   "price": 156,
+   "days": null
+  },
+  {
+   "tick": 521,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 155 primas. Pienso que es justo.",
+   "price": 155,
+   "days": null
+  },
+  {
+   "tick": 522,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 153 primas. Pienso que es justo.",
+   "price": 153,
+   "days": null
+  },
+  {
+   "tick": 523,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 151 primas. Pienso que es justo.",
+   "price": 151,
+   "days": null
+  },
+  {
+   "tick": 524,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 148 primas. Pienso que es justo.",
+   "price": 148,
+   "days": null
+  },
+  {
+   "tick": 525,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 145 primas. Pienso que es justo.",
+   "price": 145,
+   "days": null
+  },
+  {
+   "tick": 526,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 142 primas. Pienso que es justo.",
+   "price": 142,
+   "days": null
+  },
+  {
+   "tick": 527,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 138 primas. Pienso que es justo.",
+   "price": 138,
+   "days": null
+  },
+  {
+   "tick": 528,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 134 primas. Pienso que es justo.",
+   "price": 134,
+   "days": null
+  },
+  {
+   "tick": 529,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 129 primas. Pienso que es justo.",
+   "price": 129,
+   "days": null
+  },
+  {
+   "tick": 530,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 124 primas. Pienso que es justo.",
+   "price": 124,
+   "days": null
+  },
+  {
+   "tick": 531,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 119 primas. Pienso que es justo.",
+   "price": 119,
+   "days": null
+  },
+  {
+   "tick": 532,
+   "from": "Rival Sol",
+   "text": "Es una pieza que merece su precio: 106 primas. Pienso que es justo.",
+   "price": 106,
+   "days": null
+  }
+ ],
+ "result": 34.0,
+ "price": 106,
+ "days": 0
+}

@@ -1,0 +1,93 @@
+{
+ "duel": 2337,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 135,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 504,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3573,
+  "price": 111,
+  "tick": 496,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 488,
+   "from": "Rival Verde",
+   "text": "I can do 223. That is a fair deal for both of us.",
+   "price": 223,
+   "days": null
+  },
+  {
+   "tick": 489,
+   "from": "Rival Verde",
+   "text": "I can do 215. That is a fair deal for both of us.",
+   "price": 215,
+   "days": null
+  },
+  {
+   "tick": 490,
+   "from": "Rival Verde",
+   "text": "I can do 204. That is a fair deal for both of us.",
+   "price": 204,
+   "days": null
+  },
+  {
+   "tick": 491,
+   "from": "Rival Verde",
+   "text": "I can do 192. That is a fair deal for both of us.",
+   "price": 192,
+   "days": null
+  },
+  {
+   "tick": 492,
+   "from": "Rival Verde",
+   "text": "I can do 177. That is a fair deal for both of us.",
+   "price": 177,
+   "days": null
+  },
+  {
+   "tick": 493,
+   "from": "Rival Verde",
+   "text": "I can do 162. That is a fair deal for both of us.",
+   "price": 162,
+   "days": null
+  },
+  {
+   "tick": 494,
+   "from": "Rival Verde",
+   "text": "I can do 146. That is a fair deal for both of us.",
+   "price": 146,
+   "days": null
+  },
+  {
+   "tick": 495,
+   "from": "Rival Verde",
+   "text": "I can do 129. That is a fair deal for both of us.",
+   "price": 129,
+   "days": null
+  },
+  {
+   "tick": 496,
+   "from": "Rival Verde",
+   "text": "I can do 111. That is a fair deal for both of us.",
+   "price": 111,
+   "days": null
+  }
+ ],
+ "result": 24.0,
+ "price": 111,
+ "days": 0
+}

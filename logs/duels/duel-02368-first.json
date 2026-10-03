@@ -1,0 +1,37 @@
+{
+ "duel": 2368,
+ "session": 2,
+ "status": "live",
+ "role": "seller",
+ "item": "Palacio de Cristal",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 78,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 518,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 3703,
+  "price": 51,
+  "tick": 502,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 502,
+   "from": "Rival Oro",
+   "text": "Thank you for meeting me. I can do 51 P.",
+   "price": 51,
+   "days": null
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

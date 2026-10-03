@@ -1,0 +1,114 @@
+{
+ "duel": 2328,
+ "session": 2,
+ "status": "deal",
+ "role": "seller",
+ "item": "Mercado de la Paz",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 91,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 475,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 2983,
+  "price": 152,
+  "tick": 472,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 459,
+   "from": "Rival Sol",
+   "text": "Happy to buy Mercado de la Paz at 114 today. Shall we close fast?",
+   "price": 114,
+   "days": null
+  },
+  {
+   "tick": 461,
+   "from": "Rival Sol",
+   "text": "115 P works for me and we can close now.",
+   "price": 115,
+   "days": null
+  },
+  {
+   "tick": 462,
+   "from": "Rival Sol",
+   "text": "We can do 116 for Mercado de la Paz, a fair price that's ready to sign.",
+   "price": 116,
+   "days": null
+  },
+  {
+   "tick": 463,
+   "from": "Rival Sol",
+   "text": "A real step from me: 117 P.",
+   "price": 117,
+   "days": null
+  },
+  {
+   "tick": 464,
+   "from": "Rival Sol",
+   "text": "I can do 119 P. Every round costs us both, so let's close.",
+   "price": 119,
+   "days": null
+  },
+  {
+   "tick": 465,
+   "from": "Rival Sol",
+   "text": "We can offer 121 for Mercado de la Paz, ready to close right now.",
+   "price": 121,
+   "days": null
+  },
+  {
+   "tick": 466,
+   "from": "Rival Sol",
+   "text": "Meeting you closer: 124 P.",
+   "price": 124,
+   "days": null
+  },
+  {
+   "tick": 467,
+   "from": "Rival Sol",
+   "text": "A real step from me: 127 P.",
+   "price": 127,
+   "days": null
+  },
+  {
+   "tick": 468,
+   "from": "Rival Sol",
+   "text": "We can go to 134 for Mercado de la Paz; happy to close at 134 right now.",
+   "price": 134,
+   "days": null
+  },
+  {
+   "tick": 470,
+   "from": "Rival Sol",
+   "text": "138 P works for me and we can close now.",
+   "price": 138,
+   "days": null
+  },
+  {
+   "tick": 471,
+   "from": "Rival Sol",
+   "text": "We can raise to 146 for Mercado de la Paz, ready to close at 146.",
+   "price": 146,
+   "days": null
+  },
+  {
+   "tick": 472,
+   "from": "Rival Sol",
+   "text": "We can pay 152 for Mercado de la Paz. Happy to close at that price.",
+   "price": 152,
+   "days": null
+  }
+ ],
+ "result": 61.0,
+ "price": 152,
+ "days": 0
+}

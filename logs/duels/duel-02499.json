@@ -1,0 +1,133 @@
+{
+ "duel": 2499,
+ "session": 2,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Mesón de la Cava",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 125,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 595,
+ "decay_per_round": 0.06,
+ "rounds": 2,
+ "your_offer": {
+  "id": 5320,
+  "price": 115,
+  "tick": 593,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 5314,
+  "price": 157,
+  "tick": 593,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 579,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 580,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 581,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 582,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 583,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 80 P.",
+   "price": 80,
+   "days": null
+  },
+  {
+   "tick": 583,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 585,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 586,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 587,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 589,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 591,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 592,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 593,
+   "from": "Rival Noche",
+   "text": "157?",
+   "price": 157,
+   "days": null
+  },
+  {
+   "tick": 593,
+   "from": "you",
+   "text": "Last word from me: 115 P.",
+   "price": 115,
+   "days": null
+  }
+ ],
+ "result": 8.8,
+ "price": 115,
+ "days": 0
+}
