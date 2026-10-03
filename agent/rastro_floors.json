@@ -24,25 +24,25 @@
    "asset_id": 41,
    "card": "LAV-01",
    "start_ask": 9,
-   "floor": 6
+   "floor": 8
   },
   {
    "asset_id": 40,
    "card": "LAV-03",
-   "start_ask": 7,
-   "floor": 6
+   "start_ask": 9,
+   "floor": 8
   },
   {
    "asset_id": 499,
    "card": "LAV-05",
-   "start_ask": 8,
-   "floor": 6
+   "start_ask": 9,
+   "floor": 8
   },
   {
    "asset_id": 579,
    "card": "MAL-02",
-   "start_ask": 8,
-   "floor": 6
+   "start_ask": 9,
+   "floor": 8
   }
  ]
 }
