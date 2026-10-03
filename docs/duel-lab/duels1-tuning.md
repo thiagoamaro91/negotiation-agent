@@ -16,8 +16,11 @@ Update 05:00: [improvements.md](improvements.md) adds three code-level flags on 
 ```
 mkdir -p results && cp docs/duel-lab/duel-params-duels1-safe.json results/duel-params.json
 python3 agent/duel.py watch --once --params results/duel-params.json      # read-only check against the live clock
-python3 agent/duel.py run --until 12:30 --params results/duel-params.json  # after the yes in the team chat
+python3 agent/duel.py run --until 14:30 --params results/duel-params.json  # after the yes; --until per the note below
 ```
+
+`--until`: Duels I needs at least ~100 minutes from its start (34 duels, 3 at a time, 16 ticks of 30 s), so set
+`--until` from `/api/schedule` (session start + 100 min or more; e.g. 14:30), never the old 12:30.
 
 Switching to the tuned file mid-session is a restart with the other `--params` (duel.py's `sync_state` picks up
 what we already said).

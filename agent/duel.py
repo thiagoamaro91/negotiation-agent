@@ -1034,7 +1034,13 @@ def main() -> None:
                     time.sleep(cfg.post_gap)
 
                 if not cfg.once and not late_failed and late_due(decisions, cfg):
-                    late_failed = not late_pass(b, run, cfg, states, tick, sending, tick_end)
+                    try:
+                        late_ok = late_pass(b, run, cfg, states, tick, sending, tick_end)
+                    except Exception as e:  # noqa: BLE001  a crash in the late read is a FAILED late read: counted
+                        # toward late_off, and the next tick's first read accepts (no accept is held twice)
+                        run.event("error", where="late_pass", tick=tick, kind=type(e).__name__, msg=str(e)[:300])
+                        late_ok = False
+                    late_failed = not late_ok
                     late_fails = late_fails + 1 if late_failed else 0
                     if late_fails >= LATE_MAX_FAILS:
                         cfg.late_poll = 0.0

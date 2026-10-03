@@ -284,6 +284,19 @@ class RunLoop(unittest.TestCase):
         self.assertEqual([(t, p) for t, _, p in srv.accepts], [(115, 120)])
         self.assertLess(srv.accepts[0][1], 15)
 
+    def test_a_late_pass_that_raises_counts_as_a_failed_read_and_never_loses_the_accept(self):
+        def boom(*a, **k):
+            raise RuntimeError("bug in the late read")
+        with mock.patch.object(duel, "late_pass", boom):
+            srv, out = self.play(self.POSTS, "--late-poll", "8", "--late-ticks", "3")
+            self.assertEqual([(t, p) for t, _, p in srv.accepts], [(114, 118)])   # next tick's first read accepts
+            self.assertLess(srv.accepts[0][1], 15)
+            self.assertIn("where=late_pass", out)
+            srv, out = self.play(self.POOR, "--late-poll", "8", "--late-ticks", "5")
+            self.assertIn("late_off tick=113", out)                                # two crashes in a row: off
+            self.assertEqual([(t, p) for t, _, p in srv.accepts], [(115, 120)])
+            self.assertLess(srv.accepts[0][1], 15)
+
     def test_a_late_read_that_fails_once_is_retried_in_the_same_tick(self):
         srv, _ = self.play(self.POSTS, "--late-poll", "8", "--late-ticks", "3", fail_late=1)
         self.assertEqual([(t, p) for t, _, p in srv.accepts], [(114, 130)])
