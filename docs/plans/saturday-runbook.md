@@ -42,11 +42,19 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
    ```bash
    tmux new-window -t bazaar -n seller "cd ~/bazaar/negotiation-agent; python3 -u agent/rastro_seller.py run --until 13:00; sleep 3600"
    ```
-5. **Market desk in shadow** (decides and logs, sends nothing; its lines appear in the brain's Desks panel):
+5. **GATE · Market desk LIVE from 09:00 with strict caps** (the team's decision, Hector, 03:30): **if Thiago approves PR #6 at 07:00, it starts in `run`, not in shadow.** Friday's best opportunity (LAV-10 listed at 70, +37 at our values) lasted 3 ticks before t10 took it: with 30 s ticks nobody catches that by watching a panel. Caps: at most 110 P per game hour (one Lavapiés rare at most) and 250 P per day; at most 80 P per card, 100 P for a Lavapiés rare; one trade per partner per game hour; cash never below 280 P until the venue decision at 11:50; El Rastro only (a trade on a team venue gives its owner market points); bids addressed only to known holders; it never buys a card we hold and never sells the only copy of a Lavapiés card; it never accepts while the duel lock is fresh.
 
    ```bash
-   tmux new-window -t bazaar -n market "cd ~/bazaar/negotiation-agent; python3 -u agent/market_desk.py watch --min-cash 130 --no-team-venues; sleep 3600"
+   tmux new-window -t bazaar -n market "cd ~/bazaar/negotiation-agent; python3 -u agent/market_desk.py run --until 23:00 --cap-hour 110 --cap-day 250 --max-price 80 --max-price-rare 100 --partner-hour 1 --min-cash 280 --no-team-venues --address-bids; sleep 3600"
    ```
+
+   If PR #6 is not approved by 09:00, start it in shadow instead (it decides and logs, sends nothing; its lines appear in the brain's Desks panel) and switch to the line above once approved:
+
+   ```bash
+   tmux new-window -t bazaar -n market "cd ~/bazaar/negotiation-agent; python3 -u agent/market_desk.py watch --min-cash 280 --no-team-venues; sleep 3600"
+   ```
+
+   Stop it at once with `touch logs/state/STOP` (it goes through the lease). After the venue decision at 11:50, restart it with `--min-cash 30` if the venue is open (the bond is already paid) or `--min-cash 60` if it is not.
 
 ## ~09:03 · The grant (+150 P and a pack)
 
@@ -54,7 +62,7 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
 
 ## ~09:10 · A Lavapiés rare (GATE)
 
-7. First a team listing: the market desk's lines and the brain's tape show any LAV-09 / LAV-10 listed under ~82 P. One accept by offer id if there is one.
+7. First a team listing: the market desk buys a LAV-09 / LAV-10 listed by a team on its own (within its caps). If it already bought one, skip step 8.
 8. Otherwise El Chato with Thiago's ladder (60, 64, 68 ... 84, never 1 P steps), his final taken up to 88. `--reserve 280` keeps the venue option open (383 - 280 leaves 103 for the rare):
 
    ```bash
@@ -104,13 +112,9 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
 
 14. Watch the brain and the `duel` window. After the wave: refit the rivals on the 34 real duels and retune; load the new `results/duel-params.json` before 17:45.
 
-## Midday · Market desk live (GATE)
+## Through the day · Market desk
 
-15. Once the team agrees with its shadow lines: stop the `market` window and start it with `run`:
-
-    ```bash
-    tmux new-window -t bazaar -n market "cd ~/bazaar/negotiation-agent; python3 -u agent/market_desk.py run --until 23:00 --min-cash 130 --no-team-venues --address-bids; sleep 3600"
-    ```
+15. It runs live from 09:00 (step 5). Every hour, read its lines in the brain's Desks panel and `logs/market/2026-10-03.jsonl`: what it bought, sold and bid, with the gain of each. Raise or lower the caps by restarting the `market` window with new flags; `touch logs/state/STOP` stops it.
 
 ## Afternoon and evening
 
