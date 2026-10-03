@@ -8,6 +8,16 @@
 - `docs/plans/sunday-runbook.md`: the operator page (08:55 command, 09:00 check, timeline in game hours, one action per alert, decisions that stay with people).
 - `tests/test_factory.py`: 21 tests (wall time at 15, 30 and 60 s ticks and across a pause or the overnight gap, gates, rendering the real config, staleness, the Market Test watch, double starts); 19 mutations, all caught.
 
+### Fixed (adversarial review of #34)
+- One keeper per process: a lock file held for the keeper's life; every launch, restarts included, checks gates, the duel wave, input files and outside copies (python, `python -m`, or a shell restart loop).
+- The bus claim fails closed (`up --yes --no-bus` is the explicit override); doors-open and clock-running gates default on, so the broker and duel runs wait out a pause too.
+- A dealer step that exits non-zero is not relaunched: the keeper stops and `status` reports it (needs the dealer exit statuses and pause-safe waits of #35).
+- A duel wave projected outside opening hours never launches; `up` refuses a process with a missing input file.
+- Shared schedule cache: unique temp files and a tolerant read-merge-write; a failed save no longer kills a keeper.
+- `status` checks the child pid and its command line, says NO CHILD or WAITING instead of trusting the saved label, fails a log that never appears, counts only matches of the bench run's own offers, and alerts on a scheduled Market Test never seen on our book.
+- Bots get an allowlisted environment with no key in it.
+- 21 more tests driving `up`, `keep`, `status` and the cache with the OS and network mocked; each failed on the reviewed head; 21 more mutations, all caught.
+
 ## [2026-10-03] Team bus
 
 ### Added

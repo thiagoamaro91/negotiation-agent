@@ -3,18 +3,21 @@
 
     python3 tools/factory.py plan                    # read-only (default): clock, schedule in wall time, commands, gates
     python3 tools/factory.py up                      # the same as plan: nothing starts without --yes
-    python3 tools/factory.py up --yes                # one tmux window per process (session "factory")
+    python3 tools/factory.py up --yes [--no-bus]     # one tmux window per process (session "factory")
     python3 tools/factory.py status [--notify] [--every 60]   # one line per process; exit 1 if anything required fails
 
 The configuration is data: tools/factory_sunday.json (processes, commands, gates, required or optional). Each tmux
-window runs `factory.py keep <name>`, the restart loop. It waits for the gates, runs the command, and on exit does what
-the kind says: `service` restarts always, `session` (duels) restarts while the duel window is open, `steps` (dealers)
-moves to the next step after a clean exit and retries a failed run or one that lived through a pause. It writes
-results/factory/<name>.json (state) and <name>.out (output), and releases its bus claim when it stops. It re-reads
-the config before every start, so tonight's and tomorrow's changes are edits to the JSON file.
+window runs `factory.py keep <name>`, the restart loop. It holds results/factory/<name>.lock for its life (one keeper
+per process), and before EVERY launch it checks the gates (doors open and clock running by default), the duel wave
+(inside opening hours), the input files, and that no copy of the bot runs outside the factory (python or `-m`, or a
+shell restart loop). On exit: `service` restarts, `session` (duels) restarts while the duel window is open, `steps`
+(dealers) moves on after exit 0 and stops on any other exit for a person to decide. `up` fails closed on the bus:
+no claim, no start (`--no-bus` is the operator's override when GitHub is down). It writes <name>.json (state) and
+<name>.out (output), and re-reads the config before every start, so changes are edits to the JSON file.
 
-No key: the factory calls only the keyless GET /api/clock and /api/schedule; the bots read their own .env (the
-broker its ~/.bazaar/broker.env). Game text never reaches it: it reads only our own logs' event names and ticks.
+No key: the factory calls only the keyless GET /api/clock and /api/schedule, and the bots get an allowlisted
+environment (SAFE_ENV) with no key in it; they read their own .env (the broker its ~/.bazaar/broker.env). Game text
+never reaches it: it reads only our own logs' event names, ticks and offer ids.
 
 Game hours and wall time, MEASURED in our logs: t_hours advances tick_seconds/3600 per tick (Friday ticks 21 to 47:
 0.350 to 0.783 h at 60 s; Saturday ticks 265 to 266: 3.533 to 3.542 h at 30 s). While the clock runs, one game hour
@@ -25,14 +28,17 @@ times printed during a pause are the earliest possible ones.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import math
 import os
+import re
 import shlex
 import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.request
@@ -46,6 +52,12 @@ LOCK = ROOT / "results" / "duel.lock"
 CONFIG = ROOT / "tools" / "factory_sunday.json"
 MADRID = ZoneInfo("Europe/Madrid")
 GATE_NAMES = {"doors_open": "doors open", "clock_running": "clock running", "no_duel_lock": "no duel lock"}
+GATE_DEFAULTS = {"doors_open": True, "clock_running": True}     # fail closed: a process opts out explicitly
+SHELLS = {"sh", "bash", "zsh", "dash", "ksh", "fish"}
+SAFE_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TMPDIR", "BAZAAR_OPERATOR",
+            "BAZAAR_URL", "TEAM_BUS_REPO", "TEAM_BUS_ISSUE", "TEAM_BUS_STATE", "TEAM_BUS_SESSION", "PYTHONUNBUFFERED")
+SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASS", re.I)
+RECHECK_S = 6.0          # status looks twice before calling a child dead (a keeper notices an exit within 5 s)
 
 
 # --- pure logic (tests/test_factory.py) ----------------------------------------------------------------------------
@@ -105,11 +117,12 @@ def matches(e: dict, sel: dict) -> bool:
 
 
 def check_gates(g: dict, clock: dict, events: list, lock_expiry, now: float) -> tuple[bool, str]:
-    """(open, why) for a gate dict: doors_open, clock_running, no_duel_lock, duel_quiet_min, after_event."""
+    """(open, why) for a gate dict: doors_open and clock_running (both default on), no_duel_lock, duel_quiet_min,
+    after_event."""
     h = float(clock.get("t_hours") or 0.0)
-    if g.get("doors_open") and clock.get("doors", "open") != "open":
+    if g.get("doors_open", True) and clock.get("doors", "open") != "open":
         return False, f"doors closed (next opening {clock.get('next_opens') or 'unknown'})"
-    if g.get("clock_running") and clock.get("paused"):
+    if g.get("clock_running", True) and clock.get("paused"):
         return False, "clock paused"
     if g.get("no_duel_lock") and lock_expiry is not None and lock_expiry > now:
         return False, f"duel lock fresh for {lock_expiry - now:.0f} s"
@@ -141,6 +154,21 @@ def session_pick(sess: dict, events: list, now_hours: float):
     return (ahead[0] if ahead else None), False
 
 
+def session_gate(sess: dict, clock: dict, events: list, now: float):
+    """(event, open, why): session_pick, and the wave's projected wall time must fall inside opening hours. It is
+    recomputed on every call, so a pause that pushes a wave past the close stops its launch."""
+    ev, is_open = session_pick(sess, events, float(clock.get("t_hours") or 0.0))
+    if not ev:
+        return None, False, "no duel wave in the schedule"
+    name = (ev.get("params") or {}).get("name", "duels")
+    wall, _ = to_wall(float(ev["at_hours"]), clock, events, now)
+    if clock.get("days") and not day_of(clock, wall):
+        return ev, False, f"{name} projected at {hhmm(wall, day=True)}, outside opening hours: not launching"
+    if not is_open:
+        return ev, False, f"next duel wave {name} at {float(ev['at_hours']):.3f} h"
+    return ev, True, "duel window open"
+
+
 def until_for(clock: dict, wall: float, margin_min: float) -> str:
     """--until HH:MM (Madrid) for a run on the day that contains `wall`: that day's closing time plus a margin."""
     d = day_of(clock, wall)
@@ -161,10 +189,11 @@ def is_stale(age_s, stale_ticks, tick_seconds: float, floor_s: float = 30.0) -> 
     return stale_ticks is not None and age_s is not None and age_s > max(floor_s, stale_ticks * tick_seconds)
 
 
-def bench_summary(rows: list):
-    """The last Market Test seen in the broker log: bench id, first and last tick with bench offers on the book,
-    matched and dropped counts in that span, and whether the last book still had bench offers (live)."""
-    last, live = None, False
+def bench_sessions(rows: list) -> list:
+    """Every Market Test seen in the broker log, oldest first: bench run id, first and last tick with its offers on
+    our book, and matched / dropped counts for pairs holding one of THAT run's offers (ids like "b36-17"), so a
+    public fill during a test does not count. `live`: the last book still shows bench offers."""
+    out, live = [], False
     for e in rows:
         ev, t = e.get("event"), e.get("tick")
         if ev == "book":
@@ -172,15 +201,22 @@ def bench_summary(rows: list):
             live = bool(offers)
             if offers:
                 bench = str(offers[0].get("id", "?")).split("-")[0]
-                if last is None or last["bench"] != bench:
-                    last = {"bench": bench, "first": t, "last": t, "matched": 0, "dropped": 0}
-                else:
-                    last["last"] = t
-        elif ev in ("matched", "dropped") and last and isinstance(t, int) and last["first"] <= t <= last["last"] + 3:
-            last[ev] += 1
-    if last:
-        last["live"] = live
-    return last
+                if not out or out[-1]["bench"] != bench:
+                    out.append({"bench": bench, "first": t, "last": t, "matched": 0, "dropped": 0, "live": False})
+                out[-1]["last"] = t
+        elif ev in ("matched", "dropped"):
+            ids = [str(x) for x in [e.get("sell"), e.get("buy"), *(e.get("match") or [])]]
+            for sess in out:
+                if any(i.startswith(sess["bench"] + "-") for i in ids):
+                    sess[ev] += 1
+    if out:
+        out[-1]["live"] = live
+    return out
+
+
+def bench_summary(rows: list):
+    sessions = bench_sessions(rows)
+    return sessions[-1] if sessions else None
 
 
 def bench_alerts(s, tick, no_match_ticks: int = 6, hold_ticks: int = 20) -> list:
@@ -196,17 +232,58 @@ def bench_alerts(s, tick, no_match_ticks: int = 6, hold_ticks: int = 20) -> list
     return out
 
 
-def ps_pids(lines: list, match: list, exclude: list = ()) -> list:
-    """Python processes whose argv holds every `match` token (a token equal to it, or a path ending in /it) and no
-    `exclude` token. Only python argv[0] counts, so a shell or an agent whose prompt quotes the command is ignored."""
+def missed_tests(events: list, sessions: list, clock: dict, start_ticks: int = 4, hold_ticks: int = 20) -> list:
+    """Market Tests the schedule says are running (or ended under hold_ticks ago) that never showed on our book: the
+    broker is down, reads the wrong venue, or the venue is closed. Game hours map to ticks at the current length."""
+    tick, h = clock.get("tick"), float(clock.get("t_hours") or 0.0)
+    ts = float(clock.get("tick_seconds") or 15.0)
+    if not isinstance(tick, int) or clock.get("doors", "open") != "open":
+        return []
+    out = []
+    for e in events:
+        if e.get("action") != "bench":
+            continue
+        n = int((e.get("params") or {}).get("ticks", 16))
+        start = tick - round((h - float(e["at_hours"])) * 3600.0 / ts)
+        if start + start_ticks <= tick <= start + n + hold_ticks and \
+                not any(x["last"] >= start - 2 and x["first"] <= start + n + 2 for x in sessions):
+            out.append(f"Market Test at {float(e['at_hours']):.3f} h not on our book after {tick - start} ticks")
+    return out
+
+
+def script_text(token: str) -> str:
+    """The text of a shell script named on a command line (a .sh file or one starting with #!), so a restart loop
+    is seen between two children; '' for anything else."""
+    try:
+        path = Path(token)
+        if not path.is_file() or path.stat().st_size > 65536:
+            return ""
+        text = path.read_text(errors="replace")
+        return text if token.endswith(".sh") or text.startswith("#!") else ""
+    except (OSError, ValueError):
+        return ""
+
+
+def ps_pids(lines: list, match: list, exclude: list = (), read=script_text) -> list:
+    """Processes running a bot: a python argv holding every `match` token (equal to it, a path ending in /it, or
+    `-m` with its module name), or a shell whose command line or script holds them (a restart loop, also between
+    two children). Our own keepers' shells and other programs (an agent quoting the command) are ignored."""
     def hit(toks, n):
-        return any(t == n or t.endswith("/" + n) for t in toks)
+        mod = n[:-3].replace("/", ".") if n.endswith(".py") else None
+        return any(t == n or t.endswith("/" + n) or (mod and t == mod and i and toks[i - 1] == "-m")
+                   for i, t in enumerate(toks))
     out = []
     for line in lines:
         parts = line.split()
-        if len(parts) < 2 or not parts[0].isdigit() or not os.path.basename(parts[1]).lower().startswith("python"):
+        if len(parts) < 2 or not parts[0].isdigit():
             continue
-        toks = parts[2:]
+        prog = os.path.basename(parts[1]).lower().lstrip("-")
+        if prog.startswith("python"):
+            toks = parts[2:]
+        elif prog in SHELLS and "tools/factory.py" not in line:
+            toks = [t for t in re.split(r"[\s;|&()<>'\"`]+", " ".join(parts[2:] + [read(t) for t in parts[2:]])) if t]
+        else:
+            continue
         if all(hit(toks, m) for m in match) and not any(hit(toks, x) for x in exclude):
             out.append(int(parts[0]))
     return out
@@ -224,6 +301,16 @@ def refuse_reason(name: str, windows: set, keeper_alive: bool, pids: list):
 
 def pending_steps(p: dict, done: list) -> list:
     return [s for s in p.get("steps") or [] if s.get("enabled", True) and s["label"] not in done]
+
+
+def child_env(extra: dict, environ) -> dict:
+    """A bot's environment: an allowlist from ours plus the config's `env`; never a key (bots read their own .env)."""
+    env = {k: environ[k] for k in SAFE_ENV if k in environ}
+    for k, v in (extra or {}).items():
+        if SECRETISH.search(k):
+            raise SystemExit(f"config env {k} looks like a secret; the bots read their own .env")
+        env[k] = str(v)
+    return env
 
 
 # --- I/O ------------------------------------------------------------------------------------------------------------
@@ -255,23 +342,35 @@ def read_json(path, default):
 
 
 def write_json(path, data) -> None:
+    """Atomic write through a temp file of our own (keepers share the schedule cache: one shared .tmp name raced)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(data, indent=1))
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    with os.fdopen(fd, "w") as fh:
+        fh.write(json.dumps(data, indent=1))
     os.replace(tmp, path)
 
 
+def cached_events(cache) -> list:
+    data = read_json(cache, [])
+    return [e for e in data if isinstance(e, dict)] if isinstance(data, list) else []
+
+
 def events_now(cfg: dict, clock: dict, save: bool) -> list:
+    """Upcoming events plus today's cache of the ones that already fired. Never raises: the save re-reads the cache
+    just before writing (another keeper may have written since) and a failed save is skipped."""
     cache = STATE / f"schedule-{today()}.json"
-    cached = read_json(cache, [])
     try:
         upcoming = get(cfg, "schedule").get("upcoming") or []
     except Exception:
-        return cached
-    merged = merge_events(upcoming, cached, float(clock.get("t_hours") or 0.0))
+        return cached_events(cache)
+    h = float(clock.get("t_hours") or 0.0)
+    merged = merge_events(upcoming, cached_events(cache), h)
     if save:
-        write_json(cache, merged)
+        try:
+            write_json(cache, merge_events(upcoming, cached_events(cache), h))
+        except OSError:
+            pass
     return merged
 
 
@@ -301,6 +400,40 @@ def pid_alive(pid) -> bool:
         return True
 
 
+def acquire_singleton(name: str):
+    """Take results/factory/<name>.lock (flock) for this keeper's life; the OS frees it if the keeper dies. None if
+    another keeper holds it. The fd is not inherited by the bots."""
+    STATE.mkdir(parents=True, exist_ok=True)
+    fd = os.open(STATE / f"{name}.lock", os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    os.ftruncate(fd, 0)
+    os.write(fd, f"{os.getpid()}\n".encode())
+    return fd
+
+
+def singleton_held(name: str) -> bool:
+    path = STATE / f"{name}.lock"
+    if not path.exists():
+        return False
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return False
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+
+
+def missing_inputs(p: dict) -> list:
+    return [x for x in [p.get("params"), *(p.get("requires") or [])] if x and not (ROOT / x).exists()]
+
+
 def tmux_windows(session: str) -> set:
     r = subprocess.run(["tmux", "list-windows", "-t", session, "-F", "#{window_name}"], capture_output=True, text=True)
     return set(r.stdout.split()) if r.returncode == 0 else set()
@@ -314,8 +447,10 @@ def bus(cfg: dict, action: str, thing: str) -> int:
     argv = [sys.executable, str(ROOT / "tools" / "bus.py"), "--session", b["session"], action, thing]
     if action == "claim":
         argv += ["--where", b.get("where", ""), "--note", "factory.py"]
+    env = {**child_env({}, os.environ), **{k: os.environ[k] for k in ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST",
+                                                                          "GH_CONFIG_DIR") if k in os.environ}}
     try:
-        return subprocess.run(argv, cwd=ROOT, timeout=90).returncode
+        return subprocess.run(argv, cwd=ROOT, env=env, timeout=90).returncode
     except Exception:
         return 1
 
@@ -342,6 +477,21 @@ def context(cfg: dict, cfg_path, p: dict, clock: dict, events: list, now: float)
     return ctx
 
 
+def launch_check(p: dict, step, clock: dict, events: list, now: float, skip=()) -> tuple[bool, str]:
+    """(ok, why), evaluated before EVERY launch, restarts included: the gates, the duel session (inside opening
+    hours), the input files, and no copy of the bot running outside the factory."""
+    ok, why = check_gates(gates_for(p, step), clock, events, lock_expiry(), now)
+    if ok and p["kind"] == "session":
+        _, ok, why = session_gate(p["session"], clock, events, now)
+    if ok and missing_inputs(p):
+        ok, why = False, f"missing input {', '.join(missing_inputs(p))}"
+    if ok:
+        others = [x for x in ps_pids(ps_lines(), p.get("match") or [], p.get("exclude") or []) if x not in skip]
+        if others:
+            ok, why = False, f"another copy runs outside the factory (pid {', '.join(map(str, others))})"
+    return ok, why
+
+
 def gates_for(p: dict, step=None) -> dict:
     g = dict(p.get("gates") or {})
     if step and step.get("after_event"):
@@ -350,7 +500,7 @@ def gates_for(p: dict, step=None) -> dict:
 
 
 def describe(g: dict) -> str:
-    parts = [v for k, v in GATE_NAMES.items() if g.get(k)]
+    parts = [v for k, v in GATE_NAMES.items() if g.get(k, GATE_DEFAULTS.get(k, False))]
     if g.get("duel_quiet_min"):
         parts.append(f"no duel wave within {g['duel_quiet_min']} min")
     return ", ".join(parts) or "none"
@@ -408,14 +558,13 @@ def cmd_plan(cfg: dict, cfg_path) -> int:
             print(f"      ALREADY RUNNING outside the factory: pid {', '.join(map(str, others))} (up will refuse it)")
         ctx = context(cfg, cfg_path, p, clock, events, now)
         if p["kind"] == "session":
-            ev, is_open = session_pick(p["session"], events, h)
-            if ev:
-                w, early = to_wall(float(ev["at_hours"]), clock, events, now)
-                print(f"      {'OPEN now' if is_open else 'next'}: {(ev.get('params') or {}).get('name')} at "
-                      f"{float(ev['at_hours']):.3f} h ({hhmm(w, day=True)}{'+' if early else ''}), starts "
-                      f"{p['session'].get('lead_min', 10)} min before, window {p['session'].get('window_min', 120)} min")
-            if p.get("params") and not (ROOT / p["params"]).exists():
-                print(f"      MISSING params file {p['params']}")
+            ev, _, why_s = session_gate(p["session"], clock, events, now)
+            w, early = to_wall(float(ev["at_hours"]), clock, events, now) if ev else (now, False)
+            when = f" ({hhmm(w, day=True)}{'+' if early else ''})" if ev else ""
+            print(f"      session: {why_s}{when}; starts {p['session'].get('lead_min', 10)} min before, "
+                  f"window {p['session'].get('window_min', 120)} min")
+        for m in missing_inputs(p):
+            print(f"      MISSING input file {m} (up refuses this process until it exists)")
         steps = p.get("steps") or [{"label": "", "cmd": p["cmd"]}]
         for s in steps:
             if p["kind"] == "steps":
@@ -437,7 +586,7 @@ def cmd_plan(cfg: dict, cfg_path) -> int:
 
 # --- up -------------------------------------------------------------------------------------------------------------
 
-def cmd_up(cfg: dict, cfg_path, yes: bool) -> int:
+def cmd_up(cfg: dict, cfg_path, yes: bool, no_bus: bool = False) -> int:
     if not yes:
         rc = cmd_plan(cfg, cfg_path)
         print("\ndry run: nothing started. `up --yes` starts every enabled process that is not already running.")
@@ -456,20 +605,23 @@ def cmd_up(cfg: dict, cfg_path, yes: bool) -> int:
         if p["kind"] == "steps" and not pending_steps(p, st.get("done_steps", [])):
             print(f"skip    {name}: no enabled step left to run today")
             continue
-        why = refuse_reason(name, windows, pid_alive(st.get("keeper_pid")),
-                            ps_pids(ps, p.get("match") or [], p.get("exclude") or []))
+        missing = missing_inputs(p)
+        why = (f"missing input file {', '.join(missing)}" if missing else
+               refuse_reason(name, windows, singleton_held(name),
+                             ps_pids(ps, p.get("match") or [], p.get("exclude") or [])))
+        if not why and not no_bus:
+            rc = bus(cfg, "claim", p.get("bus_thing", name))
+            if rc == 4:
+                why = f"someone else holds {p.get('bus_thing', name)!r} on the bus"
+            elif rc != 0:
+                why = (f"bus claim failed (rc {rc}), not started; if GitHub is down, say so in the team chat and run "
+                       f"`up --yes --no-bus`")
         if why:
             print(f"REFUSE  {name}: {why}")
             bad += 1
             continue
-        rc = bus(cfg, "claim", p.get("bus_thing", name))
-        if rc == 4:
-            print(f"REFUSE  {name}: someone else holds {p.get('bus_thing', name)!r} on the bus")
-            bad += 1
-            continue
-        if rc != 0:
-            print(f"WARN    {name}: bus unreachable (rc {rc}), starting anyway; say it in the team chat")
-        keeper = [cfg.get("python") or sys.executable, "-u", "tools/factory.py", "keep", name, "--config", str(cfg_path)]
+        keeper = [cfg.get("python") or sys.executable, "-u", "tools/factory.py", "keep", name, "--config",
+                  str(cfg_path)] + (["--no-bus"] if no_bus else [])
         subprocess.run(["tmux", "new-window", "-d", "-t", f"{session}:", "-n", name, "-c", str(ROOT),
                         shlex.join(keeper)], check=True)
         print(f"started {name}: tmux window {session}:{name}")
@@ -478,14 +630,17 @@ def cmd_up(cfg: dict, cfg_path, yes: bool) -> int:
 
 # --- keep (what each tmux window runs) --------------------------------------------------------------------------------
 
-def cmd_keep(cfg_path, name: str) -> int:
-    STATE.mkdir(parents=True, exist_ok=True)
+def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
+    lock_fd = acquire_singleton(name)
+    if lock_fd is None:
+        print(f"{name}: another keeper holds {STATE / (name + '.lock')}; this one exits", flush=True)
+        return 3
     out = open(STATE / f"{name}.out", "a", buffering=1)
     st = state_of(name) or {"date": today()}
-    for k in ("done_steps", "failed_steps"):
-        st.setdefault(k, [])
+    st.setdefault("done_steps", [])
+    st["failed_steps"] = []        # starting a keeper (up --yes) is the operator's go to rerun a failed step
     st.update(name=name, keeper_pid=os.getpid(), child_pid=None, state="waiting")
-    child, cfg, retries, backoff = None, load_config(cfg_path), {}, 2.5
+    child, cfg, backoff = None, load_config(cfg_path), 2.5
 
     def say(msg):
         line = f"{time.strftime('%H:%M:%S')} [factory] {msg}\n"
@@ -519,7 +674,7 @@ def cmd_keep(cfg_path, name: str) -> int:
                 save(state="waiting", why=f"clock unreachable ({type(e).__name__})")
                 time.sleep(10)
                 continue
-            now, h = time.time(), float(clock.get("t_hours") or 0.0)
+            now = time.time()
             if now - events_at > 60:
                 events, events_at = events_now(cfg, clock, save=True), now
             step = None
@@ -530,17 +685,13 @@ def cmd_keep(cfg_path, name: str) -> int:
                     say("all enabled steps done")
                     return 0
                 step = left[0]
-            ok, why = check_gates(gates_for(p, step), clock, events, lock_expiry(), now)
-            if ok and p["kind"] == "session":
-                ev, ok = session_pick(p["session"], events, h)
-                why = "duel window open" if ok else (f"next duel wave at {float(ev['at_hours']):.3f} h" if ev
-                                                     else "no duel wave in the schedule")
+            ok, why = launch_check(p, step, clock, events, now, skip={os.getpid(), os.getppid()})
             if not ok:
                 save(state="waiting", why=why, step=step and step["label"], child_pid=None)
                 time.sleep(10)
                 continue
             argv = render((step or p)["cmd"], context(cfg, cfg_path, p, clock, events, now))
-            env = {**os.environ, **{k: str(v) for k, v in (cfg.get("env") or {}).items()}}
+            env = child_env(cfg.get("env"), os.environ)
             say(f"start {shlex.join(argv)}")
             child = subprocess.Popen(argv, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             reader = threading.Thread(target=pump, args=(child.stdout,), daemon=True)
@@ -565,13 +716,13 @@ def cmd_keep(cfg_path, name: str) -> int:
             rc, ran, child = child.returncode, time.time() - now, None
             say(f"exit rc={rc} after {ran:.0f} s")
             if step is not None:
-                if rc == 0 and not st.get("paused_during_run"):
-                    st["done_steps"].append(step["label"])
-                else:
-                    retries[step["label"]] = retries.get(step["label"], 0) + 1
-                    if retries[step["label"]] > int(p.get("max_retries", 2)):
-                        st["failed_steps"].append(step["label"])
-                        say(f"step {step['label']} failed {retries[step['label']]} times: giving up on it")
+                if rc != 0:      # lock_timeout, close_failed, all buys blocked, a crash: a person decides
+                    st["failed_steps"].append(step["label"])
+                    save(state="failed", why=f"step {step['label']} exited rc={rc}: not relaunched", last_rc=rc,
+                         child_pid=None)
+                    say(f"step {step['label']} exited rc={rc}: not relaunched; check the log, then up --yes")
+                    return 1
+                st["done_steps"].append(step["label"])
             st["restarts"] = st.get("restarts", 0) + 1
             save(state="waiting", why=f"exited rc={rc}", last_rc=rc, child_pid=None)
             backoff = 5.0 if ran > 300 else min(backoff * 2, 120.0)     # 5, 10, 20 ... 120 s while it keeps dying
@@ -583,14 +734,24 @@ def cmd_keep(cfg_path, name: str) -> int:
                 child.wait(timeout=20)
             except subprocess.TimeoutExpired:
                 child.kill()
-        if st.get("state") != "done":
+        if st.get("state") not in ("done", "failed"):
             save(state="stopped", child_pid=None)
-        p = next((x for x in cfg["processes"] if x["name"] == name), {})
-        bus(cfg, "release", p.get("bus_thing", name))
+        if not no_bus:
+            p = next((x for x in cfg["processes"] if x["name"] == name), {})
+            bus(cfg, "release", p.get("bus_thing", name))
         say("keeper stopped")
+        os.close(lock_fd)
 
 
 # --- status ---------------------------------------------------------------------------------------------------------
+
+def observe(p: dict, ps: list) -> tuple[dict, bool, bool]:
+    """(state, keeper alive, child alive): the keeper by its lock, the child by its pid AND its command line."""
+    st = state_of(p["name"])
+    pid = st.get("child_pid")
+    child = pid_alive(pid) and (not p.get("match") or pid in ps_pids(ps, p["match"], p.get("exclude") or []))
+    return st, singleton_held(p["name"]), bool(child)
+
 
 def status_once(cfg: dict) -> tuple[list, list]:
     """(lines, problems): one line per process; problems are what makes the exit code 1."""
@@ -602,47 +763,65 @@ def status_once(cfg: dict) -> tuple[list, list]:
         problems.append(f"clock unreachable ({type(e).__name__})")
     tick_s = float(clock.get("tick_seconds") or 15.0)
     live_clock = clock.get("doors") == "open" and not clock.get("paused")
+    events = events_now(cfg, clock, save=True) if clock else []
+    ps = ps_lines()
     head = f"tick {clock.get('tick')} {tick_s:g} s, doors {clock.get('doors')}{', PAUSED' if clock.get('paused') else ''}"
     lines.append(f"{hhmm(now)}  {head}")
     for p in cfg["processes"]:
-        name, st = p["name"], state_of(p["name"])
+        name = p["name"]
         if not p.get("enabled", True):
             lines.append(f"  {name:<13} off")
             continue
-        keeper, child = pid_alive(st.get("keeper_pid")), pid_alive(st.get("child_pid"))
-        state = st.get("state", "never started")
+        st, keeper, child = observe(p, ps)
+        if keeper and not child and st.get("state") == "running":      # maybe an exit the keeper has not seen yet
+            time.sleep(RECHECK_S)
+            ps = ps_lines()
+            st, keeper, child = observe(p, ps)
+        state, need = st.get("state", "never started"), p.get("required")
         left = pending_steps(p, st.get("done_steps", []) + st.get("failed_steps", []))
-        word = ("RUNNING" if child else state.upper()) if keeper else ("DONE" if p["kind"] == "steps" and not left
-                                                                       else "DOWN")
+        if keeper:
+            word = "RUNNING" if child else ("NO CHILD" if state == "running" else "WAITING")
+        else:
+            word = "FAILED" if state == "failed" else ("DONE" if p["kind"] == "steps" and not left else "DOWN")
         log = ROOT / str(p.get("log", "")).format(date=today()) if p.get("log") else None
         age = now - log.stat().st_mtime if log and log.exists() else None
         line = (f"  {name:<13} {word:<8} log {f'{age:.0f} s ago' if age is not None else '-':<10} "
                 f"restarts {st.get('restarts', 0)}  {st.get('step') or ''} {st.get('why', '')}")
-        need = p.get("required")
-        if need and word == "DOWN":
-            problems.append(f"{name} is down")
+        if need and word in ("DOWN", "NO CHILD"):
+            problems.append(f"{name} is down" if word == "DOWN" else
+                            f"{name}: keeper says running but child pid {st.get('child_pid')} is gone")
+        if word == "FAILED":
+            problems.append(f"{name}: {st.get('why')}")
+        if keeper and "outside the factory" in st.get("why", ""):
+            problems.append(f"{name}: {st['why']}")
         if need and keeper and not child and st.get("last_rc") not in (None, 0):
             problems.append(f"{name} exited rc={st['last_rc']}, restart {st.get('restarts', 0)} pending")
+        grace = max(120.0, 2 * float(p.get("stale_ticks") or 4) * tick_s)
+        if child and log and age is None and now - float(st.get("started") or now) > grace:
+            line += "  NO LOG"
+            if need:
+                problems.append(f"{name}: no log at {p['log'].format(date=today())} after {now - st['started']:.0f} s")
         if need and child and live_clock and is_stale(age, p.get("stale_ticks"), tick_s):
             problems.append(f"{name} log silent for {age:.0f} s ({p['stale_ticks']} ticks at {tick_s:g} s)")
             line += "  STALE"
         if child and p["kind"] == "steps" and clock.get("paused"):
-            problems.append(f"{name} dealer run live while the clock is paused (it burns its rounds)")
-        if st.get("failed_steps"):
-            line += f"  failed steps: {', '.join(st['failed_steps'])}"
-        if p.get("bench_watch") and log and log.exists():
-            with open(log, "rb") as f:
-                f.seek(max(0, log.stat().st_size - 4_000_000))
-                rows = []
-                for raw in f.read().splitlines():
-                    try:
-                        rows.append(json.loads(raw))
-                    except ValueError:
-                        pass
-            s = bench_summary(rows)
-            if s:
+            problems.append(f"{name} dealer run live while the clock is paused")
+        if p.get("bench_watch"):
+            rows = []
+            if log and log.exists():
+                with open(log, "rb") as fh:
+                    fh.seek(max(0, log.stat().st_size - 4_000_000))
+                    for raw in fh.read().splitlines():
+                        try:
+                            rows.append(json.loads(raw))
+                        except ValueError:
+                            pass
+            sessions = bench_sessions(rows)
+            if sessions:
+                s = sessions[-1]
                 line += f"  Market Test {s['bench']}: matched {s['matched']} dropped {s['dropped']}{' LIVE' if s['live'] else ''}"
                 problems += bench_alerts(s, clock.get("tick"))
+            problems += missed_tests(events, sessions, clock)
         lines.append(line.rstrip())
     return lines, problems
 
@@ -653,7 +832,7 @@ def notify(cfg: dict, text: str) -> None:
         print("(notify_cmd is not set in the config: nothing sent)")
         return
     try:
-        subprocess.run(list(cmd) + [text], timeout=60)
+        subprocess.run(list(cmd) + [text], env=child_env({}, os.environ), timeout=60)
     except Exception as e:
         print(f"notify failed: {type(e).__name__}")
 
@@ -681,18 +860,19 @@ def main() -> int:
     ap.add_argument("--yes", action="store_true", help="up: really start (without it, up only prints the plan)")
     ap.add_argument("--notify", action="store_true", help="status: run notify_cmd with the problem text")
     ap.add_argument("--every", type=float, default=0, help="status: repeat every N seconds (notify on change only)")
+    ap.add_argument("--no-bus", action="store_true", help="up/keep: skip the bus claim (only when GitHub is down)")
     a = ap.parse_args()
     cfg_path = Path(a.config).resolve()
     cfg = load_config(cfg_path)
     if a.cmd == "plan":
         return cmd_plan(cfg, cfg_path)
     if a.cmd == "up":
-        return cmd_up(cfg, cfg_path, a.yes)
+        return cmd_up(cfg, cfg_path, a.yes, a.no_bus)
     if a.cmd == "status":
         return cmd_status(cfg_path, a.notify, a.every)
     if not a.name:
         ap.error("keep needs a process name")
-    return cmd_keep(cfg_path, a.name)
+    return cmd_keep(cfg_path, a.name, a.no_bus)
 
 
 if __name__ == "__main__":
