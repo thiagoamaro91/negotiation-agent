@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team 3 Market Brain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400;600&display=swap">
+<style>
+/* Sibling of tools/dashboard.html (same control-room palette): what to do first, then who is who, then how sure we are. */
+:root {
+  --bg: #0b1020; --panel: #121a2e; --panel2: #18223a; --line: #263252; --ink: #e9edf6; --muted: #8f9bb8;
+  --gold: #ffc44d; --hot: #ff7a5c; --cold: #6ea0ff; --good: #3ddc97; --bad: #ff5d6c;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif; --body: "Public Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; }
+body { padding: 16px 20px 40px; }
+:root[data-lang="es"] [lang="en"], :root:not([data-lang="es"]) [lang="es"] { display: none !important; }
+h1, h2 { font-family: var(--display); font-stretch: 75%; margin: 0; line-height: 1; }
+h1 { font-size: 30px; font-weight: 900; }
+h2 { font-size: 15px; font-weight: 800; font-stretch: 90%; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 14px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--good); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); }
+.dot.stale { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+.pill { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.pill b { color: var(--ink); font-weight: 600; }
+.pill.ok b { color: var(--good); } .pill.warn b { color: var(--bad); }
+.lang { margin-left: auto; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang button { font: 600 11px var(--mono); background: transparent; color: var(--muted); border: 0; padding: 5px 10px; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.err { color: var(--bad); font-family: var(--mono); font-size: 12px; white-space: pre-wrap; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.kpi .v { font-family: var(--display); font-stretch: 80%; font-size: 30px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.kpi .s { font-size: 12px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; margin-bottom: 14px; }
+@media (max-width: 1050px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.decision { border-left: 3px solid var(--gold); padding: 2px 0 2px 10px; font-size: 13.5px; line-height: 1.4; }
+.decision.warn { border-color: var(--bad); color: #ffd0d4; background: rgba(255, 93, 108, 0.08); padding: 6px 10px; border-radius: 0 6px 6px 0; }
+.stack { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.tape { display: grid; gap: 2px; max-height: 520px; overflow-y: auto; font-size: 12.5px; }
+.tl { display: grid; grid-template-columns: 3.4em 4.2em minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 2px; border-bottom: 1px dashed var(--line); }
+.tl.ours { background: rgba(255, 196, 77, 0.07); }
+.tl.fresh { animation: flash 1.6s ease-out; }
+@keyframes flash { from { background: rgba(61, 220, 151, 0.25); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .tl.fresh { animation: none; } }
+.k { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 5px; border-radius: 4px; background: var(--panel2); color: var(--muted); text-align: center; }
+.k.bid { color: var(--good); } .k.ask { color: var(--hot); } .k.trade { color: var(--gold); } .k.dealer { color: var(--cold); }
+.opp { color: var(--good); font-weight: 600; } .wrn { color: var(--bad); font-weight: 600; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr.us td { background: rgba(255, 196, 77, 0.07); }
+tr.clickable { cursor: pointer; } tr.clickable:hover td { background: var(--panel2); } tr.sel td { background: var(--panel2); }
+.when { font: 600 11px var(--mono); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
+.when.now { color: var(--gold); border-color: var(--gold); }
+.when.next { color: var(--good); border-color: var(--good); }
+.chance { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12px; }
+.chance i { display: block; height: 6px; border-radius: 3px; background: var(--good); }
+.chance .trk { width: 54px; height: 6px; border-radius: 3px; background: var(--panel2); }
+.tag { font: 600 10.5px var(--mono); padding: 1px 6px; border-radius: 4px; background: var(--panel2); color: var(--muted); white-space: nowrap; }
+.tag.page { color: var(--gold); } .tag.nf { color: var(--bad); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 600 11.5px var(--mono); padding: 3px 8px; border-radius: 6px; background: var(--panel2); }
+.cell { text-align: center; font-family: var(--mono); font-size: 12px; border-radius: 4px; }
+svg.spark { width: 90px; height: 22px; display: block; }
+.conf { font: 600 10.5px var(--mono); padding: 1px 6px; border-radius: 999px; }
+.conf.strong { color: var(--good); background: rgba(61, 220, 151, 0.12); }
+.conf.some { color: var(--gold); background: rgba(255, 196, 77, 0.12); }
+.conf.weak { color: var(--muted); background: var(--panel2); }
+.distrow { display: grid; grid-template-columns: 3.2em 1fr 3em; gap: 8px; align-items: center; font-size: 12px; }
+.dbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--panel2); }
+svg.curve { width: 100%; height: 140px; display: block; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; max-width: 100ch; }
+button:focus-visible, tr:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.est { font: 600 9.5px var(--mono); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.mode { font: 600 10.5px var(--mono); padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.06em; }
+.mode.live { color: var(--bg); background: var(--hot); } .mode.shadow { color: var(--muted); background: var(--panel2); }
+.stale-text { color: var(--bad); }
+.small { font-size: 11.5px; } .wrap { white-space: normal; min-width: 18ch; }
+.relbar { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11.5px; }
+.relbar .trk { position: relative; width: 90px; height: 8px; border-radius: 3px; background: var(--panel2); flex: none; }
+.relbar .obs { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--good); }
+.relbar .pred { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--gold); }
+.steps { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.steps b { color: var(--ink); font-weight: 600; }
+.slot { display: inline-block; min-width: 2.6em; text-align: center; font: 600 10.5px var(--mono); padding: 1px 4px; border-radius: 4px; background: var(--panel2); margin-right: 2px; }
+.slot.on { color: var(--good); }
+@media (max-width: 600px) {
+  body { padding: 12px 16px 32px; }
+  h1 { font-size: 24px; }
+  .lang { margin-left: 0; }
+  .kpi .v { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Team 3 · <span lang="en">Market Brain</span><span lang="es">Cerebro de mercado</span></h1>
+  <span class="live"><span class="dot" id="dot"></span><span id="age">…</span></span>
+  <span id="pills" class="chips"></span>
+  <div class="lang" role="group" aria-label="Language"><button type="button" data-l="en" aria-pressed="true">EN</button><button type="button" data-l="es" aria-pressed="false">ES</button></div>
+</div>
+<div id="err" class="err"></div>
+<div class="kpis" id="kpis"></div>
+
+<div class="grid">
+  <div class="panel">
+    <h2><span lang="en">What to do</span><span lang="es">Qué hacer</span></h2>
+    <div id="decisions"></div>
+    <h2><span lang="en">Sell to teams</span><span lang="es">Vender a equipos</span></h2>
+    <div class="scroll"><table id="sells"></table></div>
+    <h2><span lang="en">Buy from teams</span><span lang="es">Comprar a equipos</span></h2>
+    <div class="scroll"><table id="buys"></table></div>
+    <h2><span lang="en">Dealer ladder</span><span lang="es">Escalera de dealers</span> <span class="est">estimate · estimación</span></h2>
+    <div class="scroll"><table id="dealer"></table></div>
+    <div id="holdwrap"><h2><span lang="en">Hold</span><span lang="es">Guardar</span></h2>
+    <div class="chips" id="holds"></div></div>
+    <p class="note"><span lang="en">Scored like the game. Team trades score the value we gain at our private values (P): expected = estimated chance × gain × the round's weight (Friday counts half); a listing posted tonight carries over. Dealer deals score on the ladder, never in P: the share of the dealer's price range we capture, our best 3 per level, estimated from measured closes; a deal at his opening price or on the wrong side of our value scores 0. Holdings and cash never score. Plans only: every move needs a yes in the team chat.</span><span lang="es">Puntuado como el juego. Los tratos con equipos puntúan el valor que ganamos a nuestros valores privados (P): esperado = probabilidad estimada × ganancia × peso de la ronda (el viernes cuenta la mitad); una oferta publicada esta noche sigue mañana. Los tratos con dealers puntúan en la escalera, nunca en P: la parte del rango de precios del dealer que capturamos, nuestros 3 mejores por nivel, estimada con cierres medidos; un trato a su precio de apertura o en el lado malo de nuestro valor puntúa 0. Ni lo que tenemos ni la caja puntúan. Solo planifica: cada jugada necesita un sí en el chat del equipo.</span></p>
+  </div>
+  <div class="stack">
+    <div class="panel">
+      <h2><span lang="en">Live market</span><span lang="es">Mercado en directo</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="tapecount"></span></h2>
+      <div class="tape" id="tape"></div>
+      <p class="note"><span lang="en">Every listing, bid and deal as it happens, with the real team behind each pseudonym. Green: we would gain taking it. Red: one of our own offers loses value.</span><span lang="es">Cada oferta, puja y trato al momento, con el equipo real detrás de cada seudónimo. Verde: ganaríamos aceptándolo. Rojo: una oferta nuestra pierde valor.</span></p>
+    </div>
+    <div class="panel">
+      <h2><span lang="en">Desks</span><span lang="es">Mesas</span></h2>
+      <div class="scroll"><table id="desks"></table></div>
+      <p class="note"><span lang="en">Each trading agent's last heartbeat: mode, game tick, last decision and why. Red age: silent for over 2 minutes.</span><span lang="es">El último latido de cada agente: modo, tick del juego, última decisión y por qué. Edad en rojo: más de 2 minutos callado.</span></p>
+    </div>
+    <div class="panel">
+      <h2><span lang="en">Venues</span><span lang="es">Mercados</span></h2>
+      <div class="scroll"><table id="venues"></table></div>
+      <p class="note"><span lang="en">Open offers from each venue's public book (recorder); trades = the venue's own counter (feed settlements in brackets).</span><span lang="es">Ofertas abiertas según el libro público de cada mercado (grabador); trades = el contador del propio mercado (liquidaciones del feed entre paréntesis).</span></p>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2><span lang="en">Every team</span><span lang="es">Todos los equipos</span></h2>
+    <div class="scroll"><table id="teams"></table></div>
+    <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start (exact for us). Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales (exacta para nosotros). Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
+  </div>
+  <div class="stack">
+    <div class="panel" id="detail"></div>
+    <div class="panel">
+    <h2><span lang="en">How sure we are</span><span lang="es">Cuánto nos fiamos</span></h2>
+    <svg class="curve" id="curve" viewBox="0 0 400 140" preserveAspectRatio="none" aria-label="Model hit rate over time"></svg>
+    <div id="modelnote" class="note"></div>
+    <div class="scroll"><table id="reliability"></table></div>
+    <div id="labelnote" class="note"></div>
+    <div id="truth"></div>
+    <div id="assume" class="note"></div>
+  </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2><span lang="en">Team-to-team prices</span><span lang="es">Precios entre equipos</span> <span class="muted mono" style="font-size:11px;letter-spacing:0" id="pricecount"></span></h2>
+    <div class="scroll"><table id="tprices"></table></div>
+    <p class="note"><span lang="en">What teams paid each other for one card: median and range, all weekend and the last game hours. Also in /data → prices.teams for the desks.</span><span lang="es">Lo que los equipos se pagaron por un cromo: mediana y rango, todo el fin de semana y las últimas horas de juego. También en /data → prices.teams para las mesas.</span></p>
+  </div>
+  <div class="panel">
+    <h2><span lang="en">Dealer closes</span><span lang="es">Cierres con dealers</span></h2>
+    <div class="scroll"><table id="dprices"></table></div>
+    <p class="note"><span lang="en">Negotiated closes only (a welcome or a taken ask is left out). Source: measured from the feed, Friday's fallback while there are fewer than 3, or the list price for a dealer with none.</span><span lang="es">Solo cierres negociados (se excluyen el precio de bienvenida y aceptar su primer precio). Origen: medido en el feed, el respaldo del viernes mientras haya menos de 3, o el precio de lista si no hay ninguno.</span></p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = x => String(x ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const L = (en, es) => `<span lang="en">${en}</span><span lang="es">${es}</span>`;
+const qs = location.search;
+let DATA = null, SEL = "t03";
+function setLang(l) {
+  document.documentElement.setAttribute("data-lang", l);
+  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.l === l)));
+  try { localStorage.setItem("brain-lang", l); } catch (e) {}
+}
+document.querySelectorAll(".lang button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.l)));
+try { setLang(localStorage.getItem("brain-lang") || "en"); } catch (e) { setLang("en"); }
+
+function heat(v) {
+  const prior = 1.0167;
+  if (v >= prior) { const p = Math.min(1, (v - prior) / (1.6 - prior)); return `rgba(255,122,92,${(0.12 + 0.7 * p).toFixed(2)})`; }
+  const p = Math.min(1, (prior - v) / (prior - 0.5)); return `rgba(110,160,255,${(0.12 + 0.6 * p).toFixed(2)})`;
+}
+function spark(hist) {
+  if (!hist || hist.length < 2) return "";
+  const xs = hist.map(h => h[0]), ys = hist.map(h => h[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys, 0), y1 = Math.max(...ys, 400);
+  const pts = hist.map(h => `${((h[0] - x0) / Math.max(1, x1 - x0) * 88 + 1).toFixed(1)},${(21 - (h[1] - y0) / Math.max(1, y1 - y0) * 20).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="0 0 90 22"><polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="1.5"/></svg>`;
+}
+const whenTag = a => a.includes("now") ? `<span class="when now">${L("now", "ahora")}</span>` : `<span class="when next">${esc(a.replace(/^.* at /, ""))}</span>`;
+const chance = p => `<span class="chance" title="estimate"><span class="trk"><i style="width:${Math.round(p * 100)}%"></i></span>~${Math.round(p * 100)}%</span>`;
+const pct = x => x == null ? "—" : `${Math.round(x * 100)}%`;
+const ago = s => s == null ? "—" : s < 90 ? `${Math.round(s)} s` : s < 5400 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+const range = r => r && r.n ? `${r.median} <span class="muted">(${r.low}–${r.high}, n=${r.n})</span>` : `<span class="muted">—</span>`;
+const SRC = { "measured": ["measured", "medido"], "measured (few)": ["few closes", "pocos cierres"], "fallback": ["Friday fallback", "respaldo viernes"], "list": ["list price", "precio lista"] };
+const src = s => L(...(SRC[s] || [esc(s), esc(s)]));
+const KIND = { common: ["common", "común"], uncommon: ["uncommon", "infrecuente"], rare: ["rare", "rara"] };
+const kind = k => k.startsWith("pack:") ? `${L("pack", "sobre")} ${esc(k.slice(5))}` : L(...(KIND[k] || [esc(k), esc(k)]));
+
+function renderDealer(rows) {
+  $("dealer").innerHTML = `<thead><tr><th>${L("deal", "trato")}</th><th>P</th><th>${L("share", "cuota")}</th><th>${L("price → share", "precio → cuota")}</th><th>${L("our best 3", "nuestros 3 mejores")}</th><th>${L("adds", "suma")}</th><th>${L("cards", "cromos")}</th></tr></thead><tbody>` +
+    (rows || []).map(r => `<tr><td class="mono small"><b>${esc(r.dealer)}</b> ${r.side === "sells" ? L("sells", "vende") : L("buys", "compra")} ${kind(r.kind)}<br><span class="muted">${src(r.source)} · ${L("closes", "cierres")} ${r.low}–${r.high} · ${L("opens", "abre")} ${r.opening} · n=${r.n}</span>${r.funded === false ? ` <span class="tag nf">${L("no cash yet", "sin caja aún")}</span>` : ""}</td>` +
+      `<td class="mono">${r.price}</td><td class="mono">${r.share == null ? "—" : "~" + pct(r.share)}</td>` +
+      `<td class="steps">${(r.ladder || []).filter((_, i, a) => a.length <= 6 || i % 2 === 0 || i === a.length - 1).map(x => `<b>${x.price}</b>→${pct(x.share)}`).join(" ")}</td>` +
+      `<td>${(r.slots || []).map(x => `<span class="slot${x > 0 ? " on" : ""}">${x.toFixed(2)}</span>`).join("")}</td>` +
+      `<td class="mono">${r.adds > 0 ? "+" + r.adds.toFixed(2) : "0"}</td>` +
+      `<td class="mono small wrap">${(r.cards || []).map(c => `${esc(c.ref)} <span class="muted">${c.value}</span>${c.below_value ? "" : ` <span class="wrn">${L("vs value", "vs valor")}</span>`}${c.in_team_sells ? ` <span class="muted" title="also planned as a team sale">· ${L("team sale", "venta equipo")}</span>` : ""}`).join("<br>") || "—"}</td></tr>`).join("") + `</tbody>`;
+}
+
+function renderDesks(desks) {
+  $("desks").innerHTML = desks && desks.length ? `<thead><tr><th>${L("desk", "mesa")}</th><th>${L("mode", "modo")}</th><th>${L("age", "edad")}</th><th>tick</th><th>${L("last decision", "última decisión")}</th></tr></thead><tbody>` +
+    desks.map(k => `<tr><td class="mono"><b>${esc(k.name)}</b></td><td><span class="mode ${k.mode === "live" ? "live" : "shadow"}">${esc(k.mode)}</span></td><td class="mono${k.age_s > 120 ? " stale-text" : ""}">${ago(k.age_s)}</td><td class="mono">${k.tick ?? "—"}</td><td class="small wrap">${esc(k.last_decision) || "—"}${k.reason ? `<br><span class="muted">${esc(k.reason)}</span>` : ""}</td></tr>`).join("") + `</tbody>`
+    : `<tbody><tr><td class="muted">${L("No desk has reported yet (POST /ingest/desk with the write token).", "Ninguna mesa ha informado aún (POST /ingest/desk con el token de escritura).")}</td></tr></tbody>`;
+}
+
+function renderVenues(vs) {
+  $("venues").innerHTML = `<thead><tr><th>${L("venue", "mercado")}</th><th>${L("mechanism", "mecanismo")}</th><th>${L("fee", "comisión")}</th><th>${L("open offers", "ofertas abiertas")}</th><th>trades</th></tr></thead><tbody>` +
+    ((vs || []).map(v => `<tr${v.owner === "t03" ? ' class="us"' : ""}><td class="small wrap"><b class="mono">${esc(v.venue)}</b> ${esc(v.name)} <span class="muted mono">${esc(v.owner)}</span>${v.status !== "open" ? ` <span class="tag nf">${esc(v.status)}</span>` : ""}</td><td class="mono small">${esc(v.mechanism || "—")}</td><td class="mono small">${v.fee_bps == null ? "—" : (v.fee_bps / 100).toFixed(v.fee_bps % 100 ? 1 : 0) + "%"}${v.fee_per_card ? ` +${esc(v.fee_per_card)} P` : ""}${v.pending_fee && v.pending_fee.fee_bps != null ? ` <span class="muted">→ ${(v.pending_fee.fee_bps / 100).toFixed(1)}%</span>` : ""}</td><td class="mono">${v.open_offers ?? "—"}</td><td class="mono">${v.trades ?? "—"} <span class="muted">(${v.feed_trades})</span></td></tr>`).join("")
+     || `<tr><td class="muted" colspan="5">${L("No venue snapshot yet (the recorder writes one each tick).", "Aún no hay foto de mercados (el grabador escribe una cada tick).")}</td></tr>`) + `</tbody>`;
+}
+
+function renderModel(m) {
+  $("modelnote").innerHTML = L(
+    `Each team's next choice, predicted only from what it did before: right <b>${pct(m.hit)}</b> of ${m.n} times, against <b>${pct(m.naive)}</b> for the naive guess "repeat its favourite" and ${pct(m.chance)} for chance. Log-loss ${m.loss} (chance ${m.uniform_loss}). The model is overconfident: keeping <b>${pct(m.shrink)}</b> of its confidence predicts best (log-loss ${m.shrunk_loss}), and the plan's chances use that.`,
+    `La siguiente elección de cada equipo, predicha solo con lo anterior: acierta el <b>${pct(m.hit)}</b> de ${m.n} veces, frente al <b>${pct(m.naive)}</b> de la regla ingenua «repite su favorito» y el ${pct(m.chance)} del azar. Log-loss ${m.loss} (azar ${m.uniform_loss}). El modelo se pasa de seguro: quedarse con el <b>${pct(m.shrink)}</b> de su confianza predice mejor (log-loss ${m.shrunk_loss}), y el plan usa eso.`);
+  $("reliability").innerHTML = `<thead><tr><th>${L("model said", "el modelo dijo")}</th><th>n</th><th>${L("came true", "acertó")}</th></tr></thead><tbody>` +
+    (m.reliability || []).filter(b => b.n).map(b => `<tr><td class="mono">${pct(b.lo)}–${pct(b.hi)}</td><td class="mono">${b.n}</td><td><span class="relbar"><span class="trk"><span class="obs" style="width:${Math.round(b.observed * 100)}%"></span><span class="pred" style="left:${Math.round(b.predicted * 100)}%"></span></span>${pct(b.observed)} <span class="muted">vs ${pct(b.predicted)}</span></span></td></tr>`).join("") + `</tbody>`;
+  const lab = m.labels || {}, bl = m.by_label || {};
+  const by = Object.entries(bl).map(([k, v]) => `${esc(k)} ${pct(v.favourite_next)} (n=${v.n})`).join(" · ");
+  $("labelnote").innerHTML = L(
+    `Green bar: how often the top pick came true; gold tick: what the model said. Labels: <b>strong</b> = favourite ≥ ${pct(lab.strong && lab.strong.p)} on ≥ ${lab.strong && lab.strong.choices} independent choices, <b>some</b> = ≥ ${pct(lab.some && lab.some.p)} on ≥ ${lab.some && lab.some.choices} (the k-th choice of a set counts 1/k). Next choice was the favourite, by the label at the time: ${by}. Teams move on to other sets once they hold their favourite's cards, so treat every label as a hint.`,
+    `Barra verde: cuántas veces acertó la primera opción; marca dorada: lo que dijo el modelo. Etiquetas: <b>strong</b> = favorito ≥ ${pct(lab.strong && lab.strong.p)} con ≥ ${lab.strong && lab.strong.choices} elecciones independientes, <b>some</b> = ≥ ${pct(lab.some && lab.some.p)} con ≥ ${lab.some && lab.some.choices} (la k-ésima elección de un barrio cuenta 1/k). La siguiente elección fue el favorito, según la etiqueta de ese momento: ${by}. Los equipos pasan a otros barrios cuando ya tienen los cromos de su favorito: toma cada etiqueta como una pista.`);
+}
+
+function renderPrices(pr) {
+  const t = (pr && pr.teams) || { all: {}, recent: {} };
+  $("pricecount").textContent = `${t.trades ?? 0} trades · ${t.recent_trades ?? 0} / ${t.recent_hours ?? 2} h`;
+  const rows = [];
+  for (const g of ["rarity", "set"]) for (const k of Object.keys((t.all || {})[g] || {})) rows.push([g, k]);
+  $("tprices").innerHTML = `<thead><tr><th></th><th>${L("all", "todo")}</th><th>${L(`last ${t.recent_hours ?? 2} game h`, `últimas ${t.recent_hours ?? 2} h de juego`)}</th></tr></thead><tbody>` +
+    rows.map(([g, k]) => `<tr><td class="mono">${g === "rarity" ? kind(k) : esc(k)}</td><td class="mono">${range(t.all[g][k])}</td><td class="mono">${range(((t.recent || {})[g] || {})[k])}</td></tr>`).join("") + `</tbody>`;
+  const ds = Object.values((pr && pr.dealers) || {}).sort((a, b) => (a.dealer + a.side + a.kind).localeCompare(b.dealer + b.side + b.kind));
+  $("dprices").innerHTML = `<thead><tr><th>${L("dealer", "dealer")}</th><th>${L("opens", "abre")}</th><th>${L("closes", "cierres")}</th><th>${L("source", "origen")}</th></tr></thead><tbody>` +
+    ds.map(r => `<tr><td class="mono small"><b>${esc(r.dealer)}</b> ${r.side === "sells" ? L("sells", "vende") : L("buys", "compra")} ${kind(r.kind)}</td><td class="mono">${r.opening}</td><td class="mono">${r.median} <span class="muted">(${r.low}–${r.high}, n=${r.n})</span></td><td class="small">${src(r.source)}</td></tr>`).join("") + `</tbody>`;
+}
+
+function render(d) {
+  DATA = d;
+  $("err").textContent = d.error || "";
+  const stale = d.age == null || d.age > 60;
+  $("dot").className = "dot" + (stale ? " stale" : "");
+  $("age").textContent = d.age == null ? "no data" : `tick ${d.tick} · ${d.server_time} · ${Math.round(d.age)} s`;
+  const m = d.model, st = d.store, lc = d.ledger_check || {};
+  $("pills").innerHTML = [
+    `<span class="pill"><b>${st.events}</b> ${L("events stored", "eventos guardados")} · API ${st.api_window}</span>`,
+    `<span class="pill ${m.hit > m.chance ? "ok" : "warn"}">${L("model", "modelo")} <b>${Math.round(m.hit * 100)}%</b> vs ${Math.round(m.chance * 100)}% ${L("chance", "azar")}</span>`,
+    `<span class="pill ${lc.ok ? "ok" : "warn"}">${L("ledger", "caja")} <b>${lc.ok ? "OK" : "check"}</b> ${lc.rebuilt ?? ""}/${lc.real ?? ""}</span>`,
+    `<span class="pill ${d.account && d.account.source.startsWith("relay") ? "ok" : "warn"}">${L("our account", "nuestra cuenta")} <b>${d.account ? esc(d.account.source) : "?"}</b> t${d.account ? d.account.tick : "?"}</span>`,
+    `<span class="pill">${d.compute_s}s</span>`,
+  ].join("");
+  const p = d.plan, h = p.horizons;
+  const best = [...p.sells, ...p.buys.filter(b => b.funded)].sort((a, b) => b.ev - a.ev)[0];
+  const lad = (p.dealer || []).find(r => r.adds > 0 && r.below_value);
+  $("kpis").innerHTML = [
+    [L("our cash", "nuestra caja"), `${p.cash} P`, `${L("reserve", "reserva")} ${p.reserve} P · ${L("free", "libre")} ${p.free_cash} P`],
+    [L("now", "ahora"), h[0].label, `${L("weight", "peso")} ${h[0].weight}`],
+    [L("next", "siguiente"), h[1] ? h[1].label : "—", h[1] ? `${L("weight", "peso")} ${h[1].weight}${h[1].grant ? ` · +${h[1].grant} P` : ""}` : ""],
+    [L("best team trade", "mejor trato con equipo"), best ? esc(best.ref) : "—", best ? `${esc(best.action)} · ${best.price} P · +${best.ev} P` : ""],
+    [L("best ladder deal", "mejor trato de escalera"), lad ? `${esc(lad.dealer)} ${lad.price}` : "—", lad ? `${kind(lad.kind)} · ~${pct(lad.share)} ${L("of range", "del rango")} · <span class="est">est.</span>` : ""],
+  ].map(([l, v, s]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
+  $("decisions").innerHTML = (p.decisions || []).map(x => `<div class="decision${x.startsWith("WARNING") ? " warn" : ""}">${esc(x)}</div>`).join("");
+  const seen = new Set((window.__tapeIds || []));
+  $("tape").innerHTML = (d.tape || []).map(r => `<div class="tl${r.ours ? " ours" : ""}${seen.size && !seen.has(r.id) ? " fresh" : ""}"><span class="mono muted">t${r.tick}</span><span class="k ${esc(r.kind)}">${esc(r.kind)}</span><span>${esc(r.text)}${r.opportunity ? ` <span class="opp">· ${esc(r.opportunity)}</span>` : ""}${r.warning ? ` <span class="wrn">· ${esc(r.warning)}</span>` : ""}</span></div>`).join("");
+  window.__tapeIds = (d.tape || []).map(r => r.id);
+  $("tapecount").textContent = `${(d.tape || []).filter(r => r.opportunity).length} opp · ${(d.tape || []).filter(r => r.warning).length} warn`;
+  $("sells").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")} <span class="est">est.</span></th><th>${L("expected", "esperado")}</th><th>${L("likely buyers", "compradores")} <span class="est">est.</span></th></tr></thead><tbody>` +
+    p.sells.map(s => `<tr><td class="mono">${esc(s.ref)} <span class="tag">${s.copy === "spare" ? L("spare", "repe") : L("first", "única")}</span> <span class="muted small">${s.our_value}</span></td><td>${whenTag(s.action)} <span class="muted" style="font-size:11px">${esc(s.action.split(" ")[0])}</span></td><td class="mono">${s.price}</td><td class="mono">+${s.gain}</td><td>${chance(s.p)}</td><td class="mono"><b>+${s.ev}</b></td><td class="mono" style="font-size:12px">${(s.likely_buyers || []).map(b => `${esc(b.team)} ~${Math.round(b.p * 100)}%`).join(", ") || (s.counterparty ? esc(s.counterparty) : "")}</td></tr>`).join("") + `</tbody>`;
+  $("buys").innerHTML = `<thead><tr><th>${L("card", "cromo")}</th><th>${L("when", "cuándo")}</th><th>P</th><th>${L("gain", "ganancia")}</th><th>${L("chance", "prob.")} <span class="est">est.</span></th><th>${L("expected", "esperado")}</th><th>${L("from", "de")}</th></tr></thead><tbody>` +
+    p.buys.map(b => `<tr><td class="mono">${esc(b.ref)} ${b.completes_page ? `<span class="tag page">${L("completes page", "completa página")}</span>` : b.page_target ? `<span class="tag page">${L("page", "página")}</span>` : ""}${b.funded ? "" : ` <span class="tag nf">${L("no cash yet", "sin caja aún")}</span>`}</td><td>${whenTag(b.action)} <span class="muted" style="font-size:11px">${esc(b.action.split(" ").slice(0, 3).join(" ").replace(/ at.*/, ""))}</span></td><td class="mono">${b.price}</td><td class="mono">+${b.gain}</td><td>${chance(b.p)}</td><td class="mono"><b>+${b.ev}</b></td><td class="mono" style="font-size:12px">${esc(b.counterparty)}</td></tr>`).join("") + `</tbody>`;
+  renderDealer(p.dealer);
+  $("holdwrap").hidden = !(p.holds || []).length;
+  $("holds").innerHTML = (p.holds || []).map(x => `<span class="chip" title="${esc(x.why)}">${esc(x.ref)}</span>`).join("");
+  renderModel(m);
+  renderDesks(d.desks);
+  renderVenues(d.venues);
+  renderPrices(d.prices);
+  $("truth").innerHTML = `<table><thead><tr><th>${L("our sets", "nuestros barrios")}</th><th>${L("inferred", "deducido")}</th><th>${L("true", "real")}</th></tr></thead><tbody>` +
+    Object.entries(m.us).map(([s, v]) => `<tr><td class="mono">${esc(s)}</td><td class="mono">${v.inferred}</td><td class="mono">${v.true ?? "—"}</td></tr>`).join("") + `</tbody></table>`;
+  $("assume").innerHTML = `<b>${L("Assumptions", "Supuestos")}</b><br>` + (p.assumptions || []).map(esc).join("<br>");
+  const sets = d.in_play;
+  $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
+    d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}</td><td>${spark(t.cash_history)}</td>` +
+      sets.map(s => `<td><div class="cell" style="background:${heat(t.expected[s])}">${t.expected[s].toFixed(2)}</div></td>`).join("") +
+      `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
+  document.querySelectorAll("#teams tr.clickable").forEach(r => {
+    const go = () => { SEL = r.dataset.team; render(DATA); };
+    r.addEventListener("click", go);
+    r.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  });
+  const t = d.teams.find(x => x.team === SEL) || d.teams[0];
+  const mults = ["1.6", "1.3", "1.1", "0.9", "0.7", "0.5"];
+  $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P</h2>` +
+    sets.map(s => `<div class="distrow"><span class="mono">${esc(s)}</span><div class="dbar">${mults.map(mm => { const pr = (t.dist[s] || {})[mm] || 0; return pr > 0.005 ? `<span title="${mm}: ${Math.round(pr * 100)}%" style="width:${(pr * 100).toFixed(1)}%;background:${heat(parseFloat(mm))}"></span>` : ""; }).join("")}</div><span class="mono">${t.expected[s].toFixed(2)}</span></div>`).join("") +
+    `<p class="note">${L("probability of each multiplier, 1.6 (left) to 0.5", "probabilidad de cada multiplicador, de 1,6 (izquierda) a 0,5")}</p>` +
+    `<div><b>${L("Known cards", "Cartas conocidas")}</b> <span class="muted">(${L("lower bound", "mínimo")})</span></div><div class="chips">${Object.entries(t.known_cards || {}).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("") || `<span class="muted">—</span>`}</div>` +
+    `<p class="note">${L(`Spent at dealers ${t.dealer_spent} P · bonds ${t.bonds} P · ${t.evidence} pieces of evidence, ${t.choices} independent choices · ${esc(t.confidence)}`, `Gastado en dealers ${t.dealer_spent} P · fianzas ${t.bonds} P · ${t.evidence} pruebas, ${t.choices} elecciones independientes · ${esc(t.confidence)}`)}</p>`;
+}
+
+async function curve() {
+  try {
+    const rows = await (await fetch("/history" + qs, { cache: "no-store" })).json();
+    if (rows.length < 2) return;
+    const W = 400, H = 140, x0 = rows[0].tick, x1 = rows[rows.length - 1].tick;
+    const X = t => 30 + (t - x0) / Math.max(1, x1 - x0) * (W - 40), Y = v => H - 18 - v * (H - 30);
+    const line = rows.map(r => `${X(r.tick).toFixed(1)},${Y(r.hit).toFixed(1)}`).join(" ");
+    const ch = DATA ? DATA.model.chance : 0.2;
+    $("curve").innerHTML = [0, 0.25, 0.5, 0.75].map(v => `<line x1="30" x2="${W - 10}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="2" y="${Y(v) + 4}" fill="var(--muted)" font-size="10" font-family="monospace">${v * 100}%</text>`).join("") +
+      `<line x1="30" x2="${W - 10}" y1="${Y(ch)}" y2="${Y(ch)}" stroke="var(--bad)" stroke-dasharray="4 3"/>` +
+      `<polyline points="${line}" fill="none" stroke="var(--good)" stroke-width="2"/>` +
+      `<text x="30" y="${H - 3}" fill="var(--muted)" font-size="10" font-family="monospace">tick ${x0}</text><text x="${W - 60}" y="${H - 3}" fill="var(--muted)" font-size="10" font-family="monospace">tick ${x1}</text>`;
+  } catch (e) {}
+}
+async function tick() {
+  try { render(await (await fetch("/data" + qs, { cache: "no-store" })).json()); }
+  catch (e) { $("err").textContent = "brain unreachable: " + e; $("dot").className = "dot stale"; }
+}
+tick(); curve();
+try {
+  const es = new EventSource("/stream" + qs);
+  es.onmessage = () => tick();
+  es.onerror = () => { $("dot").className = "dot stale"; };
+} catch (e) {}
+setInterval(tick, 15000); setInterval(curve, 30000);
+</script>
+</body>
+</html>

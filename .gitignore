@@ -7,6 +7,12 @@ __pycache__/
 node_modules/
 .DS_Store
 results/
+logs/plan/
+logs/public/clock.json
+logs/brain/
+logs/state/me_live.json
+logs/public/schedule.json
+logs/public/dealers.json
 # runtime state on the key machine (agent/lease.py, desk heartbeats, the STOP switch)
 logs/state/lease.json
 logs/state/lease.lock
