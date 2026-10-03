@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import difflib
 import json
 import re
 import statistics
@@ -27,7 +28,7 @@ DEFAULT_JSON = ROOT / "results" / "duel-book.json"
 DEFAULT_MD = ROOT / "docs" / "duel-lab" / "duel-book.md"
 JACCARD_MIN = 0.7
 JACCARD_MIN_TOKENS = 4
-LLM_TOKENS = 25          # a template this long with no repeat is free text (an LLM bot)
+LLM_TOKENS = 18          # template bots write <= 13 tokens; longer and never repeated is free text (an LLM bot)
 ES_WORDS = {"puedo", "primas", "propongo", "cerrar", "cerramos", "precio", "dime", "justo", "para", "los", "dos",
             "una", "que", "muevo", "acercarnos", "pieza", "merece", "pienso", "propuesta", "ganemos", "hecho", "días"}
 EN_WORDS = {"i", "can", "do", "the", "for", "we", "offer", "let", "thank", "you", "works", "close", "deal", "my",
@@ -65,8 +66,8 @@ def similarity(a: str, b: str) -> float:
     if not ta or not tb:
         return 0.0
     j = jaccard(ta, tb)
-    small = min(len(ta), len(tb))
-    if small >= JACCARD_MIN_TOKENS:
+    small, big = sorted((len(ta), len(tb)))
+    if small >= JACCARD_MIN_TOKENS and big <= 2 * small:     # a short line inside a long LLM text is no match
         j = max(j, 0.85 * len(ta & tb) / small)
     return round(j, 3)
 
@@ -320,6 +321,38 @@ def _role_profile(rows: list) -> dict:
     }
 
 
+def _latest(rows: list) -> list:
+    """Profile on the real sessions (2+) when the bot played them; Friday practice (12 ticks) only as a fallback."""
+    real = [r for r in rows if (r["session"] or 0) >= 2]
+    return real or rows
+
+
+def play(b: dict) -> str:
+    """One line on how to play it, from the profile (a heuristic for a human, not a rule the bot applies)."""
+    if b["id"] == "SILENT":
+        return "never writes; some took our first offer: open high, keep a margin"
+    shapes, tempo, acc, at = collections.Counter(), collections.Counter(), collections.Counter(), []
+    for p in b["profile"].values():
+        shapes.update(p["shapes"])
+        tempo.update({k: v for k, v in p["tempo"].items() if k != "-"})
+        acc.update(p["accepted"])
+        if p.get("acceptable_at") is not None:
+            at.append(p["acceptable_at"])
+    top = shapes.most_common(1)[0][0] if shapes else "-"
+    if top == "holds":
+        return "holds one number all duel; took our offer, so make offers instead of taking its number"
+    if top in ("oneshot", "silent"):
+        return "one line then quiet: little to read, make our own offers"
+    when = f" (crosses our limit ~t+{int(max(at))})" if at else ""
+    if b.get("llm_free_text"):
+        return "LLM free text, slow steps; wait for the last ticks" + when
+    if tempo and tempo.most_common(1)[0][0] == "accelerating":
+        return "concedes faster near the end: hold and take its last offer" + when
+    if tempo and tempo.most_common(1)[0][0] == "decelerating":
+        return "concedes early then floors: take it once steps shrink to ~1 P" + when
+    return "steady concession: take its offer at the last safe tick" + when
+
+
 def build(duels: list, use_pairs: bool = True) -> dict:
     groups, merges, silent = group(duels, use_pairs)
     by_id = {d["duel"]: d for d in duels}
@@ -344,7 +377,8 @@ def build(duels: list, use_pairs: bool = True) -> dict:
             first[ts[0]] += 1
         texts = [m.get("text") for i in ids for m in by_id[i]["rival_msgs"]]
         free_text = all(n == 1 for n in tcount.values()) and any(len(tokens(t)) >= LLM_TOKENS for t in tcount)
-        example = next((m.get("text") for i in ids for m in by_id[i]["rival_msgs"] if m.get("text")), "")
+        latest_first = sorted(ids, key=lambda i: (-(by_id[i].get("session") or 0), i))
+        example = next((m.get("text") for i in latest_first for m in by_id[i]["rival_msgs"] if m.get("text")), "")
         bots.append({
             "templates": [{"template": t, "count": n, "first": first.get(t, 0)} for t, n in tcount.most_common()],
             "opening_templates": [t for t, _ in first.most_common()],
@@ -352,12 +386,14 @@ def build(duels: list, use_pairs: bool = True) -> dict:
             "duels": all_ids, "silent_duels": sorted(attached.get(root, [])),
             "sessions": dict(collections.Counter(by_id[i].get("session") for i in all_ids)),
             "n": len(all_ids), "roles_played": dict(collections.Counter(r["rival_role"] for r in rows)),
-            "profile": {role: _role_profile([r for r in rows if r["rival_role"] == role])
-                        for role in ("buyer", "seller") if any(r["rival_role"] == role for r in rows)},
+            "profile_basis": "session 2+" if any((r["session"] or 0) >= 2 for r in rows) else "session 1",
+            "profile": {role: _role_profile([r for r in _latest(rows) if r["rival_role"] == role])
+                        for role in ("buyer", "seller") if any(r["rival_role"] == role for r in _latest(rows))},
             "per_duel": rows})
     bots.sort(key=lambda b: (-b["n"], b["duels"][0]))
     for k, b in enumerate(bots, 1):
         b["id"] = f"B{k:02d}"
+        b["play"] = play(b)
     silent_rows = [profile_duel(by_id[i]) for i in sorted(loose_silent)]
     if silent_rows:
         bots.append({"id": "SILENT", "templates": [], "opening_templates": [], "example": "", "language": "-",
@@ -365,7 +401,9 @@ def build(duels: list, use_pairs: bool = True) -> dict:
                      "sessions": dict(collections.Counter(r["session"] for r in silent_rows)),
                      "n": len(silent_rows), "roles_played": dict(collections.Counter(r["rival_role"] for r in silent_rows)),
                      "profile": {"any": _role_profile(silent_rows)}, "per_duel": silent_rows,
-                     "note": "never wrote in either duel of the pair; may be several teams"})
+                     "note": "never wrote in either duel of the pair; may be several teams",
+                     "profile_basis": "all"})
+        bots[-1]["play"] = play(bots[-1])
     return {"n_duels": len(duels), "n_bots": sum(1 for b in bots if b["id"] != "SILENT"),
             "merges": merges, "bots": bots}
 
@@ -390,7 +428,7 @@ def match(book: dict, text: str, item: str = "", top: int = 3) -> list:
         if best > 0:
             scored.append((b["id"], round(best, 3), best_t))
     scored.sort(key=lambda x: -x[1])
-    if len(tokens(tpl)) >= LLM_TOKENS and (not scored or scored[0][1] < 0.5):
+    if len(tokens(tpl)) >= LLM_TOKENS and (not scored or scored[0][1] < 0.7):
         llm = [b["id"] for b in book["bots"] if b.get("llm_free_text")]
         scored.insert(0, ("LLM?", 0.5, "free text, closest LLM bots: " + ", ".join(llm)))
     return scored[:top]
@@ -448,11 +486,13 @@ def markdown(book: dict, src: str) -> str:
         " offers 56 % of our cost; a seller rival at 1.65 asks 165 % of our max. b = the rival was the buyer"
         " (we sold), s = the rival was the seller (we bought). Step = median concession per tick in primas, and as a"
         " share of the gap between its opening and our limit. Acceptable at = median tick (from the duel start) at"
-        " which its offer first crosses our limit. Run `--match \"TEXT\"` on a first message to name the bot.",
+        " which its offer first crosses our limit. Profile columns use session 2 when the bot played it (Friday"
+        " practice had 12 ticks and our side was mostly silent), n counts every duel. Run `--match \"TEXT\"` on a"
+        " first message to name the bot.",
         "",
         "| bot | example (first line) | n (s1/s2) | lang | shape | opening x limit @ tick | step P/tick (gap/tick)"
-        " | acceptable at | reactive? | who accepted | final x limit | recognise it by |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        " | acceptable at | reactive? | who accepted | final x limit | recognise it by | how to play it |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for b in book["bots"]:
         ex = (b["example"] or "").replace("|", "/")
@@ -480,7 +520,18 @@ def markdown(book: dict, src: str) -> str:
             f"| {b['id']}", f"\"{ex}\"" if ex else "-", n, b["language"], shape,
             " / ".join(opening) or "-", " / ".join(step) or "-", _role_cell(b, "acceptable_at", 0),
             _top(dict(react.most_common())), _top(dict(acc.most_common())),
-            _role_cell(b, "final_vs_limit"), recognise(b) + " |"]))
+            _role_cell(b, "final_vs_limit"), recognise(b), b["play"] + " |"]))
+    only = {k: [b for b in book["bots"] if b["id"] != "SILENT" and set(b["sessions"]) == {k}] for k in (1, 2)}
+    if only[1] and only[2]:
+        lines += ["", "## Same team across sessions?", "",
+                  "Each session pairs us once with each of the same 17 teams, so a bot seen only on Friday is"
+                  " most likely one of the bots (or silent pairs) seen only on Saturday. Closest template by"
+                  " character overlap (a hint for a human):", ""]
+        for b in only[1]:
+            best = max(((max((difflib.SequenceMatcher(None, t["template"], u["template"]).ratio() for t in b["templates"]
+                              for u in c["templates"]), default=0.0), c["id"]) for c in only[2]), default=(0, "-"))
+            lines.append(f"- {b['id']} (`{(b['opening_templates'] or [''])[0][:50]}`): closest {best[1]}"
+                         f" ({best[0]:.2f}); not merged")
     lines += ["", "## Evidence (duel ids per bot)", ""]
     for b in book["bots"]:
         extra = f"; silent in {b['silent_duels']}" if b["silent_duels"] and b["id"] != "SILENT" else ""

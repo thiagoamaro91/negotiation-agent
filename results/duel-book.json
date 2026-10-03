@@ -1,0 +1,4924 @@
+{
+ "n_duels": 68,
+ "n_bots": 17,
+ "merges": [
+  {
+   "step": "co-occur",
+   "duel": 9,
+   "a": "hello, and thank you for meeting me. i would propose N p for this one.",
+   "b": "i appreciate it. let us try to close quickly: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 9,
+   "a": "hello, and thank you for meeting me. i would propose N p for this one.",
+   "b": "fair enough, i will meet you partway at N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 9,
+   "a": "hello, and thank you for meeting me. i would propose N p for this one.",
+   "b": "we are getting close. N p works for me."
+  },
+  {
+   "step": "co-occur",
+   "duel": 37,
+   "a": "i can do N. let's close it quickly.",
+   "b": "N with delivery on day N. that day suits you too, i think."
+  },
+  {
+   "step": "co-occur",
+   "duel": 93,
+   "a": "thank you for meeting me. i can offer N p.",
+   "b": "i appreciate your move. N p is where i can be."
+  },
+  {
+   "step": "co-occur",
+   "duel": 93,
+   "a": "thank you for meeting me. i can offer N p.",
+   "b": "let us close quickly: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 93,
+   "a": "thank you for meeting me. i can offer N p.",
+   "b": "a step towards you: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 93,
+   "a": "thank you for meeting me. i can offer N p.",
+   "b": "i think N p is fair for both of us."
+  },
+  {
+   "step": "co-occur",
+   "duel": 93,
+   "a": "thank you for meeting me. i can offer N p.",
+   "b": "thank you for meeting me. i can do N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 103,
+   "a": "i'm offering N p for ITEM. that's a fair price given there's no clear market reference, and i'd like to close quickly since every tick of talk erodes value for both of us. if you're realistic, send a counter and we can get this done.",
+   "b": "that figure is the same one you've already put forward, so it isn't really a move. i'm stepping up to N p as a show of good faith, and further movement from me depends on a real concession from you."
+  },
+  {
+   "step": "co-occur",
+   "duel": 104,
+   "a": "ITEM is one of madrid's most sought-after squares: a lively, tree-lined plaza with steady foot traffic and strong appeal in a prime central neighborhood. i'm offering it at N p, which reflects that quality. i'm happy to hear your reasoning.}",
+   "b": "i've come down to N p as a gesture of good faith, but your offer is still far from the value of a prime central plaza with constant footfall and lasting appeal. i'll need a real step up from you before i can move further."
+  },
+  {
+   "step": "co-occur",
+   "duel": 197,
+   "a": "we can do N p. thank you for the talk.",
+   "b": "N p works well for us."
+  },
+  {
+   "step": "co-occur",
+   "duel": 197,
+   "a": "we can do N p. thank you for the talk.",
+   "b": "our offer is N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 197,
+   "a": "we can do N p. thank you for the talk.",
+   "b": "let's meet at N p, fair for both."
+  },
+  {
+   "step": "co-occur",
+   "duel": 197,
+   "a": "we can do N p. thank you for the talk.",
+   "b": "N p, and we close now."
+  },
+  {
+   "step": "co-occur",
+   "duel": 197,
+   "a": "we can do N p. thank you for the talk.",
+   "b": "we move to N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 232,
+   "a": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+   "b": "since you haven't countered yet, i'll take a step toward you: N for this card, which still reflects its condition and value to an album page. tell me where you stand and we can find a deal."
+  },
+  {
+   "step": "co-occur",
+   "duel": 232,
+   "a": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+   "b": "i've come down twice now without hearing a number from you, so here's N for this card. if you want it, send me a real counter and we can close this quickly."
+  },
+  {
+   "step": "co-occur",
+   "duel": 232,
+   "a": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+   "b": "i've made three moves and still haven't seen a number from you, so this is a smaller step: N for the card. send a real counter and i'll engage with it seriously."
+  },
+  {
+   "step": "co-occur",
+   "duel": 232,
+   "a": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+   "b": "i can do N. that is a fair deal for both of us."
+  },
+  {
+   "step": "co-occur",
+   "duel": 232,
+   "a": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+   "b": "i've moved a long way without a single counter from you, so N is where i hold for this card. if you want it for your album, put a real number on the table."
+  },
+  {
+   "step": "co-occur",
+   "duel": 295,
+   "a": "hello! i can do N. thank you for your time.",
+   "b": "thanks for the reply. N works for me."
+  },
+  {
+   "step": "co-occur",
+   "duel": 295,
+   "a": "hello! i can do N. thank you for your time.",
+   "b": "let me move closer: N."
+  },
+  {
+   "step": "co-occur",
+   "duel": 295,
+   "a": "hello! i can do N. thank you for your time.",
+   "b": "i'd like to close this. my offer is N."
+  },
+  {
+   "step": "co-occur",
+   "duel": 295,
+   "a": "hello! i can do N. thank you for your time.",
+   "b": "meeting you halfway at N, with thanks."
+  },
+  {
+   "step": "co-occur",
+   "duel": 295,
+   "a": "hello! i can do N. thank you for your time.",
+   "b": "final stretch from me: N."
+  },
+  {
+   "step": "co-occur",
+   "duel": 303,
+   "a": "i can do N p. every round costs us both, so let's close.",
+   "b": "N p works for me and we can close now."
+  },
+  {
+   "step": "co-occur",
+   "duel": 303,
+   "a": "i can do N p. every round costs us both, so let's close.",
+   "b": "meeting you closer: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 303,
+   "a": "i can do N p. every round costs us both, so let's close.",
+   "b": "a real step from me: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2314,
+   "a": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+   "b": "thanks for the reply. i've moved up to N p as a show of good faith. could you tell me what justifies a figure double that? i'm ready to close quickly if we can meet closer to the middle."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2314,
+   "a": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+   "b": "to show i mean business, i'm raising my offer to N p. time is short, and i can close right now if you come down to a realistic counter. what is the lowest figure you can do?"
+  },
+  {
+   "step": "co-occur",
+   "duel": 2314,
+   "a": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+   "b": "i've moved a long way from where i started, and i'm now at N p. with the clock running down, no sale helps either of us, so i need a real counter from you to close this in time."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2314,
+   "a": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+   "b": "this is my last move before the deadline: N p. it's a solid step up from where i began, and with no sale you're left with nothing. please take it now so we can close in time."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2315,
+   "a": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you.",
+   "b": "thanks for your interest. the tavern's steady trade, prime location and well-stocked cellar make it worth far more than your offer, but i'm willing to come down to N p as a good-faith step. i'd ask you to move meaningfully closer from where you started."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2315,
+   "a": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you.",
+   "b": "i've now moved twice, from my opening figure down to N p, while your offer hasn't changed. the tavern's steady trade, location and cellar justify that price, so i'd ask you to come up substantially from your starting point."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2315,
+   "a": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you.",
+   "b": "i've moved a long way from my opening figure and i'm making one more clear step to N p. with time running short, a serious move up from your starting point would let us settle this now."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2315,
+   "a": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you.",
+   "b": "i've come down a long way, and N p is my final clear offer for the tavern with its steady trade, location and cellar. with so little time left, this is the last chance to close, so i hope you can take it."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2394,
+   "a": "propuesta justa para cerrar pronto y que ganemos los dos: N p.",
+   "b": "me muevo para acercarnos: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2394,
+   "a": "propuesta justa para cerrar pronto y que ganemos los dos: N p.",
+   "b": "yo ya me he movido. ¿qué puedes hacer tú? propongo N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2394,
+   "a": "propuesta justa para cerrar pronto y que ganemos los dos: N p.",
+   "b": "cerremos hoy: N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2398,
+   "a": "hello, and thank you for meeting me. i would propose N p for this one.",
+   "b": "i appreciate it, thank you. could we close at N p, please?"
+  },
+  {
+   "step": "co-occur",
+   "duel": 2398,
+   "a": "hello, and thank you for meeting me. i would propose N p for this one.",
+   "b": "fair enough, thank you. i will meet you partway at N p."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2458,
+   "a": "hi there. N p from my side.",
+   "b": "how about N p?"
+  },
+  {
+   "step": "co-occur",
+   "duel": 2458,
+   "a": "hi there. N p from my side.",
+   "b": "N p, then."
+  },
+  {
+   "step": "co-occur",
+   "duel": 2459,
+   "a": "hello! i can let it go for N p.",
+   "b": "N p, then."
+  },
+  {
+   "step": "jaccard",
+   "score": 0.83,
+   "a": "propuesta justa para cerrar pronto y que ganemos los dos.",
+   "b": "propuesta justa para cerrar pronto y que ganemos los dos: N p."
+  },
+  {
+   "step": "pair",
+   "duels": [
+    29,
+    30
+   ],
+   "a": "opening bid. let's find a fair price.",
+   "b": "opening ask. fair margin for both."
+  },
+  {
+   "step": "pair",
+   "duels": [
+    103,
+    104
+   ],
+   "a": "i'm offering N p for ITEM. that's a fair price given there's no clear market reference, and i'd like to close quickly since every tick of talk erodes value for both of us. if you're realistic, send a counter and we can get this done.",
+   "b": "ITEM is one of madrid's most sought-after squares: a lively, tree-lined plaza with steady foot traffic and strong appeal in a prime central neighborhood. i'm offering it at N p, which reflects that quality. i'm happy to hear your reasoning.}"
+  },
+  {
+   "step": "pair",
+   "duels": [
+    213,
+    214
+   ],
+   "a": "puedo llegar a N primas. dime si cerramos.",
+   "b": "es una pieza que merece su precio: N primas. pienso que es justo."
+  },
+  {
+   "step": "pair",
+   "duels": [
+    2314,
+    2315
+   ],
+   "a": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+   "b": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you."
+  }
+ ],
+ "bots": [
+  {
+   "templates": [
+    {
+     "template": "hello, and thank you for meeting me. i would propose N p for this one.",
+     "count": 4,
+     "first": 4
+    },
+    {
+     "template": "i appreciate it. let us try to close quickly: N p.",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "fair enough, i will meet you partway at N p.",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "we are getting close. N p works for me.",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "i appreciate it, thank you. could we close at N p, please?",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "fair enough, thank you. i will meet you partway at N p.",
+     "count": 2,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "hello, and thank you for meeting me. i would propose N p for this one."
+   ],
+   "example": "Hello, and thank you for meeting me. I would propose 156 P for this one.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    9,
+    10,
+    2398,
+    2399
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "seller": 2,
+    "buyer": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.981,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 2.33,
+     "step_pct_open": 4.49,
+     "step_frac_gap": 2.333,
+     "acceptable_at": 2,
+     "last_vs_limit": 1.245,
+     "final_vs_limit": 1.245,
+     "shapes": {
+      "stepped/4": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.033,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 4.83,
+     "step_pct_open": 3.1,
+     "step_frac_gap": 0.967,
+     "acceptable_at": 2,
+     "last_vs_limit": 0.841,
+     "final_vs_limit": 0.841,
+     "shapes": {
+      "stepped/4": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 9,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 118,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 4,
+     "prices": [
+      102,
+      91,
+      86,
+      82
+     ],
+     "ticks": [
+      2,
+      5,
+      8,
+      11
+     ],
+     "result": 0.0,
+     "open": 102,
+     "open_at": 2,
+     "open_vs_limit": 0.864,
+     "opens_inside": true,
+     "last": 82,
+     "last_vs_limit": 0.695,
+     "step_abs": 2.22,
+     "step_pct_open": 2.18,
+     "step_frac_gap": 0.139,
+     "acceptable_at": 2,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 10,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Rojo",
+     "limit": 84,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 4,
+     "prices": [
+      87,
+      102,
+      108,
+      113
+     ],
+     "ticks": [
+      2,
+      5,
+      8,
+      11
+     ],
+     "result": 0.0,
+     "open": 87,
+     "open_at": 2,
+     "open_vs_limit": 1.036,
+     "opens_inside": true,
+     "last": 113,
+     "last_vs_limit": 1.345,
+     "step_abs": 2.89,
+     "step_pct_open": 3.32,
+     "step_frac_gap": 0.963,
+     "acceptable_at": 2,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2398,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 151,
+     "status": "deal",
+     "final": 127,
+     "shape": "stepped/4",
+     "trailing_holds": 0,
+     "n_offers": 3,
+     "prices": [
+      156,
+      135,
+      127
+     ],
+     "ticks": [
+      0,
+      2,
+      6
+     ],
+     "result": 22.6,
+     "open": 156,
+     "open_at": 0,
+     "open_vs_limit": 1.033,
+     "opens_inside": false,
+     "last": 127,
+     "last_vs_limit": 0.841,
+     "step_abs": 4.83,
+     "step_pct_open": 3.1,
+     "step_frac_gap": 0.967,
+     "acceptable_at": 2,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.841
+    },
+    {
+     "duel": 2399,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Plata",
+     "limit": 53,
+     "status": "deal",
+     "final": 66,
+     "shape": "stepped/4",
+     "trailing_holds": 0,
+     "n_offers": 3,
+     "prices": [
+      52,
+      62,
+      66
+     ],
+     "ticks": [
+      0,
+      2,
+      6
+     ],
+     "result": 12.2,
+     "open": 52,
+     "open_at": 0,
+     "open_vs_limit": 0.981,
+     "opens_inside": false,
+     "last": 66,
+     "last_vs_limit": 1.245,
+     "step_abs": 2.33,
+     "step_pct_open": 4.49,
+     "step_frac_gap": 2.333,
+     "acceptable_at": 2,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.245
+    }
+   ],
+   "id": "B01",
+   "play": "steady concession: take its offer at the last safe tick (crosses our limit ~t+2)"
+  },
+  {
+   "templates": [
+    {
+     "template": "i can do N. let's close it quickly.",
+     "count": 51,
+     "first": 4
+    },
+    {
+     "template": "N with delivery on day N. that day suits you too, i think.",
+     "count": 3,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "i can do N. let's close it quickly."
+   ],
+   "example": "I can do 136. Let's close it quickly.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    37,
+    38,
+    2500,
+    2501
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.007,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 2.14,
+     "step_pct_open": 1.58,
+     "step_frac_gap": 2.143,
+     "acceptable_at": 0,
+     "last_vs_limit": 1.23,
+     "final_vs_limit": 1.23,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.0,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 1.29,
+     "step_pct_open": 1.07,
+     "step_frac_gap": null,
+     "acceptable_at": 0,
+     "last_vs_limit": 0.85,
+     "final_vs_limit": 0.85,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 37,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Oro",
+     "limit": 73,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      73,
+      73,
+      73,
+      73,
+      73,
+      73,
+      82,
+      92,
+      73,
+      82,
+      92,
+      102
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 73,
+     "open_at": 0,
+     "open_vs_limit": 1.0,
+     "opens_inside": true,
+     "last": 102,
+     "last_vs_limit": 1.397,
+     "step_abs": 2.64,
+     "step_pct_open": 3.61,
+     "step_frac_gap": null,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 38,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 164,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      121,
+      113,
+      128,
+      121,
+      113,
+      106
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 128,
+     "open_at": 0,
+     "open_vs_limit": 0.78,
+     "opens_inside": true,
+     "last": 106,
+     "last_vs_limit": 0.646,
+     "step_abs": 2.0,
+     "step_pct_open": 1.56,
+     "step_frac_gap": 0.056,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2500,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Rojo",
+     "limit": 135,
+     "status": "deal",
+     "final": 166,
+     "shape": "every-tick",
+     "trailing_holds": 1,
+     "n_offers": 15,
+     "prices": [
+      136,
+      139,
+      142,
+      145,
+      147,
+      150,
+      153,
+      155,
+      157,
+      160,
+      162,
+      164,
+      165,
+      166,
+      166
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 31.0,
+     "open": 136,
+     "open_at": 0,
+     "open_vs_limit": 1.007,
+     "opens_inside": true,
+     "last": 166,
+     "last_vs_limit": 1.23,
+     "step_abs": 2.14,
+     "step_pct_open": 1.58,
+     "step_frac_gap": 2.143,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.23
+    },
+    {
+     "duel": 2501,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Azul",
+     "limit": 120,
+     "status": "deal",
+     "final": 102,
+     "shape": "every-tick",
+     "trailing_holds": 1,
+     "n_offers": 15,
+     "prices": [
+      120,
+      119,
+      117,
+      115,
+      113,
+      112,
+      110,
+      109,
+      108,
+      106,
+      105,
+      104,
+      103,
+      102,
+      102
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 18.0,
+     "open": 120,
+     "open_at": 0,
+     "open_vs_limit": 1.0,
+     "opens_inside": true,
+     "last": 102,
+     "last_vs_limit": 0.85,
+     "step_abs": 1.29,
+     "step_pct_open": 1.07,
+     "step_frac_gap": null,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.85
+    }
+   ],
+   "id": "B02",
+   "play": "concedes early then floors: take it once steps shrink to ~1 P (crosses our limit ~t+0)"
+  },
+  {
+   "templates": [
+    {
+     "template": "thank you for meeting me. i can offer N p.",
+     "count": 4,
+     "first": 2
+    },
+    {
+     "template": "i appreciate your move. N p is where i can be.",
+     "count": 4,
+     "first": 0
+    },
+    {
+     "template": "let us close quickly: N p.",
+     "count": 4,
+     "first": 0
+    },
+    {
+     "template": "a step towards you: N p.",
+     "count": 4,
+     "first": 0
+    },
+    {
+     "template": "i think N p is fair for both of us.",
+     "count": 4,
+     "first": 0
+    },
+    {
+     "template": "thank you for meeting me. i can do N p.",
+     "count": 3,
+     "first": 1
+    }
+   ],
+   "opening_templates": [
+    "thank you for meeting me. i can offer N p.",
+    "thank you for meeting me. i can do N p."
+   ],
+   "example": "Thank you for meeting me. I can do 51 P.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    93,
+    94,
+    2368,
+    2369
+   ],
+   "silent_duels": [
+    2369
+   ],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.654,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "last_vs_limit": 0.654,
+     "final_vs_limit": null,
+     "shapes": {
+      "oneshot": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "None": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 0,
+     "open_vs_limit": null,
+     "open_at": null,
+     "opens_inside": 0,
+     "step_abs": null,
+     "step_pct_open": null,
+     "step_frac_gap": null,
+     "acceptable_at": null,
+     "last_vs_limit": null,
+     "final_vs_limit": null,
+     "shapes": {
+      "silent": 1
+     },
+     "tempo": {},
+     "reactive": {},
+     "accepted": {
+      "no deal": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 93,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Luna",
+     "limit": 83,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 11,
+     "prices": [
+      74,
+      76,
+      78,
+      82,
+      86,
+      92,
+      98,
+      106,
+      114,
+      124,
+      133
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11
+     ],
+     "result": 0.0,
+     "open": 74,
+     "open_at": 0,
+     "open_vs_limit": 0.892,
+     "opens_inside": false,
+     "last": 133,
+     "last_vs_limit": 1.602,
+     "step_abs": 5.36,
+     "step_pct_open": 7.25,
+     "step_frac_gap": 0.596,
+     "acceptable_at": 4,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 94,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 142,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 11,
+     "prices": [
+      123,
+      122,
+      120,
+      118,
+      115,
+      112,
+      108,
+      103,
+      98,
+      92,
+      86
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11
+     ],
+     "result": 0.0,
+     "open": 123,
+     "open_at": 0,
+     "open_vs_limit": 0.866,
+     "opens_inside": true,
+     "last": 86,
+     "last_vs_limit": 0.606,
+     "step_abs": 3.36,
+     "step_pct_open": 2.73,
+     "step_frac_gap": 0.177,
+     "acceptable_at": 0,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2368,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Oro",
+     "limit": 78,
+     "status": "no_deal",
+     "final": null,
+     "shape": "oneshot",
+     "trailing_holds": 0,
+     "n_offers": 1,
+     "prices": [
+      51
+     ],
+     "ticks": [
+      0
+     ],
+     "result": 0.0,
+     "open": 51,
+     "open_at": 0,
+     "open_vs_limit": 0.654,
+     "opens_inside": false,
+     "last": 51,
+     "last_vs_limit": 0.654,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2369,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 95,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    }
+   ],
+   "id": "B03",
+   "play": "one line then quiet: little to read, make our own offers"
+  },
+  {
+   "templates": [
+    {
+     "template": "propuesta justa para cerrar pronto y que ganemos los dos: N p.",
+     "count": 8,
+     "first": 2
+    },
+    {
+     "template": "me muevo para acercarnos: N p.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "yo ya me he movido. ¿qué puedes hacer tú? propongo N p.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "cerremos hoy: N p.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "propuesta justa para cerrar pronto y que ganemos los dos.",
+     "count": 2,
+     "first": 2
+    }
+   ],
+   "opening_templates": [
+    "propuesta justa para cerrar pronto y que ganemos los dos.",
+    "propuesta justa para cerrar pronto y que ganemos los dos: N p."
+   ],
+   "example": "Propuesta justa para cerrar pronto y que ganemos los dos: 76 P.",
+   "language": "es",
+   "llm_free_text": false,
+   "duels": [
+    193,
+    194,
+    2394,
+    2395
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.768,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 2.75,
+     "step_pct_open": 3.62,
+     "step_frac_gap": 0.12,
+     "acceptable_at": 9,
+     "last_vs_limit": 1.101,
+     "final_vs_limit": 1.101,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "linear": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.275,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 4.08,
+     "step_pct_open": 2.32,
+     "step_frac_gap": 0.107,
+     "acceptable_at": 10,
+     "last_vs_limit": 0.92,
+     "final_vs_limit": 0.92,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "linear": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 193,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 81,
+     "status": "no_deal",
+     "final": null,
+     "shape": "oneshot",
+     "trailing_holds": 0,
+     "n_offers": 1,
+     "prices": [
+      97
+     ],
+     "ticks": [
+      0
+     ],
+     "result": 0.0,
+     "open": 97,
+     "open_at": 0,
+     "open_vs_limit": 1.198,
+     "opens_inside": true,
+     "last": 97,
+     "last_vs_limit": 1.198,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 0,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 194,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Azul",
+     "limit": 160,
+     "status": "no_deal",
+     "final": null,
+     "shape": "oneshot",
+     "trailing_holds": 0,
+     "n_offers": 1,
+     "prices": [
+      132
+     ],
+     "ticks": [
+      0
+     ],
+     "result": 0.0,
+     "open": 132,
+     "open_at": 0,
+     "open_vs_limit": 0.825,
+     "opens_inside": true,
+     "last": 132,
+     "last_vs_limit": 0.825,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 0,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2394,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Azul",
+     "limit": 99,
+     "status": "deal",
+     "final": 109,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 13,
+     "prices": [
+      76,
+      79,
+      82,
+      84,
+      87,
+      90,
+      93,
+      96,
+      98,
+      101,
+      104,
+      107,
+      109
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "result": 10.0,
+     "open": 76,
+     "open_at": 0,
+     "open_vs_limit": 0.768,
+     "opens_inside": false,
+     "last": 109,
+     "last_vs_limit": 1.101,
+     "step_abs": 2.75,
+     "step_pct_open": 3.62,
+     "step_frac_gap": 0.12,
+     "acceptable_at": 9,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.101
+    },
+    {
+     "duel": 2395,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 138,
+     "status": "deal",
+     "final": 127,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 13,
+     "prices": [
+      176,
+      172,
+      168,
+      164,
+      159,
+      155,
+      151,
+      147,
+      143,
+      139,
+      134,
+      130,
+      127
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "result": 11.0,
+     "open": 176,
+     "open_at": 0,
+     "open_vs_limit": 1.275,
+     "opens_inside": false,
+     "last": 127,
+     "last_vs_limit": 0.92,
+     "step_abs": 4.08,
+     "step_pct_open": 2.32,
+     "step_frac_gap": 0.107,
+     "acceptable_at": 10,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.92
+    }
+   ],
+   "id": "B04",
+   "play": "steady concession: take its offer at the last safe tick (crosses our limit ~t+10)"
+  },
+  {
+   "templates": [
+    {
+     "template": "we can do N p. thank you for the talk.",
+     "count": 8,
+     "first": 4
+    },
+    {
+     "template": "N p works well for us.",
+     "count": 8,
+     "first": 0
+    },
+    {
+     "template": "our offer is N p.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "let's meet at N p, fair for both.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "N p, and we close now.",
+     "count": 6,
+     "first": 0
+    },
+    {
+     "template": "we move to N p.",
+     "count": 6,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "we can do N p. thank you for the talk."
+   ],
+   "example": "We can do 74 P. Thank you for the talk.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    197,
+    198,
+    2384,
+    2385
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.987,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 1.64,
+     "step_pct_open": 2.21,
+     "step_frac_gap": 1.636,
+     "acceptable_at": 1,
+     "last_vs_limit": 1.227,
+     "final_vs_limit": 1.227,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.943,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 2.18,
+     "step_pct_open": 1.33,
+     "step_frac_gap": 0.218,
+     "acceptable_at": 0,
+     "last_vs_limit": 0.805,
+     "final_vs_limit": 0.805,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 197,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 82,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 8,
+     "prices": [
+      74,
+      76,
+      78,
+      80,
+      82,
+      84,
+      86,
+      88
+     ],
+     "ticks": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 74,
+     "open_at": 0,
+     "open_vs_limit": 0.902,
+     "opens_inside": false,
+     "last": 88,
+     "last_vs_limit": 1.073,
+     "step_abs": 1.27,
+     "step_pct_open": 1.72,
+     "step_frac_gap": 0.159,
+     "acceptable_at": 8,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 198,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Verde",
+     "limit": 117,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 8,
+     "prices": [
+      123,
+      121,
+      119,
+      117,
+      115,
+      113,
+      111,
+      109
+     ],
+     "ticks": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 123,
+     "open_at": 0,
+     "open_vs_limit": 1.051,
+     "opens_inside": false,
+     "last": 109,
+     "last_vs_limit": 0.932,
+     "step_abs": 1.27,
+     "step_pct_open": 1.03,
+     "step_frac_gap": 0.212,
+     "acceptable_at": 6,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2384,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Verde",
+     "limit": 75,
+     "status": "deal",
+     "final": 92,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      74,
+      76,
+      79,
+      81,
+      83,
+      85,
+      86,
+      88,
+      89,
+      90,
+      91,
+      92
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 17.0,
+     "open": 74,
+     "open_at": 0,
+     "open_vs_limit": 0.987,
+     "opens_inside": false,
+     "last": 92,
+     "last_vs_limit": 1.227,
+     "step_abs": 1.64,
+     "step_pct_open": 2.21,
+     "step_frac_gap": 1.636,
+     "acceptable_at": 1,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.227
+    },
+    {
+     "duel": 2385,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 174,
+     "status": "deal",
+     "final": 140,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      164,
+      161,
+      158,
+      155,
+      152,
+      150,
+      148,
+      146,
+      144,
+      143,
+      141,
+      140
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 34.0,
+     "open": 164,
+     "open_at": 0,
+     "open_vs_limit": 0.943,
+     "opens_inside": true,
+     "last": 140,
+     "last_vs_limit": 0.805,
+     "step_abs": 2.18,
+     "step_pct_open": 1.33,
+     "step_frac_gap": 0.218,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.805
+    }
+   ],
+   "id": "B05",
+   "play": "concedes early then floors: take it once steps shrink to ~1 P (crosses our limit ~t+1)"
+  },
+  {
+   "templates": [
+    {
+     "template": "puedo llegar a N primas. dime si cerramos.",
+     "count": 19,
+     "first": 2
+    },
+    {
+     "template": "es una pieza que merece su precio: N primas. pienso que es justo.",
+     "count": 19,
+     "first": 2
+    }
+   ],
+   "opening_templates": [
+    "puedo llegar a N primas. dime si cerramos.",
+    "es una pieza que merece su precio: N primas. pienso que es justo."
+   ],
+   "example": "Puedo llegar a 93 primas. Dime si cerramos.",
+   "language": "es",
+   "llm_free_text": false,
+   "duels": [
+    213,
+    214,
+    2360,
+    2361
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.604,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 6.64,
+     "step_pct_open": 7.14,
+     "step_frac_gap": 0.109,
+     "acceptable_at": 12,
+     "last_vs_limit": 1.208,
+     "final_vs_limit": 1.208,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.129,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 3.71,
+     "step_pct_open": 2.35,
+     "step_frac_gap": 0.206,
+     "acceptable_at": 9,
+     "last_vs_limit": 0.757,
+     "final_vs_limit": 0.757,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 213,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Luna",
+     "limit": 103,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 4,
+     "prices": [
+      96,
+      98,
+      101,
+      106
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "result": 0.0,
+     "open": 96,
+     "open_at": 0,
+     "open_vs_limit": 0.932,
+     "opens_inside": false,
+     "last": 106,
+     "last_vs_limit": 1.029,
+     "step_abs": 3.33,
+     "step_pct_open": 3.47,
+     "step_frac_gap": 0.476,
+     "acceptable_at": 3,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 214,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Luna",
+     "limit": 96,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 4,
+     "prices": [
+      80,
+      79,
+      78,
+      77
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "result": 0.0,
+     "open": 80,
+     "open_at": 0,
+     "open_vs_limit": 0.833,
+     "opens_inside": true,
+     "last": 77,
+     "last_vs_limit": 0.802,
+     "step_abs": 1.0,
+     "step_pct_open": 1.25,
+     "step_frac_gap": 0.062,
+     "acceptable_at": 0,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2360,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Rojo",
+     "limit": 154,
+     "status": "deal",
+     "final": 186,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 15,
+     "prices": [
+      93,
+      94,
+      96,
+      99,
+      102,
+      106,
+      111,
+      116,
+      122,
+      129,
+      137,
+      145,
+      154,
+      164,
+      186
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 32.0,
+     "open": 93,
+     "open_at": 0,
+     "open_vs_limit": 0.604,
+     "opens_inside": false,
+     "last": 186,
+     "last_vs_limit": 1.208,
+     "step_abs": 6.64,
+     "step_pct_open": 7.14,
+     "step_frac_gap": 0.109,
+     "acceptable_at": 12,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.208
+    },
+    {
+     "duel": 2361,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 140,
+     "status": "deal",
+     "final": 106,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 15,
+     "prices": [
+      158,
+      157,
+      156,
+      155,
+      153,
+      151,
+      148,
+      145,
+      142,
+      138,
+      134,
+      129,
+      124,
+      119,
+      106
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 34.0,
+     "open": 158,
+     "open_at": 0,
+     "open_vs_limit": 1.129,
+     "opens_inside": false,
+     "last": 106,
+     "last_vs_limit": 0.757,
+     "step_abs": 3.71,
+     "step_pct_open": 2.35,
+     "step_frac_gap": 0.206,
+     "acceptable_at": 9,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.757
+    }
+   ],
+   "id": "B06",
+   "play": "concedes faster near the end: hold and take its last offer (crosses our limit ~t+12)"
+  },
+  {
+   "templates": [
+    {
+     "template": "i can do N. that is a fair deal for both of us.",
+     "count": 24,
+     "first": 2
+    },
+    {
+     "template": "hello, we're interested in your card and would like to open at N, which fits our budget for completing this album page. happy to hear your thoughts and work toward a fair deal.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "we haven't heard a number from you yet, so we're stepping up to N to show good faith toward closing this album page. let us know your price and we can find a fair middle.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we've now moved twice without a counter from your side, so we're stepping up to N and would really like to hear your number. share a price and we can settle this quickly and fairly.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we're moving to N, but after three steps from our side without any counter, we need a number from you before we go further. name your price and let's see if we can close this album page.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we'll step to N, but we've now made every move in this negotiation without a single number from you. before we go any further, we need to hear your price.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can move to N, but this will be our last step until you put a price on the table. give us a number and we'll work quickly to close this album page.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we'll go to N, but we've carried this whole negotiation alone and won't keep bidding against ourselves. put your price on the table and we can close quickly.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "since you haven't countered yet, i'll take a step toward you: N for this card, which still reflects its condition and value to an album page. tell me where you stand and we can find a deal.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've come down twice now without hearing a number from you, so here's N for this card. if you want it, send me a real counter and we can close this quickly.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've made three moves and still haven't seen a number from you, so this is a smaller step: N for the card. send a real counter and i'll engage with it seriously.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've moved a long way without a single counter from you, so N is where i hold for this card. if you want it for your album, put a real number on the table.",
+     "count": 1,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "i can do N. that is a fair deal for both of us.",
+    "hello, we're interested in your card and would like to open at N, which fits our budget for completing this album page. happy to hear your thoughts and work toward a fair deal.",
+    "opening at N for this card — it's in excellent condition and a key piece for completing any album page. happy to hear your counter if you're serious."
+   ],
+   "example": "I can do 45. That is a fair deal for both of us.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    231,
+    232,
+    2336,
+    2337
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.562,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 5.64,
+     "step_pct_open": 12.53,
+     "step_frac_gap": 0.161,
+     "acceptable_at": 9,
+     "last_vs_limit": 1.337,
+     "final_vs_limit": 1.337,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.652,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 14.0,
+     "step_pct_open": 6.28,
+     "step_frac_gap": 0.159,
+     "acceptable_at": 7,
+     "last_vs_limit": 0.822,
+     "final_vs_limit": 0.822,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 231,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 94,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 9,
+     "prices": [
+      42,
+      46,
+      52,
+      60,
+      74,
+      77,
+      87,
+      103,
+      108
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 42,
+     "open_at": 0,
+     "open_vs_limit": 0.447,
+     "opens_inside": false,
+     "last": 108,
+     "last_vs_limit": 1.149,
+     "step_abs": 6.0,
+     "step_pct_open": 14.29,
+     "step_frac_gap": 0.115,
+     "acceptable_at": 10,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 232,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 155,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 9,
+     "prices": [
+      279,
+      266,
+      254,
+      241,
+      212,
+      194,
+      175,
+      154,
+      145
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 279,
+     "open_at": 0,
+     "open_vs_limit": 1.8,
+     "opens_inside": false,
+     "last": 145,
+     "last_vs_limit": 0.935,
+     "step_abs": 12.18,
+     "step_pct_open": 4.37,
+     "step_frac_gap": 0.098,
+     "acceptable_at": 10,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2336,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Verde",
+     "limit": 80,
+     "status": "deal",
+     "final": 107,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 9,
+     "prices": [
+      45,
+      49,
+      55,
+      62,
+      70,
+      79,
+      88,
+      97,
+      107
+     ],
+     "ticks": [
+      0,
+      1,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 25.4,
+     "open": 45,
+     "open_at": 0,
+     "open_vs_limit": 0.562,
+     "opens_inside": false,
+     "last": 107,
+     "last_vs_limit": 1.337,
+     "step_abs": 5.64,
+     "step_pct_open": 12.53,
+     "step_frac_gap": 0.161,
+     "acceptable_at": 9,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.337
+    },
+    {
+     "duel": 2337,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Verde",
+     "limit": 135,
+     "status": "deal",
+     "final": 111,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 9,
+     "prices": [
+      223,
+      215,
+      204,
+      192,
+      177,
+      162,
+      146,
+      129,
+      111
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+     ],
+     "result": 24.0,
+     "open": 223,
+     "open_at": 0,
+     "open_vs_limit": 1.652,
+     "opens_inside": false,
+     "last": 111,
+     "last_vs_limit": 0.822,
+     "step_abs": 14.0,
+     "step_pct_open": 6.28,
+     "step_frac_gap": 0.159,
+     "acceptable_at": 7,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.822
+    }
+   ],
+   "id": "B07",
+   "play": "concedes faster near the end: hold and take its last offer (crosses our limit ~t+9)"
+  },
+  {
+   "templates": [
+    {
+     "template": "hello! i can do N. thank you for your time.",
+     "count": 7,
+     "first": 3
+    },
+    {
+     "template": "thanks for the reply. N works for me.",
+     "count": 7,
+     "first": 0
+    },
+    {
+     "template": "let me move closer: N.",
+     "count": 5,
+     "first": 0
+    },
+    {
+     "template": "i'd like to close this. my offer is N.",
+     "count": 5,
+     "first": 0
+    },
+    {
+     "template": "meeting you halfway at N, with thanks.",
+     "count": 4,
+     "first": 0
+    },
+    {
+     "template": "final stretch from me: N.",
+     "count": 4,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "hello! i can do N. thank you for your time."
+   ],
+   "example": "Hello! I can do 86. Thank you for your time.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    295,
+    296,
+    2412,
+    2413
+   ],
+   "silent_duels": [
+    2413
+   ],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.869,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 1.93,
+     "step_pct_open": 2.25,
+     "step_frac_gap": 0.149,
+     "acceptable_at": 3,
+     "last_vs_limit": 1.162,
+     "final_vs_limit": 1.162,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 0,
+     "open_vs_limit": null,
+     "open_at": null,
+     "opens_inside": 0,
+     "step_abs": null,
+     "step_pct_open": null,
+     "step_frac_gap": null,
+     "acceptable_at": null,
+     "last_vs_limit": null,
+     "final_vs_limit": null,
+     "shapes": {
+      "silent": 1
+     },
+     "tempo": {},
+     "reactive": {},
+     "accepted": {
+      "no deal": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 295,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 114,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 8,
+     "prices": [
+      113,
+      121,
+      127,
+      131,
+      133,
+      135,
+      136,
+      137
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "result": 0.0,
+     "open": 113,
+     "open_at": 0,
+     "open_vs_limit": 0.991,
+     "opens_inside": false,
+     "last": 137,
+     "last_vs_limit": 1.202,
+     "step_abs": 3.43,
+     "step_pct_open": 3.03,
+     "step_frac_gap": 3.429,
+     "acceptable_at": 1,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 296,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 167,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 8,
+     "prices": [
+      149,
+      143,
+      138,
+      135,
+      133,
+      132,
+      131,
+      130
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "result": 0.0,
+     "open": 149,
+     "open_at": 0,
+     "open_vs_limit": 0.892,
+     "opens_inside": true,
+     "last": 130,
+     "last_vs_limit": 0.778,
+     "step_abs": 2.71,
+     "step_pct_open": 1.82,
+     "step_frac_gap": 0.151,
+     "acceptable_at": 0,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2412,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 99,
+     "status": "deal",
+     "final": 115,
+     "shape": "every-tick",
+     "trailing_holds": 3,
+     "n_offers": 16,
+     "prices": [
+      86,
+      93,
+      98,
+      102,
+      105,
+      107,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      115,
+      115,
+      115
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+     ],
+     "result": 16.0,
+     "open": 86,
+     "open_at": 0,
+     "open_vs_limit": 0.869,
+     "opens_inside": false,
+     "last": 115,
+     "last_vs_limit": 1.162,
+     "step_abs": 1.93,
+     "step_pct_open": 2.25,
+     "step_frac_gap": 0.149,
+     "acceptable_at": 3,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.162
+    },
+    {
+     "duel": 2413,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Verde",
+     "limit": 50,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    }
+   ],
+   "id": "B08",
+   "play": "concedes early then floors: take it once steps shrink to ~1 P (crosses our limit ~t+3)"
+  },
+  {
+   "templates": [
+    {
+     "template": "N p works for me and we can close now.",
+     "count": 10,
+     "first": 0
+    },
+    {
+     "template": "a real step from me: N p.",
+     "count": 10,
+     "first": 0
+    },
+    {
+     "template": "meeting you closer: N p.",
+     "count": 9,
+     "first": 0
+    },
+    {
+     "template": "i can do N p. every round costs us both, so let's close.",
+     "count": 8,
+     "first": 2
+    },
+    {
+     "template": "happy to buy ITEM at N today. shall we close fast?",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "we can do N for ITEM, a fair price that's ready to sign.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can offer N for ITEM, ready to close right now.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can go to N for ITEM; happy to close at N right now.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can raise to N for ITEM, ready to close at N.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can pay N for ITEM. happy to close at that price.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "happy to sell ITEM for N primas, ready to sign today.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "we can do N for ITEM, happy to close at that.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can do N for ITEM, a fair price and ready to sign.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can do N for ITEM, ready to sign at that price.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can do N for ITEM, a fair price we're ready to sign right now.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "we can do N for ITEM — a fair price, ready to sign now.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "final offer: ITEM for N primas, ready to sign now.",
+     "count": 1,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "i can do N p. every round costs us both, so let's close.",
+    "happy to buy ITEM at N today. shall we close fast?",
+    "happy to sell ITEM for N primas, ready to sign today."
+   ],
+   "example": "Happy to buy Mercado de la Paz at 114 today. Shall we close fast?",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    303,
+    304,
+    2328,
+    2329
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2,
+    "2": 2
+   },
+   "n": 4,
+   "roles_played": {
+    "buyer": 2,
+    "seller": 2
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.253,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 2.92,
+     "step_pct_open": 2.56,
+     "step_frac_gap": 0.127,
+     "acceptable_at": 0,
+     "last_vs_limit": 1.67,
+     "final_vs_limit": 1.67,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.884,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 2.43,
+     "step_pct_open": 1.88,
+     "step_frac_gap": 0.143,
+     "acceptable_at": 0,
+     "last_vs_limit": 0.651,
+     "final_vs_limit": 0.651,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "accelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 303,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Oro",
+     "limit": 80,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      90,
+      91,
+      93,
+      95,
+      97,
+      100,
+      103,
+      106,
+      110,
+      113,
+      118,
+      122
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 90,
+     "open_at": 0,
+     "open_vs_limit": 1.125,
+     "opens_inside": true,
+     "last": 122,
+     "last_vs_limit": 1.525,
+     "step_abs": 2.91,
+     "step_pct_open": 3.23,
+     "step_frac_gap": 0.291,
+     "acceptable_at": 0,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 304,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 81,
+     "status": "no_deal",
+     "final": null,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      183,
+      178,
+      171,
+      164,
+      155,
+      145,
+      134,
+      122,
+      109,
+      95,
+      79,
+      62
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 183,
+     "open_at": 0,
+     "open_vs_limit": 2.259,
+     "opens_inside": false,
+     "last": 62,
+     "last_vs_limit": 0.765,
+     "step_abs": 11.0,
+     "step_pct_open": 6.01,
+     "step_frac_gap": 0.108,
+     "acceptable_at": 10,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2328,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 91,
+     "status": "deal",
+     "final": 152,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      114,
+      115,
+      116,
+      117,
+      119,
+      121,
+      124,
+      127,
+      134,
+      138,
+      146,
+      152
+     ],
+     "ticks": [
+      0,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11,
+      12,
+      13
+     ],
+     "result": 61.0,
+     "open": 114,
+     "open_at": 0,
+     "open_vs_limit": 1.253,
+     "opens_inside": true,
+     "last": 152,
+     "last_vs_limit": 1.67,
+     "step_abs": 2.92,
+     "step_pct_open": 2.56,
+     "step_frac_gap": 0.127,
+     "acceptable_at": 0,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.67
+    },
+    {
+     "duel": 2329,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Verde",
+     "limit": 146,
+     "status": "deal",
+     "final": 95,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 14,
+     "prices": [
+      129,
+      128,
+      127,
+      126,
+      125,
+      123,
+      121,
+      118,
+      115,
+      113,
+      109,
+      105,
+      100,
+      95
+     ],
+     "ticks": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 51.0,
+     "open": 129,
+     "open_at": 0,
+     "open_vs_limit": 0.884,
+     "opens_inside": true,
+     "last": 95,
+     "last_vs_limit": 0.651,
+     "step_abs": 2.43,
+     "step_pct_open": 1.88,
+     "step_frac_gap": 0.143,
+     "acceptable_at": 0,
+     "tempo": "accelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.651
+    }
+   ],
+   "id": "B09",
+   "play": "concedes faster near the end: hold and take its last offer (crosses our limit ~t+0)"
+  },
+  {
+   "templates": [
+    {
+     "template": "opening bid. let's find a fair price.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "opening ask. fair margin for both.",
+     "count": 1,
+     "first": 1
+    }
+   ],
+   "opening_templates": [
+    "opening bid. let's find a fair price.",
+    "opening ask. fair margin for both."
+   ],
+   "example": "Opening bid. Let's find a fair price.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    29,
+    30
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 1",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.038,
+     "open_at": 4,
+     "opens_inside": 1,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 4,
+     "last_vs_limit": 1.038,
+     "final_vs_limit": null,
+     "shapes": {
+      "oneshot": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "None": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.88,
+     "open_at": 4,
+     "opens_inside": 1,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 4,
+     "last_vs_limit": 0.88,
+     "final_vs_limit": null,
+     "shapes": {
+      "oneshot": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "None": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 29,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Luna",
+     "limit": 79,
+     "status": "no_deal",
+     "final": null,
+     "shape": "oneshot",
+     "trailing_holds": 0,
+     "n_offers": 1,
+     "prices": [
+      82
+     ],
+     "ticks": [
+      4
+     ],
+     "result": 0.0,
+     "open": 82,
+     "open_at": 4,
+     "open_vs_limit": 1.038,
+     "opens_inside": true,
+     "last": 82,
+     "last_vs_limit": 1.038,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 4,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 30,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Luna",
+     "limit": 150,
+     "status": "no_deal",
+     "final": null,
+     "shape": "oneshot",
+     "trailing_holds": 0,
+     "n_offers": 1,
+     "prices": [
+      132
+     ],
+     "ticks": [
+      4
+     ],
+     "result": 0.0,
+     "open": 132,
+     "open_at": 4,
+     "open_vs_limit": 0.88,
+     "opens_inside": true,
+     "last": 132,
+     "last_vs_limit": 0.88,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": 4,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "no deal"
+    }
+   ],
+   "id": "B10",
+   "play": "one line then quiet: little to read, make our own offers"
+  },
+  {
+   "templates": [
+    {
+     "template": "N p?",
+     "count": 24,
+     "first": 2
+    }
+   ],
+   "opening_templates": [
+    "N p?"
+   ],
+   "example": "103 P?",
+   "language": "-",
+   "llm_free_text": false,
+   "duels": [
+    99,
+    100
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 1",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.769,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 6.18,
+     "step_pct_open": 6.0,
+     "step_frac_gap": 0.199,
+     "acceptable_at": 1,
+     "last_vs_limit": 1.276,
+     "final_vs_limit": null,
+     "shapes": {
+      "stepped": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.184,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 5.45,
+     "step_pct_open": 3.03,
+     "step_frac_gap": 0.195,
+     "acceptable_at": 1,
+     "last_vs_limit": 0.789,
+     "final_vs_limit": null,
+     "shapes": {
+      "jump-hold": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 99,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Rojo",
+     "limit": 134,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped",
+     "trailing_holds": 7,
+     "n_offers": 12,
+     "prices": [
+      103,
+      137,
+      154,
+      170,
+      171,
+      171,
+      171,
+      171,
+      171,
+      171,
+      171,
+      171
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 103,
+     "open_at": 0,
+     "open_vs_limit": 0.769,
+     "opens_inside": false,
+     "last": 171,
+     "last_vs_limit": 1.276,
+     "step_abs": 6.18,
+     "step_pct_open": 6.0,
+     "step_frac_gap": 0.199,
+     "acceptable_at": 1,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 100,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Luna",
+     "limit": 152,
+     "status": "no_deal",
+     "final": null,
+     "shape": "jump-hold",
+     "trailing_holds": 8,
+     "n_offers": 12,
+     "prices": [
+      180,
+      150,
+      135,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120,
+      120
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "result": 0.0,
+     "open": 180,
+     "open_at": 0,
+     "open_vs_limit": 1.184,
+     "opens_inside": false,
+     "last": 120,
+     "last_vs_limit": 0.789,
+     "step_abs": 5.45,
+     "step_pct_open": 3.03,
+     "step_frac_gap": 0.195,
+     "acceptable_at": 1,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "no deal"
+    }
+   ],
+   "id": "B11",
+   "play": "concedes early then floors: take it once steps shrink to ~1 P (crosses our limit ~t+1)"
+  },
+  {
+   "templates": [
+    {
+     "template": "i'm offering N p for ITEM. that's a fair price given there's no clear market reference, and i'd like to close quickly since every tick of talk erodes value for both of us. if you're realistic, send a counter and we can get this done.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "that figure is the same one you've already put forward, so it isn't really a move. i'm stepping up to N p as a show of good faith, and further movement from me depends on a real concession from you.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "ITEM is one of madrid's most sought-after squares: a lively, tree-lined plaza with steady foot traffic and strong appeal in a prime central neighborhood. i'm offering it at N p, which reflects that quality. i'm happy to hear your reasoning.}",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "i've come down to N p as a gesture of good faith, but your offer is still far from the value of a prime central plaza with constant footfall and lasting appeal. i'll need a real step up from you before i can move further.",
+     "count": 1,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "i'm offering N p for ITEM. that's a fair price given there's no clear market reference, and i'd like to close quickly since every tick of talk erodes value for both of us. if you're realistic, send a counter and we can get this done.",
+    "ITEM is one of madrid's most sought-after squares: a lively, tree-lined plaza with steady foot traffic and strong appeal in a prime central neighborhood. i'm offering it at N p, which reflects that quality. i'm happy to hear your reasoning.}"
+   ],
+   "example": "I'm offering 85 P for Plaza de Olavide. That's a fair price given there's no clear market reference, and I'd like to close quickly since every tick of talk erodes value for both of us. If you're realistic, send a counter and we can get this done.",
+   "language": "en",
+   "llm_free_text": true,
+   "duels": [
+    103,
+    104
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "1": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 1",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.833,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 1.5,
+     "step_pct_open": 1.76,
+     "step_frac_gap": 0.088,
+     "acceptable_at": null,
+     "last_vs_limit": 0.863,
+     "final_vs_limit": null,
+     "shapes": {
+      "stepped/2": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "True": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.951,
+     "open_at": 0,
+     "opens_inside": 1,
+     "step_abs": 1.5,
+     "step_pct_open": 1.53,
+     "step_frac_gap": 0.3,
+     "acceptable_at": 0,
+     "last_vs_limit": 0.922,
+     "final_vs_limit": null,
+     "shapes": {
+      "stepped/2": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "True": 1
+     },
+     "accepted": {
+      "no deal": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 103,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 102,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped/2",
+     "trailing_holds": 0,
+     "n_offers": 2,
+     "prices": [
+      85,
+      88
+     ],
+     "ticks": [
+      0,
+      2
+     ],
+     "result": 0.0,
+     "open": 85,
+     "open_at": 0,
+     "open_vs_limit": 0.833,
+     "opens_inside": false,
+     "last": 88,
+     "last_vs_limit": 0.863,
+     "step_abs": 1.5,
+     "step_pct_open": 1.76,
+     "step_frac_gap": 0.088,
+     "acceptable_at": null,
+     "tempo": "-",
+     "reactive": true,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 104,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Luna",
+     "limit": 103,
+     "status": "no_deal",
+     "final": null,
+     "shape": "stepped/2",
+     "trailing_holds": 0,
+     "n_offers": 2,
+     "prices": [
+      98,
+      95
+     ],
+     "ticks": [
+      0,
+      2
+     ],
+     "result": 0.0,
+     "open": 98,
+     "open_at": 0,
+     "open_vs_limit": 0.951,
+     "opens_inside": true,
+     "last": 95,
+     "last_vs_limit": 0.922,
+     "step_abs": 1.5,
+     "step_pct_open": 1.53,
+     "step_frac_gap": 0.3,
+     "acceptable_at": 0,
+     "tempo": "-",
+     "reactive": true,
+     "accepted": "no deal"
+    }
+   ],
+   "id": "B12",
+   "play": "LLM free text, slow steps; wait for the last ticks (crosses our limit ~t+0)"
+  },
+  {
+   "templates": [
+    {
+     "template": "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "thanks for the reply. i've moved up to N p as a show of good faith. could you tell me what justifies a figure double that? i'm ready to close quickly if we can meet closer to the middle.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "to show i mean business, i'm raising my offer to N p. time is short, and i can close right now if you come down to a realistic counter. what is the lowest figure you can do?",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've moved a long way from where i started, and i'm now at N p. with the clock running down, no sale helps either of us, so i need a real counter from you to close this in time.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "this is my last move before the deadline: N p. it's a solid step up from where i began, and with no sale you're left with nothing. please take it now so we can close in time.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "thanks for your interest. the tavern's steady trade, prime location and well-stocked cellar make it worth far more than your offer, but i'm willing to come down to N p as a good-faith step. i'd ask you to move meaningfully closer from where you started.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've now moved twice, from my opening figure down to N p, while your offer hasn't changed. the tavern's steady trade, location and cellar justify that price, so i'd ask you to come up substantially from your starting point.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've moved a long way from my opening figure and i'm making one more clear step to N p. with time running short, a serious move up from your starting point would let us settle this now.",
+     "count": 1,
+     "first": 0
+    },
+    {
+     "template": "i've come down a long way, and N p is my final clear offer for the tavern with its steady trade, location and cellar. with so little time left, this is the last chance to close, so i hope you can take it.",
+     "count": 1,
+     "first": 0
+    }
+   ],
+   "opening_templates": [
+    "i'm a serious buyer and ready to close quickly. for ITEM, i offer N p, which i think is a fair price. i'd be glad to hear your counter.",
+    "ITEM is an established tavern with steady trade, a prime location and a well-stocked cellar that draws regulars. i'm offering it at N p, and i'd welcome a serious counteroffer from you."
+   ],
+   "example": "I'm a serious buyer and ready to close quickly. For El Mesón de la Cava, I offer 45 P, which I think is a fair price. I'd be glad to hear your counter.",
+   "language": "en",
+   "llm_free_text": true,
+   "duels": [
+    2314,
+    2315
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "2": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.703,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 1.64,
+     "step_pct_open": 3.65,
+     "step_frac_gap": 0.086,
+     "acceptable_at": 13,
+     "last_vs_limit": 1.062,
+     "final_vs_limit": 1.062,
+     "shapes": {
+      "stepped/3": 1
+     },
+     "tempo": {
+      "decelerating": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.215,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 1.71,
+     "step_pct_open": 1.79,
+     "step_frac_gap": 0.101,
+     "acceptable_at": 13,
+     "last_vs_limit": 0.911,
+     "final_vs_limit": 0.911,
+     "shapes": {
+      "stepped/3": 1
+     },
+     "tempo": {
+      "linear": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 2314,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Verde",
+     "limit": 64,
+     "status": "deal",
+     "final": 68,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 5,
+     "prices": [
+      45,
+      50,
+      58,
+      64,
+      68
+     ],
+     "ticks": [
+      0,
+      4,
+      10,
+      13,
+      14
+     ],
+     "result": 3.8,
+     "open": 45,
+     "open_at": 0,
+     "open_vs_limit": 0.703,
+     "opens_inside": false,
+     "last": 68,
+     "last_vs_limit": 1.062,
+     "step_abs": 1.64,
+     "step_pct_open": 3.65,
+     "step_frac_gap": 0.086,
+     "acceptable_at": 13,
+     "tempo": "decelerating",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.062
+    },
+    {
+     "duel": 2315,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 79,
+     "status": "deal",
+     "final": 72,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 5,
+     "prices": [
+      96,
+      90,
+      84,
+      76,
+      72
+     ],
+     "ticks": [
+      0,
+      4,
+      10,
+      13,
+      14
+     ],
+     "result": 6.6,
+     "open": 96,
+     "open_at": 0,
+     "open_vs_limit": 1.215,
+     "opens_inside": false,
+     "last": 72,
+     "last_vs_limit": 0.911,
+     "step_abs": 1.71,
+     "step_pct_open": 1.79,
+     "step_frac_gap": 0.101,
+     "acceptable_at": 13,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.911
+    }
+   ],
+   "id": "B13",
+   "play": "LLM free text, slow steps; wait for the last ticks (crosses our limit ~t+13)"
+  },
+  {
+   "templates": [
+    {
+     "template": "N for ITEM. every round costs us both: let's close it now.",
+     "count": 4,
+     "first": 1
+    }
+   ],
+   "opening_templates": [
+    "N for ITEM. every round costs us both: let's close it now."
+   ],
+   "example": "97 for Mercado de la Paz. Every round costs us both: let's close it now.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    2370,
+    2371
+   ],
+   "silent_duels": [
+    2370
+   ],
+   "sessions": {
+    "2": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 0,
+     "open_vs_limit": null,
+     "open_at": null,
+     "opens_inside": 0,
+     "step_abs": null,
+     "step_pct_open": null,
+     "step_frac_gap": null,
+     "acceptable_at": null,
+     "last_vs_limit": null,
+     "final_vs_limit": null,
+     "shapes": {
+      "silent": 1
+     },
+     "tempo": {},
+     "reactive": {},
+     "accepted": {
+      "no deal": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.634,
+     "open_at": 2,
+     "opens_inside": 1,
+     "step_abs": 1.27,
+     "step_pct_open": 1.31,
+     "step_frac_gap": 0.023,
+     "acceptable_at": 2,
+     "last_vs_limit": 0.542,
+     "final_vs_limit": 0.542,
+     "shapes": {
+      "stepped/5": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 2370,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 122,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2371,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Azul",
+     "limit": 153,
+     "status": "deal",
+     "final": 83,
+     "shape": "stepped/5",
+     "trailing_holds": 0,
+     "n_offers": 4,
+     "prices": [
+      97,
+      92,
+      86,
+      83
+     ],
+     "ticks": [
+      2,
+      3,
+      4,
+      13
+     ],
+     "result": 70.0,
+     "open": 97,
+     "open_at": 2,
+     "open_vs_limit": 0.634,
+     "opens_inside": true,
+     "last": 83,
+     "last_vs_limit": 0.542,
+     "step_abs": 1.27,
+     "step_pct_open": 1.31,
+     "step_frac_gap": 0.023,
+     "acceptable_at": 2,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.542
+    }
+   ],
+   "id": "B14",
+   "play": "one line then quiet: little to read, make our own offers"
+  },
+  {
+   "templates": [
+    {
+     "template": "how about N p?",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "N p, then.",
+     "count": 2,
+     "first": 0
+    },
+    {
+     "template": "hi there. N p from my side.",
+     "count": 1,
+     "first": 1
+    },
+    {
+     "template": "hello! i can let it go for N p.",
+     "count": 1,
+     "first": 1
+    }
+   ],
+   "opening_templates": [
+    "hi there. N p from my side.",
+    "hello! i can let it go for N p."
+   ],
+   "example": "Hi there. 60 P from my side.",
+   "language": "en",
+   "llm_free_text": false,
+   "duels": [
+    2458,
+    2459
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "2": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.69,
+     "open_at": 2,
+     "opens_inside": 0,
+     "step_abs": 6.83,
+     "step_pct_open": 11.39,
+     "step_frac_gap": 0.253,
+     "acceptable_at": 8,
+     "last_vs_limit": 1.161,
+     "final_vs_limit": 1.161,
+     "shapes": {
+      "stepped/3": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.055,
+     "open_at": 2,
+     "opens_inside": 0,
+     "step_abs": 7.33,
+     "step_pct_open": 4.21,
+     "step_frac_gap": 0.815,
+     "acceptable_at": 5,
+     "last_vs_limit": 0.788,
+     "final_vs_limit": 0.788,
+     "shapes": {
+      "stepped/3": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 2458,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Azul",
+     "limit": 87,
+     "status": "deal",
+     "final": 101,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 3,
+     "prices": [
+      60,
+      80,
+      101
+     ],
+     "ticks": [
+      2,
+      5,
+      8
+     ],
+     "result": 13.2,
+     "open": 60,
+     "open_at": 2,
+     "open_vs_limit": 0.69,
+     "opens_inside": false,
+     "last": 101,
+     "last_vs_limit": 1.161,
+     "step_abs": 6.83,
+     "step_pct_open": 11.39,
+     "step_frac_gap": 0.253,
+     "acceptable_at": 8,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.161
+    },
+    {
+     "duel": 2459,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Azul",
+     "limit": 165,
+     "status": "deal",
+     "final": 130,
+     "shape": "stepped/3",
+     "trailing_holds": 0,
+     "n_offers": 3,
+     "prices": [
+      174,
+      152,
+      130
+     ],
+     "ticks": [
+      2,
+      5,
+      8
+     ],
+     "result": 35.0,
+     "open": 174,
+     "open_at": 2,
+     "open_vs_limit": 1.055,
+     "opens_inside": false,
+     "last": 130,
+     "last_vs_limit": 0.788,
+     "step_abs": 7.33,
+     "step_pct_open": 4.21,
+     "step_frac_gap": 0.815,
+     "acceptable_at": 5,
+     "tempo": "-",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.788
+    }
+   ],
+   "id": "B15",
+   "play": "steady concession: take its offer at the last safe tick (crosses our limit ~t+8)"
+  },
+  {
+   "templates": [
+    {
+     "template": "N?",
+     "count": 24,
+     "first": 2
+    }
+   ],
+   "opening_templates": [
+    "N?"
+   ],
+   "example": "39?",
+   "language": "-",
+   "llm_free_text": false,
+   "duels": [
+    2498,
+    2499
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "2": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "buyer": 1,
+    "seller": 1
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.765,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "last_vs_limit": 0.765,
+     "final_vs_limit": 1.098,
+     "shapes": {
+      "holds": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "None": 1
+     },
+     "accepted": {
+      "took ours": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.256,
+     "open_at": 0,
+     "opens_inside": 0,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "last_vs_limit": 1.256,
+     "final_vs_limit": 0.92,
+     "shapes": {
+      "holds": 1
+     },
+     "tempo": {
+      "-": 1
+     },
+     "reactive": {
+      "None": 1
+     },
+     "accepted": {
+      "took ours": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 2498,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Verde",
+     "limit": 51,
+     "status": "deal",
+     "final": 56,
+     "shape": "holds",
+     "trailing_holds": 11,
+     "n_offers": 12,
+     "prices": [
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39,
+      39
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      10,
+      12,
+      13,
+      14
+     ],
+     "result": 4.4,
+     "open": 39,
+     "open_at": 0,
+     "open_vs_limit": 0.765,
+     "opens_inside": false,
+     "last": 39,
+     "last_vs_limit": 0.765,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "took ours",
+     "final_vs_limit": 1.098
+    },
+    {
+     "duel": 2499,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 125,
+     "status": "deal",
+     "final": 115,
+     "shape": "holds",
+     "trailing_holds": 11,
+     "n_offers": 12,
+     "prices": [
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157,
+      157
+     ],
+     "ticks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      10,
+      12,
+      13,
+      14
+     ],
+     "result": 8.8,
+     "open": 157,
+     "open_at": 0,
+     "open_vs_limit": 1.256,
+     "opens_inside": false,
+     "last": 157,
+     "last_vs_limit": 1.256,
+     "step_abs": 0.0,
+     "step_pct_open": 0.0,
+     "step_frac_gap": 0.0,
+     "acceptable_at": null,
+     "tempo": "-",
+     "reactive": null,
+     "accepted": "took ours",
+     "final_vs_limit": 0.92
+    }
+   ],
+   "id": "B16",
+   "play": "holds one number all duel; took our offer, so make offers instead of taking its number"
+  },
+  {
+   "templates": [
+    {
+     "template": "propongo este precio, creo que es justo para los dos.",
+     "count": 24,
+     "first": 2
+    }
+   ],
+   "opening_templates": [
+    "propongo este precio, creo que es justo para los dos."
+   ],
+   "example": "Propongo este precio, creo que es justo para los dos.",
+   "language": "es",
+   "llm_free_text": false,
+   "duels": [
+    2586,
+    2587
+   ],
+   "silent_duels": [],
+   "sessions": {
+    "2": 2
+   },
+   "n": 2,
+   "roles_played": {
+    "seller": 1,
+    "buyer": 1
+   },
+   "profile_basis": "session 2+",
+   "profile": {
+    "buyer": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 0.641,
+     "open_at": 3,
+     "opens_inside": 0,
+     "step_abs": 3.27,
+     "step_pct_open": 6.55,
+     "step_frac_gap": 0.117,
+     "acceptable_at": 12,
+     "last_vs_limit": 1.103,
+     "final_vs_limit": 1.103,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "linear": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    },
+    "seller": {
+     "n": 1,
+     "n_talking": 1,
+     "open_vs_limit": 1.062,
+     "open_at": 3,
+     "opens_inside": 0,
+     "step_abs": 3.0,
+     "step_pct_open": 2.19,
+     "step_frac_gap": 0.375,
+     "acceptable_at": 6,
+     "last_vs_limit": 0.806,
+     "final_vs_limit": 0.806,
+     "shapes": {
+      "every-tick": 1
+     },
+     "tempo": {
+      "linear": 1
+     },
+     "reactive": {
+      "False": 1
+     },
+     "accepted": {
+      "we took theirs": 1
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 2586,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 129,
+     "status": "deal",
+     "final": 104,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      137,
+      134,
+      130,
+      127,
+      131,
+      127,
+      123,
+      119,
+      115,
+      111,
+      108,
+      104
+     ],
+     "ticks": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 25.0,
+     "open": 137,
+     "open_at": 3,
+     "open_vs_limit": 1.062,
+     "opens_inside": false,
+     "last": 104,
+     "last_vs_limit": 0.806,
+     "step_abs": 3.0,
+     "step_pct_open": 2.19,
+     "step_frac_gap": 0.375,
+     "acceptable_at": 6,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 0.806
+    },
+    {
+     "duel": 2587,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 78,
+     "status": "deal",
+     "final": 86,
+     "shape": "every-tick",
+     "trailing_holds": 0,
+     "n_offers": 12,
+     "prices": [
+      50,
+      53,
+      57,
+      60,
+      64,
+      67,
+      70,
+      74,
+      73,
+      78,
+      82,
+      86
+     ],
+     "ticks": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+     ],
+     "result": 8.0,
+     "open": 50,
+     "open_at": 3,
+     "open_vs_limit": 0.641,
+     "opens_inside": false,
+     "last": 86,
+     "last_vs_limit": 1.103,
+     "step_abs": 3.27,
+     "step_pct_open": 6.55,
+     "step_frac_gap": 0.117,
+     "acceptable_at": 12,
+     "tempo": "linear",
+     "reactive": false,
+     "accepted": "we took theirs",
+     "final_vs_limit": 1.103
+    }
+   ],
+   "id": "B17",
+   "play": "steady concession: take its offer at the last safe tick (crosses our limit ~t+12)"
+  },
+  {
+   "id": "SILENT",
+   "templates": [],
+   "opening_templates": [],
+   "example": "",
+   "language": "-",
+   "llm_free_text": false,
+   "duels": [
+    23,
+    24,
+    91,
+    92,
+    139,
+    140,
+    249,
+    250,
+    261,
+    262,
+    2396,
+    2397,
+    2436,
+    2437,
+    2582,
+    2583
+   ],
+   "silent_duels": [
+    23,
+    24,
+    91,
+    92,
+    139,
+    140,
+    249,
+    250,
+    261,
+    262,
+    2396,
+    2397,
+    2436,
+    2437,
+    2582,
+    2583
+   ],
+   "sessions": {
+    "1": 10,
+    "2": 6
+   },
+   "n": 16,
+   "roles_played": {
+    "seller": 8,
+    "buyer": 8
+   },
+   "profile": {
+    "any": {
+     "n": 16,
+     "n_talking": 0,
+     "open_vs_limit": null,
+     "open_at": null,
+     "opens_inside": 0,
+     "step_abs": null,
+     "step_pct_open": null,
+     "step_frac_gap": null,
+     "acceptable_at": null,
+     "last_vs_limit": null,
+     "final_vs_limit": 1.024,
+     "shapes": {
+      "silent": 16
+     },
+     "tempo": {},
+     "reactive": {},
+     "accepted": {
+      "no deal": 12,
+      "live": 2,
+      "took ours": 2
+     }
+    }
+   },
+   "per_duel": [
+    {
+     "duel": 23,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Plata",
+     "limit": 88,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 24,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Rojo",
+     "limit": 65,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 91,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 98,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 92,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Azul",
+     "limit": 182,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 139,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Plata",
+     "limit": 79,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 140,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 110,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 249,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Noche",
+     "limit": 72,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 250,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Sol",
+     "limit": 151,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 261,
+     "session": 1,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Luna",
+     "limit": 75,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 262,
+     "session": 1,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Oro",
+     "limit": 195,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2396,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 136,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2397,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Noche",
+     "limit": 111,
+     "status": "live",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": null,
+     "accepted": "live"
+    },
+    {
+     "duel": 2436,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Sol",
+     "limit": 96,
+     "status": "deal",
+     "final": 118,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 22.0,
+     "accepted": "took ours",
+     "final_vs_limit": 1.229
+    },
+    {
+     "duel": 2437,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 181,
+     "status": "deal",
+     "final": 148,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 33.0,
+     "accepted": "took ours",
+     "final_vs_limit": 0.818
+    },
+    {
+     "duel": 2582,
+     "session": 2,
+     "our_role": "seller",
+     "rival_role": "buyer",
+     "alias": "Rival Plata",
+     "limit": 79,
+     "status": "no_deal",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": 0.0,
+     "accepted": "no deal"
+    },
+    {
+     "duel": 2583,
+     "session": 2,
+     "our_role": "buyer",
+     "rival_role": "seller",
+     "alias": "Rival Rojo",
+     "limit": 56,
+     "status": "live",
+     "final": null,
+     "shape": "silent",
+     "trailing_holds": 0,
+     "n_offers": 0,
+     "prices": [],
+     "ticks": [],
+     "result": null,
+     "accepted": "live"
+    }
+   ],
+   "note": "never wrote in either duel of the pair; may be several teams",
+   "profile_basis": "all",
+   "play": "never writes; some took our first offer: open high, keep a margin"
+  }
+ ]
+}
