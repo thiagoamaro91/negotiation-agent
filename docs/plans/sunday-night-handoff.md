@@ -20,7 +20,7 @@
 | «FILL» | WP3 matchmaker | «FILL» |
 | «FILL» | WP4 ladder lines | «FILL» |
 | #62 | WP7 evals | open |
-| «FILL» | WP5 factory, pre-flight, this page | «FILL» |
+| #66 | WP5 factory, pre-flight, this page | open |
 
 Not in the factory: #41, #57, #60, #61.
 
