@@ -11,10 +11,48 @@
    ]
   }
  },
- "status": "open",
+ "status": "closed",
  "created_tick": 630,
- "messages": [],
+ "messages": [
+  {
+   "id": 5702,
+   "tick": 631,
+   "sender": "pilar",
+   "text": "Buenas tardes. A pleasure. I see you carry the Mercado de San Ildefonso — a decent piece, not Salamanca, but it fills a gap in one of my albums. I offer sixteen pesetas for it.",
+   "offer": {
+    "id": 9184,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 870,
+    "status": "expired",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 828,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 11,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 635,
+    "created_tick": 631,
+    "final": false
+   }
+  }
+ ],
  "standing_offers": [],
- "item": null,
+ "item": "Mercado de San Ildefonso",
  "closed_reason": null
 }

@@ -274,3 +274,4 @@
 {"ts": "2026-10-03T13:20:28", "run": "20261003-112249-d114", "agent": "rastro", "event": "listed", "tick": 621, "mode": "run", "asset": 499, "card": "LAV-05", "price": 8, "floor": 8, "why": "renew", "offer": 9073, "expires": 636}
 {"ts": "2026-10-03T13:20:29", "run": "20261003-112249-d114", "agent": "rastro", "event": "listed", "tick": 621, "mode": "run", "asset": 579, "card": "MAL-02", "price": 8, "floor": 8, "why": "renew", "offer": 9074, "expires": 636}
 {"ts": "2026-10-03T13:24:56", "run": "20261003-112249-d114", "agent": "rastro", "event": "doors_closed", "tick": 630, "next_opens": "2026-10-04T09:00:00+02:00", "paused": true}
+{"ts": "2026-10-03T14:09:48", "run": "20261003-112249-d114", "agent": "rastro", "event": "stopped", "why": "ctrl-c"}

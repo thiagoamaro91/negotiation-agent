@@ -1,7 +1,7 @@
 {
  "duel": 2587,
  "session": 2,
- "status": "live",
+ "status": "deal",
  "role": "seller",
  "item": "El Mesón de la Cava",
  "issues": [
@@ -108,7 +108,7 @@
    "days": null
   }
  ],
- "result": null,
- "price": null,
- "days": null
+ "result": 8.0,
+ "price": 86,
+ "days": 0
 }

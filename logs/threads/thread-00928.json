@@ -1,0 +1,354 @@
+{
+ "id": 928,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    827
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 679,
+ "messages": [
+  {
+   "id": 6076,
+   "tick": 680,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 30 P.",
+   "offer": {
+    "id": 9861,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 30,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 684,
+    "created_tick": 680,
+    "final": false
+   }
+  },
+  {
+   "id": 6075,
+   "tick": 680,
+   "sender": "pilar",
+   "text": "Buenas tardes. How agreeable to see a serious face at my stall. You carry La Rosaleda — El Retiro, my beloved garden. I shall give you 22 P for it, señor. A fair sum.",
+   "offer": {
+    "id": 9860,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 684,
+    "created_tick": 680,
+    "final": false
+   }
+  },
+  {
+   "id": 6085,
+   "tick": 681,
+   "sender": "pilar",
+   "text": "I think 22 P is more appropriate.",
+   "offer": {
+    "id": 9878,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 685,
+    "created_tick": 681,
+    "final": false
+   }
+  },
+  {
+   "id": 6086,
+   "tick": 681,
+   "sender": "t03",
+   "text": "I move, you move. 29 P.",
+   "offer": {
+    "id": 9881,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 685,
+    "created_tick": 681,
+    "final": false
+   }
+  },
+  {
+   "id": 6096,
+   "tick": 682,
+   "sender": "t03",
+   "text": "Coming down: 28 P.",
+   "offer": {
+    "id": 9892,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 28,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 686,
+    "created_tick": 682,
+    "final": false
+   }
+  },
+  {
+   "id": 6092,
+   "tick": 682,
+   "sender": "pilar",
+   "text": "A small step from me, then: 23 P. El Retiro deserves respect, and so does my purse. By the way, ask Carmen at El Rastro about the golden chulapa — only one ever printed, they say.",
+   "offer": {
+    "id": 9888,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 686,
+    "created_tick": 682,
+    "final": false
+   }
+  },
+  {
+   "id": 6107,
+   "tick": 683,
+   "sender": "pilar",
+   "text": "I think 24 P is more appropriate.",
+   "offer": {
+    "id": 9917,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 687,
+    "created_tick": 683,
+    "final": false
+   }
+  },
+  {
+   "id": 6113,
+   "tick": 683,
+   "sender": "t03",
+   "text": "Fair is fair. 27 P.",
+   "offer": {
+    "id": 9923,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 928,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 27,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 687,
+    "created_tick": 683,
+    "final": false
+   }
+  },
+  {
+   "id": 6119,
+   "tick": 684,
+   "sender": "pilar",
+   "text": "Twenty-five, señor. That is my last word — La Rosaleda deserves it, and so do you for your patience. Refuse, and I close my album and we part as polite strangers. Twenty-five P, sí o no?",
+   "offer": {
+    "id": 9937,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 928,
+    "status": "settled",
+    "give": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 827,
+       "kind": "card",
+       "ref": "RET-06",
+       "serial": 12,
+       "rarity": "uncommon",
+       "set": "RET",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 688,
+    "created_tick": 684,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Rosaleda",
+ "closed_reason": null
+}
