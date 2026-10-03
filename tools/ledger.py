@@ -496,10 +496,17 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
            for t in teams}
     posted = listings(events)
     owners: dict = {}  # venue id -> owning team
-    # read before the replay, so the order of same-tick events never matters: (team, tick) of every cash gift, and the
-    # ticks of every structured grant whose cash the ledger can read (one it cannot read accounts for nothing)
-    gifted_at = {(e["payload"].get("team"), e["tick"]) for e in events
-                 if e["type"] == "gift.given" and e["payload"].get("cash")}
+    # read before the replay, so the order of same-tick events never matters: every cash gift (below), and the ticks
+    # of every structured grant whose cash the ledger can read (one it cannot read accounts for nothing)
+    gifted = collections.defaultdict(set)  # (team, tick) -> cash amounts of its gifts, up to `upto`
+    for e in events:
+        if e["type"] == "gift.given" and e["payload"].get("cash") and (upto is None or e["tick"] <= upto):
+            gifted[(e["payload"].get("team"), e["tick"])].add(int(e["payload"]["cash"]))
+
+    def gift_was_grant(team: str, tick: int, cash: int) -> bool:
+        """A gift of exactly the grant's cash within two ticks is the team's share of that grant, not more money."""
+        return any(cash in gifted.get((team, tk), ()) for tk in range(tick - 2, tick + 3))
+
     grant_ticks = {e["tick"] for e in events if e["type"] == "schedule.fired"
                    and e["payload"].get("action") == "grant_all" and grant_cash(schedule, e["payload"])}
 
@@ -669,7 +676,7 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
         elif kind == "schedule.fired" and p.get("action") == "grant_all":
             cash = grant_cash(schedule, p)
             for team in led:
-                if cash and not any((team, tk) in gifted_at for tk in range(t - 2, t + 3)):
+                if cash and not gift_was_grant(team, t, cash):
                     move(team, t, cash, f"grant: {p.get('note', '')}")
                     led[team]["grants"] += cash
         elif kind == "announcement" and PAYDAY.search(p.get("text") or ""):
@@ -678,7 +685,7 @@ def _build(events: list, schedule: dict | None, upto: int | None, forced: dict, 
             cash = int(PAYDAY.search(p["text"]).group(1))
             if not any(tk in grant_ticks for tk in range(t - 2, t + 3)):
                 for team in led:
-                    if not any((team, tk) in gifted_at for tk in range(t - 2, t + 3)):
+                    if not gift_was_grant(team, t, cash):
                         move(team, t, cash, f"grant: {p['text'][:80]}")
                         led[team]["grants"] += cash
         elif kind == "level.unlocked" and p.get("team") in led:
