@@ -3,9 +3,13 @@
 It runs next to tools/feed_recorder.py (same clone, same logs/feed/) and, as soon as new events land, recomputes:
 - every team's inferred set multipliers (tools/value_inference.py), and how well the model predicts the next choice;
 - every team's cash and known cards (tools/ledger.py), checked against our own account;
-- the market plan with timing (tools/market_plan.py): what to sell, buy and hold, at what price and when;
+- the market plan with timing (tools/market_plan.py): what to sell to and buy from teams (scored at our private
+  values) and which dealer deals fill the ladder (an estimated share of the dealer's range);
+- dealer closes and a team-to-team price index (tools/price_index.py), every venue's fee, mechanism and open book;
+- how far to trust the inference: hit rate next to the naive baseline, a reliability table, the confidence labels;
 - a live tape of the market (every listing, bid and deal, with the real team behind each pseudonym), flagging the
-  offers that are an opportunity for us at our private values.
+  offers that are an opportunity for us at our private values;
+- the team's desks (trading agents): their heartbeats, mode and last decision.
 Open pages are told at once (server-sent events on /stream) and fetch the new state. It also keeps a learning curve
 (logs/brain/history.jsonl).
 
@@ -15,14 +19,19 @@ Open pages are told at once (server-sent events on /stream) and fetch the new st
 
 Settings (environment or the --env file): BRAIN_TOKEN gates every page and read (?t=...); BRAIN_WRITE_TOKEN lets
 tools/me_relay.py push our account (POST /ingest/me) from the laptop that holds the team key, so the key never
-leaves that laptop. The brain itself has no key and never sends anything to the game.
+leaves that laptop, and lets the desks post heartbeats (POST /ingest/desk, header X-Brain-Write, body
+{"name", "mode": "shadow"|"live", "tick", "last_decision", "reason"}; 4 KB at most, any field whose name contains
+"key" is dropped and key-like values are redacted). BRAIN_PAGE_BONUS=1 counts the page bonus in trade values once the
+desk confirms it. The brain itself has no key and never sends anything to the game.
 """
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import math
 import os
+import re
 import threading
 import time
 import traceback
@@ -32,6 +41,7 @@ from urllib.parse import parse_qs, urlparse
 
 import ledger as ledger_mod
 import market_plan
+import price_index
 import value_inference as vi
 
 OUT = vi.ROOT / "logs" / "brain"
@@ -43,6 +53,15 @@ CHECK_SECONDS = 2.0             # how often the worker looks for new events
 MAX_QUIET_SECONDS = 60.0        # refresh at least this often (the live board can change without a feed event)
 TAPE_LEN = 60
 DEFAULT_ENV = Path.home() / "bazaar" / "brain.env"
+DESK_MAX_BYTES = 4096           # a heartbeat is a few lines; anything bigger is refused
+DESK_MAX = 24                   # desks remembered at once (the oldest heartbeat is forgotten first)
+DESK_TEXT = {"last_decision": 300, "reason": 500}
+DESK_NAME = re.compile(r"^[A-Za-z0-9 _.-]{1,40}$")
+KEYLIKE = re.compile(r"\b(?:tk|bk|sk)-[A-Za-z0-9-]{6,}")  # team / broker key shapes, redacted if a desk ever echoes one
+DESKS: dict = {}
+DESK_LOCK = threading.Lock()
+LAST_DESK_PUSH = [0.0]
+DESK_FILE = OUT / "desks.json"
 
 
 def load_env(path: Path) -> None:
@@ -53,9 +72,135 @@ def load_env(path: Path) -> None:
                 os.environ.setdefault(k.strip(), v.strip())
 
 
-def leaderboard() -> dict:
-    snaps = [s for s in vi.rows("snapshots.jsonl") if s.get("what") == "leaderboard"]
-    return snaps[-1]["body"] if snaps else {}
+class Snapshots:
+    """The recorder's snapshots.jsonl read incrementally (it grows with every book change): the latest leaderboard,
+    venue list, El Rastro board and every venue's book, without re-reading the file on each refresh."""
+
+    def __init__(self, path: Path):
+        self.path, self.offset, self.latest, self.books = path, 0, {}, {}
+
+    def update(self) -> "Snapshots":
+        if not self.path.exists():
+            return self
+        size = self.path.stat().st_size
+        if size < self.offset:  # rotated or truncated: start again
+            self.offset, self.latest, self.books = 0, {}, {}
+        with open(self.path, "rb") as f:
+            f.seek(self.offset)
+            chunk = f.read()
+        end = chunk.rfind(b"\n") + 1  # only whole lines; a half-written one waits for the next round
+        for line in chunk[:end].splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("what") == "book" and isinstance(row.get("venue"), str):
+                self.books[row["venue"]] = row
+            elif row.get("what"):
+                self.latest[row["what"]] = row
+        self.offset += end
+        return self
+
+    def body(self, what: str) -> dict:
+        return (self.latest.get(what) or {}).get("body") or {}
+
+
+SNAPS = Snapshots(vi.FEED / "snapshots.jsonl")
+
+
+def open_offers(body) -> int | None:
+    offers = body.get("offers", body) if isinstance(body, dict) else body
+    if not isinstance(offers, list):
+        return None
+    return sum(1 for o in offers if isinstance(o, dict) and o.get("status") in (None, "open"))
+
+
+def venues_panel(snaps: Snapshots, events: list) -> list:
+    """Every venue: owner, fee, mechanism, open offers on its public book (recorder) and trades (its own counter, and
+    the settlements the feed shows on it)."""
+    settled = {}
+    for e in events:
+        if e["type"] == "settlement" and not e["payload"].get("persona") and e["payload"].get("venue"):
+            settled[e["payload"]["venue"]] = settled.get(e["payload"]["venue"], 0) + 1
+    out = []
+    for v in snaps.body("venues").get("venues", []) if isinstance(snaps.body("venues"), dict) else []:
+        if not isinstance(v, dict):
+            continue
+        vid = v.get("venue")
+        book = snaps.books.get(vid) if vid != "rastro" else snaps.latest.get("rastro")
+        out.append({"venue": vid, "name": v.get("name"), "owner": v.get("owner"), "status": v.get("status"),
+                    "fee_bps": v.get("fee_bps"), "fee_per_card": v.get("fee_per_card"),
+                    "mechanism": (v.get("rules") or {}).get("mechanism") or ("house" if v.get("house") else None),
+                    "pending_fee": v.get("pending_fee"), "trades": v.get("trades"), "volume": v.get("volume"),
+                    "feed_trades": settled.get(vid, 0), "open_offers": open_offers(book["body"]) if book else None,
+                    "book_tick": book.get("tick") if book else None, "opened_tick": v.get("opened_tick")})
+    out.sort(key=lambda v: (v["venue"] != "rastro", -(v["trades"] or 0)))
+    return out
+
+
+# ---------------------------------------------------------------- desks (the team's trading agents)
+
+def scrub(x):
+    """Drop every field whose name mentions a key, at any depth, and redact key-shaped strings."""
+    if isinstance(x, dict):
+        return {k: scrub(v) for k, v in x.items() if "key" not in str(k).lower()}
+    if isinstance(x, list):
+        return [scrub(v) for v in x]
+    if isinstance(x, str):
+        return KEYLIKE.sub("[redacted]", x)
+    return x
+
+
+def valid_desk(body) -> dict | None:
+    """A desk heartbeat, cleaned: {name, mode, tick, last_decision, reason}; None if it is not one. Unknown fields are
+    dropped; text is cut to its limit (it is shown on the page, escaped, never run)."""
+    if not isinstance(body, dict):
+        return None
+    body = scrub(body)
+    name, mode, tick = body.get("name"), body.get("mode"), body.get("tick")
+    if not isinstance(name, str) or not DESK_NAME.match(name) or mode not in ("shadow", "live"):
+        return None
+    if tick is not None and (isinstance(tick, bool) or not isinstance(tick, int) or tick < 0):
+        return None
+    out = {"name": name, "mode": mode, "tick": tick}
+    for field, limit in DESK_TEXT.items():
+        v = body.get(field)
+        if v is not None and not isinstance(v, str):
+            return None
+        out[field] = (v or "")[:limit]
+    return out
+
+
+def record_desk(desk: dict, now: float | None = None) -> None:
+    with DESK_LOCK:
+        DESKS[desk["name"]] = {**desk, "received": now if now is not None else time.time()}
+        while len(DESKS) > DESK_MAX:
+            del DESKS[min(DESKS, key=lambda k: DESKS[k]["received"])]
+        try:
+            OUT.mkdir(parents=True, exist_ok=True)
+            tmp = DESK_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(DESKS), encoding="utf-8")
+            tmp.replace(DESK_FILE)
+        except OSError:
+            pass
+
+
+def load_desks() -> None:
+    try:
+        saved = json.loads(DESK_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    for d in saved.values() if isinstance(saved, dict) else []:
+        clean = valid_desk(d)
+        if clean and isinstance(d.get("received"), (int, float)):
+            DESKS[clean["name"]] = {**clean, "received": d["received"]}
+
+
+def desk_rows(now: float | None = None) -> list:
+    now = now if now is not None else time.time()
+    with DESK_LOCK:
+        rows = [{**d, "age_s": round(now - d["received"], 1)} for d in DESKS.values()]
+    return sorted(rows, key=lambda d: d["age_s"])
 
 
 def tape(events: list, ours: dict, mine, book: dict, marginals: list) -> list:
@@ -147,13 +292,15 @@ def refresh() -> dict:
     me = vi.load_me()
     truth = me.get("affinity", {})
     mine = vi.our_cards(me, events)
-    ours = model.summary(model.posterior(by_team.get(vi.US, [])))
-    plan = market_plan.plan()
-    lb = leaderboard()
+    ours = model.summary(model.posterior(by_team.get(vi.US, [])), by_team.get(vi.US, []))
+    plan = market_plan.plan(split)
+    rarity, _, _ = price_index.card_kinds(cat)
+    snaps = SNAPS.update()
+    lb = snaps.body("leaderboard")
     score = {t["team"]: t.get("score") for t in lb.get("teams", [])}
     teams = []
     for t in sorted(by_team):
-        r = model.summary(model.posterior(by_team[t]))
+        r = model.summary(model.posterior(by_team[t]), by_team[t])
         L = led.get(t, {})
         teams.append({
             "team": t, "us": t == vi.US, "score": score.get(t), "rank": None,
@@ -164,7 +311,7 @@ def refresh() -> dict:
             "dist": {s: {str(m): round(p, 3) for m, p in r["dist"][s].items()} for s in model.in_play},
             "favourite": r["favourite"], "p_favourite": round(r["p_favourite"], 2),
             "least": r["least"], "p_least": round(r["p_least"], 2), "confidence": r["confidence"],
-            "evidence": len(by_team[t]),
+            "choices": r["choices"], "evidence": len(by_team[t]),
         })
     for i, t in enumerate(sorted((x for x in teams if x["score"] is not None), key=lambda x: -x["score"])):
         t["rank"] = i + 1
@@ -178,9 +325,14 @@ def refresh() -> dict:
         "model": {"hit": round(split["hit"], 3), "naive": round(split["naive_hit"], 3), "n": split["n"],
                   "chance": round(1 / len(model.in_play), 3), "loss": round(split["loss"], 3),
                   "uniform_loss": round(split["uniform_loss"], 3), "beta_choose": model.beta_choose,
-                  "beta_shed": model.beta_shed,
+                  "beta_shed": model.beta_shed, "reliability": split["reliability"], "by_label": split["by_label"],
+                  "shrink": split["shrink"], "shrunk_loss": round(split["shrunk_loss"], 3),
+                  "labels": {"strong": {"p": vi.STRONG_P, "choices": vi.STRONG_CHOICES},
+                             "some": {"p": vi.SOME_P, "choices": vi.SOME_CHOICES}},
                   "us": {s: {"inferred": round(ours["expected"][s], 2), "true": truth.get(s)} for s in model.in_play}},
         "ledger_check": chk, "teams": teams, "plan": plan, "in_play": model.in_play,
+        "prices": {"dealers": plan.pop("dealer_prices"), "teams": price_index.team_index(events, rarity)},
+        "venues": venues_panel(snaps, events),
         "tape": tape(events, truth, mine, book, marginals), "leaderboard_tick": lb.get("snapshot_tick"),
     }
     data["compute_s"] = round(time.time() - t0, 2)
@@ -239,7 +391,7 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
             self.wfile.write(body)
 
         def _allowed(self, u) -> bool:
-            return not token or parse_qs(u.query).get("t", [""])[0] == token
+            return not token or hmac.compare_digest(parse_qs(u.query).get("t", [""])[0].encode(), token.encode())
 
         def do_GET(self):
             u = urlparse(self.path)
@@ -250,7 +402,8 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
             if u.path == "/data":
                 with COND:
                     body = json.dumps({**(STATE["data"] or {}), "error": STATE["error"], "version": STATE["version"],
-                                       "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None},
+                                       "age": round(time.time() - STATE["updated"], 1) if STATE["updated"] else None,
+                                       "desks": desk_rows()},
                                       default=str)
                 return self._send(200, body.encode(), "application/json")
             if u.path == "/history":
@@ -279,15 +432,29 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
 
         def do_POST(self):
             u = urlparse(self.path)
-            if u.path != "/ingest/me" or not write_token or self.headers.get("X-Brain-Write") != write_token:
+            given = (self.headers.get("X-Brain-Write") or "").encode()
+            if (u.path not in ("/ingest/me", "/ingest/desk") or not write_token
+                    or not hmac.compare_digest(given, write_token.encode())):
                 return self._send(403, b"forbidden", "text/plain")
-            n = int(self.headers.get("Content-Length") or 0)
-            if n <= 0 or n > 512_000:
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
+            if n <= 0 or n > (DESK_MAX_BYTES if u.path == "/ingest/desk" else 512_000):
                 return self._send(413, b"too large", "text/plain")
             try:
                 body = json.loads(self.rfile.read(n))
             except ValueError:
                 return self._send(400, b"bad json", "text/plain")
+            if u.path == "/ingest/desk":
+                desk = valid_desk(body)
+                if desk is None:
+                    return self._send(400, b"not a desk heartbeat", "text/plain")
+                record_desk(desk)
+                if time.time() - LAST_DESK_PUSH[0] >= 2.0:  # open pages refetch, at most every 2 s however many desks
+                    LAST_DESK_PUSH[0] = time.time()
+                    publish()
+                return self._send(200, b"ok", "text/plain")
             if not valid_account(body):
                 return self._send(400, b"not an account", "text/plain")
             vi.ME_LIVE.parent.mkdir(parents=True, exist_ok=True)
@@ -312,10 +479,13 @@ def main() -> None:
     load_env(args.env)
     if args.once:
         d = refresh()
-        print(f"tick {d['tick']}: {d['store']['events']} events, model hit {d['model']['hit']:.0%}, "
+        print(f"tick {d['tick']}: {d['store']['events']} events, model hit {d['model']['hit']:.0%} "
+              f"(naive {d['model']['naive']:.0%}, keep {d['model']['shrink']:.0%} of the confidence), "
               f"ledger check {d['ledger_check']}, {len(d['plan']['sells'])} sells, {len(d['plan']['buys'])} buys, "
+              f"{len(d['plan']['dealer'])} dealer rows, {len(d['venues'])} venues, "
               f"{sum(1 for r in d['tape'] if r.get('opportunity'))} opportunities on the tape, {d['compute_s']} s")
         return
+    load_desks()
     threading.Thread(target=worker, daemon=True).start()
     token = os.environ.get("BRAIN_TOKEN")
     print(f"brain on http://{args.host}:{args.port}/ ({'token required' if token else 'open'}; "
