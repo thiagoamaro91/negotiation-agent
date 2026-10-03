@@ -97,7 +97,15 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
     tmux new-window -t bazaar -n duel "cd ~/bazaar/negotiation-agent; python3 -u agent/duel.py run --until 13:15 --params results/duel-params.json; sleep 3600"
     ```
 
-    Switch to the **tuned** file (`cp docs/duel-lab/duel-params-duels1.json results/duel-params.json`, then restart the `duel` window; +5.6 %) only once one of our accepts at deadline-1 is seen to settle: it bets on that. `results/duel-params-duels1-overnight.json` is the VM search's latest full set (it keeps improving until ~07:28; compare `~/lab/duel/report_duels1.md` before using it). If the duel-improve PR (code-level improvements, flags off by default) is approved, its recommended flags go here too.
+    **If Thiago approves PR #10, activate it BEFORE launching** (the biggest duel gain of the night: 0.394 per duel vs 0.354 for the safe set, +11 %). Its files are staged on the VM; one command puts them live and loads the improved params, then check:
+
+    ```bash
+    cp -r ~/bazaar/staging/duel-improve/. ~/bazaar/negotiation-agent/ && cp docs/duel-lab/duel-params-duels1-improved.json results/duel-params.json
+    python3 agent/duel.py selftest --n 300 --params results/duel-params.json
+    python3 agent/duel.py watch --once --params results/duel-params.json
+    ```
+
+    In the first wave, look for `rival ... late=True` lines in the duel log: they confirm the late read sees the rival's message in the same tick. Switch to the narrower accept window (`accept_any_ticks 2, near_ticks 0`) only once one of our accepts at deadline-1 is seen to settle. `results/duel-params-duels1-overnight.json` is the VM search's latest full set (it keeps improving until ~07:28; compare `~/lab/duel/report_duels1.md` before using it).
 
 ## 11:50 · Venue decision (GATE, 270 P, 250 refundable)
 
