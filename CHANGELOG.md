@@ -1,5 +1,13 @@
 # Changelog
 
+## [2026-10-03] Sunday factory
+
+### Added
+- `tools/factory.py`: one command starts Sunday's bots in order and keeps them up. `plan` (read-only, keyless) prints the clock, every schedule event in Madrid wall time, each process's exact command and gate, and any copy already running outside the factory. `up --yes` claims each process on the bus and opens one tmux window per process, each running a restart loop that waits for its gates (doors open, clock running, no fresh duel lock, no duel wave within 12 min, after the allowance) evaluated in game hours, so a pause only delays it. Duel runs start 10 min before each duel wave, with `--duel-ticks` from the schedule and `--until` from the closing time. Dealer steps run once each, and a step that lived through a pause is rerun. `status` shows one line per process (running, log age, restarts, last Market Test matched and dropped) and exits 1 on a required process down or stale, a crash, or a dropped or missing match; `--notify` runs a configured command, `--every 60` makes it the watchdog.
+- `tools/factory_sunday.json`: the Sunday processes as data (feed recorder, broker, duel, Abuela, Chato, Pilar, the watchdog; Rastro seller and market desk off), with a `todo` on every value that waits for an open pull request or an 08:55 decision.
+- `docs/plans/sunday-runbook.md`: the operator page (08:55 command, 09:00 check, timeline in game hours, one action per alert, decisions that stay with people).
+- `tests/test_factory.py`: 21 tests (wall time at 15, 30 and 60 s ticks and across a pause or the overnight gap, gates, rendering the real config, staleness, the Market Test watch, double starts); 19 mutations, all caught.
+
 ## [2026-10-03] Team bus
 
 ### Added

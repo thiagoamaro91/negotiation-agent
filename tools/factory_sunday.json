@@ -1,0 +1,172 @@
+{
+  "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that depends on a teammate's open pull request or on a decision at 08:55. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Dealer commands come from section 7 of the Saturday dealer audit.",
+  "base_url": "https://bazaar.causaprima.ai",
+  "tmux_session": "factory",
+  "python": null,
+  "env": {"BAZAAR_OPERATOR": "claude-mini", "PYTHONUNBUFFERED": "1"},
+  "until_margin_min": 5,
+  "bus": {"session": "thiago-mini-factory", "where": "mini"},
+  "notify_cmd": null,
+  "todo_notify_cmd": "Set to the Mini's send-only Telegram notifier as an argv list, e.g. [\"/opt/homebrew/bin/python3\", \"<path>/projects/telegram-bot/notify.py\"]; the alert text is appended as the last argument. Path and CLI not verified from this repo.",
+  "processes": [
+    {
+      "name": "feed",
+      "kind": "service",
+      "required": true,
+      "gates": {},
+      "cmd": ["{python}", "-u", "tools/feed_recorder.py"],
+      "match": ["tools/feed_recorder.py"],
+      "log": "logs/feed/feed.jsonl",
+      "stale_ticks": 20,
+      "note": "Keyless public recorder; one copy is enough, so the bus claim stops a second machine from starting it."
+    },
+    {
+      "name": "broker",
+      "kind": "service",
+      "required": true,
+      "gates": {"doors_open": true},
+      "cmd": ["{python}", "-u", "agent/broker.py", "run", "--policy", "stall"],
+      "match": ["agent/broker.py", "run"],
+      "log": "logs/broker/{date}.jsonl",
+      "stale_ticks": 4,
+      "bench_watch": true,
+      "note": "Reads its own key from ~/.bazaar/broker.env (--key-file default). Market Tests at game hours 17.0, 19.0 and 21.0 come from the schedule; status alerts on any dropped match or no match in a test. Market audit fix 5 (shorter timeouts at 15 s) is not merged: works without it."
+    },
+    {
+      "name": "duel",
+      "kind": "session",
+      "required": true,
+      "gates": {"doors_open": true},
+      "session": {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120},
+      "params": "docs/duel-lab/duel-params-duels3.json",
+      "cmd": ["{python}", "-u", "agent/duel.py", "run", "--params", "{params}", "--duel-ticks", "{duel_ticks}",
+              "--late-poll", "4", "--idle-ticks", "{idle_ticks}", "--until", "{until}"],
+      "match": ["agent/duel.py", "run"],
+      "log": "logs/duel/{date}.jsonl",
+      "stale_ticks": null,
+      "todo": "params file does not exist yet: Hector's duel.py rewrite and params (PR #33, docs/duel-lab/duel-params-duels2-final.json) must merge first; copy the final file to this path. --duel-ticks comes from the schedule event (12 for Duels III and the Final) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit. Re-check the flag names after the rewrite merges."
+    },
+    {
+      "name": "abuela",
+      "kind": "steps",
+      "required": false,
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "max_retries": 2,
+      "match": ["agent/abuela.py", "run"],
+      "log": "logs/abuela/{date}.jsonl",
+      "stale_ticks": null,
+      "steps": [
+        {
+          "label": "r3-slots-1-3",
+          "after_event": {"action": "grant_all", "delay_min": 1},
+          "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-07,RET-08,SAL-05", "--cap", "22",
+                  "--reserve", "20", "--max-deals", "3"],
+          "note": "abuela.py has no --max-rounds flag: it is fixed at 40 ticks (10 min at 15 s)."
+        },
+        {
+          "label": "r3-best3-test",
+          "enabled": false,
+          "after_event": {"action": "grant_all", "delay_min": 1},
+          "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-04", "--cap", "8", "--reserve", "20",
+                  "--max-deals", "1"],
+          "todo": "Owner call: a 4th Abuela deal as the best-3 test; read ladder_points before and after."
+        }
+      ]
+    },
+    {
+      "name": "chato",
+      "kind": "steps",
+      "required": false,
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "max_retries": 2,
+      "match": ["agent/chato.py", "run"],
+      "exclude": ["pilar"],
+      "log": "logs/chato/{date}.jsonl",
+      "stale_ticks": null,
+      "steps": [
+        {
+          "label": "r2-fill-lav09",
+          "enabled": false,
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--only", "LAV-09", "--anchor", "60", "--step", "4",
+                  "--cap", "88", "--reserve", "40", "--max-deals", "1", "--max-rounds", "40"],
+          "todo": "08:55 decision: only if a Saturday Chato slot is still empty; it must finish before Round 3 (game 16.65, about 09:30)."
+        },
+        {
+          "label": "r3-slot-1-rare",
+          "after_event": {"action": "grant_all", "delay_min": 1},
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--only", "SAL-09", "--anchor", "60", "--step", "4",
+                  "--cap", "88", "--reserve", "40", "--max-deals", "1", "--max-rounds", "40"],
+          "todo": "08:55: SAL-09, or LAT-09 if still missing and /api/me/value reads about 150; never LAV-10 if a team bid is planned. --max-rounds 40 and no --max-bid until chato fix 1 (dealer audit) merges."
+        },
+        {
+          "label": "r3-slots-2-3",
+          "enabled": false,
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--only", "SAL-10", "--anchor", "60", "--step", "4",
+                  "--cap", "88", "--reserve", "40", "--max-deals", "1", "--max-rounds", "40"],
+          "todo": "Enable after the Pilar resale cash lands (about 86 P per rare, cash permitting), then run up --yes again."
+        }
+      ]
+    },
+    {
+      "name": "pilar",
+      "kind": "steps",
+      "required": false,
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+      "max_retries": 2,
+      "match": ["agent/chato.py", "pilar"],
+      "log": "logs/pilar/{date}.jsonl",
+      "stale_ticks": null,
+      "steps": [
+        {
+          "label": "r2-fill-mal",
+          "enabled": false,
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:44,sell:828,sell:42",
+                  "--allow-single", "--floor", "18", "--sell-anchor", "27", "--sell-step", "1", "--max-deals", "3",
+                  "--max-rounds", "40"],
+          "todo": "08:55 decision: only if a Saturday Pilar slot is still empty and those assets are still ours; it must finish before Round 3 (game 16.65)."
+        },
+        {
+          "label": "r3-resell-ret",
+          "enabled": false,
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only",
+                  "sell:<RET-07 id>,sell:<RET-08 id>,sell:827", "--allow-single", "--floor", "23", "--sell-anchor",
+                  "30", "--sell-step", "1", "--max-deals", "3", "--max-rounds", "40"],
+          "todo": "Asset ids of RET-07 and RET-08 come from /api/me after the Abuela buys land; fill them in, enable, run up --yes again. sell:827 is RET-06 if it did not go to t04 on Saturday (else use a MAL or CHA uncommon)."
+        }
+      ]
+    },
+    {
+      "name": "rastro_seller",
+      "kind": "service",
+      "enabled": false,
+      "required": false,
+      "gates": {"doors_open": true},
+      "cmd": ["{python}", "-u", "agent/rastro_seller.py", "run", "--until", "{until}", "--step-ticks", "40"],
+      "match": ["agent/rastro_seller.py", "run"],
+      "log": "logs/rastro/{date}.jsonl",
+      "stale_ticks": null,
+      "note": "Off: 232 listings and no fill on Saturday. --step-ticks 40 keeps the 10 min step-down at 15 s ticks."
+    },
+    {
+      "name": "market_desk",
+      "kind": "service",
+      "enabled": false,
+      "required": false,
+      "gates": {"doors_open": true},
+      "cmd": ["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--until", "{until}"],
+      "match": ["agent/market_desk.py", "run"],
+      "log": "logs/market/{date}.jsonl",
+      "stale_ticks": null,
+      "note": "Off: El Rastro only if enabled (--no-team-venues). Its bid step and expiry run twice as fast at 15 s (market audit section 7)."
+    },
+    {
+      "name": "watchdog",
+      "kind": "service",
+      "required": false,
+      "gates": {},
+      "cmd": ["{python}", "-u", "tools/factory.py", "status", "--notify", "--every", "60", "--config", "{config}"],
+      "match": ["tools/factory.py", "status", "--every"],
+      "note": "Runs status every 60 s and calls notify_cmd when the problem list changes."
+    }
+  ]
+}
