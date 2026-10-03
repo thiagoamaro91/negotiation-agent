@@ -12,6 +12,25 @@ sys.path.insert(0, str(ROOT / "tools"))
 import announce as an  # noqa: E402
 
 _ids = iter(range(1000, 10**6))
+REAL_TEAM_CLIENT = an.team_client
+_GUARDS = []
+
+
+def setUpModule():
+    """No test may use the machine's team key or the network (on the Mini both exist): team_client() answers None and
+    any real HTTP request fails, unless a test patches them on purpose."""
+    import unittest.mock as um
+
+    def no_network(*a, **k):
+        raise AssertionError("a test tried to reach the network")
+    for g in (um.patch.object(an, "team_client", lambda: None), um.patch.object(an.urllib.request, "urlopen", no_network)):
+        g.start()
+        _GUARDS.append(g)
+
+
+def tearDownModule():
+    for g in _GUARDS:
+        g.stop()
 
 
 def ask(ref, cash, status="open", venue="rastro", maker=None, to=None, oid=None, asset=None):
@@ -554,9 +573,52 @@ class TestSilenceGate(unittest.TestCase):
 
     def test_game_hours_are_wall_hours_at_any_tick_length(self):
         sched = {"upcoming": [{"at_hours": 11.0, "action": "bench"}]}
-        for tick_s in (15.0, 30.0, 60.0):
+        for tick_s, end in ((15.0, 3600 + 600), (30.0, 3600 + 600), (60.0, 3600 + 16 * 60 + an.QUIET_TAIL_S)):
             (w,) = an.quiet_windows(sched, {"t_hours": 10.0, "tick_seconds": tick_s}, 0.0)
-            self.assertEqual(w, (3600 - an.QUIET_BEFORE_S, 3600 + an.QUIET_AFTER_S), tick_s)
+            self.assertEqual(w, (3600 - an.QUIET_BEFORE_S, end), tick_s)   # same start; a slow session lasts longer
+
+    def test_an_active_session_is_silent_until_its_last_tick_at_the_clocks_pace(self):
+        ev = [{"type": "bench.started", "tick": 100, "payload": {"start_tick": 100, "ticks": 16}}]
+        (w,) = an.active_windows(ev, {"tick": 105, "tick_seconds": 60.0}, 1000.0)   # 11 ticks of 60 s still to run
+        self.assertEqual(w[1], 1000 + 11 * 60 + an.QUIET_TAIL_S)
+        (w,) = an.active_windows(ev, {"tick": 105, "tick_seconds": 15.0}, 1000.0)   # fast ticks: the 10-minute rule
+        self.assertEqual(w[1], 1000 - 5 * 15 + an.QUIET_AFTER_S)
+        self.assertEqual(an.active_windows(ev, {"tick": 140, "tick_seconds": 30.0}, 1000.0), [])  # long over
+
+    def test_windows_are_placed_from_the_clock_read_not_after_a_slow_feed(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        g = an.Gate(clock=lambda: state["now"])
+
+        def get(url):
+            if url.endswith("/api/schedule"):
+                return {"upcoming": [{"at_hours": 10.25, "action": "bench"}]}   # 900 s after the clock read
+            if url.endswith("/api/clock"):
+                return {"tick": 100, "t_hours": 10.0, "tick_seconds": 30.0}
+            state["now"] += 200                                                  # the feed takes 200 s
+            return {"events": []}
+        self.assertTrue(g.refresh(get))
+        self.assertEqual(g.windows, [(900 - an.QUIET_BEFORE_S, 900 + an.QUIET_AFTER_S)])
+        self.assertEqual(g.status_at, 0.0)
+
+
+class TestDeadline(unittest.TestCase):
+    def test_a_persistent_feed_outage_after_the_posts_still_ends_the_run(self):
+        state, posts, logged = {"now": 0.0, "tick": 100}, [], []
+        down = lambda url, st: "/api/feed" in url and st["now"] >= 30            # the feed dies after the post
+        run_loop(["run", "--yes", "--count", "1", "--every-min", "1", "--deadline-min", "30", "--exclude", ""],
+                 market(state, fail=[down]), state, posts, logged)
+        self.assertEqual(len(posts), 1)
+        self.assertLessEqual(state["now"], 30 * 60 + an.POLL_S)                  # ended at the deadline
+        self.assertIn("response_unavailable", [e for e, _ in logged])
+
+
+class TestTeamKey(unittest.TestCase):
+    def test_the_team_client_makes_one_attempt_only(self):
+        import unittest.mock as um
+        with um.patch.dict(an.os.environ, {"BAZAAR_KEY": "tk-Fake-Test"}):
+            c = an.team_client.__wrapped__() if hasattr(an.team_client, "__wrapped__") else REAL_TEAM_CLIENT()
+        self.assertEqual(c.retries, 0)
+        self.assertFalse(c.wait_on_tick)
 
 
 class TestDeferredEvents(unittest.TestCase):

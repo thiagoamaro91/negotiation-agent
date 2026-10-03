@@ -61,6 +61,8 @@ MIN_GAP_MIN = 10        # run --on-event: never two posts closer than this, what
 GIVE_UP_TICKS = 40      # run: a response the feed could not give this many ticks after its window is logged unavailable
 QUIET_BEFORE_S = 120    # run: Market Test silence (team rule: no API call from any lane), from this long before a
 QUIET_AFTER_S = 600     # bench session starts until this long after it (19:53-20:05 for the 19:55 test)
+QUIET_TAIL_S = 120      # run: silence kept this long after a session's last tick (its ticks x tick_seconds)
+BENCH_TICKS = 16        # a Market Test session's length when the schedule or the feed does not say
 STATUS_MAX_AGE_S = 300  # run: no post unless the Market Test schedule was read this recently (unknown = defer)
 STATUS_RETRY_S = 60     # run: how often a failed schedule read is tried again (no other request meanwhile)
 # Cards Team 3 lacks (from /api/me at tick 556, after the silver pack): never advertised. Holdings are private, so
@@ -179,7 +181,7 @@ def team_client():
     if not key:
         return None
     from bazaar_sdk import Bazaar
-    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=1)
+    return Bazaar(URL, key, timeout=10, wait_on_tick=False, retries=0)  # one attempt: no retry inside a silence
 
 
 def learn_pseudonyms(books: dict, names: dict) -> dict:
@@ -502,6 +504,13 @@ def window_counts(events: list, t0: int, k: int, names: dict | None = None) -> d
             "listed_before": lb, "teams_before": tb, "trades_before": xb}
 
 
+def session_end(start: float, ticks, tick_s: float) -> float:
+    """When a session's silence ends: QUIET_AFTER_S after its start (the team rule), or QUIET_TAIL_S after its last
+    tick when its ticks at this pace run longer (60 s ticks: 16 ticks = 16 min)."""
+    ticks = ticks if isinstance(ticks, int) and ticks > 0 else BENCH_TICKS
+    return max(start + QUIET_AFTER_S, start + ticks * tick_s + QUIET_TAIL_S)
+
+
 def quiet_windows(schedule: dict, clock: dict, now: float, horizon_h: float = 3.0) -> list:
     """[(start, end)] wall-clock epochs when no lane may call the API: each upcoming Market Test (schedule action
     "bench") from QUIET_BEFORE_S before its start to QUIET_AFTER_S after. A game hour is a wall hour at any tick
@@ -511,6 +520,10 @@ def quiet_windows(schedule: dict, clock: dict, now: float, horizon_h: float = 3.
         t_now = float(clock["t_hours"])
     except (KeyError, TypeError, ValueError):
         return []
+    try:
+        tick_s = float(clock.get("tick_seconds") or 30.0)
+    except (TypeError, ValueError):
+        tick_s = 30.0
     out = []
     for ev in sorted((schedule or {}).get("upcoming") or [], key=lambda e: e.get("at_hours", 0)):
         at = ev.get("at_hours")
@@ -520,8 +533,9 @@ def quiet_windows(schedule: dict, clock: dict, now: float, horizon_h: float = 3.
             break
         if ev.get("action") == "bench":
             start = now + (at - t_now) * 3600          # in the past when the session has already begun
-            if start + QUIET_AFTER_S > now:
-                out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(start + QUIET_AFTER_S)))
+            end = session_end(start, (ev.get("params") or {}).get("ticks"), tick_s)
+            if end > now:
+                out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
     return out
 
 
@@ -536,12 +550,16 @@ def active_windows(events: list, clock: dict, now: float) -> list:
     for e in events or []:
         if not isinstance(e, dict) or e.get("type") != "bench.started":
             continue
-        st = (e.get("payload") or {}).get("start_tick", e.get("tick"))
+        pl = e.get("payload") or {}
+        st = pl.get("start_tick", e.get("tick"))
         if not isinstance(st, int) or st > tick:
             continue
+        ticks = pl.get("ticks") if isinstance(pl.get("ticks"), int) and pl.get("ticks") > 0 else BENCH_TICKS
         start = now - (tick - st) * tick_s
-        if start + QUIET_AFTER_S > now:
-            out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(start + QUIET_AFTER_S)))
+        # the ticks still to run, at the clock's pace now (a pause or a slower clock only pushes the end later)
+        end = max(session_end(start, ticks, tick_s), now + (st + ticks - tick) * tick_s + QUIET_TAIL_S)
+        if end > now:
+            out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(end)))
     return out
 
 
@@ -582,6 +600,7 @@ class Gate:
             schedule = get(f"{URL}/api/schedule")
             self.check()
             clock = get(f"{URL}/api/clock")
+            at_clock = self.clock()                    # the windows are placed from this instant, not later
         except Silenced:
             return False
         except Exception as e:
@@ -595,10 +614,9 @@ class Gate:
         except Exception as e:  # without the feed a session already running cannot be ruled out: status unknown
             print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
             return False
-        now = self.clock()
-        self.windows = (self.manual + quiet_windows(schedule, clock, now)
-                        + active_windows(list(events) + list(extra_events), clock, now))
-        self.status_at = now
+        self.windows = (self.manual + quiet_windows(schedule, clock, at_clock)
+                        + active_windows(list(events) + list(extra_events), clock, at_clock))
+        self.status_at = at_clock
         return True
 
 
@@ -677,6 +695,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--on-event", action="store_true",
                     help="run only: also post at once when a new offer appears on v20 (never closer than --min-gap-min)")
     ap.add_argument("--min-gap-min", type=float, default=MIN_GAP_MIN, help="run: minutes between any two posts")
+    ap.add_argument("--deadline-min", type=float, default=None,
+                    help="run: stop after this many minutes whatever happens (default: count x every-min + 60)")
     ap.add_argument("--quiet", default="", help='run: extra silence windows today, e.g. "21:53-22:05" (Market Test '
                                                 'silences from /api/schedule are always kept)')
     ap.add_argument("--key-file", default=str(KEY_FILE))
@@ -747,13 +767,20 @@ def main(argv: list[str] | None = None) -> None:
     skip = set(exclude)
     ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
                     eligible=lambda o: describe(o) is not None and not refs(o) & skip)
+    minutes = args.deadline_min if args.deadline_min is not None else max(1, args.count) * max(1.0, args.every_min) + 60
+    deadline = time.time() + minutes * 60
     while ann.posted < ann.count or ann.pending:
+        if time.time() >= deadline:  # a feed or status outage must not keep the process alive for ever
+            for p in ann.pending:
+                log.event("response_unavailable", reason="deadline", **p)
+            print(f"[{time.strftime('%H:%M:%S')}] deadline reached: {ann.posted}/{ann.count} posts", flush=True)
+            break
         end = gate.quiet_end()
         if end is not None:  # Market Test silence: no request at all until it ends
             print(f"[{time.strftime('%H:%M:%S')}] silence until {time.strftime('%H:%M:%S', time.localtime(end))}",
                   flush=True)
             log.event("silence", until=round(end, 1))
-            time.sleep(max(1.0, end - time.time()))
+            time.sleep(max(1.0, min(end, deadline) - time.time()))
             continue
         if gate.due_refresh():
             gate.refresh(get_json, recorded_events(kinds=("bench.started",)))
