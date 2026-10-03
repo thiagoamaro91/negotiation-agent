@@ -475,6 +475,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
     decide, allocate (one accept per team per tick); then our accept or message (record_say)."""
     rng = random.Random(seed * 7919 + 1)
     lrng = random.Random(seed * 104729 + 5)       # late-read draws only, so flags off replay the same worlds
+    late_fails = 0                                # late reads failed in a row (duel.LATE_MAX_FAILS: late read off)
     T = sess["ticks"]
     results, every = [], []
     waves = [duels[i:i + sess["concurrent"]] for i in range(0, len(duels), sess["concurrent"])]
@@ -487,6 +488,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                        "msgs": [], "ours": [], "theirs": [], "deal": None, "oid": 0})
         end = max(x["D"] for x in xs)
         busy = {t: rng.random() < slot_busy for t in range(S, end)}
+        fallback = False                          # last tick's late read failed: accept in this tick's first read
         for tick in range(S, end):
             live = [x for x in xs if x["S"] <= tick < x["D"] and not x["deal"]]
             for x in live:
@@ -513,7 +515,10 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                 pairs.append((d, st))
             duel.set_windows(pairs, cfg)
             decisions = [(d, st, duel.decide(d, st, tick, cfg)) for d, st in pairs]
-            duel.allocate(decisions, cfg)
+            if fallback or late_fails >= getattr(duel, "LATE_MAX_FAILS", 1 << 30):
+                duel.allocate(decisions, cfg, late=True)
+            else:
+                duel.allocate(decisions, cfg)
             if busy[tick]:
                 for dd in decisions:
                     if dd[2]["action"] == "accept":
@@ -537,7 +542,11 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                 if x["deal"] or dec["action"] != "say":
                     continue
                 _post_ours(x, st, dec, d, tick)
-            late = getattr(duel, "late_due", None) and duel.late_due(decisions, cfg)
+            late = (not fallback and late_fails < getattr(duel, "LATE_MAX_FAILS", 1 << 30)
+                    and getattr(duel, "late_due", None) and duel.late_due(decisions, cfg))
+            fallback = bool(late) and lrng.random() < LATE_FAIL     # the late read will not happen this tick
+            if late:
+                late_fails = late_fails + 1 if fallback else 0
             held = []                                     # rival messages that land after our late read
             for did, ra in rival_acts.items():
                 x = byid[did]
@@ -546,7 +555,7 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                         held.append((x, ra["say"]))
                     else:
                         _post_rival(x, ra["say"], tick)
-            if late and lrng.random() >= LATE_FAIL and not busy[tick]:
+            if late and not fallback and not busy[tick]:
                 # duel.py --late-poll: the second read of this tick, accepts only (run loop: duel.late_pass)
                 again = []
                 for x in live:
@@ -565,9 +574,6 @@ def play_session(duels: list, sess: dict, cfg, seed: int, rounds_rule: str = "ex
                         x = byid[d["duel"]]
                         x["deal"] = (d["rival_offer"]["price"],
                                      d["rival_offer"].get("days") if x["dl"].days else None, tick, "us")
-                for d, st, dec in getattr(duel, "late_says", lambda *a: [])(again, cfg, tick):
-                    if not byid[d["duel"]]["deal"]:
-                        _post_ours(byid[d["duel"]], st, dec, d, tick)
             for x, say in held:
                 if not x["deal"]:
                     _post_rival(x, say, tick)
@@ -786,6 +792,8 @@ STRESS = [  # (label, module overrides, evaluate() kwargs): what if our rival mo
     ("Friday archetypes only", {}, {"kinds": FITTED}),
     ("we also see the rival's last-tick message", {}, {"late_look": 1}),
     ("an accept at deadline-1 does not settle", {}, {"d1_settles": False}),
+    ("late read: 40% of rival messages land after it, 15% of reads fail", {"LATE_MISS": 0.4, "LATE_FAIL": 0.15}, {}),
+    ("late read: every one fails (falls back to the next tick)", {"LATE_FAIL": 1.0}, {}),
 ]
 
 

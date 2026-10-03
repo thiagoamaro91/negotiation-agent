@@ -130,11 +130,9 @@ LOCK_PATH = ROOT / "results" / "duel.lock"
 LOCK_TICKS = 3                      # the lock expires this many ticks after its last refresh (a dead run frees it)
 LATE_POLL = 0.0                     # off. > 0: in a tick where an open duel has LATE_TICKS or fewer ticks left, every
 LATE_TICKS = 1                      # accept waits for a second read of the duels this many seconds before the tick ends
-SLOT_ORDER = "surplus"              # the tick's one accept: biggest surplus first (urgency still overrides)
+LATE_MAX_FAILS = 2                  # this many late reads failing in a row turn the late read off for the rest of the run
 SLOT_DEMAND = "open"                # duels that count toward the deadline cluster's accept slots: every open one
 LAST_SHARE = 0.0                    # off. > 0: with pairL visible, the last chance keeps this share of the soft pie
-LATE_SAY = False                    # --late-poll only: in the last LATE_TICKS ticks our messages also wait for it
-SILENT_STEPS = 0                    # extra offers to a rival that never spoke, between the absent offer and the last chance
 
 SELL_LINES = [
     "Hola. This one is in perfect condition. {offer}.",
@@ -392,24 +390,6 @@ def our_number(d: dict, st: "DuelState", cfg, rival, kind: str) -> tuple[int, in
     return int(p), None
 
 
-def ladder_number(d: dict, st: "DuelState", cfg, rival, frac: float) -> tuple[int, None]:
-    """--silent-steps (price-only): a rung between the absent-rival offer (frac 0) and the last chance (frac 1),
-    then the usual clamps: never retreat from a number we already sent, stay inside our limit (MIN_SURPLUS)."""
-    fresh = copy.copy(st)
-    fresh.last_sent = None
-    a = our_number(d, fresh, cfg, rival, "absent")[0]
-    z = our_number(d, fresh, cfg, rival, "last")[0]
-    seller = d["role"] == "seller"
-    x = a + frac * (z - a)
-    p = int(math.ceil(x)) if seller else int(math.floor(x))
-    if st.last_sent is not None and st.last_sent[0] is not None:
-        prev = int(st.last_sent[0])
-        p = min(p, prev) if seller else max(p, prev)
-    lim = d["your_limit"]
-    p = max(lim + cfg.min_surplus, p) if seller else min(lim - cfg.min_surplus, p)
-    return int(p), None
-
-
 # ---------------------------------------------------------------- one decision per duel per tick
 
 class DuelState:
@@ -502,16 +482,11 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
 
     budget = cfg.max_msgs - st.sent
     absent_from = int(math.ceil(cfg.absent_at * st.total))
-    steps = getattr(cfg, "silent_steps", 0) if not spoke and not two_issues(d) else 0
-    budget += steps                       # --silent-steps: messages to a rival that never spoke cost no round
     kind = None
     if budget >= 1 and last and not acceptable and ((spoke and stalled) or (not spoke and cfg.absent_last)):
         kind = "last"
     elif budget >= 1 and not spoke and st.sent == 0 and elapsed >= absent_from:
         kind = "absent"
-    elif steps and 1 <= st.sent <= steps and elapsed >= absent_from + (
-            st.total - cfg.last_chance_ticks - absent_from) * st.sent / (steps + 1):
-        kind = "ladder"
     elif budget >= 2 and not window and stalled:
         if not acceptable:
             kind = "anchor"
@@ -541,10 +516,7 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
             why = "last message kept for the last chance"
         return {**out, "action": "hold", "why": why}
 
-    if kind == "ladder":
-        p, days = ladder_number(d, st, cfg, rival, st.sent / (steps + 1))
-    else:
-        p, days = our_number(d, st, cfg, rival, kind)
+    p, days = our_number(d, st, cfg, rival, kind)
     out.update(next=p, next_days=days, step=kind)
     if st.last_sent == (p, days):
         return {**out, "action": "hold", "why": f"our number {p} stands ({kind}; resending would cost a round)"}
@@ -555,8 +527,7 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
             return {**out, "action": "accept", "kind": "instead",
                     "why": f"rival surplus {rs:.0f} >= our {kind} {p} less a round ({bar:.0f})"}
     return {**out, "action": "say", "price": p, "days": days,
-            "why": {"last": "last chance", "absent": "absent rival: one offer", "anchor": "anchor (rival stalled)",
-                    "ladder": "silent rival: one step toward the last chance"}[kind]}
+            "why": {"last": "last chance", "absent": "absent rival: one offer", "anchor": "anchor (rival stalled)"}[kind]}
 
 
 def set_windows(pairs: list, cfg) -> None:
@@ -574,24 +545,6 @@ def needs_slot(d: dict, cfg) -> bool:
     """Does this duel count toward the accept slots the deadline cluster needs? --slot-demand open (default): every
     open duel. spoke: only duels whose rival has spoken (a rival that never spoke has no offer for us to accept)."""
     return getattr(cfg, "slot_demand", "open") == "open" or rival_spoke(d)
-
-
-def rival_pace(d: dict, dec: dict, cfg) -> float:
-    """--slot-order pace: primas per tick the rival's offers gained for us over the last STALL_TICKS ticks (0 when it
-    has stopped moving). Read from the structured prices only."""
-    tick = d["deadline_tick"] - dec["left"]
-    k = max(1, cfg.stall_ticks)
-    path = []
-    for m in rival_msgs(d):
-        p, t = m.get("price"), m.get("tick")
-        if isinstance(p, (int, float)) and not isinstance(p, bool) and isinstance(t, int):
-            days = m.get("days") if two_issues(d) else None
-            path.append((t, surplus(d, int(p), int(days) if isinstance(days, (int, float)) else None, cfg.days_best)))
-    if not path:
-        return 0.0
-    then = [u for t, u in path if t <= tick - k]
-    ref = then[-1] if then else path[0][1]
-    return max(0.0, (path[-1][1] - ref) / k)
 
 
 def late_due(decisions: list, cfg) -> bool:
@@ -622,12 +575,7 @@ def allocate(decisions: list, cfg, late: bool = False) -> list:
                 dec["action"] = "hold"
                 dec["why"] = f"window: rival still conceding, waiting one tick ({tight} duel(s) need a slot)"
     queue = [x for x in decisions if x[2]["action"] == "accept"]
-    order = getattr(cfg, "slot_order", "surplus")
-    if order == "surplus":
-        queue.sort(key=lambda x: (-x[2].get("rival_surplus", 0), x[2]["left"]))
-    else:   # the duel whose rival is likely to give least by waiting goes first; ties: biggest surplus
-        queue.sort(key=lambda x: (rival_pace(x[0], x[2], cfg) if order == "pace" else bool(x[2].get("moving")),
-                                  -x[2].get("rival_surplus", 0), x[2]["left"]))
+    queue.sort(key=lambda x: (-x[2].get("rival_surplus", 0), x[2]["left"]))
     if queue:
         urgency = [(x[2]["left"] - rank, rank) for rank, x in enumerate(queue)]
         first = min(range(len(queue)), key=lambda i: urgency[i]) if min(urgency)[0] < 1 else 0
@@ -640,21 +588,7 @@ def allocate(decisions: list, cfg, late: bool = False) -> list:
             if x[2]["action"] == "accept":
                 x[2]["action"], x[2]["late"] = "hold", True
                 x[2]["why"] = f"accept waits for the late read, {cfg.late_poll:g} s before the tick ends"
-        if getattr(cfg, "late_say", False):
-            for d, st, dec in decisions:
-                if dec["action"] == "say" and dec["left"] <= cfg.late_ticks:
-                    dec["action"], dec["late"] = "hold", True
-                    dec["why"] = f"message ({dec['why']}) waits for the late read"
     return decisions
-
-
-def late_says(decisions: list, cfg, tick: int) -> list:
-    """--late-say: the messages the late read sends (duels in their last LATE_TICKS ticks that said nothing yet in
-    this tick: the server takes one message per duel per tick)."""
-    if not getattr(cfg, "late_say", False):
-        return []
-    return [x for x in decisions if x[2]["action"] == "say" and x[2]["left"] <= cfg.late_ticks
-            and x[1].last_sent_tick != tick]
 
 
 def words(d: dict, n_sent: int, price: int, days: int | None, last: bool = False) -> str:
@@ -729,25 +663,35 @@ def _csv(x) -> str:
     return ",".join(str(v) for v in x)
 
 
-def late_pass(b, run, cfg, states: dict, tick: int, sending: bool) -> None:
+def tick_left(clock: dict) -> float:
+    """Seconds until the next tick, never more than a whole tick (a bad next_tick_in must not oversleep the tick)."""
+    try:
+        ts = float(clock.get("tick_seconds") or 30.0)
+        return max(0.0, min(float(clock.get("next_tick_in", ts)), ts))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def late_pass(b, run, cfg, states: dict, tick: int, sending: bool, tick_end: float) -> bool:
     """--late-poll: the tick's second read, LATE_POLL seconds before it ends. The rival's message of this tick (its
     best one, at deadline-1, in 6/8 Friday duels) lands after our first read; reading again before accepting lets the
-    one accept of this tick take it. Accepts only: this tick's messages went out in the first read. If the tick is
-    already over, nothing is accepted (the next tick's first read decides)."""
+    one accept of this tick take it. Accepts only: this tick's messages went out in the first read.
+    Returns False when the read did not happen (tick over, paused, network): the caller then accepts in the next
+    tick's first read, so one failed late read never holds accepts for two ticks."""
     try:
         clock = b.clock()
         if int(clock["tick"]) != tick or clock.get("paused"):
             run.event("late_skipped", tick=tick, now=clock.get("tick"), paused=clock.get("paused"))
-            return
-        time.sleep(max(0.0, float(clock.get("next_tick_in") or 0) - cfg.late_poll))
+            return False
+        time.sleep(max(0.0, min(tick_end, time.time() + tick_left(clock)) - cfg.late_poll - time.time()))
         clock = b.clock()
         if int(clock["tick"]) != tick:
             run.event("late_skipped", tick=tick, now=clock.get("tick"), why="tick over before the late read")
-            return
+            return False
         every = b.duels(done=True).get("duels", [])
     except Exception as e:  # noqa: BLE001  (network, shape): no late accept this tick
         run.event("error", where="late", tick=tick, kind=type(e).__name__, msg=str(e)[:200])
-        return
+        return False
     pairs = []
     for d in every:
         st = states.get(d.get("duel"))
@@ -782,25 +726,7 @@ def late_pass(b, run, cfg, states: dict, tick: int, sending: bool) -> None:
                       **row)
         except BazaarError as e:
             run.event("refused", duel=did, action="accept", late=True, code=e.code, msg=e.message, extra=e.extra)
-    for d, st, dec in late_says(decisions, cfg, tick):
-        did, price, days = d["duel"], dec["price"], dec["days"]
-        if not inside_limit(d, price):  # cannot happen by construction; never send it
-            run.event("bug_skip", duel=did, price=price, limit=d["your_limit"], role=d["role"])
-            continue
-        text = words(d, st.sent, price, days, last=dec["why"] == "last chance")
-        if not sending:
-            run.event("would_say", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, price=price, days=days,
-                      text=text, late=True, why=dec["why"])
-            record_say(st, dec, d, tick)
-            continue
-        try:
-            resp = b.duel_say(did, text, price=price, days=days)
-            record_say(st, dec, d, tick)
-            run.event("say", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, price=price, days=days,
-                      late=True, resp=redact(resp), why=dec["why"])
-        except BazaarError as e:
-            run.event("refused", duel=did, action="say", late=True, code=e.code, msg=e.message, extra=e.extra)
-        time.sleep(cfg.post_gap)
+    return True
 
 
 # flags that are not tuning: never taken from a --params file
@@ -844,21 +770,12 @@ def build_parser() -> argparse.ArgumentParser:
                     help="seconds before the tick ends for a second read of the duels in the last --late-ticks ticks "
                          "of any open duel; that tick's accepts wait for it (0: off)")
     ap.add_argument("--late-ticks", type=int, default=LATE_TICKS)
-    ap.add_argument("--late-say", action=argparse.BooleanOptionalAction, default=LATE_SAY,
-                    help="--late-poll only: in a duel's last --late-ticks ticks, our message also waits for the late "
-                         "read, so it is decided after the rival's message of that tick")
     ap.add_argument("--last-share", type=float, default=LAST_SHARE,
                     help="price-only, pairL visible: the last chance at L + share x (pairL - L) instead of the "
                          "--last-r ratio (0: off)")
-    ap.add_argument("--silent-steps", type=int, default=SILENT_STEPS,
-                    help="price-only: offers to a rival that never spoke, evenly between the absent offer and the last "
-                         "chance (free while it stays silent); on top of --max-msgs")
     ap.add_argument("--slot-demand", default=SLOT_DEMAND, choices=["open", "spoke"],
                     help="which duels count toward the accept slots a deadline cluster needs: every open one, or only "
                          "those whose rival has spoken")
-    ap.add_argument("--slot-order", default=SLOT_ORDER, choices=["surplus", "stalled", "pace"],
-                    help="which acceptable duel takes the tick's one accept: biggest surplus first (surplus), or the "
-                         "duel whose rival has stopped moving (stalled) / gains us least per tick of waiting (pace)")
     ap.add_argument("--mirror", action="store_true",
                     help="KILLED hypothesis: take the paired limit as the rival's exact limit (keep off)")
     ap.add_argument("--until", default="", help="stop at this local wall time, HH:MM")
@@ -904,8 +821,6 @@ def make_cfg(argv: list):
         sys.exit("--min-surplus must be >= 1 (0 would accept at our limit)")
     if not cfg.mirror_shares or not cfg.days_premium:
         sys.exit("--mirror-shares and --days-premium need at least one value")
-    if cfg.silent_steps < 0:
-        sys.exit("--silent-steps must be >= 0")
     if cfg.late_poll < 0 or cfg.late_ticks < 1:
         sys.exit("--late-poll must be >= 0 (0: off) and --late-ticks >= 1")
     return cfg
@@ -941,6 +856,8 @@ def main() -> None:
     states: dict[int, DuelState] = {}
     finished: set[int] = set()
     last_tick = None
+    late_failed = False     # --late-poll: last tick's late read did not happen, so this tick accepts in its first read
+    late_fails = 0          # late reads failed in a row
     idle = 0
     seen_any = False
     passes = 0
@@ -965,6 +882,7 @@ def main() -> None:
                 continue
             passes += 1
             last_tick = tick
+            tick_end = time.time() + tick_left(clock)
             try:  # one bad shape or bug must never end an unattended run: log it and go to the next tick
                 try:
                     every = b.duels(done=True).get("duels", [])
@@ -1030,7 +948,7 @@ def main() -> None:
                 set_windows(decisions, cfg)
                 decisions = [(d, st, decide(d, st, tick, cfg)) for d, st in decisions]
 
-                allocate(decisions, cfg)
+                allocate(decisions, cfg, late=late_failed)
 
                 for d, st, dec in decisions:
                     did = d["duel"]
@@ -1089,8 +1007,14 @@ def main() -> None:
                         run.event("refused", duel=did, action="say", code=e.code, msg=e.message, extra=e.extra)
                     time.sleep(cfg.post_gap)
 
-                if not cfg.once and late_due(decisions, cfg):
-                    late_pass(b, run, cfg, states, tick, sending)
+                if not cfg.once and not late_failed and late_due(decisions, cfg):
+                    late_failed = not late_pass(b, run, cfg, states, tick, sending, tick_end)
+                    late_fails = late_fails + 1 if late_failed else 0
+                    if late_fails >= LATE_MAX_FAILS:
+                        cfg.late_poll = 0.0
+                        run.event("late_off", tick=tick, why=f"{late_fails} late reads failed in a row")
+                else:
+                    late_failed = False
 
                 # accepted duels that did not settle within two ticks are open again
                 for st in states.values():
@@ -1368,22 +1292,6 @@ def simulate(mod, cfg, n_duels: int = 3000, seed: int = 7, kinds=ARCHETYPES, d1_
                         continue
                     st.accepted_at = t
                     settle(x, rp[0], t, "us")
-                for snap, st, dec in mod.late_says(again, cfg, t) if hasattr(mod, "late_says") else []:
-                    x = next(x for x, s in late if s is snap)
-                    p = dec["price"]
-                    if not x["open"] or not inside_limit(x["d"], p) or surplus(x["d"], p, None, "auto") < MIN_SURPLUS:
-                        if x["open"]:
-                            out["violations"].append(f"late offer {p} vs limit {x['d']['your_limit']}")
-                        continue
-                    d = x["d"]
-                    if any(m.get("from") != "you" for m in d["messages"]):
-                        d["rounds"] += 1
-                    oid += 1
-                    d["messages"].append({"tick": t, "from": "you", "text": "", "price": p, "days": None})
-                    d["your_offer"] = {"id": oid, "price": p, "tick": t, "days": 0}
-                    record(st, dec, snap, t)
-                    x["sends"] += 1
-                    x["last_sends"] += dec.get("why") == "last chance"
 
         for x in duels:
             s = stats[x["kind"]]
@@ -1448,8 +1356,7 @@ def selftest(cfg) -> int:
             st.last_sent = (q, rng.randint(0, 10) if two else None)
         dec = decide(d, st, tick, cfg)
         if dec["action"] == "say":
-            cap = cfg.max_msgs + (cfg.silent_steps if not two and not rival_spoke(d) else 0)
-            if not inside_limit(d, dec["price"]) or st.sent >= cap or dec.get("days") is None and two:
+            if not inside_limit(d, dec["price"]) or st.sent >= cfg.max_msgs or dec.get("days") is None and two:
                 bad.append(f"say {dec}")
             if not two and surplus(d, dec["price"], None, "auto") < MIN_SURPLUS:
                 bad.append(f"say under MIN_SURPLUS {dec}")
@@ -1509,7 +1416,7 @@ def selftest(cfg) -> int:
             bad.append("lock_fresh on a missing file")
     for b in bad[:5]:
         print("  FAIL", b)
-    ok = not bad and not res["violations"] and res["max_sends"] <= cfg.max_msgs + cfg.silent_steps
+    ok = not bad and not res["violations"] and res["max_sends"] <= cfg.max_msgs
     print("SELFTEST", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
