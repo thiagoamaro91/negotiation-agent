@@ -7,6 +7,7 @@ import random
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -232,6 +233,121 @@ class RealBench(unittest.TestCase):
             self.assertNotIn("dropped", events, policy)
             self.assertEqual(events.count("matched"), 1, policy)
             self.assertEqual([c[1:3] for c in fake.calls], [("b36-17", "b36-3")], policy)
+
+
+class SafetyNet(unittest.TestCase):
+    """Saturday 11:50: the guard dropped all 15 bench pairs and the Market Test counted 0 (-1.9 market points). With
+    the old guard put back, the net must still send the stall's rule; it must stay off when a policy chose to wait."""
+
+    def setUp(self):
+        self.book = RealBench().book()
+        real_guard = brk.guard
+
+        def old_guard(plan, book):  # the guard before the 12:05 fix: same_maker on bench offers too
+            ok, bad = real_guard(plan, book)
+            drop = [m for m in ok if m[0] in {o["id"] for o in book["bench_offers"]}]
+            return [m for m in ok if m not in drop], bad + [(m, "same_maker") for m in drop]
+        self.old_guard = old_guard
+
+    def test_a_guard_that_drops_every_bench_pair_still_sends_the_stalls_rule(self):
+        with unittest.mock.patch.object(brk, "guard", self.old_guard):
+            ok, bad, notes = brk.plan_book(self.book, 450, None)
+        self.assertEqual(ok, [("b36-17", "b36-3", 48)])
+        self.assertEqual(ok, bench_plan(self.book))
+        self.assertEqual(notes.get("safety_net"), 1)
+        self.assertEqual([why for _, why in bad], ["same_maker"])
+
+    def test_the_net_stays_off_when_nothing_was_dropped_or_something_passed(self):
+        ok, bad, notes = brk.plan_book(self.book, 450, None)
+        self.assertNotIn("safety_net", notes)
+        self.assertEqual(brk.safety_net(self.book, [], []), [])  # a policy that waits drops nothing: no net
+        self.assertEqual(brk.safety_net(self.book, [("b36-17", "b36-3", 48)], [(("b36-12", "b36-4", 47), "x")]), [])
+
+    def test_the_net_skips_refused_pairs_and_settling_offers(self):
+        with unittest.mock.patch.object(brk, "guard", self.old_guard):
+            ok, _, notes = brk.plan_book(self.book, 450, None, refused={("b36-17", "b36-3"): 450})
+            self.assertNotIn(("b36-17", "b36-3"), [m[:2] for m in ok])
+            ok, _, _ = brk.plan_book(self.book, 450, None, skip={"b36-17"})
+            self.assertNotIn("b36-17", [x for m in ok for x in m[:2]])
+        dropped = [(("b36-17", "b36-3", 48), "same_maker")]
+        self.assertEqual(brk.safety_net(self.book, [], dropped), [("b36-17", "b36-3", 48)])
+        self.assertEqual(brk.safety_net(self.book, [], dropped, refused={("b36-17", "b36-3"): 450}), [])
+
+    def test_the_net_respects_the_fee_and_the_quotes(self):
+        book = book_of([seller("b5-1", 40, maker="bench"), buyer("b5-2", 42, maker="bench")], fee_bps=1000)
+        for sell, buy, price in brk.safety_net(book, [], [(("b5-1", "b5-2", 41), "same_maker")]):
+            self.assertLessEqual(40, price)
+            self.assertLessEqual(price + brk.fee_of(book, price), 42)
+
+    def test_the_live_loop_alarms_when_crossing_bench_offers_go_unmatched(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        book = dict(self.book)
+        book.pop("tick")  # the tick comes from the clock, so it moves
+        fake = FakeBroker(book, refuse=True)  # every match refused: the session is slipping
+        log = MemLog(Path(tmp.name) / "broker.jsonl")
+        clock = [1000.0]
+        desk = brk.Desk(fake, log, "stall", now=lambda: clock[0], heartbeat=Path(tmp.name) / "hb.json")
+        for t in (1, 2, 3, 4):
+            fake.tick = t
+            for _ in range(3):
+                desk.step()
+                clock[0] += 0.5
+        self.assertEqual(sum(r["event"] == "bench_alarm" for r in log.rows), 1)
+        self.assertEqual(json.loads((Path(tmp.name) / "hb.json").read_text())["bench_alarm"], 1)
+        fake.refuse, fake.tick = False, 5  # the venue accepts again: the alarm clears
+        desk.step()
+        self.assertIsNone(json.loads((Path(tmp.name) / "hb.json").read_text())["bench_alarm"])
+
+
+class AlarmEdges(unittest.TestCase):
+    """Codex's review of #44: the alarm must not see a cross between two runs, nor break on quotes that are not whole."""
+
+    def run_desk(self, bench, ticks=(1, 2, 3, 4)):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        fake = FakeBroker(book_of(bench), refuse=True)
+        log = MemLog(Path(tmp.name) / "broker.jsonl")
+        clock = [1000.0]
+        desk = brk.Desk(fake, log, "stall", now=lambda: clock[0], heartbeat=Path(tmp.name) / "hb.json")
+        for t in ticks:
+            fake.tick = t
+            desk.step()
+            clock[0] += brk.CLOCK_EVERY  # one clock read per step, so every step sees its tick
+        return log, json.loads((Path(tmp.name) / "hb.json").read_text())
+
+    def test_a_seller_and_a_buyer_of_two_runs_raise_no_alarm_and_are_never_paired(self):
+        bench = [seller("b1-1", 20, maker="bench"), buyer("b2-1", 30, maker="bench")]
+        log, hb = self.run_desk(bench)
+        self.assertIsNone(hb["bench_alarm"])
+        self.assertNotIn("bench_alarm", [r["event"] for r in log.rows])
+        self.assertEqual(brk.safety_net(book_of(bench), [], [(("b1-1", "b2-1", 25), "different_runs")]), [])
+
+    def test_the_alarm_clears_when_the_bench_empties_even_without_a_tick(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        fake = FakeBroker(book_of([seller("b1-1", 20, maker="bench"), buyer("b1-2", 30, maker="bench")]), refuse=True)
+        log = MemLog(Path(tmp.name) / "broker.jsonl")
+        clock = [1000.0]
+        hb = Path(tmp.name) / "hb.json"
+        desk = brk.Desk(fake, log, "stall", now=lambda: clock[0], heartbeat=hb)
+        for t in (1, 2, 3):
+            fake.tick = t
+            desk.step()
+            clock[0] += brk.CLOCK_EVERY
+        self.assertEqual(json.loads(hb.read_text())["bench_alarm"], 1)
+        fake.tick, fake.book_now = None, book_of([])              # the session is over, the clock has no tick
+        desk.step()
+        self.assertIsNone(json.loads(hb.read_text())["bench_alarm"])
+
+    def test_quotes_that_are_not_whole_keep_the_loop_and_its_heartbeat_alive(self):
+        log, hb = self.run_desk([seller("b1-1", 10.5, maker="bench"), buyer("b1-2", 20.5, maker="bench")])
+        self.assertEqual(hb["tick"], 4)
+        self.assertEqual(hb["read_errors_in_a_row"], 0)
+        price = brk.price_for(book_of([]), 10.5, 20.5)
+        self.assertIsInstance(price, int)
+        self.assertTrue(10.5 <= price <= 20.5)
+        self.assertIsNone(brk.price_for(book_of([]), 10.2, 10.8))  # no whole price between the quotes
 
 
 class Fallback(unittest.TestCase):
