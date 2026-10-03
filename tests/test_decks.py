@@ -92,19 +92,34 @@ class CensusTopUp(unittest.TestCase):
                            ev(150, "taller.crafted", team="t01", card="La Tabacalera")]
         convs = [{"tick": 155, "burned": [{"id": 7, "ref": "LAV-01"}], "got": [{"id": 44, "ref": "LAV-06"}]},
                  {"tick": 90, "burned": [{"id": 8, "ref": "LAV-01"}], "got": []}]
-        ids, info = decks.moved(events, CAT, self.SNAP, margin=2, conversions=convs)
+        ids, info = decks.moved(events, self.SNAP, margin=2, conversions=convs)
         t01_commons = [i for i in range(16, 31) if i % 2]
-        expected = sorted({5, 31, 38, 39, 40, 7, 44} | set(range(32, 48)) | set(t01_commons))
+        # counted mints: barrio pack 3 + craft 1 + new settled ids 0 (5 and 31 are below the census max) = 4 -> 35;
+        # the feed's highest is 45 (the listing): new ids 32..45+2
+        expected = sorted({5, 31, 7, 44} | set(range(32, 48)) | set(t01_commons))
         self.assertEqual(ids, expected)
         self.assertNotIn(3, ids)
         self.assertNotIn(8, ids)
         self.assertEqual((info["since"], info["census_max_id"], info["feed_max_id"], info["crafters"]), (100, 31, 45, ["t01"]))
 
+    def test_a_pack_best_card_above_everything_else_raises_the_range(self):
+        events = JOINED + [ev(130, "pack.opened", team="t02", pack="sobre_plata", best={"id": 90, "ref": "LAV-09"})]
+        ids, info = decks.moved(events, self.SNAP, margin=0)
+        self.assertEqual((ids[-1], info["feed_max_id"]), (90, 90))
+
+    def test_unseen_mints_beyond_the_margin_are_counted(self):
+        # Codex: nine five-card packs with no best card mint 45 ids; a fixed margin of 40 would stop short
+        events = JOINED + [ev(130 + k, "pack.opened", team="t02", pack="sobre_plata") for k in range(9)] \
+            + [ev(140, "gift.given", team="t01", cards=["LAV-01", "LAV-02"])]
+        ids, info = decks.moved(events, self.SNAP, margin=0)
+        self.assertEqual((info["mints_counted"], ids[-1]), (47, 31 + 47))
+        self.assertEqual(ids, list(range(32, 79)))
+
     def test_since_overrides_the_census_tick_and_a_tickless_census_needs_it(self):
         events = JOINED + [settled(120, "t02", "t01", 5, "LAV-01")]
-        self.assertNotIn(5, decks.moved(events, CAT, self.SNAP, since=130, margin=0)[0])
+        self.assertNotIn(5, decks.moved(events, self.SNAP, since=130, margin=0)[0])
         with self.assertRaises(ValueError):
-            decks.moved(events, CAT, {"meta": {}, "cards": []}, margin=0)
+            decks.moved(events, {"meta": {}, "cards": []}, margin=0)
 
     def test_the_command_writes_ids_only(self):
         import json
@@ -115,7 +130,11 @@ class CensusTopUp(unittest.TestCase):
             feed.write_text("".join(json.dumps(e) + "\n" for e in JOINED + [settled(120, "t02", "t01", 5, "LAV-01")]))
             base, out = Path(d) / "snap.json", Path(d) / "moved.txt"
             base.write_text(json.dumps(self.SNAP))
-            with mock.patch.object(decks.vi, "FEED", Path(d)), mock.patch.object(decks.vi, "catalog", lambda refresh=False: CAT), \
+            def offline(*a, **k):
+                raise AssertionError("moved must not touch the network")
+
+            with mock.patch.object(decks.vi, "FEED", Path(d)), mock.patch.object(decks.vi, "catalog", offline), \
+                    mock.patch.object(decks.vi, "public", offline), mock.patch.object(decks.vi, "PUBLIC", Path(d)), \
                     mock.patch.object(decks.vi, "CONVERSIONS", Path(d) / "none.json"):
                 decks.cmd_moved(["--base", str(base), "--margin", "0", "--out", str(out)])
             self.assertEqual(out.read_text(), "5\n")
