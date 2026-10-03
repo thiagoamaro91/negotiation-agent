@@ -61,7 +61,8 @@ MIN_GAP_MIN = 10        # run --on-event: never two posts closer than this, what
 GIVE_UP_TICKS = 40      # run: a response the feed could not give this many ticks after its window is logged unavailable
 QUIET_BEFORE_S = 120    # run: Market Test silence (team rule: no API call from any lane), from this long before a
 QUIET_AFTER_S = 600     # bench session starts until this long after it (19:53-20:05 for the 19:55 test)
-TICKS_PER_HOUR = 120    # the game clock: t_hours moves 1/120 per tick (30 s ticks on Saturday, 15 s on Sunday)
+STATUS_MAX_AGE_S = 300  # run: no post unless the Market Test schedule was read this recently (unknown = defer)
+STATUS_RETRY_S = 60     # run: how often a failed schedule read is tried again (no other request meanwhile)
 # Cards Team 3 lacks (from /api/me at tick 556, after the silver pack): never advertised. Holdings are private, so
 # this cannot be derived keylessly; update it when we buy one, or pass --exclude.
 MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09", "SAL-10",
@@ -135,20 +136,21 @@ def offer_makers(events: list) -> dict:
 FEED_FILE = ROOT / "logs" / "feed" / "feed.jsonl"   # the feed recorder's file on the machine that runs us (the Mini)
 
 
-def recorded_events(path: Path = FEED_FILE) -> list:
-    """offer.listed events from the recorded feed (tools/feed_recorder.py), so makers older than the API's
-    1,000-event window are known too. A missing file or a bad line costs nothing."""
+def recorded_events(path: Path = FEED_FILE, kinds=("offer.listed",)) -> list:
+    """Events of the given kinds from the recorded feed (tools/feed_recorder.py), so what is older than the API's
+    1,000-event window is known too. A missing file or a bad line costs nothing."""
     out = []
+    marks = tuple(f'"{k}"' for k in kinds)
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
-                if '"offer.listed"' not in line:
+                if not any(m in line for m in marks):
                     continue
                 try:
                     e = json.loads(line)
                 except ValueError:
                     continue
-                if isinstance(e, dict) and e.get("type") == "offer.listed":
+                if isinstance(e, dict) and e.get("type") in kinds:
                     out.append(e)
     except OSError:
         pass
@@ -450,7 +452,8 @@ class Announcer:
     def mark_posted(self, now: float, tick: int, why: str, fresh_ids=()) -> None:
         self.posted += 1
         self.last_post, self.next_slot = now, now + self.every_s
-        self.queue = []         # every queued offer was on the book this post was built from
+        done = set(fresh_ids)   # only the offers this post actually advertised leave the queue
+        self.queue = [o for o in self.queue if o.get("id") not in done]
         self.pending.append({"post": self.posted, "tick": tick, "why": why, "fresh": list(fresh_ids)})
 
     def give_up(self, tick: int, after: int = GIVE_UP_TICKS) -> list:
@@ -501,26 +504,101 @@ def window_counts(events: list, t0: int, k: int, names: dict | None = None) -> d
 
 def quiet_windows(schedule: dict, clock: dict, now: float, horizon_h: float = 3.0) -> list:
     """[(start, end)] wall-clock epochs when no lane may call the API: each upcoming Market Test (schedule action
-    "bench") from QUIET_BEFORE_S before its start to QUIET_AFTER_S after. Game hours become seconds through the
-    clock (TICKS_PER_HOUR ticks of tick_seconds each). Only sessions within `horizon_h` game hours and before the
-    day closes are placed (the clock stops overnight); the schedule is read again outside the windows."""
+    "bench") from QUIET_BEFORE_S before its start to QUIET_AFTER_S after. A game hour is a wall hour at any tick
+    length (tests/test_factory.py); on a paused clock that is the earliest the session can start, and the next read
+    places it again. Only sessions within `horizon_h` game hours and before the day closes; rounded outwards."""
     try:
-        t_now, tick_s = float(clock["t_hours"]), float(clock["tick_seconds"])
+        t_now = float(clock["t_hours"])
     except (KeyError, TypeError, ValueError):
-        return []
-    if clock.get("paused"):
         return []
     out = []
     for ev in sorted((schedule or {}).get("upcoming") or [], key=lambda e: e.get("at_hours", 0)):
         at = ev.get("at_hours")
-        if not isinstance(at, (int, float)) or at < t_now - 1 or at - t_now > horizon_h:
+        if not isinstance(at, (int, float)) or at - t_now > horizon_h:
             continue
         if ev.get("action") == "day_closes":
             break
         if ev.get("action") == "bench":
-            start = now + (at - t_now) * TICKS_PER_HOUR * tick_s
-            out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(start + QUIET_AFTER_S)))  # rounded outwards
+            start = now + (at - t_now) * 3600          # in the past when the session has already begun
+            if start + QUIET_AFTER_S > now:
+                out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(start + QUIET_AFTER_S)))
     return out
+
+
+def active_windows(events: list, clock: dict, now: float) -> list:
+    """Windows of Market Tests that have already started (the schedule lists only upcoming ones, so a restart in the
+    middle of a session would miss it): every bench.started in the feed placed by its start tick. [(start, end)]."""
+    try:
+        tick, tick_s = int(clock["tick"]), float(clock["tick_seconds"])
+    except (KeyError, TypeError, ValueError):
+        return []
+    out = []
+    for e in events or []:
+        if not isinstance(e, dict) or e.get("type") != "bench.started":
+            continue
+        st = (e.get("payload") or {}).get("start_tick", e.get("tick"))
+        if not isinstance(st, int) or st > tick:
+            continue
+        start = now - (tick - st) * tick_s
+        if start + QUIET_AFTER_S > now:
+            out.append((math.floor(start - QUIET_BEFORE_S), math.ceil(start + QUIET_AFTER_S)))
+    return out
+
+
+class Silenced(Exception):
+    """Raised instead of making a request inside a Market Test silence."""
+
+
+class Gate:
+    """Every request and every post asks the gate first (Codex BLOCKERs on #45: silence checked right before each
+    request and right before posting; no post while the Market Test status is unknown or stale)."""
+
+    def __init__(self, manual=(), clock=None):
+        self.manual, self.windows, self.status_at, self.tried_at = list(manual), list(manual), None, None
+        self.clock = clock or (lambda: time.time())  # looked up at call time, so a patched clock is honoured
+
+    def quiet_end(self):
+        return quiet_until(self.windows, self.clock())
+
+    def check(self) -> None:
+        if self.quiet_end() is not None:
+            raise Silenced()
+
+    def known(self) -> bool:
+        return self.status_at is not None and self.clock() - self.status_at <= STATUS_MAX_AGE_S
+
+    def due_refresh(self) -> bool:
+        """Read the status again when it is 60 s from going stale, or STATUS_RETRY_S after a failed read."""
+        now = self.clock()
+        if self.status_at is not None and now - self.status_at < STATUS_MAX_AGE_S - 60:
+            return False
+        return self.tried_at is None or now - self.tried_at >= STATUS_RETRY_S
+
+    def refresh(self, get, extra_events=()) -> bool:
+        """Read the schedule, the clock and the feed (each request gated); True when the status is known again."""
+        self.tried_at = self.clock()
+        try:
+            self.check()
+            schedule = get(f"{URL}/api/schedule")
+            self.check()
+            clock = get(f"{URL}/api/clock")
+        except Silenced:
+            return False
+        except Exception as e:
+            print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
+            return False
+        try:  # sessions already running: the API's feed window, plus the recorded feed passed in
+            self.check()
+            events = get(f"{URL}/api/feed?limit=1000").get("events", [])
+        except Silenced:
+            return False
+        except Exception:
+            events = []
+        now = self.clock()
+        self.windows = (self.manual + quiet_windows(schedule, clock, now)
+                        + active_windows(list(events) + list(extra_events), clock, now))
+        self.status_at = now
+        return True
 
 
 def parse_quiet(text: str, today: time.struct_time | None = None) -> list:
@@ -565,15 +643,23 @@ def get_json(url: str) -> dict:
         return json.load(r)
 
 
+def clean(obj):
+    """Anything that looks like a key, stripped (runlog.redact), before it is printed or logged: an HTTP error body
+    is the server's text and could echo a key back."""
+    from runlog import redact
+    return redact(obj)
+
+
 def post_announce(text: str, key: str) -> dict:
-    """POST /api/broker/announce with the broker key. Returns the server's answer or {"http_error", "body"}."""
+    """POST /api/broker/announce with the broker key. Returns the server's answer or {"http_error", "body"}, cleaned
+    of anything that looks like a key."""
     req = urllib.request.Request(f"{URL}/api/broker/announce", method="POST", data=json.dumps({"text": text}).encode(),
                                  headers={"X-Broker-Key": key, "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
-            return json.load(r)
+            return clean(json.load(r))
     except urllib.error.HTTPError as e:
-        return {"http_error": e.code, "body": e.read().decode(errors="replace")[:300]}
+        return clean({"http_error": e.code, "body": e.read().decode(errors="replace")[:300]})
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -606,38 +692,53 @@ def main(argv: list[str] | None = None) -> None:
         from runlog import RunLog
         log = RunLog("announce")
         log.start(plan={"count": args.count, "every_min": args.every_min, "link": bool(link)})
-    def compose(variant: int, first=()) -> str:
-        """The message from the live books. A failed feed read costs only the team names; a failed venue index only
-        the other venues and v20's fee (taken as 0 %, 0 P; El Rastro's and v20's books are still read): one bad read
-        never cancels the run."""
+    gate = Gate(parse_quiet(args.quiet))
+
+    def api(url: str) -> dict:
+        """Every request of a run goes through the gate (plan mode never has windows)."""
+        gate.check()
+        return get_json(url)
+
+    def compose(variant: int, first=()) -> tuple:
+        """(text, ids of the v20 offers the text names). A failed feed read costs only the team names; a failed
+        venue index only the other venues and v20's fee (taken as 0 %, 0 P; El Rastro's and v20's books are still
+        read): one bad read never cancels the run. Silenced propagates: a post is never built across a silence."""
         try:
-            events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
+            events = api(f"{URL}/api/feed?limit=1000").get("events", [])
+        except Silenced:
+            raise
         except Exception as e:
             print(f"feed unavailable ({type(e).__name__}); no team names in this message", flush=True)
             events = []
         try:
-            index = [v for v in get_json(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+            index = [v for v in api(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
+        except Silenced:
+            raise
         except Exception as e:
             print(f"venue index unavailable ({type(e).__name__}); El Rastro and v20 only", flush=True)
             index = []
         venues = [v.get("venue") for v in index if v.get("status") == "open" and v.get("venue")]
         ours = next((v for v in index if v.get("venue") == VENUE), {})
         fee = (ours.get("fee_bps") or 0, ours.get("fee_per_card") or 0)
-        books = market_books(get_json, venues + [VENUE])
+        books = market_books(api, venues + [VENUE])
         offers = [o for v, book in books.items() if v != VENUE for o in book]
         names = learn_pseudonyms(books, {**offer_makers(recorded_events()), **offer_makers(events)})
         if team is not None:  # our own open offers, for sure: never paired, never named as anyone else's
             try:
+                gate.check()
                 names.update({i: OURS for i in our_offer_ids(team.my_offers())})
+            except Silenced:
+                raise
             except Exception as e:
                 print(f"our offers unavailable ({type(e).__name__}); feed names and pseudonyms only", flush=True)
         firsts = {o.get("id") for o in first}
         v20 = sorted(books.get(VENUE, []), key=lambda o: o.get("id") not in firsts)  # the new offer leads
-        return build_text(offers, variant, link, exclude, v20, names, fee, firsts)
+        text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
+        return text, [o.get("id") for o in v20 if o.get("id") is not None and f"(offer {o.get('id')})" in text]
 
     if args.cmd == "plan":
         variant = args.variant if args.variant is not None else next_variant()
-        text = compose(variant)
+        text, _ = compose(variant)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
         return
@@ -645,28 +746,25 @@ def main(argv: list[str] | None = None) -> None:
     skip = set(exclude)
     ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
                     eligible=lambda o: describe(o) is not None and not refs(o) & skip)
-    manual = parse_quiet(args.quiet)
-    windows, refreshed = list(manual), None
     while ann.posted < ann.count or ann.pending:
-        end = quiet_until(windows, time.time())
-        if end is not None:  # Market Test silence: no API call at all until it ends
+        end = gate.quiet_end()
+        if end is not None:  # Market Test silence: no request at all until it ends
             print(f"[{time.strftime('%H:%M:%S')}] silence until {time.strftime('%H:%M:%S', time.localtime(end))}",
                   flush=True)
             log.event("silence", until=round(end, 1))
             time.sleep(max(1.0, end - time.time()))
             continue
-        if refreshed is None or time.time() - refreshed >= 300:  # place the coming Market Tests every 5 minutes
-            try:
-                windows = manual + quiet_windows(get_json(f"{URL}/api/schedule"), get_json(f"{URL}/api/clock"),
-                                                 time.time())
-                refreshed = time.time()
-            except Exception as e:
-                print(f"schedule unavailable ({type(e).__name__}); keeping the windows known", flush=True)
-            if quiet_until(windows, time.time()) is not None:
-                continue
+        if gate.due_refresh():
+            gate.refresh(get_json, recorded_events(kinds=("bench.started",)))
+            continue                                   # start again from the silence check with what was learnt
+        if not gate.known():                           # status unknown: no request but the status read, no post
+            time.sleep(POLL_S)
+            continue
         try:
-            tick = get_json(f"{URL}/api/clock").get("tick")
-            v20 = get_json(f"{URL}/api/venues/{VENUE}/offers").get("offers") or []
+            tick = api(f"{URL}/api/clock").get("tick")
+            v20 = api(f"{URL}/api/venues/{VENUE}/offers").get("offers") or []
+        except Silenced:
+            continue
         except Exception as e:  # a failed read waits for the next poll
             print(f"read failed ({type(e).__name__}); retrying", flush=True)
             time.sleep(POLL_S)
@@ -677,23 +775,39 @@ def main(argv: list[str] | None = None) -> None:
             # --variant wins for every post (f9 runs --on-event --variant 2: pitch + v20's book, no near-pair block);
             # without it an event leads with v20's book (variant 0) and slots rotate
             variant = args.variant if args.variant is not None else (0 if why == "event" else next_variant())
-            text = compose(variant, fresh if why == "event" else ())
+            try:
+                text, advertised = compose(variant, fresh if why == "event" else ())
+                if why == "event" and not set(advertised) & {o.get("id") for o in fresh}:
+                    raise LookupError("the new offer could not be verified on v20's book")
+                gate.check()                           # right before the post, after every slow read
+                if not gate.known():
+                    raise LookupError("Market Test status went stale while composing")
+            except Silenced:
+                continue                               # the queue is kept: the event goes out after the silence
+            except LookupError as e:
+                print(f"[{time.strftime('%H:%M:%S')}] {why} post deferred: {e}", flush=True)
+                log.event("deferred", why=why, reason=str(e), fresh=[o.get("id") for o in fresh])
+                time.sleep(POLL_S)
+                continue
             res = post_announce(text, key)
-            print(f"[{time.strftime('%H:%M:%S')}] {why} post {ann.posted + 1}/{ann.count} variant {variant % 3} "
-                  f"-> {json.dumps(res, ensure_ascii=False)[:200]}\n{text}", flush=True)
-            log.event("announce", why=why, variant=variant % 3, chars=len(text), text=text, result=res, tick=tick,
-                      fresh=[o.get("id") for o in fresh])
+            print(clean(f"[{time.strftime('%H:%M:%S')}] {why} post {ann.posted + 1}/{ann.count} variant {variant % 3} "
+                        f"-> {json.dumps(res, ensure_ascii=False)[:200]}\n{text}"), flush=True)
+            log.event("announce", why=why, variant=variant % 3, chars=len(text), text=text, result=clean(res),
+                      tick=tick, fresh=[o.get("id") for o in fresh], advertised=advertised)
             if "http_error" in res:
                 break
-            ann.mark_posted(time.time(), tick if isinstance(tick, int) else 0, why, [o.get("id") for o in fresh])
+            done = [i for i in advertised if i in {o.get("id") for o in fresh}]
+            ann.mark_posted(time.time(), tick if isinstance(tick, int) else 0, why, done)
             if why != "event":
                 save_variant(variant + 1)
         if ann.pending and isinstance(tick, int) and any(tick >= p["tick"] + ann.measure_ticks for p in ann.pending):
             try:
-                events = get_json(f"{URL}/api/feed?limit=1000").get("events", [])
+                events = api(f"{URL}/api/feed?limit=1000").get("events", [])
                 for r in ann.responses(tick, events, v20_ids={o.get("id") for o in v20 if isinstance(o, dict)}):
-                    print(f"[{time.strftime('%H:%M:%S')}] response {json.dumps(r)}", flush=True)
+                    print(clean(f"[{time.strftime('%H:%M:%S')}] response {json.dumps(r)}"), flush=True)
                     log.event("response", **r)
+            except Silenced:
+                continue
             except Exception as e:
                 print(f"feed read failed ({type(e).__name__})", flush=True)
                 for p in ann.give_up(tick):

@@ -1,6 +1,7 @@
 """tools/announce.py: the market read right (best sides with ids, v20's live offers from the feed, makers named from
 the feed), the message variants, and that nothing posts without --yes. Offline: no key, no network.
 Run: python3 -m unittest discover tests"""
+import json
 import sys
 import time
 import unittest
@@ -237,6 +238,14 @@ class TestAnnouncer(unittest.TestCase):
         self.assertIsNone(a.due(700, []))                       # ... so the 600 s slot waits for 500 + 600
         self.assertEqual(a.due(1100, []), "slot")
 
+    def test_only_the_offers_a_post_advertised_leave_the_queue(self):
+        a = an.Announcer(4, 1800, on_event=True)
+        a.fresh([])
+        q = a.fresh([ask("A", 5, venue="v20", oid=1), ask("B", 6, venue="v20", oid=2)])
+        self.assertEqual([o["id"] for o in q], [1, 2])
+        a.mark_posted(0, 100, "event", [1])                      # the text named only offer 1
+        self.assertEqual([o["id"] for o in a.queue], [2])
+
     def test_slots_events_gap_and_cap(self):
         a = an.Announcer(3, 1800, on_event=True, min_gap_s=600)
         self.assertEqual(a.due(0, []), "slot")                    # the first slot is at once
@@ -377,7 +386,7 @@ class TestSilence(unittest.TestCase):
         start = 1000.0 + 0.5 * 120 * 30                           # 0.5 game hours = 60 ticks of 30 s
         self.assertEqual(w[0], (start - an.QUIET_BEFORE_S, start + an.QUIET_AFTER_S))  # whole seconds here
         self.assertEqual(len(w), 2)                              # 14.65 is after the day closes: not placed
-        self.assertEqual(an.quiet_windows(self.SCHED, dict(clock, paused=True), 1000.0), [])
+        self.assertEqual(an.quiet_windows(self.SCHED, dict(clock, paused=True), 1000.0), w)  # earliest start
         self.assertEqual(an.quiet_windows(self.SCHED, {}, 1000.0), [])
         self.assertEqual(an.quiet_until(w, start), start + an.QUIET_AFTER_S)
         self.assertIsNone(an.quiet_until(w, start + an.QUIET_AFTER_S))
@@ -425,6 +434,167 @@ class TestSilence(unittest.TestCase):
         self.assertEqual([t for t, _ in calls if lo <= t < hi], [])     # not one request inside the silence
         self.assertEqual([t for t in posts if lo <= t < hi], [])
         self.assertEqual(len(posts), 3)
+
+
+def run_loop(argv, get_json, state, posts, logged=None, slow=None):
+    """Drive an.main(run) offline: a fake clock that only moves when the loop sleeps or a slow request runs."""
+    import tempfile
+    import unittest.mock as um
+
+    def sleep(sec):
+        state["now"] += sec
+        state["tick"] = 100 + int(state["now"] // 30)
+        if state["now"] > 10 ** 5:
+            raise AssertionError("the run loop did not end")
+
+    def get(url):
+        state.setdefault("calls", []).append((state["now"], url))
+        if slow:
+            state["now"] += slow(url, state["now"])
+        return get_json(url)
+
+    class Log:
+        def __init__(self, *_): pass
+        def start(self, **k): pass
+        def event(self, e, **d): (logged if logged is not None else []).append((e, d))
+        def end(self): pass
+
+    with tempfile.TemporaryDirectory() as d, \
+            um.patch.object(an, "get_json", get), um.patch.object(an.time, "sleep", sleep), \
+            um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
+            um.patch.object(an, "recorded_events", lambda *a, **k: []), \
+            um.patch.object(an, "post_announce", lambda text, key: posts.append((state["now"], text)) or {"ok": True}), \
+            um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+        an.main(argv)
+
+
+def market(state, bench_at_s=None, v20=None, fail=()):
+    """A fake API: a Market Test bench_at_s seconds after t=0 (game hour 10.0), v20's book from state."""
+    def get_json(url):
+        for f in fail:
+            if f(url, state):
+                raise TimeoutError("down")
+        if url.endswith("/api/schedule"):
+            up = [{"at_hours": 10.0 + bench_at_s / 3600, "action": "bench"}] if bench_at_s is not None else []
+            return {"upcoming": up}
+        if url.endswith("/api/clock"):
+            return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
+        if url.endswith("/api/venues/v20/offers"):
+            return {"offers": state.get("v20", [])}
+        if "/api/feed" in url:
+            return {"events": state.get("events", [])}
+        if url.endswith("/api/venues"):
+            return {"venues": [{"venue": "v20", "status": "open"}]}
+        return {"offers": []}
+    return get_json
+
+
+class TestSilenceGate(unittest.TestCase):
+    """Codex BLOCKERs on #45: silence checked right before every request and the post; unknown status = no post."""
+
+    def test_a_slow_read_that_crosses_into_the_silence_never_posts_inside_it(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        lo, hi = 900 - an.QUIET_BEFORE_S, 900 + an.QUIET_AFTER_S          # silence 780-1500
+        slow = lambda url, now: 25.0 if "/api/feed" in url and 740 <= now < 780 else 0.0   # 15-25 s timeouts
+        run_loop(["run", "--yes", "--count", "3", "--every-min", str(760 / 60), "--min-gap-min", "1",
+                  "--exclude", ""], market(state, bench_at_s=900), state, posts, slow=slow)
+        self.assertEqual([t for t, _ in posts if lo <= t < hi], [])
+        self.assertEqual([u for t, u in state["calls"] if lo <= t < hi], [])     # not one request inside it
+        self.assertEqual(len(posts), 3)
+
+    def test_the_last_read_of_a_post_crossing_into_the_silence_stops_the_post(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        n = {"v20": 0}
+
+        def slow(url, now):                      # the poll's v20 read is quick; the composing one takes 25 s
+            if url.endswith("/api/venues/v20/offers") and 760 <= now < 780:   # the 760 s slot: poll, then compose
+                n["v20"] += 1
+                return 25.0 if n["v20"] == 2 else 0.0
+            return 0.0
+        run_loop(["run", "--yes", "--count", "3", "--every-min", str(760 / 60), "--min-gap-min", "1",
+                  "--exclude", ""], market(state, bench_at_s=900), state, posts, slow=slow)
+        self.assertEqual([t for t, _ in posts if 780 <= t < 1500], [])
+        self.assertEqual(len(posts), 3)
+
+    def test_no_post_while_the_market_test_status_is_unknown(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        down = lambda url, st: url.endswith("/api/schedule") and st["now"] < 500
+        run_loop(["run", "--yes", "--count", "1", "--every-min", "1", "--exclude", ""],
+                 market(state, fail=[down]), state, posts)
+        self.assertEqual(len(posts), 1)
+        self.assertGreaterEqual(posts[0][0], 500)                       # only once the schedule could be read
+        self.assertEqual([u for t, u in state["calls"] if t < 500 and "/api/venues" in u], [])  # nor any polling
+
+    def test_a_status_that_goes_stale_while_composing_defers_the_post(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        down = lambda url, st: url.endswith("/api/schedule") and 230 <= st["now"] < 400   # no fresh status 230-400
+        slow = lambda url, now: 60.0 if "/api/feed" in url and 260 <= now < 280 else 0.0   # composing takes 60 s
+        run_loop(["run", "--yes", "--count", "2", "--every-min", str(260 / 60), "--min-gap-min", "1",
+                  "--exclude", ""], market(state, fail=[down]), state, posts, slow=slow)
+        self.assertEqual([t for t, _ in posts if 300 < t < 400], [])    # the status read at 0 is stale by then
+        self.assertEqual(len(posts), 2)
+
+    def test_a_restart_in_the_middle_of_a_market_test_waits_for_its_end(self):
+        state, posts = {"now": 0.0, "tick": 100}, []
+        state["events"] = [{"type": "bench.started", "tick": 90, "payload": {"start_tick": 90, "ticks": 16}}]
+        run_loop(["run", "--yes", "--count", "1", "--every-min", "1", "--exclude", ""],
+                 market(state), state, posts)                         # the schedule no longer lists it
+        started = -10 * 30                                             # 10 ticks of 30 s before t = 0
+        self.assertGreaterEqual(posts[0][0], started + an.QUIET_AFTER_S)
+
+    def test_game_hours_are_wall_hours_at_any_tick_length(self):
+        sched = {"upcoming": [{"at_hours": 11.0, "action": "bench"}]}
+        for tick_s in (15.0, 30.0, 60.0):
+            (w,) = an.quiet_windows(sched, {"t_hours": 10.0, "tick_seconds": tick_s}, 0.0)
+            self.assertEqual(w, (3600 - an.QUIET_BEFORE_S, 3600 + an.QUIET_AFTER_S), tick_s)
+
+
+class TestDeferredEvents(unittest.TestCase):
+    def test_an_event_whose_offer_cannot_be_verified_is_deferred_not_consumed(self):
+        state, posts, logged = {"now": 0.0, "tick": 100}, [], []
+        offer = ask("LAT-07", 26, venue="v20", maker="t15", oid=5)
+        reads = {"n": 0}
+
+        def flaky(url, st):                       # v20 shows the offer to the poll, then fails once in compose
+            if st["now"] >= 200 and url.endswith("/api/venues/v20/offers"):
+                st["v20"] = [offer]
+                reads["n"] += 1
+                return reads["n"] == 2
+            return False
+        run_loop(["run", "--yes", "--on-event", "--count", "2", "--every-min", "60", "--min-gap-min", "0",
+                  "--exclude", ""], market(state, fail=[flaky]), state, posts, logged)
+        whys = [(e, d.get("why")) for e, d in logged if e in ("announce", "deferred")]
+        self.assertEqual(whys, [("announce", "slot"), ("deferred", "event"), ("announce", "event")])
+        self.assertIn("t15 sells LAT-07 for 26 P (offer 5)", posts[1][1])  # posted once verified
+
+
+class TestCleaning(unittest.TestCase):
+    def test_a_key_in_an_http_error_body_never_reaches_stdout_or_the_log(self):
+        import io
+        import unittest.mock as um
+        import urllib.error
+
+        def boom(req, timeout=0):
+            raise urllib.error.HTTPError(req.full_url, 403, "no", {}, io.BytesIO(b'bad key bk_SYNTH_KEY_123 tk-AbCd-EfGh'))
+        with um.patch.object(an.urllib.request, "urlopen", boom):
+            res = an.post_announce("hi", "bk_real")
+        self.assertNotIn("bk_SYNTH_KEY_123", json.dumps(res))
+        self.assertNotIn("tk-AbCd-EfGh", json.dumps(res))
+        state, posts, logged, out = {"now": 0.0, "tick": 100}, [], [], io.StringIO()
+        with um.patch("sys.stdout", out), um.patch.object(an, "post_announce",
+                                                          lambda t, k: {"http_error": 500, "body": "echo bk_LEAK_9"}):
+            import tempfile
+            with tempfile.TemporaryDirectory() as d, \
+                    um.patch.object(an, "get_json", market(state)), um.patch.object(an, "STATE", Path(d) / "s"), \
+                    um.patch.object(an.time, "time", lambda: state["now"]), \
+                    um.patch.object(an, "recorded_events", lambda *a, **k: []), \
+                    um.patch("runlog.RunLog", type("L", (), {"__init__": lambda s, *a: None, "start": lambda s, **k: None,
+                                                            "event": lambda s, e, **d: logged.append((e, d)),
+                                                            "end": lambda s: None})), \
+                    um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
+                an.main(["run", "--yes", "--count", "1", "--exclude", ""])
+        self.assertNotIn("bk_LEAK_9", out.getvalue())
+        self.assertNotIn("bk_LEAK_9", json.dumps([d for _, d in logged]))
 
 
 class TestCli(unittest.TestCase):
