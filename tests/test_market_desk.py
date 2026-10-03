@@ -444,6 +444,26 @@ class DeskLoop(unittest.TestCase):
         d.tick(d.public.clock())
         self.assertEqual([w for w in k.writes if w[0] == "accept"], [])
 
+    def test_filled_bids_count_toward_the_caps(self):
+        d, k = self.desk("watch", [], [])
+        d.tick(d.public.clock())                                  # start tick 100
+        d.public.feed = lambda limit=500: {"events": [
+            {"id": 1, "tick": 101, "type": "settlement", "payload": {
+                "settlement": 9, "kind": "trade", "parties": ["t03", "t07"], "venue": "rastro", "fee": 2, "price": 60,
+                "items": [{"id": 5, "kind": "card", "ref": "LAV-09", "frm": "t07", "to": "t03"}]}},
+            {"id": 2, "tick": 99, "type": "settlement", "payload": {   # before the desk started: not counted
+                "settlement": 8, "kind": "trade", "parties": ["t03", "t05"], "venue": "rastro", "fee": 2, "price": 30,
+                "items": [{"id": 6, "kind": "card", "ref": "LAV-10", "frm": "t05", "to": "t03"}]}},
+            {"id": 3, "tick": 101, "type": "settlement", "payload": {  # we accepted: take() logs those itself
+                "settlement": 10, "kind": "trade", "parties": ["t08", "t03"], "venue": "rastro", "fee": 2, "price": 9,
+                "items": [{"id": 7, "kind": "card", "ref": "SAL-05", "frm": "t08", "to": "t03"}]}}]}
+        d.public.tick = 102
+        d.tick(d.public.clock())
+        d.tick(d.public.clock())
+        rows = [r for r in d.ledger.rows if r.get("settlement") is not None]
+        self.assertEqual([(r["settlement"], r["side"], r["cost"], r["partner"]) for r in rows], [(9, "buy", 60, "t07")])
+        self.assertEqual(d.ledger.spent(102 / 60, 1.0), 60)
+
     def test_read_only_clients_refuse_writes_before_the_network(self):
         ro = md.ReadOnlyBazaar("http://127.0.0.1:9", "tk-test-only", wait_on_tick=False, retries=0)
         for call in (lambda: ro.accept(1), lambda: ro.cancel(1), lambda: ro.list_offer({"cash": 1}, {"cards": ["LAV-09"]})):

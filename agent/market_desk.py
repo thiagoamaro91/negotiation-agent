@@ -974,6 +974,27 @@ class Desk:
         self.ticks = 0
         self.last = None
         self.last_snap = None
+        self.start_tick = None            # trades from the tape count toward the caps from here on
+
+    def maker_trades(self, me_id: str, tick: int, t_hours: float) -> None:
+        """Trades where another team accepted OUR offer (a filled bid, or a listing rastro_seller posted) spend cash
+        and count per partner too; our own accepts are already in the ledger. They come from the public tape."""
+        seen = {r.get("settlement") for r in self.ledger.rows if r.get("settlement") is not None}
+        for s in self.tape.settled:
+            sid, parties = s.get("settlement"), s.get("parties") or []
+            if sid in seen or not s.get("venue") or len(parties) < 2 or parties[0] != me_id:
+                continue
+            if self.start_tick is None or s["tick"] < self.start_tick:
+                continue
+            items = s.get("items") or []
+            got = [i for i in items if i.get("to") == me_id and i.get("kind") == "card"]
+            row = {"side": "buy" if got else "sell", "t_hours": round(t_hours - (tick - s["tick"]) / TICKS_PER_GAME_HOUR, 3),
+                   "tick": s["tick"], "cost": int(s.get("price") or 0) if got else 0, "partner": parties[1],
+                   "card": (got or items or [{}])[0].get("ref"), "settlement": sid}
+            self.ledger.add(**row)
+            seen.add(sid)
+            if self.log is not None and self.mode == "run":
+                self.log.event("maker_trade", **row)
 
     # ------------------------------------------------ inputs
     def account(self, tick: int) -> dict:
@@ -995,6 +1016,9 @@ class Desk:
         except BazaarError as e:
             self._say_once(("feed", tick), f"tick {tick} feed unread ({e.code}); using the tape we have")
         acct = self.account(tick)
+        if self.start_tick is None:
+            self.start_tick = tick
+        self.maker_trades(acct["id"], tick, float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR))
         vt = venue_table(self.public.venues(), tick)
         boards = {}
         for vid in vt:
@@ -1237,8 +1261,8 @@ def today_ledger(path: Path) -> Ledger:
                 r = json.loads(ln)
             except ValueError:
                 continue
-            if r.get("event") == "accepted":
-                rows.append({k: r.get(k) for k in ("side", "t_hours", "tick", "cost", "partner", "card")})
+            if r.get("event") in ("accepted", "maker_trade"):
+                rows.append({k: r.get(k) for k in ("side", "t_hours", "tick", "cost", "partner", "card", "settlement")})
     return Ledger(rows)
 
 
