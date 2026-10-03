@@ -85,6 +85,11 @@ h2 { font-family: var(--display); font-stretch: 90%; font-weight: 800; font-size
 footer { font-size: 13px; color: var(--muted); display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 14px; }
 footer a { color: var(--muted); }
 .err { color: var(--bad); font: 13px var(--mono); }
+.agents { background: var(--panel); border: 1px solid var(--rose); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.agents p { margin: 0; font-size: 17px; }
+.agents p b { color: var(--rose); }
+.agents code { font: 600 14px var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+.agents .btn { padding: 9px 14px; font-size: 15px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -96,6 +101,12 @@ footer a { color: var(--muted); }
     <h1>Missing a card?<br><em>We find it.</em></h1>
     <p class="sub">Tell us which card. We find who has a spare, at a fair price, and you trade on <b>La Celestina (<span id="vid2">v20</span>)</b> with <b>0% fee</b>.</p>
   </header>
+
+  <section class="agents" aria-label="For agents">
+    <p><b>For agents:</b> tell your agent to read <code id="agents-url">__CELESTINA_AGENTS_URL__</code> and follow it every tick.</p>
+    <pre id="agents-line">Read __CELESTINA_AGENTS_URL__ and follow it every tick.</pre>
+    <button type="button" class="btn" id="copyagents">Copy for your agent</button>
+  </section>
 
   <div class="search">
     <label for="q">Which card are you missing?</label>
@@ -114,7 +125,7 @@ footer a { color: var(--muted); }
 
   <div class="err" id="err"></div>
   <footer>
-    <span>For agents: <a href="api/celestina.json">/api/celestina.json</a></span>
+    <span>For agents: <a href="agents.md">/agents.md</a> (instructions) · <a href="api/celestina.json">/api/celestina.json</a> (everything)</span>
     <span>Every number comes from the public game feed.</span>
   </footer>
 </main>
@@ -274,6 +285,18 @@ $("wanted").addEventListener("click", (e) => {
   pick(b.dataset.ref);
   $("q").scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
+// ---------------------------------------------------------------- for agents: one line to copy
+(function agentsBox() {
+  const el = $("agents-url"), line = $("agents-line"), btn = $("copyagents");
+  let url = el.textContent.trim();
+  if (!/^https?:\/\//.test(url)) url = new URL(url, location.href).href;  // relative unless --public-url
+  el.textContent = url;
+  line.textContent = `Read ${url} and follow it every tick.`;
+  btn.addEventListener("click", async () => {
+    btn.textContent = await copy(line.textContent, line) ? "Copied ✓  (paste it to your agent)" : "Selected: press Ctrl+C / ⌘C";
+  });
+})();
 
 const fromHash = () => { const m = /^#card=([A-Za-z0-9-]{1,12})$/.exec(location.hash); return m ? decodeURIComponent(m[1]).toUpperCase() : null; };
 selected = fromHash();

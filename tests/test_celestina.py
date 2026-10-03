@@ -565,6 +565,319 @@ class Server(unittest.TestCase):
         self.assertTrue(lim.allow("a", now=1.5))
 
 
+# ---------------------------------------------------------------- the agent API
+
+def pub():
+    return cel.public_view(snapshot())
+
+
+CAT30 = {f"LAV-{i:02d}" for i in range(1, 31)}
+BID = {"method": "POST", "path": "/api/offers",
+       "body": {"venue": "v20", "give": {"cash": 25}, "want": {"cards": ["LAV-09"]}, "expires_in_ticks": 120}}
+ACCEPT_107 = {"method": "POST", "path": "/api/offers/107/accept", "body": {"assets": ["<your LAV-05 asset id>"]}}
+
+
+def walk(x, path=()):
+    """(path, key-or-None, value) for every dict key and every string in a JSON value."""
+    if isinstance(x, dict):
+        for k, v in x.items():
+            yield path, k, None
+            yield from walk(v, path + (k,))
+    elif isinstance(x, list):
+        for i, v in enumerate(x):
+            yield from walk(v, path + (i,))
+    elif isinstance(x, str):
+        yield path, None, x
+
+
+class AgentQuery(unittest.TestCase):
+    def test_explicit_lists_are_normalised_and_deduplicated(self):
+        self.assertEqual(cel.parse_match_query("team=T07&want=lav-09,%20LAV-09,LAV-05&have=LAV-04&format=TEXT", CAT30),
+                         ("t07", ["LAV-09", "LAV-05"], ["LAV-04"], "text"))
+        self.assertEqual(cel.parse_match_query("want=LAV-01", CAT30), (None, ["LAV-01"], None, "json"))
+
+    def test_nothing_at_all_is_the_zero_config_call(self):
+        self.assertEqual(cel.parse_match_query("", CAT30), (None, None, None, "json"))
+        self.assertEqual(cel.parse_match_query("team=t07", CAT30), ("t07", None, None, "json"))
+        self.assertEqual(cel.parse_match_query("team=t07&want=&have=", CAT30), ("t07", None, None, "json"))
+
+    def test_every_validation_error(self):
+        cases = {
+            "want=LAV-99": "unknown_card", "have=XX": "bad_card", "want=LAV-01,,LAV-02": "bad_card",
+            "want=" + ",".join(f"LAV-{i:02d}" for i in range(1, 22)): "too_many_cards",
+            "team=t3": "bad_team", "team=t003": "bad_team", "team=x07": "bad_team", "team=t03": "own_venue",
+            "foo=1": "unknown_param", "want=LAV-01&want=LAV-02": "repeated_param", "want": "bad_query",
+            "format=xml": "bad_format", "want=" + "A" * 700: "query_too_long",
+        }
+        for q, code in cases.items():
+            with self.assertRaises(cel.BadRequest, msg=q) as cm:
+                cel.parse_match_query(q, CAT30)
+            self.assertEqual(cm.exception.code, code, q)
+        self.assertEqual(len(cel.parse_match_query("want=" + ",".join(f"LAV-{i:02d}" for i in range(1, 21)), CAT30)[1]), 20)
+
+    def test_echoed_input_is_html_escaped(self):
+        for q in ("want=%3Cscript%3E", "foo%3Cb%3E=1", "team=%3Cimg%3E", "format=%3Ci%3E"):
+            with self.assertRaises(cel.BadRequest) as cm:
+                cel.parse_match_query(q, CAT30)
+            self.assertNotIn("<", cm.exception.message, q)
+            self.assertIn("&lt;", cm.exception.message, q)
+
+
+class AgentMatch(unittest.TestCase):
+    def test_explicit_lists_exact_orders_and_accept_calls(self):
+        m = cel.match_view(pub(), "t07", ["LAV-09"], ["LAV-05"], "https://cel.example")
+        self.assertEqual(set(m), {"venue", "tick", "team", "docs", "game", "wants", "haves", "most_wanted", "notes"})
+        self.assertEqual((m["venue"], m["tick"], m["team"], m["docs"]), ("v20", 50, "t07", "https://cel.example/agents.md"))
+        w = m["wants"][0]
+        self.assertEqual(set(w), {"card", "name", "rarity", "fair_price", "fair_basis", "market", "on_v20", "post",
+                                  "negotiate", "advice"})
+        self.assertEqual(w["market"], {"asks": 1, "best_ask": 25, "bids": 1, "best_bid": 30})
+        self.assertEqual(w["post"], BID)  # the cheaper of the fair price (none yet) and the cheapest ask
+        self.assertEqual(w["negotiate"][0]["calls"][0], {"method": "POST", "path": "/api/threads",
+                                                         "body": {"with": "t10", "venue": "v20"}})
+        h = m["haves"][0]
+        self.assertEqual(h["on_v20"], [{"offer": 107, "side": "bid", "card": "LAV-05", "price": 9, "swap_card": None,
+                                        "expires_tick": 40, "accept": ACCEPT_107}])
+        self.assertEqual(h["post"]["body"], {"venue": "v20", "give": {"assets": ["<your LAV-05 asset id>"]},
+                                             "want": {"cash": 9}, "expires_in_ticks": 120})
+        self.assertTrue(h["advice"].startswith("Offer 107 on v20 buys LAV-05 at 9 P"))
+        self.assertEqual(m["most_wanted"], [])
+
+    def test_suggested_prices_are_whole_and_never_cross_the_book_against_you(self):
+        self.assertEqual(cel.bid_price(9, 7, 10), 7)       # never bid above the cheapest ask
+        self.assertEqual(cel.bid_price(9, 40, 10), 9)      # nor above the fair price
+        self.assertEqual(cel.bid_price(None, None, 10), 10)  # book value when nothing traded
+        self.assertEqual(cel.ask_price(9, 30, 10), 30)     # never ask below the best bid
+        self.assertEqual(cel.ask_price(9, 5, 10), 9)       # nor below the fair price
+        self.assertEqual(cel.bid_price(8.4, None, 10), 8)  # whole primas only
+        self.assertIsNone(cel.ask_price(None, None, None))
+
+    def test_lists_derived_from_the_teams_public_offers(self):
+        m = cel.match_view(pub(), "t15", None, None)
+        self.assertEqual(([w["card"] for w in m["wants"]], m["haves"]), (["LAV-04", "LAV-09"], []))
+        w9 = next(w for w in m["wants"] if w["card"] == "LAV-09")
+        self.assertEqual(w9["market"]["bids"], 0)  # t15's own bid is not the market it buys from
+        m5 = cel.match_view(pub(), "t05", None, None)  # a swap: gives LAV-01, wants LAV-02
+        self.assertEqual(([w["card"] for w in m5["wants"]], [h["card"] for h in m5["haves"]]), (["LAV-02"], ["LAV-01"]))
+        self.assertEqual(cel.match_view(pub(), "t15", ["LAV-01"], None)["wants"][0]["card"], "LAV-01")
+
+    def test_a_team_never_gets_its_own_offer_or_itself_back(self):
+        h = cel.match_view(pub(), "t08", None, ["LAV-05"])["haves"][0]  # t08 made bid 107 on v20
+        self.assertEqual(h["on_v20"], [])
+        self.assertNotIn("t08", json.dumps(h["negotiate"]))
+        self.assertEqual(cel.match_view(pub(), None, None, ["LAV-05"])["haves"][0]["on_v20"][0]["offer"], 107)
+
+    def test_zero_config_answers_the_most_wanted_cards(self):
+        for team in ("t07", None):  # t07 has no open public offer; no team at all
+            m = cel.match_view(pub(), team, None, None)
+            self.assertEqual((m["wants"], m["haves"]), ([], []))
+            self.assertEqual([x["card"] for x in m["most_wanted"]], ["LAV-09", "LAV-05", "LAV-04"])
+            top = m["most_wanted"][0]
+            self.assertTrue(top["advice"].startswith("If you hold a spare LAV-09: "))
+            self.assertEqual(top["post"]["body"], {"venue": "v20", "give": {"assets": ["<your LAV-09 asset id>"]},
+                                                   "want": {"cash": 30}, "expires_in_ticks": 120})
+            self.assertTrue(m["notes"][0].startswith("most_wanted:"))
+
+    def test_no_venue_names_makers_team_identities_or_holders(self):
+        snap = snapshot()
+        p = cel.public_view(snap)
+        refs = sorted(cel.catalog_refs(p))
+        outs = {"match": cel.match_view(p, "t07", refs, refs), "zero": cel.match_view(p, None, None, None),
+                "v20": cel.v20_view(p)}
+        makers = {r["maker"] for c in snap["cards"].values() for r in c["offers"]}
+        banned_keys = {"maker", "venue_name", "how", "source", "holders", "holdings", "copies", "net", "targets",
+                       "fillers", "frm", "verdict", "summary", "recent", "teams"}
+        for name, out in outs.items():
+            for path, key, val in walk(out):
+                self.assertNotIn(key, banned_keys, (name, path))
+                if val is None:
+                    continue
+                self.assertNotIn(val, makers, (name, path))
+                for bad in ("rastro", "v02", "Duende", "Rastro", "holds"):
+                    self.assertNotIn(bad, val, (name, path))
+                if re.search(r"\bt\d{2}\b", val):
+                    allowed = path == ("team",) or (len(path) == 8 and path[2] == "negotiate"
+                                                    and path[4:] == ("calls", 0, "body", "with"))
+                    self.assertTrue(name != "v20" and allowed, (name, path, val))
+        self.assertTrue(any(k == "with" for _, k, _ in walk(outs["match"])), "negotiate calls are there")
+
+    def test_answer_does_not_depend_on_the_holder_map(self):
+        snap = snapshot()
+        before = json.dumps(cel.match_view(cel.public_view(snap), "t07", ["LAV-04", "LAV-05"], ["LAV-09"]), sort_keys=True)
+        for c in snap["cards"].values():
+            c["holders"] = [{"team": "t17", "copies": 9, "net": 9}]
+        for t in snap["teams"]:
+            t["holdings"] = [{"ref": "LAV-04", "copies": 9}]
+        after = json.dumps(cel.match_view(cel.public_view(snap), "t07", ["LAV-04", "LAV-05"], ["LAV-09"]), sort_keys=True)
+        self.assertEqual(after, before)
+
+    def test_v20_book_and_fair_price(self):
+        v = cel.v20_view(pub())
+        self.assertEqual([(o["offer"], o["side"], o["card"], o["price"], o["accept"]) for o in v["offers"]],
+                         [(107, "bid", "LAV-05", 9, ACCEPT_107)])
+        f = cel.fair_view(pub(), "lav-04")
+        self.assertEqual((f["card"], f["fair_price"], f["fair_basis"], f["trades_used"]), ("LAV-04", 9, "dealer_sells", 3))
+        for raw, code in (("ZZZ-1", "unknown_card"), ("<b>", "bad_card")):
+            with self.assertRaises(cel.BadRequest) as cm:
+                cel.fair_view(pub(), raw)
+            self.assertEqual(cm.exception.code, code)
+            self.assertNotIn("<", cm.exception.message)
+
+
+class AgentText(unittest.TestCase):
+    def lines(self, *a):
+        return cel.text_view(cel.match_view(pub(), *a)).splitlines()
+
+    def test_exact_lines_most_valuable_first(self):
+        L = self.lines("t07", ["LAV-09"], ["LAV-05"])
+        self.assertTrue(L[0].startswith("# La Celestina v20, tick 50 for t07."))
+        g = "https://bazaar.causaprima.ai"
+        self.assertEqual(L[1:], [
+            f'ACCEPT offer 107 (sell your LAV-05 for 9 P on v20) -> POST {g}/api/offers/107/accept '
+            '{"assets":["<your LAV-05 asset id>"]}',
+            f'BUY LAV-09 at 25 P on v20 -> POST {g}/api/offers '
+            '{"venue":"v20","give":{"cash":25},"want":{"cards":["LAV-09"]},"expires_in_ticks":120}',
+            f'SELL LAV-05 at 9 P on v20 -> POST {g}/api/offers '
+            '{"venue":"v20","give":{"assets":["<your LAV-05 asset id>"]},"want":{"cash":9},"expires_in_ticks":120}'])
+        self.assertEqual(json.loads(L[2].split(" ", 10)[-1]), BID["body"])  # the body parses back to the exact order
+
+    def test_at_most_fifteen_lines_accepts_first(self):
+        refs = sorted(cel.catalog_refs(pub()))
+        L = self.lines("t07", refs, refs)
+        self.assertEqual(len(L), 15)
+        self.assertTrue(L[1].startswith("ACCEPT offer 107 "))
+        self.assertTrue(all(re.match(r"^(ACCEPT offer \d+|BUY|SELL) ", x) for x in L[1:]))
+
+    def test_zero_config_text_sells_spares_the_market_wants(self):
+        L = self.lines("t07", None, None)
+        self.assertIn("ACCEPT offer 107 (sell your LAV-05 for 9 P on v20, only a spare) ->", L[1])
+        self.assertTrue(L[2].startswith("SELL LAV-09 at 30 P on v20 (only a spare: the market wants it) -> POST "))
+        self.assertTrue(all(not re.search(r"\bt\d{2}\b", x) for x in L[1:]))  # text mode names no team
+        self.assertFalse(any("rastro" in x or "v02" in x for x in L))
+
+    def test_nothing_to_do_still_shows_how_to_post(self):
+        p = pub()
+        p["demand"], p["our_book"] = [], []
+        L = cel.text_view(cel.match_view(p, "t07", None, None)).splitlines()
+        self.assertEqual(len(L), 2)
+        self.assertTrue(L[1].startswith("NOTHING to accept on v20 right now. To ask for a card you miss: BUY <REF>"))
+
+
+class AgentDoc(unittest.TestCase):
+    def test_quick_start_curl_and_absolute_urls(self):
+        doc = cel.agents_doc("https://cel.example")
+        head = doc[:700]
+        for must in ("## Quick start", "1) GET https://cel.example/api/match?team=<your team id>&format=text",
+                     "2) For each line, check your value for that card", "3) Send the lines whose price is good for you",
+                     "Never send your key to La Celestina"):
+            self.assertIn(must, head)
+        for endpoint in ("/agents.md", "/api/match?team=t07&format=text", "/api/match?team=t07&want=", "/api/v20",
+                         "/api/fair/SAL-01"):
+            self.assertIn(f'curl -s "https://cel.example{endpoint}', doc)
+        self.assertNotIn("{{", doc)
+        self.assertNotIn("relative to the address", doc)
+        for key in ("most_wanted", "on_v20", "negotiate", "fair_basis", "swap_card", "bad_format", "key_not_accepted"):
+            self.assertIn(key, doc)
+
+    def test_relative_by_default(self):
+        doc = cel.agents_doc("")
+        self.assertIn("1) GET /api/match?team=<your team id>&format=text", doc)
+        self.assertIn("relative to the address you fetched this file from", doc)
+        self.assertIn('curl -s "https://<this host>/api/v20"', doc)
+        self.assertNotIn("{{", doc)
+
+    def test_public_url_flag_is_validated(self):
+        self.assertEqual(cel.clean_public_url("https://cel.example/"), "https://cel.example")
+        for bad in ('https://x.example/"><script>', "javascript:alert(1)", "https://x y"):
+            with self.assertRaises(SystemExit):
+                cel.clean_public_url(bad)
+
+    def test_page_has_the_agent_box_with_a_copy_fallback(self):
+        page = cel.PAGE.read_text(encoding="utf-8")
+        self.assertIn("<b>For agents:</b> tell your agent to read <code id=\"agents-url\">__CELESTINA_AGENTS_URL__</code> "
+                      "and follow it every tick.", page)
+        self.assertIn('btn.textContent = await copy(line.textContent, line) ?', page)
+        self.assertLess(page.index('id="copyagents"'), page.index('id="q"'))  # near the top, above the search
+
+
+class AgentServer(unittest.TestCase):
+    URL = "https://cel.example"
+
+    def setUp(self):
+        cel.publish(snapshot())
+        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), cel.handler("public", self.URL))
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.srv.server_address[1]}"
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+
+    def get(self, path, headers=None, method="GET"):
+        req = urllib.request.Request(self.base + path, headers=headers or {}, method=method,
+                                     data=b"{}" if method != "GET" else None)
+        try:
+            with urllib.request.urlopen(req) as r:
+                return r.status, r.headers, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers, e.read().decode()
+
+    def test_agents_md_with_the_public_url_and_cors(self):
+        for path in ("/agents.md", "/llms.txt"):
+            code, h, body = self.get(path)
+            self.assertEqual((code, h["Content-Type"], h["Access-Control-Allow-Origin"]),
+                             (200, "text/markdown; charset=utf-8", "*"))
+            self.assertIn("1) GET https://cel.example/api/match?team=<your team id>&format=text", body)
+
+    def test_match_json_text_v20_fair_and_errors(self):
+        code, h, body = self.get("/api/match?want=LAV-09&have=LAV-05")
+        self.assertEqual((code, h["Access-Control-Allow-Origin"]), (200, "*"))
+        self.assertEqual(json.loads(body)["wants"][0]["post"], BID)
+        code, h, body = self.get("/api/match?team=t07&format=text")
+        self.assertEqual((code, h["Content-Type"], h["Access-Control-Allow-Origin"]), (200, "text/plain; charset=utf-8", "*"))
+        self.assertTrue(body.startswith("# La Celestina v20"))
+        code, h, body = self.get("/api/match?want=LAV-99")
+        self.assertEqual((code, json.loads(body)["error"], h["Access-Control-Allow-Origin"]), (400, "unknown_card", "*"))
+        code, _, body = self.get("/api/v20")
+        self.assertEqual([o["offer"] for o in json.loads(body)["offers"]], [107])
+        code, _, body = self.get("/api/fair/LAV-04")
+        self.assertEqual((code, json.loads(body)["fair_price"]), (200, 9))
+        code, _, body = self.get("/api/fair/%3Cscript%3E")
+        self.assertEqual((code, json.loads(body)["error"]), (400, "bad_card"))
+        self.assertNotIn("<script>", body)
+        code, _, body = self.get("/api/v20?" + "x" * 700)
+        self.assertEqual((code, json.loads(body)["error"]), (400, "query_too_long"))
+        code, _, _ = self.get("/api/match?want=" + "A" * 2100)
+        self.assertEqual(code, 414)
+
+    def test_keys_are_refused_and_nothing_is_posted(self):
+        code, _, body = self.get("/api/match?want=LAV-09", {"X-Team-Key": "tk-test-0000"})
+        self.assertEqual((code, json.loads(body)["error"]), (400, "key_not_accepted"))
+        self.assertNotIn("tk-test", body)
+        for method in ("POST", "PUT", "DELETE"):
+            code, _, body = self.get("/api/match", method=method)
+            self.assertEqual((code, json.loads(body)["error"]), (405, "method_not_allowed"), method)
+
+    def test_page_carries_the_agents_line(self):
+        code, _, page = self.get("/")
+        self.assertEqual(code, 200)
+        self.assertIn('<code id="agents-url">https://cel.example/agents.md</code>', page)
+        self.assertNotIn("__CELESTINA_AGENTS_URL__", page)
+
+    def test_the_private_side_has_no_agent_api(self):
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), cel.handler("private"))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            base = f"http://127.0.0.1:{srv.server_address[1]}"
+            for path in ("/api/match?want=LAV-09", "/agents.md", "/api/v20"):
+                with self.assertRaises(urllib.error.HTTPError) as cm:
+                    urllib.request.urlopen(base + path)
+                self.assertEqual(cm.exception.code, 404, path)
+        finally:
+            srv.shutdown()
+            srv.server_close()
+
+
 class PrivacyGuard(unittest.TestCase):
     def test_the_source_never_touches_the_key_or_private_values(self):
         src = (ROOT / "tools" / "celestina.py").read_text(encoding="utf-8")
