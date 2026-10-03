@@ -35,6 +35,8 @@ Usage (from the repo root):
     python3 agent/rastro_seller.py selftest --n 1000       # offline simulation, no network
 Only ONE rastro_seller process per team. It shares the per-tick limits (1 accept per team per tick) with any
 Abuela or Chato agent a teammate runs; a 429 just moves the action to the next tick.
+While agent/duel.py `run` holds results/duel.lock (one line: expiry in epoch seconds), every accept is deferred
+(logged `defer_duel_lock`) so the duels keep the team's accept slot; listing, renewing and messaging go on.
 """
 from __future__ import annotations
 
@@ -76,6 +78,15 @@ FEED_LIMIT = 100         # public feed events read per tick to spot conversation
 DEFAULT_FEE = (500, 1)   # El Rastro: 5 % + 1 P per card
 WORST_FEE = (1000, 5)    # unknown venue: the rules cap any venue at 10 % and 5 P per card
 TEAM_ID = re.compile(r"^t\d+$")
+DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
+
+
+def duel_lock_fresh(path: Path = DUEL_LOCK) -> bool:
+    """True while the duel bot holds the team's accept slot (first token of the file = expiry, epoch seconds)."""
+    try:
+        return float(path.read_text().split()[0]) > time.time()
+    except (OSError, ValueError, IndexError):
+        return False
 
 # ---------------------------------------------------------------- words (never contradict the number)
 
@@ -320,8 +331,9 @@ def today_log(path: Path) -> dict:
 class Seller:
     def __init__(self, client, me_id: str, cfg: list, *, log, dry: bool, take_bids: bool = False,
                  step_ticks: int = STEP_TICKS, step_p: int = STEP_P, renew_ahead: int = RENEW_AHEAD,
-                 save_threads: bool = False, history: dict | None = None, mode: str = "run"):
+                 save_threads: bool = False, history: dict | None = None, mode: str = "run", lock_fresh=None):
         self.c, self.me_id, self.log, self.dry, self.mode = client, me_id, log, dry, mode
+        self.lock_fresh = lock_fresh or duel_lock_fresh
         self.take_bids, self.step_ticks, self.step_p, self.renew_ahead = take_bids, step_ticks, step_p, renew_ahead
         self.save_threads = save_threads
         self.history = history or {}
@@ -711,6 +723,9 @@ class Seller:
     # ------------------------------------------------ accepting (one per team per tick)
     def accept(self, o, chk, st, via, gross, fee) -> bool:
         net = gross - fee
+        if self.lock_fresh():  # the duel bot holds the team's one accept per tick: retry next tick
+            self.log.event("defer_duel_lock", tick=self.now, via=via, offer=o.get("id"), card=st["card"], gross=gross)
+            return False
         if self.accepted or "accept" in self.blocked:
             self.log.event("accept_deferred", tick=self.now, via=via, offer=o.get("id"))
             return False
@@ -1289,7 +1304,7 @@ def selftest(n: int, seed: int) -> int:
     # 2) the whole seller against a simulated market
     totals = {"episodes": 0, "haggles": 0, "counters": 0, "accepts": 0, "mismatches": 0, "step_downs": 0,
               "renewals": 0, "sales": 0, "listing_sales": 0, "expired_no_fail": 0, "expired_with_fail": 0,
-              "tick_errors": 0, "violations": 0}
+              "tick_errors": 0, "violations": 0, "locked_episodes": 0, "lock_defers": 0}
     while (totals["haggles"] < n or totals["step_downs"] < n) and totals["episodes"] < 20000:
         totals["episodes"] += 1
         fail_rate = 0.0 if totals["episodes"] % 2 else 0.03
@@ -1301,9 +1316,10 @@ def selftest(n: int, seed: int) -> int:
                         "floor": floor, "allow_last_copy": False, "value": value})
         fake = FakeBazaar(rng, "t03", cfg, fail_rate)
         log = MemLog()
+        locked = totals["episodes"] % 7 == 0  # every 7th episode: a duel wave holds the accept slot throughout
         seller = Seller(fake, "t03", cfg, log=log, dry=False, take_bids=rng.random() < 0.5,
                         step_ticks=rng.randint(2, 12), step_p=rng.randint(1, 5), renew_ahead=rng.randint(2, 4),
-                        mode="selftest")
+                        mode="selftest", lock_fresh=(lambda: locked))   # never the real results/duel.lock
         for _ in range(rng.randint(30, 120)):
             try:
                 seller.tick(fake.clock())
@@ -1315,7 +1331,10 @@ def selftest(n: int, seed: int) -> int:
             fake.advance()
         floors = {aid: st["floor"] for aid, st in seller.assets.items()}  # after any raise to value + 1
         bad = oracle(fake, floors)
-        if bad:
+        if locked:
+            totals["locked_episodes"] += 1
+            totals["lock_defers"] += sum(1 for r in log.rows if r["event"] == "defer_duel_lock")
+            bad += [f"accepted offer {a['offer'].get('id')} while the duel lock was fresh" for a in fake.accepts]
             totals["violations"] += len(bad)
             for b in bad[:5]:
                 print("VIOLATION", b)
