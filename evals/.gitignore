@@ -1,0 +1,4 @@
+# Per-case conversation traces: thousands of small JSON files per variant. Left out of git;
+# `tools/eval_*.py` regenerate them (the runs are deterministic for a fixed seed and frozen logs).
+**/traces/
+.DS_Store
