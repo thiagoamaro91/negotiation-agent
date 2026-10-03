@@ -159,6 +159,15 @@ class Exit:
 
 
 class IsolationTest(unittest.TestCase):
+    def setUp(self):
+        with d.LOCK:
+            self.saved = dict(d.STATE)
+
+    def tearDown(self):
+        with d.LOCK:
+            d.STATE.clear()
+            d.STATE.update(self.saved)
+
     def test_an_error_stays_in_the_rivals_block(self):
         with d.LOCK:
             d.STATE.update(duels={"ok": 1}, celestina={"ok": 2}, data={"me": {"cash": 5}})
