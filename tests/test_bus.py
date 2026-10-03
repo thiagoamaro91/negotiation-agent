@@ -266,6 +266,16 @@ class SessionName(unittest.TestCase):
         rc, seen = self.run_main(["--session", "f8", "post", "FROM: thiago-air-f8 (conductor) | TO: x\nok"], {})
         self.assertEqual(seen["text"], "FROM: thiago-air-f8 (conductor) | TO: x\nok")
 
+    def test_a_padded_name_is_the_same_session_for_posting_and_waiting(self):
+        rc, seen = self.run_main(["post", "hi"], {"TEAM_BUS_SESSION": " padded ", "TEAM_BUS_TITLE": "T"})
+        self.assertEqual((rc, seen["session"]), (0, " padded "))
+        self.assertEqual(self.run_main(["read"], {"TEAM_BUS_SESSION": " padded "})[1]["session"], " padded ")
+
+    def test_an_empty_message_is_refused_before_it_is_signed(self):
+        for argv in (["post", ""], ["post", "   "], ["ask", "", "--wait", "0"]):
+            rc, seen = self.run_main(argv, {"TEAM_BUS_SESSION": "s", "TEAM_BUS_TITLE": "T"})
+            self.assertEqual((rc, "text" in seen), (2, False), argv)
+
     def test_reads_keep_the_old_session_resolution(self):
         self.assertEqual(self.run_main(["--session", " padded ", "read"], {})[1]["session"], " padded ")
         self.assertEqual(self.run_main(["read"], {"TEAM_BUS_SESSION": "from-env"})[1]["session"], "from-env")
