@@ -48,15 +48,27 @@ class TestBook(unittest.TestCase):
 
 class TestText(unittest.TestCase):
     def test_radar_variant_names_bids_and_venue(self):
-        t = an.build_text(BOOK, 0)
+        t = an.build_text(BOOK, 0, exclude=())
         self.assertIn("LAV-09 99 P, SAL-09 68 P, MAL-04 7 P", t)
         self.assertIn('venue "v20"', t)
         self.assertIn(an.LINK, t)
+        self.assertIn("shortlist with fair prices", t)
+        self.assertNotIn("holds", t)                        # the public page never shows holders
+
+    def test_excluded_cards_never_appear_in_any_variant(self):
+        book = BOOK + [ask("LAV-10", 70), bid("LAV-10", 69), ask("LAT-09", 60), bid("LAT-09", 60)]
+        for v in range(3):
+            t = an.build_text(book, v)                       # default: the cards we lack
+            for ref in ("LAV-09", "LAV-10", "LAT-09", "SAL-09"):
+                self.assertNotIn(ref, t)
+            self.assertNotIn("LAV-04", an.build_text([bid("LAV-04", 50)], v, exclude=("LAV-04",)))
+        self.assertIn("MAL-04 7 P", an.build_text(book, 0))  # cards we hold still show
+        self.assertTrue({"LAV-09", "LAV-10", "LAT-09"} <= set(an.MISSING))
 
     def test_pairs_variant_uses_the_crossing_pair_and_falls_back_without_one(self):
         t = an.build_text(BOOK, 1)
         self.assertIn("MAL-04: a seller asks 8 P and a buyer bids 7 P", t)
-        no_pairs = [ask("LAV-09", 120), bid("LAV-09", 99)]
+        no_pairs = [ask("LAT-06", 30), bid("LAT-06", 6)]
         self.assertEqual(an.build_text(no_pairs, 1), an.build_text(no_pairs, 0))
 
     def test_missing_card_variant_is_bilingual(self):

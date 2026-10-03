@@ -8,6 +8,9 @@ and asks on El Rastro that nobody crosses. v20 had posted nothing.
 Each message is built from El Rastro's public book (keyless): the best open bids, and any card where the best bid
 already meets or nearly meets the best ask (El Rastro has no broker, so those pairs sit there; our broker crosses them
 the tick both are posted on v20). Three variants rotate so the feed does not see the same words twice in a row.
+Cards we are missing ourselves never appear (--exclude): a radar that points sellers of LAV-09 at v20, where we cannot
+buy, works against us. The link names what the public La Celestina page serves (a shortlist with fair prices and ready
+v20 orders); it never shows who holds which card.
 
     python3 tools/announce.py plan                       # prints the next message and the request; sends nothing
     python3 tools/announce.py run --yes                  # posts one message with the broker key
@@ -37,6 +40,10 @@ VENUE = "v20"
 LINK = "https://bazaar-brain.tail425aef.ts.net:8443"
 MAX_CHARS = 1200        # the server keeps 1,200 characters of a message
 NEAR_GAP = 2            # a bid within this many P of the ask counts as "almost crossing"
+# Cards Team 3 lacks (from /api/me at tick 556, after the silver pack): never advertised. Holdings are private, so
+# this cannot be derived keylessly; update it when we buy one, or pass --exclude.
+MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09", "SAL-10",
+           "MAL-03", "MAL-05", "MAL-09", "RET-01", "RET-03", "RET-04", "RET-05", "RET-07", "RET-08", "RET-09", "RET-10")
 STATE = ROOT / "logs" / "state" / "announce.json"
 
 
@@ -71,12 +78,14 @@ def top_bids(bids: dict, n: int = 4) -> list:
     return sorted(((r, b) for r, b in bids.items() if b >= 3), key=lambda x: -x[1])[:n]
 
 
-def build_text(offers: list, variant: int, link: str | None = LINK) -> str:
+def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISSING) -> str:
     """One announcement, at most MAX_CHARS. variant 0: pitch + radar of bids; 1: the almost-crossing pairs (falls back
-    to 0 when there are none); 2: the "missing card" pitch in Spanish and English."""
+    to 0 when there are none); 2: the "missing card" pitch in Spanish and English. Cards in `exclude` never appear."""
     bids, asks = rastro_book(offers)
+    skip = set(exclude or ())
+    bids = {r: b for r, b in bids.items() if r not in skip}     # pairs need a bid, so asks need no filter
     pairs, radar = near_pairs(bids, asks), top_bids(bids)
-    tail = f" Who holds which card: {link}" if link else ""
+    tail = f" Your shortlist with fair prices and ready v20 orders: {link}" if link else ""
     radar_txt = ", ".join(f"{r} {b} P" for r, b in radar)
     v = variant % 3
     if v == 1 and pairs:
@@ -136,11 +145,14 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--variant", type=int, default=None, help="0, 1 or 2 (default: rotate)")
     ap.add_argument("--no-link", action="store_true", help="leave out the La Celestina web link")
     ap.add_argument("--link", default=LINK)
+    ap.add_argument("--exclude", default=",".join(MISSING),
+                    help="comma list of cards never advertised (default: the cards we lack)")
     ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between messages")
     ap.add_argument("--count", type=int, default=1, help="run only: how many messages")
     ap.add_argument("--key-file", default=str(KEY_FILE))
     args = ap.parse_args(argv)
     link = None if args.no_link else args.link
+    exclude = tuple(x.strip() for x in args.exclude.split(",") if x.strip())
     if args.cmd == "run" and not args.yes:
         ap.error("run posts on the public feed: add --yes")
     key = None
@@ -155,7 +167,7 @@ def main(argv: list[str] | None = None) -> None:
             time.sleep(max(60.0, args.every_min * 60))
         variant = args.variant if args.variant is not None else next_variant()
         offers = get_json(f"{URL}/api/venues/rastro/offers").get("offers", [])
-        text = build_text(offers, variant, link)
+        text = build_text(offers, variant, link, exclude)
         print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
         if args.cmd == "plan":
             print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
