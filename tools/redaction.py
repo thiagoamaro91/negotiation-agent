@@ -1,15 +1,17 @@
 """One scrubber for everything that leaves the key machine or is shown on a page (team relay, brain intake, desks).
 
 The game's credential shapes (kit/README.md, agent/broker.py, agent/runlog.py): team keys `tk-XXXX-XXXX`, broker keys
-`bk_...`, admin keys `adm_...`; the dash and underscore variants of each prefix are covered too, so a key in a
-decision's free text is redacted whatever shape it takes. Any field whose name mentions a key, token or secret, or
+`bk_...`, admin keys `adm_...`; the dash and underscore variants of each prefix are covered too, matched anywhere in
+a string (no word boundary), so a key in a decision's free text is redacted even when glued to other text. Any field whose name mentions a key, token or secret, or
 whose name is itself credential-shaped, is dropped at any depth.
 """
 from __future__ import annotations
 
 import re
 
-SECRET = re.compile(r"\b(?:tk|bk|sk|adm)[-_][A-Za-z0-9_-]{4,}")
+SECRET = re.compile(  # no word boundary: a key glued to other text ("prefix_tk-ab12-cd34") is still a key
+    r"tk-[A-Za-z0-9]{4,}(?:-[A-Za-z0-9]+)+|tk_[A-Za-z0-9_-]{8,}|bk[_-][A-Za-z0-9_-]{6,}|adm[_-][A-Za-z0-9_-]{4,}"
+    r"|sk-[A-Za-z0-9_-]{16,}")
 FIELD_WORDS = ("key", "token", "secret")
 
 
