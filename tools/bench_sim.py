@@ -9,6 +9,8 @@ broker meets Saturday's sessions; every session is one sample in the table.
     python3 tools/bench_sim.py list                                     # every scenario and what it changes
     python3 tools/bench_sim.py show --scenario hard --seed 3            # one session, tick by tick
     python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl --seeds 500   # after a real session
+    python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl --seeds 500 --runs b53   # one session
+    python3 tools/bench_sim.py replay --log logs/broker/2026-10-03.jsonl --run b36   # a run nothing matched
 
 Assumptions (each one is a knob of a scenario below; `--scenarios all` sweeps the ones that matter):
   A1 Traders. A session has N traders (10; 12 in the hard test), each a buyer or a seller of one unit with a true
@@ -42,7 +44,9 @@ Assumptions (each one is a knob of a scenario below; `--scenarios all` sweeps th
 The stall is the kit's bench_plan itself (kit/starter_broker.py), imported, not copied. Ours is agent/broker.py
 BenchPolicy, with its priors fixed at the standard mix: in every other scenario the truth differs from what the policy
 believes, which is the robustness test. "stall1" is a second reading of the rules ("crosses its best bid and ask every
-tick"): one pair per tick.
+tick"): one pair per tick. "maxpairs" pairs, every tick, as many crossing offers as possible (ties: the largest sum of
+bid - ask); docs/plans/market-test-sunday.md has its verdict (it loses to the stall), and `table` prints it against the
+stall in a second table.
 """
 from __future__ import annotations
 
@@ -192,6 +196,43 @@ def ceiling_gain(traders: list, sc: dict) -> float:
     return sum(ok[p] for p in pairs)
 
 
+def maxpairs_run(asks: list, bids: list, book: dict | None = None) -> list:
+    """Every tick, among the offers whose quotes cross now, the matching with the most pairs; ties broken by the
+    largest sum of (bid - ask); each pair at its midpoint (lowered for the fee, as every match we send). asks, bids:
+    [(quote, id)] of ONE bench run. When the stall's own pairs are already that many, the stall's plan is returned
+    as it is (same pairs, same prices).
+
+    Exact: a buyer crosses every seller whose ask is at most its bid (with the fee, still monotone), so the
+    neighbourhoods are nested and n pairs exist iff the n highest bids and the n lowest asks pair up in reverse order
+    (highest bid with the n-th lowest ask). That set also has the largest sum of (bid - ask) among n-pair matchings,
+    because the sum depends only on which offers are matched. tests/test_bench_sim.py checks it against an exhaustive
+    max-weight matching with weight BIG + (bid - ask)."""
+    stall = brk.stall_run(asks, bids, book)
+    a = sorted(asks, key=lambda x: x[0])   # lowest ask first; stable, so the book's order among equal quotes
+    b = sorted(bids, key=lambda x: -x[0])  # highest bid first
+
+    def crosses(ask, bid) -> bool:
+        return bid >= ask and (book is None or brk.price_for(book, ask, bid) is not None)
+
+    k = next((n for n in range(min(len(a), len(b)), 0, -1)
+              if all(crosses(a[n - 1 - i][0], b[i][0]) for i in range(n))), 0)
+    if k <= len(stall):
+        return stall
+    plan = []
+    for i in range(k):
+        (ask, sell), (bid, buy) = a[k - 1 - i], b[i]
+        plan.append((sell, buy, (ask + bid) // 2 if book is None else brk.price_for(book, ask, bid)))
+    return plan
+
+
+def maxpairs_plan(book: dict, skip=()) -> list:
+    """maxpairs_run over every bench run of the book (a run's offers never pair with another run's)."""
+    plan = []
+    for asks, bids in brk.bench_quotes(book, skip).values():
+        plan += maxpairs_run(asks, bids, book)
+    return plan
+
+
 def offer(tr: dict, oid: str, q: int, sc: dict, t0: int = 0) -> dict:
     o = {"id": oid, "status": "open", "bench": True, "maker": "bench"}  # as the game shows every bench offer
     if tr["side"] == "sell":
@@ -291,7 +332,13 @@ def policies(sc: dict, params: dict | None = None) -> dict:
                 out.append(m)
         return out
 
-    return {"stall": stall, "ours": ours_fn, "stall1": stall1}
+    def maxpairs(book, t):
+        plan = maxpairs_plan(book)
+        maxpairs.dropped += len(brk.guard(plan, book)[1])  # a match the live guard would refuse: bad_match
+        return plan
+    maxpairs.dropped = 0
+
+    return {"stall": stall, "ours": ours_fn, "stall1": stall1, "maxpairs": maxpairs}
 
 
 # ---------------------------------------------------------------- statistics
@@ -299,8 +346,8 @@ def policies(sc: dict, params: dict | None = None) -> dict:
 def run_scenario(args) -> dict:
     name, seeds, extra, params = args
     sc = {**scenario(name), **(extra or {})}
-    effs = {"stall": [], "ours": [], "stall1": [], "ceiling": []}
-    diffs, refused, dropped = [], 0, 0
+    effs = {"stall": [], "ours": [], "stall1": [], "maxpairs": [], "ceiling": []}
+    diffs, mp_diffs, refused, dropped, mp_bad = [], [], 0, 0, 0
     t0 = time.time()
     for seed in range(seeds):
         rng = random.Random(f"{name}:{seed}")
@@ -314,13 +361,17 @@ def run_scenario(args) -> dict:
                 res[pname] = r["gain"] / best if best > 1e-9 else None
                 if pname == "ours":
                     refused += r["refused"]
+                if pname == "maxpairs":
+                    mp_bad += r["refused"]  # the engine refused a match: it broke a quote, a run or reuse
             if best <= 1e-9:
                 continue
             res["ceiling"] = ceiling_gain(traders, sc) / best
             for key in effs:
                 effs[key].append(res[key])
             diffs.append(res["ours"] - res["stall"])
+            mp_diffs.append(res["maxpairs"] - res["stall"])
         dropped += fns["ours"].dropped + fns["stall"].dropped
+        mp_bad += fns["maxpairs"].dropped
     n = len(diffs)
 
     def p10(xs):
@@ -328,7 +379,13 @@ def run_scenario(args) -> dict:
         return xs[max(0, math.ceil(0.10 * len(xs)) - 1)] if xs else float("nan")
 
     sd = statistics.pstdev(diffs) if n > 1 else 0.0
+    mp_se = statistics.pstdev(mp_diffs) / math.sqrt(n) if n > 1 else 0.0
     return {"scenario": name, "n": n, "secs": round(time.time() - t0, 1),
+            "mp_diff_mean": statistics.fmean(mp_diffs) if n else 0.0, "mp_diff_se": mp_se,
+            "mp_diff_ci95": 1.96 * mp_se, "mp_win": sum(d > 1e-9 for d in mp_diffs) / n if n else 0.0,
+            "mp_tie": sum(abs(d) <= 1e-9 for d in mp_diffs) / n if n else 0.0,
+            "mp_loss": sum(d < -1e-9 for d in mp_diffs) / n if n else 0.0,
+            "mp_worst_diff": min(mp_diffs) if n else 0.0, "mp_bad_match": mp_bad,
             **{f"{k}_mean": statistics.fmean(v) for k, v in effs.items()},
             **{f"{k}_p10": p10(v) for k, v in effs.items()},
             "diff_mean": statistics.fmean(diffs), "diff_ci95": 1.96 * sd / math.sqrt(n) if n else 0.0,
@@ -349,6 +406,21 @@ def fmt_table(rows: list) -> str:
     return "\n".join(out)
 
 
+def fmt_mp_table(rows: list) -> str:
+    """maxpairs against the stall: mean efficiencies, the paired difference with its SE and 95 % half-width (1.96 SE),
+    the share of sessions it wins / ties / loses, and bad_match (a match the guard or the engine would refuse)."""
+    head = (f"{'scenario':<20} {'n':>5} | {'stall':>6} {'maxp':>6} {'ceil':>6} | {'maxp-stall':>10} {'SE':>6} "
+            f"{'+-95%':>6} {'z':>6} | {'win':>5} {'tie':>5} {'loss':>5} | {'worst':>7} {'bad':>4}")
+    out = [head, "-" * len(head)]
+    for r in rows:
+        z = r["mp_diff_mean"] / r["mp_diff_se"] if r["mp_diff_se"] > 0 else 0.0
+        out.append(f"{r['scenario']:<20} {r['n']:>5} | {r['stall_mean']:6.3f} {r['maxpairs_mean']:6.3f} "
+                   f"{r['ceiling_mean']:6.3f} | {r['mp_diff_mean']:+10.4f} {r['mp_diff_se']:6.4f} "
+                   f"{r['mp_diff_ci95']:6.4f} {z:+6.2f} | {r['mp_win']:5.1%} {r['mp_tie']:5.1%} {r['mp_loss']:5.1%} "
+                   f"| {r['mp_worst_diff']:+7.3f} {r['mp_bad_match']:>4}")
+    return "\n".join(out)
+
+
 def cmd_table(args) -> int:
     names = list(SCENARIOS) if args.scenarios == "all" else [s.strip() for s in args.scenarios.split(",") if s.strip()]
     for nm in names:
@@ -365,10 +437,17 @@ def cmd_table(args) -> int:
     print(fmt_table(rows), flush=True)
     worse = [r["scenario"] for r in rows if r["diff_mean"] + r["diff_ci95"] < 0]
     print(f"\nscenarios where ours is significantly below the stall: {worse or 'none'}")
+    print("\nmaxpairs (most crossing pairs every tick) against the stall:")
+    print(fmt_mp_table(rows), flush=True)
+    mp_worse = [r["scenario"] for r in rows if r["mp_diff_mean"] + r["mp_diff_ci95"] < 0]
+    print(f"\nscenarios where maxpairs is significantly below the stall: {mp_worse or 'none'}")
     if args.json:
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
         Path(args.json).write_text(json.dumps({"seeds": args.seeds, "rows": rows}, indent=1) + "\n")
-    bad = sum(r["ours_refused"] for r in rows)
+    mp_bad = sum(r["mp_bad_match"] for r in rows)
+    if mp_bad:
+        print(f"WARNING: maxpairs planned {mp_bad} matches the guard or the engine refuses (bad_match)")
+    bad = sum(r["ours_refused"] for r in rows) + mp_bad
     if bad:
         print(f"WARNING: the engine refused {bad} of our matches (the guard should make that impossible)")
     dropped = sum(r.get("guard_dropped", 0) for r in rows)
@@ -489,7 +568,14 @@ def fit(runs: dict) -> tuple:
 
 
 def cmd_refit(args) -> int:
-    shows, sc = fit(read_runs(Path(args.log)))
+    runs = read_runs(Path(args.log))
+    if args.runs:
+        want = {r.strip() for r in args.runs.split(",") if r.strip()}
+        missing = want - set(runs)
+        if missing:
+            raise SystemExit(f"runs not in {args.log}: {sorted(missing)} (there: {sorted(runs)})")
+        runs = {k: v for k, v in runs.items() if k in want}
+    shows, sc = fit(runs)
     print("what the recorded session shows:")
     for k, v in shows.items():
         print(f"  {k}: {v}")
@@ -500,6 +586,72 @@ def cmd_refit(args) -> int:
         rows = [run_scenario(("fitted", args.seeds, None, None))]
         print()
         print(fmt_table(rows))
+        print()
+        print(fmt_mp_table(rows))
+        if args.json:
+            Path(args.json).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.json).write_text(json.dumps({"seeds": args.seeds, "runs": sorted(runs), "fitted": sc,
+                                                   "rows": rows}, indent=1) + "\n")
+    return 0
+
+
+def replay_run(offers: dict, plan) -> list:
+    """Replay one recorded bench run against a plan function (book -> [(sell, buy, price)]): every trader quotes as
+    it did on record, tick by tick, and leaves once matched. Valid only for a run where nothing was matched on record
+    (b36: the guard dropped every pair), so every path is whole. Returns [(tick, sell, buy, price)]."""
+    ticks = sorted({t for r in offers.values() for t, _ in r["quotes"]})
+    paths = {oid: dict(r["quotes"]) for oid, r in offers.items()}
+    gone, out = set(), []
+    for t in ticks:
+        bench = []
+        for oid, path in paths.items():
+            if t in path and oid not in gone:
+                tr = {"side": offers[oid]["side"], "a": 0, "P": TICKS}
+                bench.append(offer(tr, oid, path[t], {"makers": False, "expiry": "none"}))
+        book = {"venue": "replay", "fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": bench}
+        ok, _bad = brk.guard(plan(book), book)  # what the live guard lets through
+        for sell, buy, price in ok:
+            gone.update((sell, buy))
+            out.append((t, sell, buy, price))
+    return out
+
+
+def proxy_limits(offers: dict, firm_shade: float = 0.0) -> dict:
+    """Limits stand-ins for a recorded run: each trader's last (most relaxed) quote; with firm_shade, a quote that
+    never moved toward its limit is shaded that much further (a firm trader's limit lies beyond its quote)."""
+    lim = {}
+    for oid, r in offers.items():
+        q0, q = r["quotes"][0][1], r["quotes"][-1][1]
+        sign = 1 if r["side"] == "buy" else -1
+        if firm_shade and sign * (q - q0) <= 0:
+            q = q * (1 + firm_shade) if sign > 0 else q / (1 + firm_shade)
+        lim[oid] = q
+    return lim
+
+
+def cmd_replay(args) -> int:
+    runs = read_runs(Path(args.log))
+    if args.run not in runs:
+        raise SystemExit(f"{args.run} not in {args.log} (there: {sorted(runs)})")
+    offers = runs[args.run]
+    censored = [oid for oid, r in offers.items() if r["how"] in ("ours", "engine")]
+    if censored:
+        raise SystemExit(f"{args.run}: {len(censored)} offers were matched on record, so their paths end early and a "
+                         f"replay would be biased; only a run with no match on record can be replayed")
+    plans = {"stall": lambda b: brk.stall_plan(b, fees=True), "maxpairs": maxpairs_plan}
+    for name, plan in plans.items():
+        pairs = replay_run(offers, plan)
+        parts = []
+        for label, shade in (("Q", 0.0), ("F15", 0.15)):
+            lim = proxy_limits(offers, shade)
+            v = sorted((lim[o] for o in lim if offers[o]["side"] == "buy"), reverse=True)
+            c = sorted(lim[o] for o in lim if offers[o]["side"] == "sell")
+            best = sum(max(0.0, b - s) for b, s in zip(v, c))
+            gain = sum(lim[b] - lim[s] for _, s, b, _ in pairs)
+            parts.append(f"{label} {gain / best:.3f} ({gain:.1f} of {best:.1f})" if best > 0 else f"{label} n/a")
+        print(f"{name:<9} {len(pairs)} matches; efficiency {'; '.join(parts)}")
+        for t, sell, buy, price in pairs:
+            print(f"  tick {t}: {sell} x {buy} at {price}")
     return 0
 
 
@@ -536,6 +688,11 @@ def main(argv=None) -> int:
     f = sub.add_parser("refit", help="fit the scenario knobs to a recorded session (logs/broker/<date>.jsonl)")
     f.add_argument("--log", required=True)
     f.add_argument("--seeds", type=int, default=0, help="also run stall vs ours on the fitted scenario")
+    f.add_argument("--runs", default=None, help="fit only these bench runs, e.g. b53 or b53,b70 (default: all)")
+    f.add_argument("--json", default=None, help="also write the fit and the row here")
+    rp = sub.add_parser("replay", help="replay a recorded run that nothing matched: stall vs maxpairs on its paths")
+    rp.add_argument("--log", required=True)
+    rp.add_argument("--run", required=True, help="a bench run with no match on record, e.g. b36")
     s = sub.add_parser("show", help="one session, tick by tick")
     s.add_argument("--scenario", default="standard")
     s.add_argument("--seed", type=int, default=0)
@@ -545,7 +702,7 @@ def main(argv=None) -> int:
         for nm, d in SCENARIOS.items():
             print(f"{nm:<20} {d or '(the base mix)'}")
         return 0
-    return {"table": cmd_table, "show": cmd_show, "refit": cmd_refit}[args.mode](args)
+    return {"table": cmd_table, "show": cmd_show, "refit": cmd_refit, "replay": cmd_replay}[args.mode](args)
 
 
 if __name__ == "__main__":
