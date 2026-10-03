@@ -782,3 +782,78 @@ class TestCli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def match(team, card, set_="MAL", missing=None, holders=(("t05", "Team 5"),), dealers=("Abuela",), price=24,
+          accept=(), rng=(15, 20)):
+    """One entry of tools/matchmaker.py's output, as announce reads it."""
+    return {"team": team, "team_name": f"Team {int(team[1:])}", "set": set_, "set_name": {"MAL": "Malasaña"}.get(set_, set_),
+            "card": card, "missing": list(missing or [card]),
+            "holders": [{"team": t, "name": n} for t, n in holders], "dealers": [{"name": d} for d in dealers],
+            "prices": {"team_range": {"low": rng[0], "median": rng[0], "high": rng[1], "trades": 3}},
+            "price": price, "proposal": {"accept": [{"side": "ask", "offer": i, "venue": v, "price": p, "team": t}
+                                                    for i, v, p, t in accept]}}
+
+
+class TestMissingVariant(unittest.TestCase):
+    def test_the_board_names_buyer_page_card_holders_and_the_v20_bid(self):
+        doc = {"generated_at": 0, "matches": [match("t13", "MAL-08", missing=["MAL-05", "MAL-08"])]}
+        text = an.missing_text(doc, {}, exclude=())
+        self.assertIn("Team 13 is two cards from the Malasaña page; MAL-08 is one of them.", text)
+        self.assertIn("Team 5 and Abuela hold MAL-08.", text)
+        self.assertIn('{"venue": "v20", "give": {"cash": 24}, "want": {"cards": ["MAL-08"]}}', text)
+        self.assertLessEqual(len(text), an.MAX_CHARS)
+
+    def test_team_3_never_appears_as_buyer_or_holder(self):
+        doc = {"matches": [match("t03", "MAL-08"), match("t13", "LAT-06", set_="LAT",
+                                                       holders=(("t03", "Team 3"), ("t06", "Team 6")))]}
+        text = an.missing_text(doc, {}, exclude=())
+        self.assertNotIn("Team 3 ", text)
+        self.assertNotIn("t03", text)
+        self.assertIn("Team 6 and Abuela hold LAT-06.", text)
+
+    def test_an_excluded_card_never_appears_not_even_as_the_other_card_of_the_page(self):
+        doc = {"matches": [match("t13", "MAL-05", missing=["MAL-05", "MAL-08"]),
+                           match("t13", "MAL-08", missing=["MAL-05", "MAL-08"])]}
+        text = an.missing_text(doc, {}, exclude=("MAL-05",))
+        self.assertNotIn("MAL-05", text)
+        self.assertIn("MAL-08 is one of them", text)
+        with self.assertRaises(LookupError):                       # nothing left to say: no post
+            an.missing_text({"matches": [match("t13", "MAL-05")]}, {}, exclude=("MAL-05",))
+
+    def test_a_live_ask_is_named_only_while_it_is_in_its_venues_book(self):
+        doc = {"matches": [match("t14", "LAT-06", set_="LAT", accept=[(20138, "rastro", 30, "t06")])]}
+        self.assertIn("Or accept offer #20138 on El Rastro (30 P).",
+                      an.missing_text(doc, {"rastro": [{"id": 20138}]}, exclude=()))
+        self.assertNotIn("20138", an.missing_text(doc, {"rastro": [{"id": 1}]}, exclude=()))
+
+    def test_a_missing_or_stale_matchmaker_file_is_never_posted(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "latest.json"
+            with self.assertRaises(LookupError):
+                an.load_matches(path, now=100)
+            path.write_text(json.dumps({"generated_at": 100, "matches": []}))
+            self.assertEqual(an.load_matches(path, now=100 + an.MATCHES_MAX_AGE_S)["generated_at"], 100)
+            with self.assertRaises(LookupError):
+                an.load_matches(path, now=101 + an.MATCHES_MAX_AGE_S)
+
+    def test_run_posts_the_board_outside_market_tests_and_stops_when_the_file_goes_stale(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "latest.json"
+            path.write_text(json.dumps({"generated_at": 0, "matches": [match("t13", "MAL-08")]}))
+            state, posts = {"now": 0.0, "tick": 100}, []
+            run_loop(["run", "--yes", "--variant", "missing", "--matches", str(path), "--count", "3",
+                      "--every-min", "5", "--min-gap-min", "1", "--exclude", ""],
+                     market(state, bench_at_s=400), state, posts)
+        lo, hi = 400 - an.QUIET_BEFORE_S, 400 + an.QUIET_AFTER_S
+        self.assertTrue(posts)
+        self.assertEqual([t for t, _ in posts if lo <= t < hi], [])          # never inside the Market Test
+        self.assertEqual([t for t, _ in posts if t > an.MATCHES_MAX_AGE_S], [])  # never from a stale file
+        for _, text in posts:
+            self.assertIn("Team 13 is one card from the Malasaña page: MAL-08.", text)
+
+    def test_variant_takes_only_numbers_or_missing(self):
+        with self.assertRaises(SystemExit):
+            an.main(["plan", "--variant", "pairs"])
