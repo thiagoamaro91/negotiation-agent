@@ -12,6 +12,7 @@ start_ask = the median price teams paid each other for that card (else its set a
 
     python3 tools/make_floors.py                          # dry run: prints the diff, writes nothing
     python3 tools/make_floors.py --sell-sets MAL          # also our single MAL copies (x0.7 set, page nobody needs)
+    python3 tools/make_floors.py --keep-existing          # keep the owner's prices, only add/drop entries
     python3 tools/make_floors.py --write                  # overwrite agent/rastro_floors.json
 Keyless by default: holdings from logs/state/me.json brought forward with the public settlements in the feed. Run
 tools/snapshot.py first for a fresh me.json; --keyed reads GET /api/me instead (read-only client).
@@ -78,7 +79,7 @@ def build(holdings: dict, valuer: md.Valuer, tape: md.Tape, board: list, *, marg
             e = {"asset_id": a["id"], "card": ref, "start_ask": start, "floor": floor}
             if last:
                 e["allow_last_copy"] = True
-            out.append({"entry": e, "why": why, "serial": a.get("serial")})
+            out.append({"entry": e, "why": why, "serial": a.get("serial"), "value": value})
     return out
 
 
@@ -123,6 +124,10 @@ def main() -> None:
     ap.add_argument("--margin-frac", type=float, default=0.10)
     ap.add_argument("--sell-sets", default="", help="sets whose single copies we also sell, e.g. MAL")
     ap.add_argument("--protect", default="LAV", help="pages whose single copies are never sold")
+    ap.add_argument("--keep-existing", action="store_true",
+                    help="keep the floor and start_ask already in the file for assets it lists (raised to our value "
+                         "of the copy + 1 if under it, as the seller does); only add new spares and drop copies we "
+                         "no longer hold")
     args = ap.parse_args()
     sets = lambda s: tuple(x.strip().upper() for x in s.split(",") if x.strip())  # noqa: E731
     public = md.PublicClient()
@@ -151,11 +156,16 @@ def main() -> None:
     out = Path(args.out)
     old = json.loads(out.read_text()) if out.exists() else {"cards": []}
     keep_off = {int(c["asset_id"]) for c in old.get("cards", []) if c.get("enabled", True) is False}
+    owner = {int(c["asset_id"]): c for c in old.get("cards", [])}
     entries = []
     for r in rows:
         e = dict(r["entry"])
         if e["asset_id"] in keep_off:
             e["enabled"] = False
+        if args.keep_existing and e["asset_id"] in owner:   # the owner's prices stand, above our value of the copy
+            o = owner[e["asset_id"]]
+            e["floor"] = max(int(math.ceil(r["value"])) + 1, int(o.get("floor") or 0))   # the seller's own hard floor
+            e["start_ask"] = max(e["floor"], int(o.get("start_ask") or 0))
         entries.append(e)
     print(f"holdings: {acct.get('source')}; values: catalog book x our multipliers x copy marginals "
           f"{valuer.marginals}; margin max({args.margin_min:g}, {args.margin_frac:.0%})")
