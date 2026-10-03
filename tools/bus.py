@@ -469,8 +469,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     title = (args.title if args.title is not None else os.environ.get("TEAM_BUS_TITLE") or "").strip()
     if args.cmd in WRITES:
-        named = (args.session if args.session is not None else os.environ.get("TEAM_BUS_SESSION") or "").strip()
-        if not named:
+        named = args.session if args.session is not None else os.environ.get("TEAM_BUS_SESSION") or ""
+        if not named.strip():  # blank is refused; a nonblank name is kept as it is, so wait() sees the same one
             print("[team-bus] refusing to write without a session name: pass --session <person>-<machine>-<task> or "
                   "set TEAM_BUS_SESSION, so every message says which session sent it", file=sys.stderr)
             return 2
@@ -479,6 +479,9 @@ def main(argv=None) -> int:
         args.session = default_session()
     if args.cmd in ("post", "ask"):
         text = sys.stdin.read() if args.cmd == "post" and args.text == "-" else args.text
+        if not text.strip():  # checked before signing: a signature alone is not a message
+            print("[team-bus] refusing to send an empty message", file=sys.stderr)
+            return 2
         if not title and not text.lstrip().upper().startswith("FROM:"):
             print("[team-bus] warning: no full session name; signing with the session id. Set TEAM_BUS_TITLE (or "
                   "--title) to the session's name as the Claude app shows it", file=sys.stderr)
