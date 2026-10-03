@@ -1,0 +1,27 @@
+{
+  "ratios": [
+    1.55,
+    1.22
+  ],
+  "last_r": 1.114,
+  "max_msgs": 2,
+  "last_chance_ticks": 3,
+  "accept_any_ticks": 3,
+  "near_ticks": 3,
+  "stall_ticks": 3,
+  "thin_frac": 0.5,
+  "early_share": 0.852,
+  "early_min_pie": 2,
+  "pair_sell": 0.93,
+  "pair_buy": 1.07,
+  "absent_at": 0.5,
+  "absent_share": 0.5,
+  "absent_last": true,
+  "window_wait": true,
+  "days_cheap": 0.1,
+  "days_premium": [
+    0.737,
+    0.155
+  ],
+  "duel_ticks": 12
+}

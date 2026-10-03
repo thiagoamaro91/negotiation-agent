@@ -1,0 +1,70 @@
+{
+ "metrics": [
+  {
+   "id": "score",
+   "label": "score",
+   "kind": "float",
+   "scale": 1
+  },
+  {
+   "id": "deal",
+   "label": "deal",
+   "kind": "float",
+   "scale": 1,
+   "rate": true
+  },
+  {
+   "id": "missed_ok_offer",
+   "label": "missed ok",
+   "kind": "float",
+   "scale": 1,
+   "rate": true,
+   "better": "lower"
+  },
+  {
+   "id": "limit_breach",
+   "label": "breach",
+   "kind": "float",
+   "scale": 1,
+   "rate": true,
+   "better": "lower"
+  }
+ ],
+ "perf_fields": [
+  {
+   "id": "surplus_P",
+   "label": "surplus",
+   "unit": "P"
+  },
+  {
+   "id": "rounds",
+   "label": "rounds"
+  },
+  {
+   "id": "deal_tick",
+   "label": "deal tick",
+   "unit": "ticks from start"
+  },
+  {
+   "id": "msgs_sent",
+   "label": "msgs sent"
+  },
+  {
+   "id": "best_offer_score",
+   "label": "best offer score"
+  }
+ ],
+ "headline": "score",
+ "baseline_params": "docs/duel-lab/duel-params-duels2-final.json",
+ "runner": "tools/eval_duels.py",
+ "arena": {
+  "session": 3,
+  "seed0": 900000,
+  "sessions": 100,
+  "pair_seen": 0.0,
+  "weights": "all"
+ },
+ "goal": "Raise mean per-duel score on the Duels III format (arena session 3: price+days, 12 ticks, decay 0.10, 4 concurrent, paired limit hidden) via a duel.py --params file only. Guardrails: limit_breach stays 0; duels-friday and duels-saturday (real rival paths) not worse than baseline by more than 0.01 mean score.",
+ "split_note": "TRAIN = arena seeds 0.. (duel_tune's tuning set; the only traces read to form hypotheses). SELECTION = seeds 500000.. (duel_tune / duel_ab held-out gate). TEST = this eval: 100 sessions from seed 900000 (6,800 duels), never read as traces, only summary numbers; keep a round only if the paired per-session score diff vs the previous best is > 2 SE above 0. duel_tune's stress uses 800000..800079, disjoint. duels-friday / duels-saturday are guardrails only. Split fixed 2026-10-03 21:35.",
+ "climb_result": "2026-10-03: v1 kept (last_chance_ticks 2, +0.0035 +- 0.0025 on TEST); v2-v4 reverted. Kept as evals/duels-arena/duel-params-duels3-v1-old-referee.json (pre-#47/#54 referee; superseded by WP1's docs/duel-lab/duel-params-duels3.json)."
+}

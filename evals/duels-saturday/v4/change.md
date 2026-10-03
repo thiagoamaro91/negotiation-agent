@@ -1,0 +1,1 @@
+R4: on v1, stall_ticks 4 -> 3 (a rival counts as stalled one tick sooner on the 12-tick clock; only lever of a 38-cell TRAIN coordinate grid that held on TRAIN, selection, D-1 stress and the Duels I mix)
