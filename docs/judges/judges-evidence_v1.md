@@ -26,7 +26,7 @@ Companion to [`judges-story_draft_v1.md`](judges-story_draft_v1.md). What to hav
 | 1:45 "8 of 8, +11 % in simulation" | Duel lab result | `docs/duel-lab/improvements.md`, the held-out paragraph at lines 18 to 19 | SAFE | Say "in simulation" on screen too. Swap for the live Duels I result if it is good |
 | 1:45 (optional) | Friday duel replay | `docs/analysis-friday/duels.md` | MASK | Shows practice duel limits (for example 164 vs 106). Low risk, but crop the limit column |
 | 2:05 "107 of 108" | Mutation catch rates | `docs/plans/HANDOFF.md` PR table, lines 17 to 22 only | MASK | Crop to the table. Line 48 of the same file states a value "at our values" |
-| 2:20 "18 minutes" | PR #11 and #12 merged | GitHub, repo pull requests, closed tab; or `gh pr view 11` / `gh pr view 12` | MASK | PR #12's title names our cash floor (200 P). Show the merge times, not the title, or say it without the screen |
+| 2:20 "18 minutes" | PR #11 and #12 merged | GitHub, repo pull requests, closed tab; or `gh pr view 11` / `gh pr view 12` | MASK | PR #12's title names our cash floor. Show the merge times, not the title, or say it without the screen |
 | Q&A "how do you stop a runaway bot?" | Code that caps our limit | `agent/abuela.py` around line 159, `agent/chato.py` around line 179, `agent/lease.py` | SAFE | Code holds no values; they come from the API at run time |
 | Q&A "show the tests" | Test run | `git pull` on the demo laptop first, then `python3 -m unittest discover tests` | SAFE | On `origin/main` (8daf50a) it prints 273 tests OK. This laptop's checkout is behind and prints 266 with 2 failures: pull first or skip |
 

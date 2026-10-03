@@ -76,7 +76,7 @@ About 135 words. Use it if the slot is short or we lose the screen.
 
 ## 5. The three strongest anecdotes
 
-1. **The walk-away (discipline).** El Chato, LAV-09, Saturday ticks 171 to 178. Our bids 60, 64, 68, 72, 76, 80, 84. His asks 97, 97, 97, 97, 96, 94, 90. We stopped at 84 and the run ended without a deal (`max_rounds`, both offers expired). Careful: his 90 was **not** marked as his final offer, and the run's cap was above 90, so had he called 90 "final" the bot would have paid it. Say "our ladder stopped at 84, he stayed at 90, no deal"; never "his final was 90" or "the bot walked away". Source: `logs/chato/2026-10-03.jsonl`, `logs/threads/thread-00335.json`.
+1. **The walk-away (discipline).** El Chato, LAV-09, Saturday ticks 171 to 178. Our bids 60, 64, 68, 72, 76, 80, 84. His asks 97, 97, 97, 97, 96, 94, 90. We stopped at 84 and the run ended without a deal (`max_rounds`, both offers expired). Careful: his 90 was **not** marked as his final offer, and the bot takes a dealer's final offer up to a cap we set before the conversation starts, so this is not a walk-away. Say "our ladder stopped at 84, he stayed at 90, no deal"; never "his final was 90" or "the bot walked away". Source: `logs/chato/2026-10-03.jsonl`, `logs/threads/thread-00335.json`.
 2. **Watching taught us to accept (learning).** Friday's practice round was watch-only, so we closed 0 of 12 by design. In all 8 duels where the rival named a price, its last offer was already inside our limit: on average 32 % of our limit left on the table. Hector's overnight lab tuned the bot: 0.394 per duel against 0.354 for the safe settings, +11 %, in simulation (300 held-out sessions). Not yet a live result: update after Duels I. Source: `docs/analysis-friday/README.md` line 9, `docs/duel-lab/improvements.md` lines 18 to 19, PR #10.
 3. **Our own bot was the risk (honesty).** PR #11 (market desk swaps) merged 09:42 Madrid with swaps on by default. A second, post-merge safety review flagged it and PR #12 made swaps opt-in, merged 09:59. Eighteen minutes merge to merge; the live desk kept the old defaults until its restart, so say "the fix merged in 18 minutes", not "we fixed it in 18 minutes". Source: `gh pr view 11` and `gh pr view 12` (`mergedAt` 07:42:00Z and 07:59:57Z).
 
@@ -100,14 +100,14 @@ Other numbers in the script: "0 of 12" duels (`docs/analysis-friday/README.md` l
 - **"Did anyone try prompt injection on you?"** Not that we have seen: zero injection phrasing and zero text-vs-structure mismatches in our 13 threads. Say the design makes it pointless; do **not** claim we blocked attacks.
 - **"How do you read other teams' values?"** Bayes over the 720 shuffles of set multipliers, from what each team buys, sells and accepts. Be honest: today its top pick is right 36 % of the time against 32 % for "repeat their favourite" (`python3 tools/value_inference.py check`). It is a working instrument, not a headline.
 - **"How do you stop a runaway bot?"** Code caps that can only lower our limit (`agent/abuela.py` line 159, `agent/chato.py` line 179); one accept per tick shared through a lease (`agent/lease.py`); a duel lock that pauses the other bots (`agent/duel.py` line 136); a STOP file for the market desk. Do not say "global kill switch": the dealer bots ignore STOP.
-- **"Would you have paid 90?"** If he had called 90 his final, yes: the bot takes a dealer's final up to a cap, and the cap was above 90. What the code guarantees is that we never bid against ourselves and never climb past the ladder we set before the conversation.
+- **"Would you have paid 90?"** Do not answer with a number. The bot only takes a dealer's final offer up to a cap we set before the conversation starts. What the code guarantees is that we never bid against ourselves and never climb past the ladder we set before the conversation.
 - **"Which bug did your tests miss?"** The market desk ignoring the STOP file (PR #6, 38 of 39). It is not a global kill switch either; say so before they find it.
 - **"Did the duel lab work live?"** Answer with the Duels I result once we have it; until then it is a simulation number.
 
 ## 8. Do not say, do not show
 
 - Any private value: what a card is worth to us, our set multipliers, our caps or max bids beyond what the market already saw (84 is public in the feed; the cap behind it is not).
-- Cash floor numbers (the docs say 280, the live bots run 200: internal, and confusing on stage).
+- Cash floor numbers (internal, and the docs and the live bots disagree: confusing on stage).
 - "273 tests green" from a laptop that is behind `origin/main` (it shows 266 with 2 failures). Quote 107 of 108 instead.
 - Our score or rank as an achievement: it moves every few minutes, and Saturday's 383 P cash was an organiser grant that never counts.
 - The names in the threat map, or that it came from LinkedIn profiles. Say "we researched every team". Do not name teams. "It missed the Friday leader" is fine (a compliment); "it rated them low threat" sounds like a put-down.
