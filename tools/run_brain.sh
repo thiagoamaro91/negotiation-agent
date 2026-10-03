@@ -20,4 +20,6 @@ tmux new-session -d -s bazaar -n recorder \
   "export TZ=Europe/Madrid; while true; do python3 -u tools/feed_recorder.py >> '$LOG/recorder.log' 2>&1; sleep 3; done"
 tmux new-window -t bazaar -n brain \
   "export TZ=Europe/Madrid; while true; do python3 -u tools/brain.py --port ${BRAIN_PORT:-8790} >> '$LOG/brain.log' 2>&1; sleep 3; done"
-echo "recorder + brain running in tmux session 'bazaar' (logs in $LOG)"
+tmux new-window -t bazaar -n desks \
+  "export TZ=Europe/Madrid; while true; do python3 -u tools/desk_forwarder.py >> '$LOG/desks.log' 2>&1; sleep 3; done"
+echo "recorder + brain + desk forwarder running in tmux session 'bazaar' (logs in $LOG)"
