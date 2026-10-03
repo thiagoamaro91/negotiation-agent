@@ -36,6 +36,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -662,11 +663,22 @@ def get_json(url: str) -> dict:
         return json.load(r)
 
 
+_KEYLIKE = re.compile(r"(tk-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}|bk_[A-Za-z0-9_-]+|adm_[A-Za-z0-9_-]+)")  # no \b: a key
+                                                                                         # glued to a word too
+
+
 def clean(obj):
-    """Anything that looks like a key, stripped (runlog.redact), before it is printed or logged: an HTTP error body
-    is the server's text and could echo a key back."""
+    """Anything that looks like a key, stripped (runlog.redact, then the same shapes even when glued to other
+    characters), before it is printed or logged: an HTTP error body is the server's text and could echo a key back."""
     from runlog import redact
-    return redact(obj)
+    obj = redact(obj)
+    if isinstance(obj, str):
+        return _KEYLIKE.sub("[redacted]", obj)
+    if isinstance(obj, dict):
+        return {k: clean(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [clean(v) for v in obj]
+    return obj
 
 
 def post_announce(text: str, key: str) -> dict:

@@ -652,6 +652,10 @@ class TestCleaning(unittest.TestCase):
             res = an.post_announce("hi", "bk_real")
         self.assertNotIn("bk_SYNTH_KEY_123", json.dumps(res))
         self.assertNotIn("tk-AbCd-EfGh", json.dumps(res))
+        glued = an.clean({"body": "keyXbk_GLUED_1 and Ztk-AbCd-EfGh9", "list": ["abk_IN_LIST"]})
+        self.assertNotIn("bk_GLUED_1", json.dumps(glued))                 # \b-based redaction misses these
+        self.assertNotIn("tk-AbCd-EfGh", json.dumps(glued))
+        self.assertNotIn("bk_IN_LIST", json.dumps(glued))
         state, posts, logged, out = {"now": 0.0, "tick": 100}, [], [], io.StringIO()
         with um.patch("sys.stdout", out), um.patch.object(an, "post_announce",
                                                           lambda t, k: {"http_error": 500, "body": "echo bk_LEAK_9"}):
