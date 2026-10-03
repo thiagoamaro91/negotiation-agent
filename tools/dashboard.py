@@ -438,7 +438,7 @@ def fold_duel_log(st: dict, lines) -> dict:
             st["last_error"] = {"time": str(row.get("ts") or "")[11:19], "event": ev, "duel": row.get("duel"),
                                 "where": row.get("where") or row.get("action"),
                                 "what": str(row.get("code") or row.get("kind") or "")[:60],
-                                "msg": re.sub(r"[-+]?\d+(?:\.\d+)?", "#", str(row.get("msg") or ""))[:120]}
+                                "msg": re.sub(r"[-+]?\d+(?:\.\d+)?", "n", str(row.get("msg") or ""))[:120]}
         did = row.get("duel")
         if did is None or isinstance(did, (dict, list)):
             continue
