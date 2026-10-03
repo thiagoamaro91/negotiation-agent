@@ -144,6 +144,12 @@ def patched_sleep(clock):
 
 # ---------------------------------------------------------------- the fake game server
 
+# our set multipliers as /api/me reports them (kit/RULES.md: the same six numbers, shuffled per team). The ladder
+# ceiling of a buy is floor(book x affinity[set]); LAV 1.6 keeps the old fixtures' limits (LAV-09 90 of book 77, LAV-01
+# 12 of book 10) under it, so only tests that set their own affinity see a clip.
+AFFINITY = {"LAV": 1.6, "SAL": 1.3, "LAT": 1.1, "RET": 0.9, "MAL": 0.7, "CHA": 0.5}
+
+
 class _Resp:
     def __init__(self, data):
         self._data = data
@@ -164,7 +170,7 @@ class FakeServer:
 
     def __init__(self, dealer="chato", side="sell", opening=16, replies=(), final=None, item="MAL-06", asset_id=42,
                  expiry=4, cash=1000, opening_final=False, pause=None, clock_down=None, tick_seconds=15.0,
-                 max_requests=5000, assets=(), cards=None, values=None, frozen=None):
+                 max_requests=5000, assets=(), cards=None, values=None, frozen=None, affinity=None):
         self.vc = VirtualClock(*(pause or (None, None)), tick_seconds=tick_seconds, frozen=frozen)
         self.dealer, self.side, self.item, self.asset_id = dealer, side, item, asset_id
         self.opening, self.opening_final = opening, opening_final
@@ -172,6 +178,7 @@ class FakeServer:
         self.clock_down = clock_down          # (from, to) virtual seconds in which /api/clock times out
         self.max_requests = max_requests
         self.assets, self.cards, self.values = list(assets), cards, values or {}
+        self.affinity = dict(AFFINITY if affinity is None else affinity)
         self.tid = 7
         self.thread = None
         self.offers, self.messages = {}, []
@@ -304,6 +311,7 @@ class FakeServer:
         if path == "/api/me" and method == "GET":
             return self._injected("me") or (200, {
                 "name": self.TEAM, "cash": self.cash, "level": 2, "unlocked": [], "assets": list(self.assets),
+                "affinity": dict(self.affinity),
                 "score": {"deals": 3, "ladder_points": 0, "score": 0, "rank": 16}})
         if path == "/api/me/value":
             return 200, {"card": query.get("card"), "your_value": self.values.get(query.get("card"), 50)}
@@ -453,12 +461,13 @@ class FakeAccount:
 
     cash = 169
     assets = []
+    affinity = AFFINITY
     cards = ({"id": "LAV-09", "rarity": "rare", "name": "LAV-09", "book": 77},
              {"id": "LAV-01", "rarity": "common", "name": "LAV-01", "book": 10})
 
     def me(self):
         return {"name": "t03", "cash": self.cash, "level": 2, "score": {"deals": 3}, "unlocked": [],
-                "assets": list(self.assets)}
+                "assets": list(self.assets), "affinity": dict(self.affinity)}
 
     def catalog(self):
         return {"sets": [{"id": "LAV", "released": True, "cards": list(self.cards)}]}

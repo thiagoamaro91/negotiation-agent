@@ -22,6 +22,7 @@ settle_trade() follows an accepted offer to its settlement and reports "unsettle
 """
 from __future__ import annotations
 
+import math
 import shlex
 import time
 
@@ -280,3 +281,74 @@ def lock_timeout_line(tid: int, ticks: int) -> str:
     """The one line run prints when the duel lock outlasted --max-defer-ticks (it then exits with EXIT_LOCK_TIMEOUT)."""
     return (f"Thread {tid} closed without a deal: the duel lock stayed fresh for {ticks} ticks, so the accept never "
             f"went out. Run again after the duel wave, or raise --max-defer-ticks.")
+
+
+# ---------------------------------------------------------------- the ladder value gate
+#
+# A dealer deal on the wrong side of our private value earns no ladder credit (docs/findings.md, "Ladder value gate"):
+# a buy above, or a sale below, what the card is worth to us. The API value (/api/me/value, /api/me) can sit ABOVE the
+# gate for a buy (a card that completes a page carries the page bonus: LAT-09 read 77 before LAT-03 and 149.9 after),
+# so a limit of min(API value, --cap) let Friday's LAT-06 and LAT-07 close over value for nothing. The gate the bots
+# enforce is book x our set multiplier (from /api/me "affinity", never hardcoded), first copy for a buy; a sale is
+# graded against the copy we give up: 100 % for the only copy, 25 % for the second, 10 % for the third.
+
+BOOK_BY_RARITY = {"common": 10, "uncommon": 25, "rare": 70, "epic": 180, "legendary": 450}   # fallback: the catalog wins
+COPY_MARGINALS = (1.0, 0.25, 0.1)   # catalog "values.copy_marginals": what the 1st, 2nd and 3rd copy of a card are worth
+
+
+def card_set(ref: str) -> str:
+    return str(ref).split("-")[0]
+
+
+def _round6(x: float) -> float:
+    return round(x, 6)   # 10 x 1.1 reads 11.000000000000002: never let float noise move a floor or a ceiling
+
+
+def ladder_ceiling(book, multiplier) -> int | None:
+    """The most a first copy may cost for the ladder to credit it: floor(book x set multiplier). None when the
+    multiplier is unknown (the caller must then refuse, never guess)."""
+    if not book or multiplier is None:
+        return None
+    return int(math.floor(_round6(float(book) * float(multiplier))))
+
+
+def ladder_floor(book, multiplier, marginal: float = 1.0) -> int | None:
+    """The least a copy may be sold for: ceil(book x set multiplier x the marginal of the copy we give up)."""
+    if not book or multiplier is None:
+        return None
+    return int(math.ceil(_round6(float(book) * float(multiplier) * float(marginal))))
+
+
+def copy_marginal(copies_held: int, marginals=COPY_MARGINALS) -> float:
+    """What the copy we sell is worth, as a share of a first copy, when we hold `copies_held` of the card."""
+    return float(marginals[max(0, min(int(copies_held), len(marginals)) - 1)])
+
+
+def buy_ceiling(me: dict, ref: str, book) -> int | None:
+    """floor(book x our multiplier for the card's set), from the affinities of /api/me; None if /api/me has none."""
+    return ladder_ceiling(book, (me.get("affinity") or {}).get(card_set(ref)))
+
+
+def sell_ladder_floor(me: dict, asset: dict, copies_held: int, book=None, marginals=COPY_MARGINALS) -> int | None:
+    """ceil(book x multiplier x marginal) for the copy `asset` we would give up; None if the affinity is unknown."""
+    book = book or BOOK_BY_RARITY.get(asset.get("rarity"))
+    mult = (me.get("affinity") or {}).get(asset.get("set") or card_set(asset.get("ref", "")))
+    return ladder_floor(book, mult, copy_marginal(copies_held, marginals))
+
+
+def refuse_caps(plan: list, cap) -> tuple[list, list]:
+    """--cap above the ladder ceiling of a buy is refused for that buy (it comes back in the second list with the
+    reason; run stops before any thread opens). A cap at or below the ceiling, no cap, and sells are untouched."""
+    if cap is None or cap <= 0:
+        return plan, []
+    kept, refused = [], []
+    for p in plan:
+        top = p.get("ladder_value")
+        if p["side"] == "buy" and top is not None and cap > top:
+            refused.append(dict(p, why=f"--cap {flag_value(cap)} is above the ladder ceiling {top} "
+                                       f"(book {flag_value(p.get('book'))} x our {card_set(p['item'])} multiplier, floored): "
+                                       f"a deal above it earns no ladder credit"))
+        else:
+            kept.append(p)
+    return kept, refused
+

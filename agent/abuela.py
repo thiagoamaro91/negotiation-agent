@@ -22,6 +22,13 @@ Usage (from the repo root):
     python3 agent/abuela.py run --only LAV-07 --resume 412              # continue a thread a run left open
 When the round budget runs out we take her standing offer if it is inside our limit instead of closing on it.
 Sell floors are rounded up before any price is built (a 19.5 floor never yields a binding 19).
+Ladder value gate (agent/dealer_client.py): a deal on the wrong side of our private value earns no ladder credit, and the
+API value can sit above that gate (a page-completing card carries the page bonus). So a buy's limit is clipped to
+floor(book x our set multiplier), the multiplier read from /api/me, and `plan` prints it next to the API value as
+ladder=N; a --cap above it is refused (plan prints REFUSED, run stops before any thread opens, exit 2). Sells are
+graded against the copy we give up (100 % / 25 % / 10 %): the default floor is never below ceil(book x multiplier x
+marginal).
+`open` logs the API value and the gate next to the limit.
 `run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds), and
 re-checks the lock before every accept: while it is fresh the accept waits a tick (no round spent).
 `run` exits 3 when the cash reserve (--reserve, default 280 P) blocked every buy, with one line saying how to pass it;
@@ -52,8 +59,9 @@ from bazaar_sdk import BazaarError  # noqa: E402
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
 from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOCK_LOST,  # noqa: E402,F401
                            EXIT_CLOSE_FAILED, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS, MAX_FAILED_WAITS,
-                           Rounds, clock_lost_line, close_failed_line, command, flag_value, guarded_accept,
-                           lock_timeout_line, reserve_line, settle_trade, try_close, unsettled_line)
+                           Rounds, buy_ceiling, clock_lost_line, close_failed_line, command, flag_value, guarded_accept,
+                           lock_timeout_line, refuse_caps, reserve_line, sell_ladder_floor, settle_trade, try_close,
+                           unsettled_line)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
@@ -140,6 +148,13 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
 
 # ---------------------------------------------------------------- one negotiation
 
+def gate_numbers(target: dict) -> dict:
+    """The two numbers a thread is judged by, logged at open: our API value and the ladder gate (buy: floor(book x
+    multiplier); sell: ceil(book x multiplier x copy marginal)); `value` next to them is the limit the bot trades at."""
+    key = "ladder_value" if target["side"] == "buy" else "ladder_floor"
+    return {"private": target.get("private"), key: target.get(key)}
+
+
 def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
@@ -159,7 +174,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             log("open_refused", item=item, side=side, code=e.code, msg=e.message)
             return {"result": "refused", "code": e.code}
         tid = th["id"]
-        log("open", thread=tid, side=side, item=item, value=value, welcome=first_deal)
+        log("open", thread=tid, side=side, item=item, value=value, welcome=first_deal, **gate_numbers(target))
 
     rounds = Rounds(b, MAX_ROUNDS, MAX_DEFER_TICKS)  # a round is a confirmed tick; deferrals and pauses are free
 
@@ -345,16 +360,22 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None = 
         for c in s["cards"]:
             if c["rarity"] not in ("common", "uncommon") or c["id"] in held:
                 continue
+            top = buy_ceiling(me, c["id"], c["book"])   # floor(book x our set multiplier): the ladder gate
+            if top is None:   # /api/me carried no multiplier for this set: never guess, no target
+                continue
             v = b.value(c["id"])["your_value"]
+            limit = min(v, top)   # the API value can sit above the gate (page bonus); --cap only lowers further
             buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
-                         "value": min(v, cap) if cap else v, "private": v})   # --cap can only lower our limit
+                         "value": min(limit, cap) if cap else limit, "private": v, "ladder_value": top})
     buys.sort(key=lambda x: -(x["value"] - 0.8 * x["book"]))
     sells = []
     for ref, copies in held.items():
         if len(copies) > 1 and copies[0]["rarity"] in ("common", "uncommon"):
             spare = max(copies, key=lambda a: a["serial"])  # keep the lowest serial
+            gate = sell_ladder_floor(me, spare, len(copies))   # the copy we give up: 2nd 25 %, 3rd 10 % of a first
             sells.append({"side": "sell", "item": ref, "name": spare["name"], "asset_id": spare["id"],
-                          "value": spare["your_value"] + 2})
+                          "value": max(spare["your_value"] + 2, gate or 0), "private": spare["your_value"],
+                          "ladder_floor": gate})
     plan = []
     for i in range(max(len(buys), len(sells))):  # alternate so cash stays above the reserve
         if i < len(buys):
@@ -415,15 +436,29 @@ def main() -> None:
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap)
+    plan, cap_refused = refuse_caps(plan, args.cap)
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
+    if not me.get("affinity"):   # without our multipliers no buy has a ladder ceiling: build_plan planned none
+        print("WARNING: /api/me carries no set multipliers (affinity): no buy can be planned, the ladder gate is unknown.")
     for p in plan:
-        print(f"  {p['side']:4} {p['item']:7} value={p['value']:6.1f} private={p.get('private', p['value']):6.1f}"
-              f"  {p.get('name', '')}")
+        gate = p.get("ladder_value") if p["side"] == "buy" else p.get("ladder_floor")
+        print(f"  {p['side']:4} {p['item']:7} value={p['value']:6.1f} private={p.get('private', p['value']):6.1f} "
+              f"{'ladder' if p['side'] == 'buy' else 'ladder_floor'}={gate}  {p.get('name', '')}")
+    for p in cap_refused:   # printed by plan too, so the operator sees it before run
+        print(f"  REFUSED buy:{p['item']}: {p['why']}")
     print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P) cap={args.cap}")
     if args.cmd == "plan":
         return
+    if cap_refused:  # a cap above the ladder ceiling would let a deal close over value for no credit: stop here
+        print(f"Not starting: {len(cap_refused)} buy(s) refused by --cap; lower it to the ladder ceiling or drop those "
+              f"cards.", flush=True)
+        sys.exit(2)
+    if not me.get("affinity"):
+        print("Not starting: /api/me carries no set multipliers, so no ladder ceiling can be computed.", flush=True)
+        sys.exit(2)
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
-              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]])
+              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value", "private", "ladder_value", "ladder_floor")}
+                    for p in plan[:args.max_deals + 3]])
     done = 0
     stop = None   # (exit status, the one line for the operator) when the plan must stop
     buys_reached, buys_short = 0, []

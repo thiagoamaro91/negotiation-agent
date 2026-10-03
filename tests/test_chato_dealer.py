@@ -211,7 +211,7 @@ def asset(aid, ref, rarity, serial, your_value, kind="card"):
             "name": ref}
 
 
-ME = {"cash": 400, "assets": [
+ME = {"cash": 400, "affinity": {"LAV": 1.6, "SAL": 1.3, "LAT": 1.1, "RET": 0.9, "MAL": 0.7, "CHA": 0.5}, "assets": [
     asset(42, "MAL-06", "uncommon", 5, 17.5),        # single
     asset(44, "MAL-08", "rare", 3, 49),              # single
     asset(50, "SAL-03", "uncommon", 3, 32.5),        # kept (lowest serial)
