@@ -17,7 +17,8 @@ Open pages are told at once (server-sent events on /stream) and fetch the new st
     python3 tools/brain.py --once             # one refresh into logs/brain/latest.json, then exit
     tools/run_brain.sh                        # on the VM: recorder + brain in tmux, restarted if they die
 
-Settings (environment or the --env file): BRAIN_TOKEN gates every page and read (?t=...); BRAIN_WRITE_TOKEN lets
+Settings (environment or the --env file): BRAIN_TOKEN gates every page and read (?t=...) and is required: the server
+refuses to start without it; BRAIN_WRITE_TOKEN lets
 tools/me_relay.py push our account (POST /ingest/me) from the laptop that holds the team key, so the key never
 leaves that laptop, and lets the desks post heartbeats (POST /ingest/desk, header X-Brain-Write, body
 {"name", "mode": "shadow"|"live", "tick", "last_decision", "reason"}; 4 KB at most, any field whose name contains
@@ -473,6 +474,14 @@ def serve(port: int, host: str, token: str | None, write_token: str | None) -> N
     server.serve_forever()
 
 
+def require_token(token: str | None) -> str:
+    """The page shows our plan, cash and holdings: the server never starts open."""
+    if not (token or "").strip():
+        raise SystemExit("brain: BRAIN_TOKEN is unset or empty; refusing to start an open page. Set it in the "
+                         "environment or the --env file (~/bazaar/brain.env), e.g. BRAIN_TOKEN=$(openssl rand -hex 16)")
+    return token.strip()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Team 3's market brain (keyless, plans only).")
     ap.add_argument("--port", type=int, default=8790)
@@ -489,9 +498,9 @@ def main() -> None:
               f"{len(d['plan']['dealer'])} dealer rows, {len(d['venues'])} venues, "
               f"{sum(1 for r in d['tape'] if r.get('opportunity'))} opportunities on the tape, {d['compute_s']} s")
         return
+    token = require_token(os.environ.get("BRAIN_TOKEN"))
     load_desks()
     threading.Thread(target=worker, daemon=True).start()
-    token = os.environ.get("BRAIN_TOKEN")
     print(f"brain on http://{args.host}:{args.port}/ ({'token required' if token else 'open'}; "
           f"account relay {'on' if os.environ.get('BRAIN_WRITE_TOKEN') else 'off'})", flush=True)
     serve(args.port, args.host, token, os.environ.get("BRAIN_WRITE_TOKEN"))

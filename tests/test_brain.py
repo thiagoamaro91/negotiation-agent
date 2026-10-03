@@ -27,6 +27,15 @@ class CatalogEveryCycle(unittest.TestCase):
         self.assertEqual(calls, [True])
 
 
+class TokenRequired(unittest.TestCase):
+    def test_the_server_refuses_to_start_without_a_token(self):
+        for bad in (None, "", "   "):
+            with self.assertRaises(SystemExit) as cm:
+                brain.require_token(bad)
+            self.assertIn("BRAIN_TOKEN", str(cm.exception))
+        self.assertEqual(brain.require_token(" abc "), "abc")
+
+
 class Relay(unittest.TestCase):
     def test_no_field_named_like_a_key_leaves_the_laptop(self):
         me = {"cash": 10, "starter_broker_key": "bk-secret", "venue": {"broker_key": "x", "name": "v"},
