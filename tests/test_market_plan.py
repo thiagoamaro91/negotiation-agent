@@ -199,5 +199,13 @@ class PageBonus(unittest.TestCase):
                 os.environ[mp.PAGE_BONUS_ENV] = saved
 
 
+class Reserve(unittest.TestCase):
+    def test_the_venue_bond_is_kept_only_until_our_venue_is_open(self):
+        self.assertEqual(mp.cash_reserve({"venue": None}), mp.CASH_RESERVE)
+        self.assertEqual(mp.cash_reserve({}), mp.CASH_RESERVE)
+        self.assertEqual(mp.cash_reserve({"venue": "v20"}), mp.VENUE_OPEN_RESERVE)
+        self.assertLess(mp.VENUE_OPEN_RESERVE, mp.CASH_RESERVE)
+
+
 if __name__ == "__main__":
     unittest.main()
