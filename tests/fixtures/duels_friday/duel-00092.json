@@ -1,0 +1,24 @@
+{
+ "duel": 92,
+ "session": 1,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Plaza de Olavide",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 182,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 144,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

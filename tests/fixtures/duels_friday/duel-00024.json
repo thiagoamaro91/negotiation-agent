@@ -1,0 +1,24 @@
+{
+ "duel": 24,
+ "session": 1,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Andén 0",
+ "issues": [
+  "price"
+ ],
+ "your_days_weight": null,
+ "days_meaning": null,
+ "your_limit": 65,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 132,
+ "decay_per_round": 0.06,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

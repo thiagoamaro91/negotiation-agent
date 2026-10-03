@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# Friday's 18 closed practice duels, frozen as committed before the Saturday log block (logs/duels/ keeps growing).
+FRIDAY_DUELS = Path(__file__).resolve().parent / "fixtures" / "duels_friday"
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "agent"))
 sys.path.insert(0, str(ROOT / "kit"))
@@ -68,7 +70,7 @@ class RoundsRule(unittest.TestCase):
         self.assertEqual(arena.rounds_of([(1, "them"), (2, "us"), (3, "us"), (4, "them")], "min"), 2)
 
     def test_both_rules_reproduce_all_18_friday_duels(self):
-        files = sorted(f for f in (ROOT / "logs" / "duels").glob("duel-*.json") if "-first" not in f.name)
+        files = sorted(f for f in FRIDAY_DUELS.glob("duel-*.json") if "-first" not in f.name)
         self.assertEqual(len(files), 18)
         for f in files:
             d = json.loads(f.read_text())
@@ -148,7 +150,7 @@ class OurLimit(unittest.TestCase):
         self.assertEqual(bad, [])
 
     def test_friday_replay_reads_only_structure_and_scores_the_closed_duels(self):
-        rr = arena.friday_replay({})
+        rr = arena.friday_replay({}, files=arena.friday_duels(FRIDAY_DUELS))
         scored = [r for r in rr if r["scored"]]
         self.assertEqual(sorted(r["duel"] for r in scored), [9, 10, 29, 30, 37, 38, 93, 94])
         for r in scored:
