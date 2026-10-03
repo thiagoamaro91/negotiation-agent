@@ -32,6 +32,10 @@ reach it):
                                               a personal shortlist: fair prices, the market aggregated without venues
                                               or makers, v20 offers with their exact accept calls, a ready bid / ask
                                               for v20 and thread calls to negotiate on v20
+    GET /api/missing?team=tNN                 the missing-card board (tools/matchmaker.py's last output): explicit
+                                              live wants first, each with the one accept call that completes it;
+                                              needs that are only inferred say so; ?team= adds what YOU hold that
+                                              someone wants. Also the first key of /api/match and the page's JSON.
     GET /api/v20                              our venue's book: every offer with its exact accept call
     GET /api/fair/REF                         the fair price block of one card
 
@@ -849,6 +853,107 @@ def card_view(snap: dict, ref: str) -> dict | None:
     return out
 
 
+# ---------------------------------------------------------------- the missing-card board (tools/matchmaker.py)
+#
+# The matchmaker writes logs/matchmaker/latest.json (`matchmaker.py json --live --out ... --every 120`). Its output
+# names who holds which copies; the board here never does: each entry keeps the buyer side, the card, the live offer
+# and its accept call, prices, and a COUNT of holders (the holder map stays private, as everywhere on this side).
+
+MATCHES_FILE = ROOT / "logs" / "matchmaker" / "latest.json"
+MATCHES_MAX_AGE = 900.0             # an older file shows an empty board: a stale match names a card already bought
+MISSING_MAX = 12
+INFERRED_NOTE = "appears to be missing (inferred from public trades, not confirmed)"
+
+
+def _team_ok(t) -> bool:
+    return isinstance(t, str) and bool(MATCH_TEAM_RE.match(t)) and t != US
+
+
+def missing_entry(m: dict, team: str | None = None) -> dict | None:
+    """One matchmaker match, whitelisted for the public side. None for anything malformed or about Team 3."""
+    if not isinstance(m, dict) or not _team_ok(m.get("team")) or not isinstance(m.get("card"), str) \
+            or not REF_RE.match(m["card"]):
+        return None
+    ref, a = m["card"], m.get("action") if isinstance(m.get("action"), dict) else None
+    if a and (not _team_ok(a.get("maker")) or not isinstance(a.get("offer"), int)):
+        return None
+    holders = [h for h in m.get("holders") or [] if isinstance(h, dict) and _team_ok(h.get("team"))]
+    pr = m.get("prices") if isinstance(m.get("prices"), dict) else {}
+    inferred = bool(m.get("inferred"))
+    e = {"tier": m.get("tier"), "inferred": inferred, "team": m["team"], "team_name": team_name(m["team"]),
+         "card": ref, "card_name": m.get("card_name"), "rarity": m.get("rarity"), "set_name": m.get("set_name"),
+         "need": INFERRED_NOTE if inferred else f"live {(a or {}).get('side', 'want')}",
+         "p_missing": m.get("p_missing") if inferred else None, "holder_count": len(holders),
+         "dealers": [d.get("name") for d in m.get("dealers") or [] if isinstance(d, dict) and d.get("name")][:2],
+         "price": m.get("price") if isinstance(m.get("price"), int) else None,
+         "fair": pr.get("fair"), "team_range": pr.get("team_range") if isinstance(pr.get("team_range"), dict) else None}
+    if a:
+        e["action"] = {k: a.get(k) for k in ("offer", "venue", "side", "price", "fee", "expires_tick", "maker", "gives")}
+        e["action"]["maker_name"] = team_name(a["maker"])
+        e["action"]["call"] = f"POST {GAME}/api/offers/{a['offer']}/accept"
+        e["action"]["how"] = ("the buyer accepts this ask" if a.get("side") == "ask" else
+                              "a team with a copy accepts it directly (a swap is never crossed by a broker), body "
+                              f'{{"assets": ["<your {ref} asset id>"]}}' if a.get("side") == "swap" else
+                              f'a team with a copy accepts it, body {{"assets": ["<your {ref} asset id>"]}}')
+    elif e["price"]:
+        e["orders"] = {"bid": {"venue": VENUE, "give": {"cash": e["price"]}, "want": {"cards": [ref]}},
+                       "ask": {"venue": VENUE, "give": {"assets": [f"<your {ref} asset id>"]},
+                               "want": {"cash": e["price"]}},
+                       "how": f"POST {GAME}/api/offers with your key; our broker crosses a bid and an ask for the same "
+                              f"card on {VENUE} at the midpoint the tick they meet (0 % fee)"}
+    if team:
+        e["yours"] = m["team"] == team
+        mine = next((h for h in holders if h["team"] == team), None)
+        e["you_hold"] = mine is not None
+        if mine and isinstance(mine.get("asset"), int) and e["price"] and not a:
+            e["orders"]["your_ask"] = {"venue": VENUE, "give": {"assets": [mine["asset"]]}, "want": {"cash": e["price"]}}
+    return e
+
+
+def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE) -> dict:
+    """GET /api/missing: the board from the matchmaker's output, best first. With `team`, only the matches where it is
+    the buyer or where it holds a copy someone wants (its own asset ids only)."""
+    now = time.time() if now is None else now
+    at = doc.get("generated_at") if isinstance(doc, dict) else None
+    stale = not isinstance(at, (int, float)) or now - at > max_age
+    rows = []
+    for m in [] if stale else (doc.get("matches") or []):
+        e = missing_entry(m, team)
+        if e is None or (team and not (e["yours"] or e["you_hold"])):
+            continue
+        rows.append(e)
+        if len(rows) >= MISSING_MAX:
+            break
+    return {"name": "Open Bazaar · who needs which card",
+            "about": "A free public directory of who needs which card, from public game data only: explicit live wants "
+                     "first, each with the one call that completes it; a need marked inferred is a guess from public "
+                     f"trades, not a fact. Zero-fee matching on La Celestina ({VENUE}).",
+            "tick": doc.get("tick") if isinstance(doc, dict) else None, "generated_at": at, "stale": stale,
+            "team": team, "matches": rows}
+
+
+class MissingBoard:
+    """The matchmaker's file, re-read when it changes. A missing or unreadable file is an empty board."""
+
+    def __init__(self, path: Path | None = MATCHES_FILE):
+        self.path, self.key, self.doc = Path(path) if path else None, None, {}
+
+    def load(self) -> dict:
+        if self.path is None:
+            return {}
+        try:
+            st = self.path.stat()
+            if (st.st_mtime_ns, st.st_size) != self.key:
+                self.doc = json.loads(self.path.read_text(encoding="utf-8"))
+                self.key = (st.st_mtime_ns, st.st_size)
+        except (OSError, ValueError):
+            self.doc, self.key = {}, None
+        return self.doc if isinstance(self.doc, dict) else {}
+
+
+MISSING = MissingBoard()
+
+
 # ---------------------------------------------------------------- the agent API (keyless, read-only)
 #
 # Everything below reads the PUBLIC view only (public_view's output), never the private snapshot: the holder map
@@ -1182,6 +1287,36 @@ def compact(body) -> str:
     return json.dumps(body, separators=(",", ":"))
 
 
+def bazaar_lines(missing: list, game: str) -> list:
+    """format=text: the Open Bazaar entries that concern the caller (it needs the card, or holds a copy someone
+    needs), one line each with the one call. An inferred need is said as one."""
+    out = []
+    for m in missing:
+        if not isinstance(m, dict) or not (m.get("yours") or m.get("you_hold")):
+            continue
+        ref, a, o = m["card"], m.get("action"), m.get("orders") or {}
+        need = (f"{'you appear' if m.get('yours') else m['team_name'] + ' appears'} to be missing {ref} (inferred)"
+                if m.get("inferred") else "")
+        if a:
+            where = "El Rastro" if a["venue"] == "rastro" else a["venue"]
+            what = (f"{a['maker_name']} bids {P(a['price'] or 0)} for {ref}" if a["side"] == "bid" else
+                    f"{a['maker_name']} gives {a.get('gives')} for any {ref}" if a["side"] == "swap" else
+                    f"{a['maker_name']} sells {ref} for {P(a['price'] or 0)}")
+            if a["side"] == "ask" and m.get("yours"):
+                out.append(f"OPEN BAZAAR: {what} on {where} (offer {a['offer']}); {need or 'you bid for it'} -> "
+                           f"{a['call']} {{}}")
+            elif a["side"] in ("bid", "swap") and m.get("you_hold"):
+                out.append(f"OPEN BAZAAR: {what} on {where} (offer {a['offer']}) and you hold a copy -> {a['call']} "
+                           + compact({"assets": [f"<your {ref} asset id>"]}))
+        elif m.get("yours") and o.get("bid"):
+            out.append(f"OPEN BAZAAR: {need}; BUY {ref} at {P(o['bid']['give']['cash'])} on {o['bid']['venue']} -> "
+                       f"POST {game}/api/offers {compact(o['bid'])}")
+        elif m.get("you_hold") and o.get("your_ask"):
+            out.append(f"OPEN BAZAAR: {need} and you hold a copy; SELL {ref} at {P(o['your_ask']['want']['cash'])} on "
+                       f"{o['your_ask']['venue']} -> POST {game}/api/offers {compact(o['your_ask'])}")
+    return out
+
+
 def text_view(view: dict) -> str:
     """format=text: short self-contained lines a simple agent follows without parsing JSON, most valuable first
     (an offer on our venue it can accept now, then orders with someone on the other side, then the rest)."""
@@ -1218,12 +1353,15 @@ def text_view(view: dict) -> str:
     for w in view.get("waiting_for_you") or []:
         a = w["accept"]
         first.append(f"ACCEPT offer {w['offer']} on {vid}: {w['text']} -> {a['method']} {game}{a['path']} {compact(a['body'])}")
+    bazaar = bazaar_lines(view.get("missing") or [], game)
     who = f" for {view['team']}" if view.get("team") else ""
     lines = [f"# La Celestina {vid}, tick {view.get('tick')}{who}. For each line: check your own value for the card "
              f"(buy at or below it, sell at or above your floor), replace <your REF asset id> with your copy's id, "
              f"then send it exactly as written to the game with your key (header X-Team-Key). Never send your key here."]
-    lines += first[:TEXT_ACTIONS] + [a[2] for a in acts[:max(0, TEXT_ACTIONS - len(first))]]
-    if not acts and not first:
+    lines += first[:TEXT_ACTIONS]
+    lines += bazaar[:max(0, TEXT_ACTIONS - len(first))]
+    lines += [a[2] for a in acts[:max(0, TEXT_ACTIONS - len(first) - len(bazaar))]]
+    if not acts and not first and not bazaar:
         lines.append(f"NOTHING to accept on {vid} right now. To ask for a card you miss: BUY <REF> at <your price> -> "
                      f"POST {game}/api/offers " + compact({"venue": vid, "give": {"cash": "<your price>"},
                                                           "want": {"cards": ["<REF>"]}, "expires_in_ticks": ORDER_TICKS}))
@@ -1562,7 +1700,7 @@ LOCK = threading.Lock()
 
 
 def publish(snap: dict) -> None:
-    pub = public_view(snap)
+    pub = {"missing": missing_view(MISSING.load()), **public_view(snap)}
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
                      public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
@@ -1697,6 +1835,12 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 if board is not None:
                     health["concierge_board"] = board.health()  # counts only
                 return self._send(200, json.dumps(health).encode(), "application/json")
+            if scope == "public" and path == "/api/missing":
+                q = urllib.parse.parse_qs(u.query)
+                team = (q.get("team") or [None])[0]
+                if team is not None and not MATCH_TEAM_RE.match(team):
+                    return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
+                return self._json(200, missing_view(MISSING.load(), team))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
@@ -1714,6 +1858,7 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
+                        view = {"missing": missing_view(MISSING.load(), team)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
@@ -1799,6 +1944,8 @@ def main() -> None:
                                                        "from, e.g. http://100.116.189.106:8780 (default: off)")
     s.add_argument("--concierge-public-url", default="", help="the concierge's public address, shown in /agents.md "
                                                               "(default: --concierge-url)")
+    s.add_argument("--matches", type=Path, default=MATCHES_FILE, help="tools/matchmaker.py's json output, read for "
+                                                                      "the missing-card board (/api/missing)")
     s.add_argument("--access-log", type=Path, default=None, help="append one JSONL line per public request (no "
                                                                   "bodies, no keys; /healthz skipped) to this file")
     o = sub.choices["once"]
@@ -1817,6 +1964,7 @@ def main() -> None:
         guess = Path(args.feed_file).with_name("snapshots.jsonl")
         args.snapshots_file = guess if guess.exists() else None
     if args.cmd == "serve":
+        MISSING.path = args.matches
         args.private_port = args.port + 1 if args.private_port is None else args.private_port
         serve(args)
         return

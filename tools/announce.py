@@ -85,6 +85,7 @@ MATCHES = ROOT / "logs" / "matchmaker" / "latest.json"   # tools/matchmaker.py j
 MATCHES_MAX_AGE_S = 900  # --variant missing: no post from a matchmaker file older than this
 MISSING_STATE = ROOT / "logs" / "state" / "announce_missing.json"   # the matches announced lately
 MISSING_REPEAT = 6       # --variant missing: a match is not announced again within this many posts
+OPEN_BAZAAR = "Open Bazaar · who needs which card"   # the name other teams see (Thiago's Sunday plan)
 
 
 def shape(o: dict):
@@ -545,7 +546,7 @@ def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=()
     m = pick_match(doc, books, exclude, recent, rival_venues)
     if m is None:
         raise LookupError("no match to announce")
-    text = "La Celestina (v20) matchmaker, public data: " + missing_line(m, fee)
+    text = f"{OPEN_BAZAAR} (public data, La Celestina {VENUE}): " + missing_line(m, fee)
     skip = set(exclude or ())
     shown = [d for o in venue_offers or [] if not refs(o) & skip for d in [describe(o, names)] if d][:SHOW_OFFERS]
     if shown:
