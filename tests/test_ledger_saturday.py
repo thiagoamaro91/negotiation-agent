@@ -104,11 +104,51 @@ class Packages(unittest.TestCase):
         self.assertEqual(led["t01"]["cash"], 410)
         self.assertEqual(led["t02"]["cash"], 400 - 10 - 2)
 
-    def test_without_a_matching_listing_the_cash_stays_put(self):
+    def test_without_a_matching_listing_the_cash_stays_put_and_the_whole_amount_is_unsure(self):
         led = ledger.build(feed(
             (1, "offer.listed", listed(1, "t01", give_cash=10, give_ids=(5, 7), want_refs=("SAL-01",))),
             (2, "settlement", two_way(10, 2, (5, "LAV-01", "t01", "t02"), (6, "SAL-01", "t02", "t01")))))
         self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 400))  # asset 7 never moved: not that listing
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (12, 12))
+
+    def test_an_unmatched_package_bounds_every_balance_it_could_leave(self):
+        led = ledger.build(feed((2, "settlement", two_way(38, 7, (960, "RET-01", "t03", "t02"),
+                                                           (490, "LAV-10", "t02", "t03")))))
+        for team in ("t02", "t03"):
+            low, high = led[team]["cash"] - led[team]["cash_unsure"], led[team]["cash"] + led[team]["cash_unsure"]
+            for real in (400 - 38 - 7, 400 - 38, 400 + 38 - 7, 400 + 38):  # who paid the cash, who took the listing
+                self.assertTrue(low <= real <= high, (team, real, low, high))
+
+    def test_a_later_cancelled_listing_that_does_not_fit_cannot_take_the_swap(self):
+        # t02's listing (SAL-01 for LAV-08) was taken by t01; t01's own later listing (LAV-08 for MAL-09) was cancelled
+        rep = {}
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t02", give_ids=(6,), want_refs=("LAV-08",))),
+            (2, "offer.listed", listed(2, "t01", give_ids=(5,), want_refs=("MAL-09",))),
+            (2, "offer.cancelled", {"offer": 2, "venue": "rastro"}),
+            (3, "settlement", two_way(0, 2, (5, "LAV-08", "t01", "t02"), (6, "SAL-01", "t02", "t01")))), report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (398, 400))
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (0, 0))
+
+    def test_a_fitting_listing_that_was_cancelled_or_sits_on_another_venue_does_not_count(self):
+        for other in ((2, "offer.cancelled", {"offer": 2, "venue": "rastro"}), None):
+            rows = [(1, "offer.listed", listed(1, "t02", give_ids=(6,), want_refs=("LAV-08",))),
+                    (2, "offer.listed", listed(2, "t01", give_ids=(5,), want_refs=("SAL-01",)))]
+            if other:
+                rows.append(other)  # t01's own listing fits the swap too, but was withdrawn first
+            else:
+                rows[1][2]["offer"]["venue"] = "v07"  # ... or was posted on another venue
+            rows.append((3, "settlement", two_way(0, 2, (5, "LAV-08", "t01", "t02"), (6, "SAL-01", "t02", "t01"))))
+            led = ledger.build(feed(*rows))
+            self.assertEqual((led["t01"]["cash"], led["t02"]["cash"], led["t01"]["cash_unsure"]), (398, 400, 0), other)
+
+    def test_two_listings_that_read_the_swap_differently_leave_it_unsure(self):
+        led = ledger.build(feed(
+            (1, "offer.listed", listed(1, "t02", give_ids=(6,), want_refs=("LAV-08",))),
+            (2, "offer.listed", listed(2, "t01", give_ids=(5,), want_refs=("SAL-01",))),
+            (3, "settlement", two_way(0, 2, (5, "LAV-08", "t01", "t02"), (6, "SAL-01", "t02", "t01")))))
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 400))
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (2, 2))
 
 
 class Acceptor(unittest.TestCase):
@@ -174,6 +214,40 @@ class WhoPaysTheFee(unittest.TestCase):
         self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (0, 400 - 50 - 5))
         self.assertEqual([u["tick"] for u in rep["flipped"]], [2])
         self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (0, 0))
+
+    def test_the_consistency_pass_checks_the_other_side_too(self):
+        # t01 buys from t02 (tick 2) and from t03 (tick 3), 10 P + 2 P fee each, no listings: the old rule charges t01
+        # both fees, and t01 then spends 378 P. Moving the later fee would sink t03 (it spent all its 410 P), so the
+        # earlier one moves: balances (0, 408, 0), never (0, 410, -2)
+        rep = {}
+        led = ledger.build(feed(
+            (2, "settlement", settlement("t02", "t01", "SAL-01", 10, "rastro", fee=2, asset=61)),
+            (3, "settlement", settlement("t03", "t01", "SAL-02", 10, "rastro", fee=2, asset=62)),
+            (4, "settlement", {"persona": "picaros", "price": 410, "items": [{"id": 91, "ref": "RET-09", "frm": "picaros", "to": "t03"}]}),
+            (5, "settlement", {"persona": "picaros", "price": 378, "items": [{"id": 92, "ref": "RET-10", "frm": "picaros", "to": "t01"}]})),
+            report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"], led["t03"]["cash"]), (0, 408, 0))
+        self.assertEqual(rep["overdrawn"], [])
+        self.assertEqual([u["tick"] for u in rep["flipped"]], [2])
+
+    def test_a_settlement_without_items_is_reported_not_fatal(self):
+        rep = {}
+        led = ledger.build(feed((2, "settlement", {"persona": None, "price": 38, "fee": 7, "parties": ["t01", "t02"],
+                                                   "items": []}),
+                                (3, "settlement", {"persona": None, "price": 5}),
+                                (4, "settlement", {"persona": "abuela", "price": 9, "items": None})), report=rep)
+        self.assertEqual((led["t01"]["cash"], led["t02"]["cash"]), (400, 400))
+        self.assertEqual((led["t01"]["cash_unsure"], led["t02"]["cash_unsure"]), (45, 45))
+        self.assertEqual(sum(1 for u in rep["unsure"] if u.get("incomplete")), 3)
+
+    def test_the_latest_snapshot_of_a_tick_is_the_one_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "snapshots.jsonl"
+            path.write_text("".join(json.dumps(r) + "\n" for r in (
+                {"tick": 380, "what": "rastro", "body": {"offers": [{"id": 1}, {"id": 2}]}},
+                {"tick": 381, "what": "rastro", "body": {"offers": [{"id": 1}, {"id": 2}]}},  # before the fill
+                {"tick": 381, "what": "rastro", "body": {"offers": [{"id": 1}]}})))           # after it
+            self.assertEqual(ledger.Boards(path).gone(381, "rastro"), {2})
 
     def test_an_unsure_fee_left_alone_is_reported_on_both_sides(self):
         rep = {}
