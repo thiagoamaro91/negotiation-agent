@@ -7,7 +7,7 @@ ssh fable@204.168.233.86
 cd ~/bazaar/negotiation-agent
 ```
 
-That folder holds `main` at 0289293 plus #5, #6, #7 and #8 (161 tests pass there), the team key in `.env` (mode 600, delete it Sunday after 15:00), and the tmux session `bazaar` with the windows `recorder`, `brain` and `desks`. Each long-running desk gets its own window:
+That folder holds `main` at 0289293 plus #5, #6, #7, #8 and #9 (all tests pass there), the team key in `.env` (mode 600, delete it Sunday after 15:00), and the tmux session `bazaar` with the windows `recorder`, `brain` and `desks`. Each long-running desk gets its own window:
 
 ```bash
 tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep 3600"
@@ -90,11 +90,14 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
 
 ## 10:15 · Duel agent armed
 
-12. **GATE**. `duel.py` waits until duels go live, so starting early is safe and covers a compressed clock. It writes `results/duel.lock` while duels are live: El Chato refuses to start and the market desk defers its accepts.
+12. **GATE**. `duel.py` waits until duels go live, so starting early is safe and covers a compressed clock. It writes `results/duel.lock` while duels are live: El Chato refuses to start and the market desk defers its accepts. `results/duel-params.json` on the VM already holds the **safe** Duels I params from PR #9 (`early_share 0.9, absent_at 0.2, absent_share 0.75, absent_last true`: +2.5 % over Thiago's defaults in the arena and never worse in any stress test). Check it first, then launch:
 
     ```bash
+    python3 agent/duel.py watch --once --params results/duel-params.json
     tmux new-window -t bazaar -n duel "cd ~/bazaar/negotiation-agent; python3 -u agent/duel.py run --until 13:15 --params results/duel-params.json; sleep 3600"
     ```
+
+    Switch to the **tuned** file (`cp docs/duel-lab/duel-params-duels1.json results/duel-params.json`, then restart the `duel` window; +5.6 %) only once one of our accepts at deadline-1 is seen to settle: it bets on that. `results/duel-params-duels1-overnight.json` is the VM search's latest full set (it keeps improving until ~07:28; compare `~/lab/duel/report_duels1.md` before using it). If the duel-improve PR (code-level improvements, flags off by default) is approved, its recommended flags go here too.
 
 ## 11:50 · Venue decision (GATE, 270 P, 250 refundable)
 
@@ -110,7 +113,7 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
 
 ## 11:30-13:00 · Duels I
 
-14. Watch the brain and the `duel` window. After the wave: refit the rivals on the 34 real duels and retune; load the new `results/duel-params.json` before 17:45.
+14. Watch the brain and the `duel` window. After the wave: add the new `logs/duels/duel-*.json` to the arena's replay, refit `WEIGHTS` and `NEVER_TAKES` in `tools/duel_arena.py`, and rerun the Duels II search from the overnight result: `python3 tools/duel_tune.py --session 2 --start ~/lab/duel/best_params_duels2.json --out results/duel-params-duels2-refit.json --report results/duels2-refit.md --workers 4 --max-minutes 60`. The overnight Duels II search runs until ~10:28; `results/duel-params-duels2-candidate.json` is its 03:40 snapshot (held-out objective 0.192 vs 0.176 for the defaults: better against tit-for-tat, silent and steady rivals, worse against deadline-only ones).
 
 ## Through the day · Market desk
 
@@ -121,7 +124,7 @@ tmux new-window -t bazaar -n NAME "cd ~/bazaar/negotiation-agent; COMMAND; sleep
 | Time | What |
 |---|---|
 | 12:00, 14:00, 16:00 | Market Tests. After each: efficiency, refit the broker if it runs (`python3 tools/bench_sim.py refit --log logs/broker/2026-10-03.jsonl`) |
-| 17:45 | **GATE**: `duel.py run --until 19:45 --params results/duel-params.json` for Duels II (price and delivery day, 68 duels, up to 6 at once) |
+| 17:45 | **GATE**: Duels II (price and delivery day, 68 duels, up to 6 at once): `cp results/duel-params-duels2-candidate.json results/duel-params.json` (or the refitted file from step 14), check with `watch --once`, then `duel.py run --until 19:45 --params results/duel-params.json` in the `duel` window |
 | 18:00 | Duels II and a Market Test at once: the duel lock keeps the accept for duels |
 | 20:00, 21:00 (hard), 22:00 | Market Tests |
 | 23:00 | Doors close. `python3 tools/snapshot.py`, commit logs, retune overnight |

@@ -2,7 +2,7 @@
 
 **For Thiago and his review agents. Start here.** Hector and Claude worked through the night; this file is updated each time a piece lands, so the latest version on branch `docs/weekend-plan` (PR #4) is the current state.
 
-Last update: Saturday 03:30 Madrid time.
+Last update: Saturday 03:55 Madrid time.
 
 ## What did not happen tonight
 
@@ -19,7 +19,8 @@ Last update: Saturday 03:30 Madrid time.
 | 4 | [#6](https://github.com/thiagoamaro91/negotiation-agent/pull/6) | `feat/market-desk` → `main` | `agent/lease.py` (one accept per tick by priority, honours your `results/duel.lock`) and the market desk (`plan`/`watch`/`run`), `make_floors`, a Friday replay | open; 56 tests, 38/39 mutations caught |
 | 5 | [#7](https://github.com/thiagoamaro91/negotiation-agent/pull/7) | `feat/broker` → `main` | Market Test broker, bench simulator, venue opener. Finding: blind it ties the stall; it wins (+2 points) only if bench offers show each trader's expiry | open; 42 tests, 18/18 mutations caught |
 | 6 | [#4](https://github.com/thiagoamaro91/negotiation-agent/pull/4) | `docs/weekend-plan` → `main` | The plan, this handoff, the runbook, and `logs/feed-vm/` (the gap-free VM feed you asked for) | open |
-| 7 | to come | `feat/duel-lab` → `main` | Duel arena with your six archetypes and an overnight tuner writing `results/duel-params.json` for your `duel.py --params` (no duel.py edits) | in progress |
+| 7 | [#9](https://github.com/thiagoamaro91/negotiation-agent/pull/9) | `feat/duel-lab` → `main` | Arena that drives your `duel.py` exactly as `run` does, a tuner refereed by held-out rivals + your `simulate()` + the Friday replay + a deadline-1 stress, and Duels I params for `--params`: **safe** +2.5 % (never worse anywhere), **tuned** +5.6 % (bets that a deadline-1 accept settles). `duel.py` untouched | open; 16 tests, 15/15 mutations caught |
+| 8 | to come | `feat/duel-improve` → `feat/duel-lab` | Code-level improvements to `duel.py` behind flags OFF by default, judged by the arena (first: a second poll late in the final tick to see a rival's deadline-1 message, ~+0.02 per duel) | in progress, due 06:15 |
 
 ## Already in main from your side (02:37-02:39), and how tonight's work fits
 
@@ -29,7 +30,13 @@ Last update: Saturday 03:30 Madrid time.
 
 ## What runs on the VM now
 
-Deployed at 03:05-03:20 with Hector's go-ahead: `main` at 0289293 + #5 + #6 + #7 + #8 in `~/bazaar/negotiation-agent` (161 tests pass there; `logs/` and `.env` untouched). tmux session `bazaar`: `recorder` (now also records every venue's book), `brain` (the fixed brain), `desks` (the forwarder). Nothing that uses the key is running; the key sits in `.env` (mode 600) until Sunday after 15:00.
+Deployed at 03:05-03:50 with Hector's go-ahead: `main` at 0289293 + #5 + #6 + #7 + #8 + #9 in `~/bazaar/negotiation-agent` (all tests pass there; `.env` untouched; Friday's `logs/duels/` added for the arena). tmux session `bazaar`: `recorder` (now also records every venue's book), `brain` (the fixed brain), `desks` (the forwarder). Nothing that uses the key is running; the key sits in `.env` (mode 600) until Sunday after 15:00.
+
+Duel params on the VM, in `~/bazaar/negotiation-agent/results/`:
+- `duel-params.json`: the **safe** Duels I set (what the runbook launches; `duel.py selftest` passes with it).
+- `duel-params-duels1-overnight.json`: the VM search's full set at 03:31 (held-out objective 0.308 vs 0.290 for your defaults). The search keeps going until ~07:28 in `~/lab/duel/` (tmux `lab:duel`); its latest is `~/lab/duel/best_params_duels1.json` with `report_duels1.md`.
+- `duel-params-duels2-candidate.json`: the Duels II (price + day) search at 03:40 (0.192 vs 0.176, +9 %); it runs until ~10:28 (`~/lab/duel/best_params_duels2.json`, `report_duels2.md`).
+- Stop both searches if the VM needs the cores: `pkill -f "^python3 tools/duel_tune.py"`.
 
 ## Decisions for the morning
 
@@ -37,7 +44,7 @@ Deployed at 03:05-03:20 with Hector's go-ahead: `main` at 0289293 + #5 + #6 + #7
 2. **Venue**: not at 09:03 blind (it would tie the stall). Decide at 11:50, before the 12:00 session, with the 10:00 data and the desk's answers (PR #7 lists the three conditions).
 3. **Lavapiés rare**: a team listing under ~82 first, otherwise El Chato with your ladder (`--anchor 60 --step 4 --max-bid 84`), cap 88, `--reserve 280` to keep the venue option.
 4. **Page bonus**: once we hold LAV-09, `/api/me/value?card=LAV-10` ~218 means it counts.
-5. **Duels I**: `duel.py run --params results/duel-params.json` from 10:15 (it waits for the wave), with the tuned params if they beat your defaults on held-out rivals.
+5. **Duels I**: `duel.py run --params results/duel-params.json` from 10:15 (it waits for the wave) with the **safe** set; switch to the tuned set once one of our deadline-1 accepts is seen to settle. Your call whether to turn on any flag from the duel-improve PR.
 6. **Market desk LIVE from 09:00, if you approve PR #6** (Hector's decision, 03:30). Friday's best opportunity (LAV-10 listed at 70, +37 at our values) lasted 3 ticks before t10 took it; in shadow mode nobody catches that. Strict caps: 110 P per game hour (one Lavapiés rare at most), 250 P per day, 80 P per card (100 for a Lavapiés rare), one trade per partner per hour, cash never below 280 until the 11:50 venue decision, El Rastro only (`--no-team-venues`, so we hand no market points to other venues; t13 is first), bids addressed to holders only. It never buys a card we hold, never sells our only Lavapiés copy, never accepts while your duel lock is fresh, and `touch logs/state/STOP` stops it. Exact command in the runbook, step 5. If PR #6 is not approved by 09:00, it starts in `watch` (shadow) instead.
 7. **Questions for the desk** (in person): judging criteria and format; whether duel accepts share the one-accept-per-tick limit; whether the ladder resets per day; whether the page bonus counts in a card's trade value; whether bench offers carry each trader's expiry, whether the stall crosses one pair or all per tick, whether broker matches are checked against quotes or hidden limits.
 
