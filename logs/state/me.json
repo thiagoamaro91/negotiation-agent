@@ -356,7 +356,7 @@
    "ref": "sobre_plata",
    "serial": 23,
    "name": "Silver pack",
-   "your_value": 105.0
+   "your_value": 105.1
   },
   {
    "id": 1140,
@@ -381,7 +381,7 @@
    "your_value": 91.0
   }
  ],
- "collection_value": 1564.9,
+ "collection_value": 1565.1,
  "album": {
   "pages": [
    {
@@ -428,13 +428,13 @@
   "filled": 30,
   "slots": 50
  },
- "tick": 1428,
+ "tick": 1445,
  "tick_seconds": 30.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 29.81,
-  "negotiating": 23.73,
+  "score": 29.67,
+  "negotiating": 23.59,
   "market": 6.08,
   "neg_points": 168.3,
   "mm_points": 0.0,
