@@ -64,6 +64,17 @@ The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Add
 - **Duels I (t03, to tick 630):** 31 finished, 25 deals, duel_points 16.24. All 21 of our accepts came with 1-3 ticks left; 5 of the 6 no-deals were rivals who never spoke, while our last offer stayed short of our limit. Summary on the bus (#5968797627).
 - **The clock can pause mid-duel** (`/api/clock` `paused: true` at tick 630, ~13:25). `results/duel.lock` is refreshed per tick, so it goes stale during a pause while duels are still live. A dealer bot gated only on the lock would start inside the duel window: gate on `paused` and on unfinished duels too.
 
+## Saturday evening: every team's cash (ticks 630-1243)
+
+What `tools/ledger.py` needed to rebuild all 18 teams' cash from the public feed (PRs #42, #52, #53, #55):
+
+- **The payday came only in words.** At tick 1201 the organisers' `announcement` said "Payday in Madrid: every team gets 400 primas", with no `schedule.fired` grant. Without it, five teams appear to buy epics and rares they could not afford (t05 paid Picaros 128 P for RET-11 at tick 1209). The ledger now reads it. Watch for the Sunday allowance arriving the same way.
+- **Who paid the fee.** The feed has no "offer filled" event: a filled offer just leaves the board without an `offer.cancelled`. An offer accepted on its last tick settles on the next tick. With an ask and a bid both standing, the settled price says which one was taken (t16 sold LAT-09 into our 88 P bid at tick 724 while its own ask stood at 135, so the 6 P fee was t16's).
+- **Card-for-card swaps on El Rastro carry a fee** (2 P each, 8 swaps by tick 1201), paid by the side that took the listing.
+- **Counters to check against:** El Rastro's `/api/venues` totals restart each round. From tick 160 they equal the feed exactly (208 P of fees, 71 trades, 1,843 P of volume at tick 1060). Team venues had charged no fee by then.
+- **How exact it is:** of 153 team settlements to tick 1201, only two fees stay unknown (tick 78, 3 P between t04 and t15; tick 939, 2 P between t14 and t16). The page shows them as ± on those teams' cash. Team 3's rebuilt cash matches every real `/api/me` reading up to tick 1186. The Mini's live score reader (`score.state.json`) stopped at tick 1186 (20:07).
+- **The value inference misreads page-completion buying as taste.** On our own account (tick 961) it ranks La Latina first (1.44) and Lavapiés third (1.17), against a true 1.6 for Lavapiés, because we were buying the last cards of pages. Read other teams' labels with that in mind.
+
 ## Open questions for the organisers
 
 - The judges' criteria (40 of the 100 points).
