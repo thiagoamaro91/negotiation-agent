@@ -3,6 +3,7 @@
 Written by the `bazaar-strategy` session with Thiago at 11:47 to 12:15 Madrid (ticks 430 to 470).
 Ranked moves agreed by Thiago at about 12:08. Move 2 detail corrected at 12:20 with the conductor's holdings check.
 Red-teamed at 12:45 (no BLOCKER; 4 MAJOR fixed in place). Section 5 lists the corrections; where they differ from earlier text the corrected rows below win.
+SUPERSEDED at 15:35 by plan v2.1 in section 6 (after three data analyses across all 18 teams and a review by the `thiago-air-review` session). Where section 6 differs from earlier sections it wins.
 `bazaar-strategy` recommends; `bazaar-conductor` executes.
 Private values in this file stay inside the team.
 
@@ -120,3 +121,40 @@ Run: four blind lenses (premise / sequencing / failure-modes / verification) wit
 | 4 | The bots cannot run the slot-3 buys as written: `agent/abuela.py` skips held cards; `agent/chato.py` pays up to full private value without `--cap`; both default `CASH_RESERVE` to 280 (chato.py:41 / abuela.py:41) and skip every buy at 95 P | Explicit `--reserve` / `--only` / `--cap` / `--max-deals 1`; the Abuela flip only by hand as an approved exception |
 
 Refuted: dealer accepts do not steal the broker's Market Test matches (the broker uses its own key); the per-team hourly allotment line is in `kit/RULES.md`.
+
+## 6. Plan v2.1 (Sat 15:35; posted on the team bus as #5969671390)
+
+Built from three analyses across all 18 teams (points per action / market and venues / Duels I) and reviewed by `thiago-air-review` (full reports on branch `docs/analysis-saturday`). Times checked against `/api/schedule` at tick 639 (hour 6.65).
+
+### What points are worth (board points; Saturday windows)
+
+| Action | Board points | Source |
+|---|---|---|
+| First trade between two other teams on your venue | +2.8 to +5.0 | t05 tick 311 / t14 tick 418 / t17 tick 433 |
+| Each Market Test at stall level instead of broken | about +0.9 | fit that reproduces our 3.61 and t08 / t13 |
+| Sale to Pilar (L3) | about +1.2 | t14 tick 511 / t04 tick 527 |
+| Duels | 40 % of negotiating | every team rescaled to 0.60x at ticks 460 to 470 |
+| Team trade | median about +0.35; a rare sold +1.4 to +1.9 | our MAL-10 at 74 (tick 585) gave +2.92 |
+| Dealer deals past the first three | 0 to -1.9 | t12 ticks 194 / 200; t16 ticks 201 / 206 |
+| Completing a page with a team buy | +4.5 to +7.2 negotiating for three rivals | page bonus confirmed: LAT-09 value 77.0 to 149.9 after LAT-03 (bus #5969658274) |
+
+### Clock
+
+- Saturday closes at game hour 14.088 (23:00). Tonight: Market Tests at 7.0 / 9.0 / 11.0 / 13.0; Salamanca fever 9.15 to 11.15; Duels II at 11.65 (about 20:34).
+- Sunday 09:00 is hour 14.088 and the morning is still round 2: tests at 14.65 and 15.0 count for Saturday. Round 3 starts at 16.65 (about 11:34); the 150 P arrives at 16.7.
+- The 21.0 test and the Final duels (21.65) fall after Sunday's close unless the organisers re-time them.
+
+### Ranked moves
+
+| # | Move | Who |
+|---|---|---|
+| 1 | Complete pages with TEAM buys. Latina (9 of 10): LAT-09 from a team (trades at 64 to 70; about +65 surplus at 85). Lavapiés: LAV-09 from Chato first (value 112; fills his slot 3) then LAV-10 from a team as the last card (about 218). Rule: any source for the second-to-last card; a team for the last one. Each spend needs Hector's yes | Hector decides; conductor executes |
+| 2 | Broker: v20 stays on policy stall; read the log for matched and dropped right after hour 7.0 (first live match POST); judge by session efficiency. Four sessions tonight take market to about 5.9. No work on beating the stall | Mini conductor |
+| 3 | Pilar: Hector's session's run (bus #5969014885): MAL-07 (held) and asset 44 with floor 18 / anchor 27 / step 1 / max 40 rounds / resume thread 870; then RET-06; then MAL-06. First three deals per dealer are final | Mini conductor |
+| 4 | Team trades: buy below our value on El Rastro by default (a buy on a rival's venue gives its owner venue points: our SAL-01 buy gave t10 about +4.3); stop selling spare commons (232 listings and 0 fills) | Mini conductor |
+| 5 | Venue traffic: ads alone bring nothing (v03 / v06 / v05 / v19 posted 16 to 33 announcements with 0 trades). The top venues have cross-listing (t05 put 131 listings on t10's venue and t10 put 53 back). Thiago and Hector agree a cross-listing swap with another team in the room; ads for live v20 offers only as a cheap extra with Hector's yes | Thiago and Hector |
+| 6 | Duels: no `agent/duel.py` changes tonight (PR #33 not mergeable); tuning through params only after #33 merges; set `--until` past the Duels II end. Duels I: 25 deals of 31 finished plus duel 2587 after the resume | Duel bot owner |
+
+Standing dealer rules: targeted single deals; explicit `--reserve` / `--only` / `--cap` / `--max-deals 1`; never `--max-bid` below `--cap` (the bot goes silent and walks from in-limit deals); start a dealer run only with the clock running and no live duel; never pay above our private value; no dealer deals past the first three. PRs #35 and #34 are in fix rounds and not yet available.
+
+Sunday: before hour 16.65 finish round 2 (Pilar / Chato slot 3 / page buys / the two carried tests). Round 3 ladder deals start at 16.65.

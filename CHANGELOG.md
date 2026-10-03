@@ -27,6 +27,24 @@
 - The duel bot is checked for freshness while a scheduled wave is live; gates need explicit `doors` and `paused` values; notifications are deduplicated per incident.
 - 17 tests added or changed (14 failed on 21c5efa, 3 are controls); 16 more mutations, all caught.
 
+## [2026-10-03] Dealer bots: lunch fixes
+
+### Fixed
+- `agent/chato.py`: no more bid-cap deadlock. Pinned at `--max-bid`, the bot listens while the dealer's offer improved (or we moved) in the last 2 ticks, then takes it if it is inside our reservation or closes at once (`max_bid_no_deal`). Thread 335 (LAV-09, his 90 inside our 93) closed on `max_rounds` instead. When the round budget runs out, a standing offer inside our reservation (buy: at or under it; sell: at or over our floor) is accepted instead of closed on.
+- `agent/chato.py`, `agent/abuela.py`: the duel lock is re-checked before every accept, not only at start. While it is fresh the accept waits a tick (`accept_deferred_lock`) without spending a round.
+- `agent/chato.py`, `agent/abuela.py`: the client is built with `wait_on_tick=False`. A refused accept, message or close is logged (`accept_refused`, `say_refused`, `close_refused`), the bot waits a tick, re-reads the thread and decides again; nothing is resent blindly and nothing raises out of `negotiate()` with the thread open.
+- `agent/chato.py`, `agent/abuela.py`: a paused clock or closed doors no longer burns the round budget. The new `wait_tick` polls every 3 s through the pause and tolerates a null `next_tick_in`. `kit/` is unchanged.
+- `agent/chato.py`, `agent/abuela.py`: when the cash reserve (default 280 P, unchanged) blocks every buy, `run` prints one line saying how to pass `--reserve`, logs `reserve_blocks_buys`, and exits 3.
+- Review round (Codex findings on PR #35), both bots: writes are never retried by the SDK (a `rate_limited` accept could land after the duel lock turned fresh); a refused close goes back to a fresh read and decision, and after 3 refusals the run stops with `close_failed`, exit 4 and one line with the `--resume` command; lock deferral is bounded by `--max-defer-ticks` (default 60, then `lock_timeout`, exit 5); a round is counted only for a confirmed new tick; clock reads have a 5 s timeout and no retries, so an unreadable clock releases the wait within about a minute; a pause, an unreadable clock or a running clock whose tick does not move prints one line a minute; once the budget is spent the bot still decides on a fresh read, with at most 2 accept attempts; resume reads go through the same recovery; `--max-bid` equal to the reservation also closes on a stall.
+- `agent/abuela.py`: sell floors are rounded up before any price is built (a 19.5 floor gave a binding ask of 19); the end-of-budget accept now applies to Abuela too; `--resume` added so a thread that could not be closed can be continued.
+
+### Changed
+- `agent/chato.py --dealer pilar`: slow defaults that match how she concedes (by time): first ask `max(1.25 x her bid, floor + 9)` (27 for floor 18), 1 P steps, 40 rounds. `--sell-anchor`, `--sell-step` and `--max-rounds` still win. Chato's defaults are unchanged.
+
+### Added
+- `agent/dealer_client.py`: the dealer bots' client (`DealerBazaar`: the kit client with `wait_on_tick=False` and a pause-safe `wait_tick`), the lock-guarded accept, a close that never raises, and the reserve message.
+- `tests/test_dealer_loop.py`, `tests/test_dealer_client.py`, `tests/test_dealer_cli.py`, `tests/dealer_fakes.py`: 77 tests, including a replay of thread 335. `FakeServer` is an in-process game server under the real kit SDK (urlopen patched): SDK retries, one accept per team and one message per thread per tick, accepts only of open offers, settlement on the next tick, dealer answers on the next tick, offers lapsing after 4 ticks; every loop test asserts no write was sent twice in one tick. Four assertions in `tests/test_chato_dealer.py` moved to Pilar's new defaults, and its `FakeDealer` now reports a tick from `wait_tick`.
+
 ## [2026-10-03] Team bus
 
 ### Added
