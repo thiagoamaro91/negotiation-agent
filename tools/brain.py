@@ -565,7 +565,8 @@ def refresh() -> dict:
         L = led.get(t, {})
         teams.append({
             "team": t, "us": t == vi.US, "score": score.get(t), "rank": None,
-            "cash": L.get("cash"), "cash_history": L.get("history", [])[-60:], "trades": L.get("trades"),
+            "cash": L.get("cash"), "cash_unsure": L.get("cash_unsure") or 0, "cash_history": L.get("history", [])[-60:],
+            "trades": L.get("trades"),
             "unlocked": L.get("unlocked"), "venue": L.get("venue"), "bonds": L.get("bonds"),
             "dealer_spent": L.get("dealer_spent"), "known_cards": L.get("known_cards"),
             "expected": {s: round(r["expected"][s], 2) for s in model.in_play},

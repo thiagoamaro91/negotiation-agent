@@ -187,7 +187,7 @@ svg.tcurve { width: 100%; height: 150px; display: block; }
   <div class="panel">
     <h2><span lang="en">Every team</span><span lang="es">Todos los equipos</span></h2>
     <div class="scroll"><table id="teams"></table></div>
-    <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start (exact for us). Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales (exacta para nosotros). Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
+    <p class="note"><span lang="en">Cash is rebuilt from every public move since the 400 P start: checked against every real reading for us; for the others ± marks fees the feed cannot attribute for sure, and a private cash event (a gift, an egg) would not show. Cells: inferred multiplier per neighbourhood; warm = cares more than average. Click a team.</span><span lang="es">La caja se reconstruye con cada movimiento público desde los 400 P iniciales: comprobada con cada lectura real en nuestro caso; en los demás, ± marca comisiones que el feed no deja atribuir con seguridad, y un ingreso privado (un regalo, un huevo) no se vería. Celdas: multiplicador deducido por barrio; cálido = le importa más que la media. Pulsa un equipo.</span></p>
   </div>
   <div class="stack">
     <div class="panel" id="detail"></div>
@@ -411,7 +411,7 @@ function render(d) {
   $("assume").innerHTML = `<b>${L("Assumptions", "Supuestos")}</b><br>` + (p.assumptions || []).map(esc).join("<br>");
   const sets = d.in_play;
   $("teams").innerHTML = `<thead><tr><th>#</th><th>${L("team", "equipo")}</th><th>${L("score", "puntos")}</th><th>${L("cash", "caja")}</th><th></th>${sets.map(s => `<th>${esc(s)}</th>`).join("")}<th>${L("favourite · choices", "favorito · elecciones")}</th><th>Chato</th><th>${L("venue", "puesto")}</th><th>${L("trades", "trades")}</th></tr></thead><tbody>` +
-    d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}</td><td>${spark(t.cash_history)}</td>` +
+    d.teams.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map(t => `<tr class="clickable${t.us ? " us" : ""}${t.team === SEL ? " sel" : ""}" tabindex="0" data-team="${esc(t.team)}"><td class="mono">${t.rank ?? ""}</td><td class="mono"><b>${esc(t.team)}</b></td><td class="mono">${t.score ?? ""}</td><td class="mono">${t.cash}${t.cash_unsure ? ` <span class="muted" title="fees the feed cannot attribute for sure">±${t.cash_unsure}</span>` : ""}</td><td>${spark(t.cash_history)}</td>` +
       sets.map(s => `<td><div class="cell" style="background:${heat(t.expected[s])}">${t.expected[s].toFixed(2)}</div></td>`).join("") +
       `<td><span class="conf ${esc(t.confidence)}" title="${esc(t.confidence)}: ${Math.round(t.p_favourite * 100)}% on ${t.choices} independent choices">${esc(t.favourite)} ${Math.round(t.p_favourite * 100)}% · ${t.choices ?? "?"}</span></td><td class="mono">${(t.unlocked || []).includes("chato") ? "✓" : ""}</td><td class="mono">${esc(t.venue || "")}</td><td class="mono">${t.trades}</td></tr>`).join("") + `</tbody>`;
   document.querySelectorAll("#teams tr.clickable").forEach(r => {
@@ -421,7 +421,7 @@ function render(d) {
   });
   const t = d.teams.find(x => x.team === SEL) || d.teams[0];
   const mults = ["1.6", "1.3", "1.1", "0.9", "0.7", "0.5"];
-  $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P</h2>` +
+  $("detail").innerHTML = `<h2>${esc(t.team)} · ${t.cash} P${t.cash_unsure ? ` ±${t.cash_unsure}` : ""}</h2>` +
     sets.map(s => `<div class="distrow"><span class="mono">${esc(s)}</span><div class="dbar">${mults.map(mm => { const pr = (t.dist[s] || {})[mm] || 0; return pr > 0.005 ? `<span title="${mm}: ${Math.round(pr * 100)}%" style="width:${(pr * 100).toFixed(1)}%;background:${heat(parseFloat(mm))}"></span>` : ""; }).join("")}</div><span class="mono">${t.expected[s].toFixed(2)}</span></div>`).join("") +
     `<p class="note">${L("probability of each multiplier, 1.6 (left) to 0.5", "probabilidad de cada multiplicador, de 1,6 (izquierda) a 0,5")}</p>` +
     `<div><b>${L("Known cards", "Cartas conocidas")}</b> <span class="muted">(${L("lower bound", "mínimo")})</span></div><div class="chips">${Object.entries(t.known_cards || {}).map(([r, n]) => `<span class="chip">${esc(r)}${n > 1 ? " ×" + n : ""}</span>`).join("") || `<span class="muted">—</span>`}</div>` +
