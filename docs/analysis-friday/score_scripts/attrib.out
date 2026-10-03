@@ -1,0 +1,126 @@
+snapshot ticks: [20, 25, 30, 35, 40, 45, 130, 135, 140, 145, 150, 155]
+
+team-to-team settlements in covered feed: 10
+  tick 40 rastro price 12 fee 2 [('LAV-02', 'card', 't06', 't10')]
+  tick 47 rastro price 65 fee 5 [('LAT-09', 'card', 't13', 't14')]
+  tick 124 rastro price 35 fee 3 [('SAL-08', 'card', 't12', 't17')]
+  tick 142 rastro price 60 fee 4 [('LAT-10', 'card', 't06', 't15')]
+  tick 146 rastro price 23 fee 3 [('SAL-06', 'card', 't18', 't06')]
+  tick 147 rastro price 9 fee 2 [('LAT-03', 'card', 't12', 't18')]
+  tick 147 rastro price 28 fee 3 [('MAL-08', 'card', 't03', 't17')]
+  tick 149 rastro price 7 fee 2 [('LAV-05', 'card', 't15', 't12')]
+  tick 152 rastro price 8 fee 2 [('LAV-05', 'card', 't06', 't05')]
+  tick 159 rastro price 5 fee 2 [('LAT-01', 'card', 't06', 't04')]
+
+== trajectory (score) ==
+team     20     25     30     35     40     45    130    135    140    145    150    155
+t01   0.00   0.00   0.00   0.00   0.00   0.00   9.24   8.73   8.73   8.34   8.34   8.34
+t02   0.00   0.00   0.00   0.00   4.92   4.59   7.58   7.16   7.16   6.84   6.84   6.84
+t03   0.00   0.00   5.25   5.09   4.92   4.59  12.50  12.17  12.17  11.63  14.51  14.63
+t04   6.58   5.91   5.25   8.62   8.33   7.77  17.86  17.39  20.10  19.63  19.52  19.89
+t05   6.58   9.70  12.50  12.46  12.04  11.24  14.86  13.94  13.94  13.51  12.24  20.03
+t06  12.50  12.50  12.50  12.50  18.36  18.33  12.30  11.77  10.04  10.72  11.39  12.14
+t07   6.58   5.91   5.25   8.57   8.27  11.37   9.77   9.29  10.37   8.98   8.98   8.98
+t08   6.58   5.91   5.25   5.09   4.92   7.91  23.93  23.41  23.88  23.47  23.30  17.65
+t09   6.58   5.91   6.30  11.20  10.82  12.50  10.57   9.99   9.99   9.54   9.54   9.54
+t10   6.58   9.66   8.57   8.32  29.13  28.36  20.91  20.34  20.34  20.49  20.37  20.79
+t11   0.00   0.00   0.00   0.00   0.00   0.00   0.00   0.00   0.00   0.00   0.00   0.00
+t12   6.58   5.91   5.25   8.99   8.68   8.10  26.33  27.35  27.35  26.81  27.25  27.87
+t13  12.50  11.73  10.41  10.10  11.67  10.90  30.00  30.00  30.00  30.00  30.00  30.00
+t14   0.00   0.00   5.25   5.09   8.43   7.87  15.88  16.11  16.11  17.94  17.88  18.09
+t15   0.00   0.00   0.00   0.00   0.00   0.00   4.92   4.65   4.65   9.38  10.13  10.35
+t16   0.00   0.00   0.00   0.00   0.00   0.00   5.62   7.17   7.17   6.86   6.86   6.86
+t17   6.58   5.91  10.03   9.80  12.10  11.29  22.13  21.56  21.56  21.13  21.58  22.08
+t18   6.58   5.91   5.25   5.09   4.92   7.54  20.15  19.70  17.87  17.53  19.42  19.19
+
+teams pinned at exactly 12.50 / 30.00 per snapshot:
+  20 at12.5: ['t06', 't13'] at30: [] max 12.5
+  25 at12.5: ['t06'] at30: [] max 12.5
+  30 at12.5: ['t05', 't06'] at30: [] max 12.5
+  35 at12.5: ['t06'] at30: [] max 12.5
+  40 at12.5: [] at30: [] max 29.13
+  45 at12.5: ['t09'] at30: [] max 28.36
+  130 at12.5: ['t03'] at30: ['t13'] max 30.0
+  135 at12.5: [] at30: ['t13'] max 30.0
+  140 at12.5: [] at30: ['t13'] max 30.0
+  145 at12.5: [] at30: ['t13'] max 30.0
+  150 at12.5: [] at30: ['t13'] max 30.0
+  155 at12.5: [] at30: ['t13'] max 30.0
+
+zero-event team-intervals n=113: |delta| median=0.16 p90=0.66 max=1.32; signed mean=-0.22; #>0: 6
+
+== avg score delta per event category (pure single-category intervals, covered feed) ==
+  team_sell        n=  4 mean= +2.01 median= +0.75 drift-adj mean= +2.14 max= +5.86 >noise(1.32):1 | mixed-interval(AMBIGUOUS) n=3
+  dealer_buy       n= 22 mean= +1.71 median= +2.06 drift-adj mean= +1.97 max= +5.25 >noise(1.32):14 | mixed-interval(AMBIGUOUS) n=14
+  dealer_sell      n= 14 mean= +1.30 median= +0.00 drift-adj mean= +1.44 max= +4.92 >noise(1.32):5 | mixed-interval(AMBIGUOUS) n=1
+  team_buy         n=  1 mean= +0.67 median= +0.67 drift-adj mean= +0.67 max= +0.67 >noise(1.32):0 | mixed-interval(AMBIGUOUS) n=6
+  pack_opened      n=  5 mean= -0.10 median= +0.00 drift-adj mean= -0.03 max= +0.50 >noise(1.32):0 | mixed-interval(AMBIGUOUS) n=9
+  gift             n=  3 mean= -0.17 median= -0.17 drift-adj mean= -0.05 max= -0.16 >noise(1.32):0 | mixed-interval(AMBIGUOUS) n=4
+  no-event (drift)  n=113 mean=-0.22
+  ANY-with-team_sell: n=7 mean=+1.89 list=t06@35->40:+5.86; t06@140->145:+0.68; t03@145->150:+2.88(mixed dealer_buy+team_sell); t12@145->150:+0.44(mixed dealer_buy+pack_opened+team_buy+team_sell); t15@145->150:+0.75; t18@145->150:+1.89(mixed team_buy+team_sell); t06@150->155:+0.75
+  ANY-with-team_buy: n=7 mean=+5.25 list=t10@35->40:+20.81(mixed dealer_buy+team_buy); t15@140->145:+4.73(mixed gift+team_buy); t06@145->150:+0.67; t12@145->150:+0.44(mixed dealer_buy+pack_opened+team_buy+team_sell); t17@145->150:+0.45(mixed gift+team_buy); t18@145->150:+1.89(mixed team_buy+team_sell); t05@150->155:+7.79(mixed dealer_buy+team_buy)
+
+== top-5 jump attribution (|delta| > 1.32, the max zero-event drift) ==
+ t13 final 30.0
+    35->40   +1.57  dealer_buy                                    ['dealer_buy:MAL-06@21 from abuela']
+    45->130 +19.10  AMBIGUOUS(black hole, feed+board missing 49-118) ['team_sell:LAT-09->t14 @65 rastro', 'dealer_sell:LAT-09@46 to chato', 'dealer_sell:SAL-02@6 to abuela', 'gift:LAT-05']
+ t12 final 27.87
+    30->35   +3.74  dealer_sell                                   ['dealer_sell:LAV-06@16 to abuela']
+    45->130 +18.23  AMBIGUOUS(black hole, feed+board missing 49-118) ['dealer_sell:SAL-05@5 to abuela', 'team_sell:SAL-08->t17 @35 rastro', 'dealer_buy:MAL-09@90 from chato', 'dealer_buy:LAV-07@24 from abuela']
+ t17 final 22.08
+    25->30   +4.12  AMBIGUOUS(dealer_buy+gift, boundary tick)     ['gift:MAL-05', 'dealer_buy:MAL-02@10 from abuela', 'dealer_buy:MAL-03@10 from abuela']
+    35->40   +2.30  dealer_buy                                    ['dealer_buy:sobre_barrio@19 from abuela']
+    45->130 +10.84  AMBIGUOUS(black hole, feed+board missing 49-118) ['team_buy:SAL-08<-t12 @35 rastro']
+ t10 final 20.79
+    20->25   +3.08  dealer_buy                                    ['dealer_buy:LAV-06@24 from abuela']
+    35->40  +20.81  AMBIGUOUS(dealer_buy+team_buy, boundary tick) ['dealer_buy:LAV-07@24 from abuela', 'team_buy:LAV-02<-t06 @12 rastro']
+    45->130  -7.45  AMBIGUOUS(black hole, feed+board missing 49-118) ['dealer_buy:LAV-04@10 from abuela']
+ t05 final 20.03
+    20->25   +3.12  dealer_buy                                    ['dealer_buy:LAV-05@9 from abuela']
+    25->30   +2.80  dealer_buy                                    ['dealer_buy:LAV-02@9 from abuela']
+    45->130  +3.62  AMBIGUOUS(black hole, feed+board missing 49-118) []
+   150->155  +7.79  AMBIGUOUS(dealer_buy+team_buy)                ['dealer_buy:LAV-09@93 from chato', 'team_buy:LAV-05<-t06 @8 rastro']
+ t03 final 14.63
+    25->30   +5.25  dealer_buy                                    ['dealer_buy:LAV-06@17 from abuela']
+    45->130  +7.91  AMBIGUOUS(black hole, feed+board missing 49-118) ['dealer_buy:LAV-07@22 from abuela', 'dealer_buy:SAL-08@29 from chato']
+   145->150  +2.88  AMBIGUOUS(dealer_buy+team_sell)               ['dealer_buy:LAT-07@29 from chato', 'team_sell:MAL-08->t17 @28 rastro']
+
+== black hole 45->130: board fields ==
+  t13  10.90-> 30.00 deals 5->22 album 19->25 pages 0->1 lvl 1->2 venue v03
+  t12   8.10-> 26.33 deals 5->17 album 16->21 pages 0->0 lvl 1->2 venue v02
+  t08   7.91-> 23.93 deals 3->10 album 16->21 pages 0->0 lvl 1->2 venue None
+  t17  11.29-> 22.13 deals 5->14 album 16->19 pages 0->1 lvl 1->2 venue None
+  t10  28.36-> 20.91 deals 5->16 album 16->22 pages 0->1 lvl 1->2 venue None
+  t18   7.54-> 20.15 deals 2->13 album 15->20 pages 0->1 lvl 1->2 venue None
+  t04   7.77-> 17.86 deals 2->12 album 14->22 pages 0->0 lvl 1->2 venue None
+  t14   7.87-> 15.88 deals 2->9 album 14->17 pages 0->0 lvl 1->2 venue None
+  t05  11.24-> 14.86 deals 5->19 album 17->17 pages 0->0 lvl 1->2 venue None
+  t03   4.59-> 12.50 deals 1->6 album 14->19 pages 0->0 lvl 1->2 venue None
+  t06  18.33-> 12.30 deals 7->14 album 20->25 pages 0->0 lvl 1->2 venue v01
+  t09  12.50-> 10.57 deals 4->9 album 17->20 pages 0->0 lvl 1->2 venue None
+  t07  11.37->  9.77 deals 4->11 album 20->25 pages 0->0 lvl 1->2 venue None
+  t01   0.00->  9.24 deals 0->4 album 14->18 pages 0->0 lvl 1->2 venue None
+  t02   4.59->  7.58 deals 1->7 album 14->19 pages 0->0 lvl 1->2 venue v04
+  t16   0.00->  5.62 deals 0->4 album 11->14 pages 0->0 lvl 1->1 venue None
+  t15   0.00->  4.92 deals 0->11 album 14->25 pages 0->0 lvl 1->1 venue None
+  t11   0.00->  0.00 deals 0->0 album 13->13 pages 0->0 lvl 1->1 venue None
+
+== final board + covered-feed activity counts ==
+  # 1 t13  30.00 deals 24 album 25 pages 1 venue v03 | dealer_buy=5 dealer_sell=5 gift=2 team_sell=1 venue_opened=1
+  # 2 t12  27.87 deals 21 album 23 pages 1 venue v02 | dealer_buy=6 dealer_sell=4 gift=2 pack_opened=3 team_buy=1 team_sell=2
+  # 3 t17  22.08 deals 15 album 25 pages 1 venue None | dealer_buy=5 gift=2 pack_opened=3 team_buy=2
+  # 4 t10  20.79 deals 19 album 23 pages 1 venue None | dealer_buy=6 dealer_sell=3 team_buy=1
+  # 5 t05  20.03 deals 24 album 20 pages 1 venue None | dealer_buy=7 dealer_sell=2 gift=1 pack_opened=4 team_buy=1
+  # 6 t04  19.89 deals 13 album 23 pages 0 venue None | dealer_buy=3 dealer_sell=1 level_unlock=1 pack_opened=2 team_buy=1
+  # 7 t18  19.19 deals 17 album 22 pages 1 venue None | dealer_buy=3 dealer_sell=1 gift=1 pack_opened=2 team_buy=1 team_sell=1
+  # 8 t14  18.09 deals 11 album 19 pages 0 venue None | dealer_buy=6 gift=1 team_buy=1
+  # 9 t08  17.65 deals 12 album 26 pages 1 venue None | dealer_buy=5 dealer_sell=4 gift=1 level_unlock=1 pack_opened=4
+  #10 t03  14.63 deals  9 album 21 pages 0 venue None | dealer_buy=5 gift=1 pack_opened=1 team_sell=1
+  #11 t06  12.14 deals 18 album 25 pages 0 venue v01 | dealer_buy=7 gift=2 pack_opened=4 team_buy=1 team_sell=4
+  #12 t15  10.35 deals 13 album 26 pages 1 venue None | dealer_buy=1 gift=1 level_unlock=1 team_buy=1 team_sell=1
+  #13 t09   9.54 deals 10 album 20 pages 0 venue None | dealer_buy=2 dealer_sell=3 pack_opened=2
+  #14 t07   8.98 deals 13 album 28 pages 1 venue None | dealer_buy=7 gift=2 pack_opened=4
+  #15 t01   8.34 deals  4 album 18 pages 0 venue None | 
+  #16 t16   6.86 deals  5 album 14 pages 0 venue None | dealer_buy=1 dealer_sell=1 level_unlock=1
+  #17 t02   6.84 deals  7 album 19 pages 0 venue v04 | dealer_buy=4 dealer_sell=1 level_unlock=1 venue_opened=1
+  #18 t11   0.00 deals  0 album 13 pages 0 venue None | level_unlock=1

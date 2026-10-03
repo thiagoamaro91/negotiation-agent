@@ -1,0 +1,34 @@
+alias -> (duel, first rival text template):
+  Rival Azul   1 duels, 1 distinct styles: [(92, '(silent)')]
+  Rival Luna   5 duels, 5 distinct styles: [(29, "Opening bid. Let's find a fair price."), (30, 'Opening ask. Fair margin for both.'), (93, 'A step towards you: N P.'), (100, 'N P?'), (104, "I've come down to N P as a gesture of go")]
+  Rival Noche  1 duels, 1 distinct styles: [(38, "I can do N. Let's close it quickly.")]
+  Rival Oro    1 duels, 1 distinct styles: [(37, "I can do N. Let's close it quickly.")]
+  Rival Plata  2 duels, 1 distinct styles: [(23, '(silent)'), (139, '(silent)')]
+  Rival Rojo   5 duels, 4 distinct styles: [(10, 'Fair enough, I will meet you partway at '), (24, '(silent)'), (94, 'A step towards you: N P.'), (99, 'N P?'), (140, '(silent)')]
+  Rival Sol    3 duels, 3 distinct styles: [(9, 'Fair enough, I will meet you partway at '), (91, '(silent)'), (103, "I'm offering N P for Plaza de Olavide. T")]
+
+per duel behaviour (rival prices only, our-favourable step = + ):
+duel role rival        n  ticks  repeats  first%L  final%L  final/pairL  steps(+ = toward us)        monotone
+   9 buyer  Rival Sol    4     9       0    86.4    69.5      0.976   [11, 5, 4]                   True
+  10 seller Rival Rojo   4     9       0   103.6   134.5      0.958   [15, 6, 5]                   True
+  29 seller Rival Luna   1     0       0   103.8   103.8      0.547   []                           True
+  30 buyer  Rival Luna   1     0       0    88.0    88.0      1.671   []                           True
+  37 seller Rival Oro   12    11       5   100.0   139.7      0.622   [0, 0, 0, 0, 0, 9, 10, -19, 9, 10, 10] False
+  38 buyer  Rival Noche 12    11       5    78.0    64.6      1.452   [0, 0, 0, 0, 0, 7, 8, -15, 7, 8, 7] False
+  93 seller Rival Luna  11    11       0    89.2   160.2      0.937   [2, 2, 4, 4, 6, 6, 8, 8, 10, 9] True
+  94 buyer  Rival Rojo  11    11       0    86.6    60.6      1.036   [1, 2, 2, 3, 3, 4, 5, 5, 6, 6] True
+  99 seller Rival Rojo   3     2       0    76.9   114.9      1.013   [34, 17]                     True
+ 100 buyer  Rival Luna   3     2       0   118.4    88.8      1.007   [30, 15]                     True
+ 103 seller Rival Sol    2     2       0    83.3    86.3      0.854   [3]                          True
+ 104 buyer  Rival Luna   2     2       0    95.1    92.2      0.931   [3]                          True
+
+final rival price vs our PAIRED limit (|final/pairL - 1|), duels with >=3 rival prices:
+  [(9, -0.024), (10, -0.042), (37, -0.378), (38, 0.452), (93, -0.063), (94, 0.036), (99, 0.013), (100, 0.007)]
+  within +-7%: 6/8; crossing the paired limit (rival would breach if exact mirror): [9, 99]
+
+change-ratio test: |rival-buyer price move| / |rival-seller price move| vs our value/cost in the pair
+  9/10: 26/20 = 1.300  vs our value/cost 118/84 = 1.405
+  37/38: 29/22 = 1.318  vs our value/cost 164/73 = 2.247
+  93/94: 59/37 = 1.595  vs our value/cost 142/83 = 1.711
+  99/100: 51/45 = 1.133  vs our value/cost 152/134 = 1.134
+  103/104: 3/3 = 1.000  vs our value/cost 103/102 = 1.010

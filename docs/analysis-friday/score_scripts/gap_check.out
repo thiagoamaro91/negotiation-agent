@@ -1,0 +1,4 @@
+snapshots.jsonl row ticks (all kinds): [21, 22, 25, 27, 28, 29, 30, 33, 35, 36, 37, 38] ... gap: [(48, 134)]
+leaderboard seen_at around gap: [(40, '20:59:58'), (45, '21:04:56'), (47, '21:07:44'), (134, '22:34:52')]
+settlement numbers in feed: 105 max 273 missing 168
+dashboard_history ticks 75 .. 159 (t03 only)

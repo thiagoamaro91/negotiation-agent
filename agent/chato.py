@@ -18,8 +18,9 @@ scores the share of his price range we capture, so ending at his limit is the go
 Usage (from the repo root):
     python3 agent/chato.py plan
     python3 agent/chato.py run --only SAL-08 --max-deals 1 --reserve 200 --cap 30
-    python3 agent/chato.py run --only LAV-09,LAV-10 --max-deals 2 --reserve 150 --cap 88 --max-rounds 16
+    python3 agent/chato.py run --only LAV-09 --max-deals 1 --anchor 60 --step 4 --cap 93 --reserve 200
 Only ONE process per team may talk to El Chato at a time (one open conversation per dealer).
+`run` refuses to start (exit 0) while agent/duel.py holds results/duel.lock (one line: expiry, epoch seconds).
 """
 from __future__ import annotations
 
@@ -39,18 +40,21 @@ RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redac
 DEALER = "chato"
 CASH_RESERVE = 280          # default; the owner may lower it per run with --reserve
 ANCHOR_FRAC = 0.40          # first counter, as a share of her opening price (buying)
+ANCHOR_ABS = None           # --anchor N: absolute first bid when buying (overrides ANCHOR_FRAC)
 SELL_ANCHOR_MULT = 1.6      # first ask, as a multiple of his opening bid (selling); he holds his bid, so stay short
 STEP = 1                    # primas per round when buying: he mirrors our step, his final comes at his limit
+MAX_BID = None              # --max-bid N: our bids stop here; we then wait for his final (accepted up to the cap)
 SELL_STEP = 2               # primas per round when selling (time is short and his bid barely moves)
-# Rares, from the 26 public buy conversations with him up to Friday's close (tools/feed_report.py haggles):
-# stepping 1 P made him lose patience after 5-6 rounds and name a final at 90-93 P (t12, t14); steady steps of 2-4
-# were mirrored and kept him talking, ending at 82-87 P (t04 bought LAV-10 at 82, t07 had LAT-10 down to 82);
-# jumps of 12+ gave the margin away (t12 paid 89-90). Uncommons stay on STEP: our 1 P steps got 28-29 P,
-# teams stepping 2-3 paid 31-32. --rare-step 0 restores the old behaviour.
-RARE_ANCHOR_FRAC = 0.60     # first counter for a rare, as a share of his opening (97 -> 58)
-RARE_STEP = 4               # steady step while the gap to his ask is wide
-RARE_NEAR_GAP = 10          # then 2 P steps, and 1 P in the last 3, so we never jump past his limit
 MAX_ROUNDS = 12             # 60 s ticks: 12 rounds is 12 minutes; his patience is low
+DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run while any of our duels is live
+
+
+def duel_lock_fresh(path: Path = DUEL_LOCK) -> bool:
+    """True while the duel bot holds the team's accept slot (first token of the file = expiry, epoch seconds)."""
+    try:
+        return float(path.read_text().split()[0]) > time.time()
+    except (OSError, ValueError, IndexError):
+        return False
 
 
 def load_env() -> None:
@@ -123,16 +127,6 @@ def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
 
 # ---------------------------------------------------------------- one negotiation
 
-def next_buy_price(ours: int | None, her: int, rare: bool) -> int:
-    """Our next bid: a low anchor, then STEP per round (rares: steady 4, then 2 near his ask, then 1)."""
-    if rare and RARE_STEP > 0:
-        if ours is None:
-            return int(her * RARE_ANCHOR_FRAC)
-        gap = her - ours
-        return ours + (RARE_STEP if gap > RARE_NEAR_GAP else 2 if gap > 3 else 1)
-    return int(her * ANCHOR_FRAC) if ours is None else ours + STEP
-
-
 def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
@@ -202,11 +196,16 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             b.wait_tick()
             continue
         # 4) our next number: low anchor, then STEP per round toward her
-        if side == "buy":
-            nxt = next_buy_price(ours, her, target.get("rarity") == "rare")
+        if ours is None:
+            if side == "buy":
+                nxt = int(ANCHOR_ABS) if ANCHOR_ABS is not None else int(her * ANCHOR_FRAC)
+            else:
+                nxt = int(round(her * SELL_ANCHOR_MULT))
         else:
-            nxt = int(round(her * SELL_ANCHOR_MULT)) if ours is None else ours - SELL_STEP
+            nxt = ours + STEP if side == "buy" else ours - SELL_STEP
         nxt = int(min(nxt, reservation)) if side == "buy" else int(max(nxt, reservation))
+        if side == "buy" and MAX_BID is not None:
+            nxt = min(nxt, int(MAX_BID))  # stop bidding here; his final is still taken up to the reservation
         # 5) she is already at (or past) our next number: take her price
         crossed = her <= nxt if side == "buy" else her >= nxt
         if crossed and good(her):
@@ -241,7 +240,7 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -> list[dict]:
     """Buys: uncommons and rares Chato sells that we do not hold, ranked by our value.
-    Sells: our duplicate uncommons/rares (a spare is worth much less to us). --cap replaces our value as the
+    Sells: our duplicate uncommons/rares (a spare is worth much less to us). --cap lowers (never raises) our value as the
     most we pay (the ladder scores his price range, not our value)."""
     catalog = b.catalog()
     released = {s["id"] for s in catalog["sets"] if s["released"]}
@@ -259,8 +258,8 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
             if only and c["id"] not in only:
                 continue
             v = b.value(c["id"])["your_value"]
-            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"], "rarity": c["rarity"],
-                         "value": cap if cap else v, "private": v})
+            buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
+                         "value": min(v, cap) if cap else v, "private": v})
     buys.sort(key=lambda x: -x["private"])
     sells = []
     for ref, copies in held.items():
@@ -275,8 +274,20 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None) -
     return plan
 
 
+def bid_ladder(limit: float, spendable: int) -> list:
+    """The bids a buy would walk through with --anchor (shown by plan; she may cross or stop us earlier)."""
+    top = int(min(limit, spendable, MAX_BID if MAX_BID is not None else limit))
+    if ANCHOR_ABS is None or top < 1:
+        return []
+    out, b = [], int(ANCHOR_ABS)
+    while b < top and len(out) < 30:
+        out.append(b)
+        b += STEP
+    return out + [top]
+
+
 def main() -> None:
-    global CASH_RESERVE, MAX_ROUNDS, RARE_STEP
+    global CASH_RESERVE, MAX_ROUNDS, ANCHOR_ABS, STEP, MAX_BID
     load_env()
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["plan", "run"])
@@ -286,19 +297,32 @@ def main() -> None:
     ap.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     ap.add_argument("--reserve", type=int, default=CASH_RESERVE, help="cash we never spend below")
     ap.add_argument("--cap", type=float, default=None, help="most we pay for any card (default: our value)")
-    ap.add_argument("--rare-step", type=int, default=RARE_STEP, help="steady step for rares (0 = the old 1 P steps)")
+    ap.add_argument("--anchor", type=int, default=None, help="absolute first bid when buying (overrides ANCHOR_FRAC)")
+    ap.add_argument("--step", type=int, default=STEP, help="primas per round when buying (default 1)")
+    ap.add_argument("--max-bid", type=int, default=None, help="highest number we send when buying; his final is still taken up to the cap")
     args = ap.parse_args()
+    if args.step < 1 or (args.anchor is not None and args.anchor < 1):
+        ap.error("--step and --anchor must be >= 1")
+    if args.cmd == "run" and duel_lock_fresh():
+        print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
+              "Not starting El Chato; try again after the duel wave.", flush=True)
+        return
+    ANCHOR_ABS, STEP, MAX_BID = args.anchor, args.step, args.max_bid
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap)
     CASH_RESERVE = args.reserve
     MAX_ROUNDS = args.max_rounds
-    RARE_STEP = args.rare_step
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
     for p in plan:
         print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}")
-    print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P)")
+    print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P) anchor={ANCHOR_ABS or f'{ANCHOR_FRAC} x her ask'} "
+          f"step={STEP} cap={args.cap}")
+    for p in plan:
+        if p["side"] == "buy" and ANCHOR_ABS is not None:
+            print(f"  bids {p['item']}: {' '.join(str(x) for x in bid_ladder(p['value'], me['cash'] - CASH_RESERVE))}"
+                  f" (then wait for his final; take it if <= {int(min(p['value'], me['cash'] - CASH_RESERVE))})")
     if args.cmd == "plan":
         return
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
@@ -308,9 +332,9 @@ def main() -> None:
         if done >= args.max_deals:
             break
         me = b.me()
-        if target["side"] == "buy" and me["cash"] - CASH_RESERVE < 5:
-            log("skip_cash", item=target["item"], cash=me["cash"])
-            continue
+        if target["side"] == "buy" and me["cash"] - CASH_RESERVE < max(5, ANCHOR_ABS or 0):
+            log("skip_cash", item=target["item"], cash=me["cash"], reserve=CASH_RESERVE, anchor=ANCHOR_ABS)
+            continue   # e.g. before the grant: never open at a bid below --anchor and burn a dealer slot
         r = negotiate(b, target, False, resume=args.resume if target is plan[0] else None)
         if r.get("thread"):
             save_thread(b, r["thread"])  # full transcript, her words included

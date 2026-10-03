@@ -1,0 +1,165 @@
+== A. Abuela/Chato negotiated buys: price by how the deal closed (welcome-price deals removed) ==
+ abuela common all n=17 8/10/12 | dealer_ask: n=10 9/10/12 | team_bid_accepted: n=7 8/10/10
+    <=median: n=15 first_bid% med 50 mean_step med 1 nbids med 2 last_bid med 9
+    >median: n=1 first_bid% med 33 mean_step med 2 nbids med 2 last_bid med 6
+ abuela uncommon all n=20 21/24/25 | dealer_ask: n=8 21/24/25 | dealer_final: n=6 22/22.5/25 | team_bid_accepted: n=6 21/22.5/25
+    <=median: n=8 first_bid% med 38 mean_step med 2.1 nbids med 5 last_bid med 20.5
+    >median: n=8 first_bid% med 43 mean_step med 2.6 nbids med 3.5 last_bid med 20
+ abuela pack:sobre_barrio all n=13 19/22/24 | dealer_ask: n=2 22/23/24 | dealer_final: n=5 19/22/24 | team_bid_accepted: n=6 19/21/23
+    <=median: n=9 first_bid% med 43 mean_step med 2 nbids med 5 last_bid med 20
+    >median: n=4 first_bid% med 46.5 mean_step med 2.1 nbids med 5 last_bid med 22
+ chato uncommon all n=6 28/29/32 | dealer_ask: n=1 32/32/32 | dealer_final: n=3 28/29/29 | team_bid_accepted: n=2 28/29.5/31
+    <=median: n=4 first_bid% med 39 mean_step med 1 nbids med 6.5 last_bid med 19
+    >median: n=1 first_bid% med 85 mean_step med 1.5 nbids med 3 last_bid med 31
+ chato rare all n=7 82/91/93 | dealer_ask: n=1 93/93/93 | dealer_final: n=3 90/91/93 | team_bid_accepted: n=3 82/89/91
+    <=median: n=3 first_bid% med 47 mean_step med 5.8 nbids med 5 last_bid med 89
+    >median: n=2 first_bid% med 73 mean_step med 2 nbids med 4 last_bid med 76
+
+== B. Welcome-price deals (Abuela opening at 17/7) ==
+  th 2 t06 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 4 t09 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 9 t07 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 10 t05 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 11 t08 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 13 t04 sobre_barrio pack:sobre_barrio price 17 tick 0
+  th 16 t13 SAL-06 uncommon price 17 tick 0
+  th 24 t10 LAV-08 uncommon price 17 tick 4
+  th 25 t18 sobre_barrio pack:sobre_barrio price 17 tick 4
+  th 34 t17 MAL-01 common price 7 tick 14
+  th 46 t14 LAV-03 common price 7 tick 24
+  th 49 t03 LAV-06 uncommon price 17 tick 26
+  per team x rarity: sequence of Abuela openings (shows whether 17/7 is only the first contact)
+    ('t02', 'common') [(236, 12), (242, 12), (250, 12)]
+    ('t03', 'pack:sobre_barrio') [(43, 17)]
+    ('t03', 'uncommon') [(49, 17), (70, 29), (80, 29), (105, 29), (117, 29), (150, 29)]
+    ('t04', 'pack:sobre_barrio') [(13, 17), (267, 30)]
+    ('t05', 'common') [(40, 12), (45, 12)]
+    ('t05', 'pack:sobre_barrio') [(10, 17), (29, 30), (36, 30)]
+    ('t05', 'uncommon') [(82, 29)]
+    ('t06', 'common') [(52, 12)]
+    ('t06', 'pack:sobre_barrio') [(2, 17), (33, 30), (39, 30), (254, 30), (285, 30)]
+    ('t06', 'uncommon') [(22, 29), (30, 29)]
+    ('t07', 'common') [(252, 12), (266, 12), (270, 12)]
+    ('t07', 'pack:sobre_barrio') [(14, 17), (23, 30), (277, 30)]
+    ('t07', 'uncommon') [(59, 29), (67, 29), (74, 29), (237, 29), (245, 29)]
+    ('t08', 'pack:sobre_barrio') [(11, 17), (44, 30)]
+    ('t08', 'uncommon') [(247, 29), (280, 29)]
+    ('t09', 'pack:sobre_barrio') [(15, 17), (19, 17), (66, 30)]
+    ('t10', 'common') [(76, 12), (81, 12), (274, 12)]
+    ('t10', 'uncommon') [(24, 17), (35, 29), (51, 29), (71, 29)]
+    ('t12', 'pack:sobre_barrio') [(20, 30), (21, 30), (26, 30), (63, 30), (259, 30), (271, 30), (295, 30)]
+    ('t13', 'common') [(28, 12), (31, 12)]
+    ('t13', 'pack:sobre_barrio') [(77, 30)]
+    ('t13', 'uncommon') [(16, 17), (41, 29), (73, 29)]
+    ('t14', 'common') [(46, 7), (62, 12), (72, 12)]
+    ('t14', 'pack:sobre_barrio') [(5, 17)]
+    ('t15', 'common') [(241, 12)]
+    ('t15', 'pack:sobre_barrio') [(12, 17)]
+    ('t15', 'uncommon') [(281, 29), (300, 29)]
+    ('t16', 'pack:sobre_barrio') [(8, 17)]
+    ('t17', 'common') [(27, 7), (34, 7), (47, 12), (53, 12), (293, 12)]
+    ('t17', 'pack:sobre_barrio') [(64, 30), (233, 30), (244, 30)]
+    ('t17', 'uncommon') [(60, 29), (265, 29), (282, 29)]
+    ('t18', 'common') [(68, 12), (240, 12)]
+    ('t18', 'pack:sobre_barrio') [(25, 17), (38, 30), (65, 30)]
+
+== C. Pack settlements and pack.opened ==
+   (2, 'abuela', 't07', 'sobre_barrio', 17)
+   (2, 'abuela', 't05', 'sobre_barrio', 17)
+   (2, 'OPENED', 't07', 'sobre_barrio', None)
+   (2, 'OPENED', 't05', 'sobre_barrio', None)
+   (3, 'abuela', 't09', 'sobre_barrio', 17)
+   (3, 'abuela', 't04', 'sobre_barrio', 17)
+   (3, 'abuela', 't06', 'sobre_barrio', 17)
+   (3, 'OPENED', 't09', 'sobre_barrio', None)
+   (4, 'OPENED', 't04', 'sobre_barrio', None)
+   (6, 'abuela', 't18', 'sobre_barrio', 17)
+   (6, 'OPENED', 't18', 'sobre_barrio', None)
+   (8, 'OPENED', 't06', 'sobre_barrio', None)
+   (9, 'abuela', 't07', 'sobre_barrio', 24)
+   (9, 'OPENED', 't07', 'sobre_barrio', None)
+   (11, 'abuela', 't05', 'sobre_barrio', 22)
+   (11, 'OPENED', 't05', 'sobre_barrio', None)
+   (12, 'abuela', 't12', 'sobre_barrio', 24)
+   (12, 'OPENED', 't12', 'sobre_barrio', None)
+   (19, 'abuela', 't08', 'sobre_barrio', 17)
+   (20, 'abuela', 't05', 'sobre_barrio', 22)
+   (20, 'abuela', 't06', 'sobre_barrio', 24)
+   (20, 'OPENED', 't06', 'sobre_barrio', None)
+   (21, 'OPENED', 't08', 'sobre_barrio', None)
+   (26, 'abuela', 't06', 'sobre_barrio', 21)
+   (26, 'OPENED', 't06', 'sobre_barrio', None)
+   (35, 'abuela', 't08', 'sobre_barrio', 23)
+   (35, 'OPENED', 't08', 'sobre_barrio', None)
+   (39, 'abuela', 't17', 'sobre_barrio', 19)
+   (40, 'abuela', 't12', 'sobre_barrio', 21)
+   (40, 'OPENED', 't12', 'sobre_barrio', None)
+   (41, 'abuela', 't09', 'sobre_barrio', 19)
+   (41, 'OPENED', 't09', 'sobre_barrio', None)
+   (124, 'OPENED', 't04', 'sobre_bienvenida', None)
+   (126, 'OPENED', 't08', 'sobre_bienvenida', None)
+   (136, 'OPENED', 't05', 'sobre_barrio', None)
+   (136, 'OPENED', 't05', 'sobre_bienvenida', None)
+   (139, 'abuela', 't06', 'sobre_barrio', 22)
+   (139, 'OPENED', 't06', 'sobre_barrio', None)
+   (140, 'OPENED', 't03', 'sobre_bienvenida', None)
+   (145, 'abuela', 't07', 'sobre_barrio', 21)
+   (145, 'OPENED', 't07', 'sobre_barrio', None)
+   (145, 'OPENED', 't18', 'sobre_bienvenida', None)
+   (148, 'abuela', 't12', 'sobre_barrio', 19)
+   (148, 'OPENED', 't12', 'sobre_barrio', None)
+   (148, 'OPENED', 't07', 'sobre_bienvenida', None)
+   (152, 'OPENED', 't17', 'sobre_barrio', None)
+   (152, 'OPENED', 't17', 'sobre_barrio', None)
+   (152, 'OPENED', 't17', 'sobre_bienvenida', None)
+   (154, 'chato', 't08', 'sobre_plata', 181)
+   (154, 'OPENED', 't08', 'sobre_plata', {'id': 535, 'kind': 'card', 'ref': 'MAL-09', 'serial': 3, 'rarity': 'rare', 'set': 'MAL', 'print_run': 30, 'name': 'La Heroína del Dos de Mayo'})
+  opened n 29 best field values: [('null', 28), ('{"id": 535, "kind": "card", "ref": "MAL-09", "serial": 3, "rarity": "rare", "set": "MAL", "print_run": 30, "name": "La Hero\\u00edna del Dos de Mayo"}', 1)]
+
+== D. Gifts ==
+  tick 4 actor abuela t06 cash 0 packs [] cards ['MAL-03'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(3, 'abuela', 17)]
+  tick 5 actor abuela t12 cash 0 packs [] cards ['LAV-01'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(2, 'abuela', 13)]
+  tick 5 actor abuela t07 cash 0 packs [] cards ['MAL-05'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(2, 'abuela', 17)]
+  tick 7 actor abuela t13 cash 0 packs [] cards ['LAT-04'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(4, 'abuela', 17)]
+  tick 8 actor abuela t05 cash 0 packs [] cards ['LAT-06'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 17 actor abuela t18 cash 0 packs [] cards ['LAT-05'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 26 actor abuela t17 cash 0 packs [] cards ['MAL-05'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 33 actor abuela t14 cash 0 packs [] cards ['LAV-03'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 38 actor abuela t08 cash 0 packs [] cards ['MAL-03'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(35, 'abuela', 23)]
+  tick 40 actor abuela t03 cash 0 packs [] cards ['LAV-02'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 129 actor abuela t06 cash 0 packs [] cards ['MAL-02'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 129 actor abuela t13 cash 0 packs [] cards ['LAT-05'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: [(129, 'chato', 15)]
+  tick 132 actor abuela t12 cash 0 packs [] cards ['LAT-03'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 142 actor abuela t15 cash 0 packs [] cards ['LAV-02'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 146 actor abuela t17 cash 0 packs [] cards ['MAL-02'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+  tick 157 actor abuela t07 cash 0 packs [] cards ['LAT-06'] reason gift from Abuela Carmen | settlement with dealer within 3 ticks before: []
+
+== E. level.unlocked ==
+   121 level.unlocked {"team": "t02", "name": "Team 2", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "3 deals with abuela"}
+   122 level.unlocked {"team": "t04", "name": "Team 4", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "3 deals with abuela"}
+   126 level.unlocked {"team": "t08", "name": "Team 8", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "3 deals with abuela"}
+   132 level.unlocked {"team": "t16", "name": "Team 16", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "3 deals with abuela"}
+   158 persona.open_to_all {"persona": "chato", "name": "El Chato", "level": 2}
+   158 level.unlocked {"team": "t11", "name": "Team 11", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "open to everyone now"}
+   158 level.unlocked {"team": "t15", "name": "Team 15", "persona": "chato", "persona_name": "El Chato", "level": 2, "why": "open to everyone now"}
+   t02 unlocked tick 121: abuela deals visible before: [(56, 'MAL-02', 13, '', 39), (227, 'SAL-08', 25, '', 121)]
+   t04 unlocked tick 122: abuela deals visible before: [(13, 'sobre_barrio', 17, 'WELCOME', 3), (57, 'LAV-04', 6, '', 35), (217, 'LAV-07', 25, '', 122)]
+   t08 unlocked tick 126: abuela deals visible before: [(11, 'sobre_barrio', 17, 'WELCOME', 19), (44, 'sobre_barrio', 23, '', 35), (69, 'LAT-05', 23, '', 45), (218, 'MAL-07', 21, '', 126)]
+   t16 unlocked tick 132: abuela deals visible before: [(229, 'SAL-01', 9, '', 123), (249, 'SAL-06', 14, '', 132)]
+   t11 unlocked tick 158: abuela deals visible before: []
+   t15 unlocked tick 158: abuela deals visible before: [(241, 'LAT-03', 10, '', 126)]
+
+== F. Chato prices vs list (list from rules anchor: unc 26, rare 77, silver 150) ==
+  uncommon: deals [28, 28, 29, 29, 31, 32] min/list 1.077 open/list 1.269
+  rare: deals [82, 89, 90, 91, 91, 93, 93] min/list 1.065 open/list 1.260
+  pack:sobre_plata: deals [181] min/list 1.207 open/list 1.253
+  Abuela list (anchor): unc 25, pack 26, common 10
+  uncommon: min 21 min/list 0.84 median/list 0.96
+  pack:sobre_barrio: min 19 min/list 0.73 median/list 0.85
+  common: min 8 min/list 0.80 median/list 1.00
+
+== G. Jay claims check ==
+  uncommon: standard opening values Counter({29: 25}) | finals [22, 22, 22, 22, 23, 24, 25] | team bids accepted at [21, 21, 22, 23, 25, 25] | negotiated deal prices [21, 21, 21, 22, 22, 22, 22, 23, 23, 24, 24, 24, 24, 24, 24, 25, 25, 25, 25, 25]
+  pack:sobre_barrio: standard opening values Counter({30: 24}) | finals [19, 21, 21, 22, 23, 23, 24, 24] | team bids accepted at [19, 19, 21, 21, 22, 23] | negotiated deal prices [19, 19, 19, 21, 21, 21, 22, 22, 22, 23, 24, 24, 24]
+  common: standard opening values Counter({12: 22}) | finals [] | team bids accepted at [8, 9, 9, 10, 10, 10, 10] | negotiated deal prices [8, 9, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 12]
+  abuela sell deals (rarity, price, tick): [('common', 5, 12), ('common', 5, 41), ('common', 5, 127), ('common', 5, 141), ('common', 5, 142), ('common', 5, 145), ('common', 6, 29), ('common', 6, 119), ('common', 6, 128), ('common', 6, 151), ('common', 13, 0), ('common', 13, 28), ('common', 23, 37), ('uncommon', 13, 22), ('uncommon', 13, 28), ('uncommon', 14, 127), ('uncommon', 14, 150), ('uncommon', 16, 25)]

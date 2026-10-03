@@ -1,0 +1,49 @@
+=== (a) ladder value gate, our team ===
+our raw ladder by score.jsonl row: t33 deals=1 ladder=0.022 neg=0.0 score=5.25, t46 deals=2 ladder=0.042 neg=0.0 score=4.59, t48 deals=2 ladder=0.042 neg=0.0 score=4.59, t51 deals=2 ladder=0.042 neg=0.0 score=8.55, t72 deals=4 ladder=0.062 neg=0.0 score=12.11, t94 deals=5 ladder=0.062 neg=0.0 score=12.11, t146 deals=8 ladder=0.081 neg=-4.9 score=11.63
+  tick 28 LAV-06 abuela->t03 @17 single-copy value 40.0 gate=PASS | board None (tNone) -> None (tNone); other teams moved: 11; ladder-only teams t01/t02/t09/t16 flat: ['t01', 't02', 't16']
+  tick 46 LAV-07 abuela->t03 @22 single-copy value 40.0 gate=PASS | board None (tNone) -> None (tNone); other teams moved: no full board; ladder-only teams t01/t02/t09/t16 flat: None
+  tick 128 SAL-08 chato->t03 @29 single-copy value 32.5 gate=PASS | board 11.45 (t127) -> 12.5 (t130); other teams moved: no full board; ladder-only teams t01/t02/t09/t16 flat: None
+  tick 138 LAT-06 chato->t03 @28 single-copy value 27.5 gate=FAIL | board 12.17 (t137) -> 12.17 (t140); other teams moved: 5; ladder-only teams t01/t02/t09/t16 flat: ['t01', 't02', 't09', 't16']
+  tick 146 LAT-07 chato->t03 @29 single-copy value 27.5 gate=FAIL | board 11.63 (t145) -> 14.51 (t150); other teams moved: 10; ladder-only teams t01/t02/t09/t16 flat: ['t01', 't02', 't09', 't16']
+  tick 147 MAL-08 t03->t17 @28 single-copy value 17.5 gate=n/a | board 11.63 (t146) -> 14.51 (t150); other teams moved: 10; ladder-only teams t01/t02/t09/t16 flat: ['t01', 't02', 't09', 't16']
+  me.json your_value for chato buys: {'SAL-08': 32.5, 'LAT-06': 27.5, 'LAT-07': 27.5}
+
+  other teams: dealer buys priced above book x 1.6 (fail the gate for ANY multiplier):
+    count=0
+
+=== (b) neg_points decode ===
+  LAV-01 copies=2 your_value=4.0 single=16.00 ratio=0.250
+  LAV-08 copies=2 your_value=10.0 single=40.00 ratio=0.250
+  MAL-08 copies=2 your_value=4.4 single=17.50 ratio=0.251
+  MAL-06 copies=2 your_value=4.4 single=17.50 ratio=0.251
+  LAV-06 copies=1 your_value=40.0 single=40.00 ratio=1.000
+  collection_value=544.2 sum(your_value)=452.1 model(first copy full, extra copies 25%)=544.2
+  MAL-08 spare sale: price 28 - spare value 4.375 = 23.625; observed neg_points change = 23.6
+  neg_points history: 0.0 at ticks 33..94 (deals 1..5), -4.9 at tick 146 (deals 8)
+  candidate (i) sum(value-price) chato: 1.5 (ii) losses only: -2.0
+  candidate (iii) LAV-08 bought @23 from abuela while already holding one: dup value 10 - 23 = -13
+  our practice duels: Counter({'no_deal': 12, 'live': 6}) sum result = 0
+
+=== (c) normalisation: top-1 vs top-3 ===
+  20->25: one-deal baseline [(6.58, 5.91)] pinned@20=['t13', 't06'] pinned@25=['t06']
+  25->30: one-deal baseline [(5.91, 5.25)] pinned@25=['t06'] pinned@30=['t05', 't06']
+  30->35: one-deal baseline [(5.25, 5.09)] pinned@30=['t05', 't06'] pinned@35=['t06']
+  35->40: one-deal baseline [(5.09, 4.92)] pinned@35=['t06'] pinned@40=[]
+  40->45: one-deal baseline [(4.92, 4.59)] pinned@40=[] pinned@45=['t09']
+  t05 30->35 score 12.5->12.46 deals 5->5 events in (30,35]: []
+  t06 30->35 score 12.5->12.5 deals 6->6 events in (30,35]: []
+  our implied ladder normaliser m = 12.5*ladder/score:
+    t30: score 5.25 ladder 0.022 -> m=0.0524
+    t35: score 5.09 ladder 0.022 -> m=0.0540
+    t40: score 4.92 ladder 0.022 -> m=0.0559
+    t45: score 4.59 ladder 0.022 -> m=0.0599
+    t125: score 11.45 ladder 0.062 -> m=0.0677
+    t130: score 12.5 ladder 0.081 -> m=0.0810 (capped: ladder>=m)
+    t135: score 12.17 ladder 0.081 -> m=0.0832
+    t145: score 11.63 ladder 0.081 -> m=0.0871
+
+=== (d) best-3 reset per day: only Friday data (one day) -> untestable
+=== (e) round weights in snapshot body:
+   rounds = [{'round': 1, 'name': 'Friday · El Rastro', 'weight': 0.5, 'status': 'active', 'phase': 0.646}] weights = {'negotiating': 30.0, 'market': 30.0}
+   changes.jsonl kinds: Counter({'levels': 4, 'dealers': 4, 'schedule': 3})
+m35=0.0540 m40=0.0559 t10 raw35=0.0360 ladder part@40 range 8.04..12.50 -> trade part 16.63..21.09

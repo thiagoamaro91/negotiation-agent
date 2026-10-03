@@ -13,3 +13,9 @@ logs/brain/
 logs/state/me_live.json
 logs/public/schedule.json
 logs/public/dealers.json
+# runtime state on the key machine (agent/lease.py, desk heartbeats, the STOP switch)
+logs/state/lease.json
+logs/state/lease.lock
+logs/state/.lease.*.tmp
+logs/state/desk-*.json
+logs/state/STOP

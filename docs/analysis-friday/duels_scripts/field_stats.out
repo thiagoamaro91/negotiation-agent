@@ -1,0 +1,49 @@
+duel.closed events: 206 (unique duel ids 206); payload keys: {'duel': 206, 'session': 206, 'status': 206, 'item': 206}
+duels.scheduled: [{'session': 1, 'name': 'Practice duels', 'duels': 306, 'rounds': 1, 'duel_ticks': 12, 'decay': 0.06}]
+status counts: {'deal': 96, 'no_deal': 110}  deal rate: 96/206 = 0.466
+closing tick -> statuses:
+  124: {'deal': 1}
+  125: {'deal': 1}
+  128: {'deal': 1}
+  129: {'deal': 3}
+  130: {'deal': 2}
+  131: {'deal': 2}
+  132: {'no_deal': 40, 'deal': 3}
+  134: {'deal': 3}
+  135: {'deal': 4}
+  136: {'no_deal': 1, 'deal': 3}
+  137: {'deal': 2}
+  138: {'deal': 6}
+  139: {'deal': 1}
+  140: {'deal': 2}
+  141: {'deal': 4}
+  142: {'no_deal': 1, 'deal': 4}
+  143: {'deal': 2}
+  144: {'no_deal': 31, 'deal': 5}
+  146: {'no_deal': 3, 'deal': 5}
+  147: {'deal': 5}
+  148: {'deal': 3}
+  149: {'deal': 3}
+  150: {'deal': 1}
+  151: {'deal': 3}
+  152: {'deal': 3}
+  153: {'no_deal': 1, 'deal': 4}
+  154: {'deal': 4}
+  155: {'deal': 2}
+  156: {'no_deal': 32, 'deal': 3}
+  157: {'deal': 5}
+  158: {'deal': 3, 'no_deal': 1}
+  159: {'deal': 3}
+no_deal closing ticks: {132: 40, 136: 1, 142: 1, 144: 31, 146: 3, 153: 1, 156: 32, 158: 1}
+by item:
+  Andén 0                    n= 29 deal=  9 (0.31)
+  El Rastro al Amanecer      n= 36 deal= 18 (0.50)
+  El Tren Fantasma           n= 29 deal= 16 (0.55)
+  Mercado de Vallehermoso    n= 39 deal= 23 (0.59)
+  Plaza de Olavide           n= 35 deal= 18 (0.51)
+  Taxi Blanco                n= 38 deal= 12 (0.32)
+pairs with both closed: 98; both deal 43, split 6, both no_deal 49
+  expected if independent at p=0.466: both deal 21.3, split 48.8, both no_deal 27.9
+our closed duels in public feed: [(9, 'no_deal'), (10, 'no_deal'), (23, 'no_deal'), (24, 'no_deal'), (29, 'no_deal'), (30, 'no_deal'), (37, 'no_deal'), (38, 'no_deal'), (91, 'no_deal'), (92, 'no_deal'), (93, 'no_deal'), (94, 'no_deal')]
+leaderboard snapshots: 13, ticks 21..155; team keys: ['adjustments', 'album_filled', 'album_slots', 'badges', 'deals', 'frozen', 'level', 'luck', 'market', 'name', 'negotiating', 'pages_complete', 'rank', 'rarest', 'score', 'team', 'venue']
+our /api/me duel_points over time: t33:0.0(duels=0), t46:0.0(duels=0), t48:0.0(duels=0), t51:0.0(duels=0), t72:0.0(duels=0), t94:0.0(duels=0), t146:0.0(duels=24)

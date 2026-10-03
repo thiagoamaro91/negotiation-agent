@@ -1,0 +1,10 @@
+{
+  "early_share": 0.9,
+  "absent_at": 0.2,
+  "absent_share": 0.75,
+  "absent_last": true,
+  "accept_any_ticks": 2,
+  "near_ticks": 0,
+  "max_msgs": 3,
+  "last_r": 1.15
+}

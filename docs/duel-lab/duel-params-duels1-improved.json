@@ -1,0 +1,10 @@
+{
+  "early_share": 0.9,
+  "absent_at": 0.2,
+  "absent_share": 0.75,
+  "absent_last": true,
+  "late_poll": 8,
+  "late_ticks": 3,
+  "slot_demand": "acceptable",
+  "last_share": 0.3
+}
