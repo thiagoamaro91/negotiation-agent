@@ -99,7 +99,7 @@ Tonight (before Sunday 09:00):
 
 Parked:
 
-- Getting other teams to trade on La Celestina. One trade on t14's stall (e21781 at tick 418) lifted their market 7.50 to 11.86; one on t17's stall lifted 7.50 to 10.26 (LB460). But t05's lift faded 12.47 back to 7.50 (FEED snapshots). It needs a game message to other teams (operator yes) and should wait until the broker passes a test.
+- Getting other teams to trade on La Celestina. One trade on t14's stall (e21781 at tick 418) lifted their market 7.50 to 11.86; one on t17's stall lifted 7.50 to 10.26 (LB460). But t05's lift faded 12.47 back to 7.50 (leaderboard snapshots in the Mini recorder `~/bazaar/logs/feed/snapshots.jsonl`). It needs a game message to other teams (operator yes) and should wait until the broker passes a test.
 
 ## 4. Brief for `bazaar-conductor`
 
