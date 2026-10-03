@@ -287,5 +287,77 @@ class TestPlan(DealerCase):
                 chato.parse_args(["plan", "--dealer", "pilar", "--only", "sell:42", "--sell-step", "0"])
 
 
+class TestFloor(DealerCase):
+    """--floor P replaces private value + 2; refused below ceil(private value)."""
+
+    def setUp(self):
+        super().setUp()
+        chato.apply_dealer("pilar")
+        self.plan = chato.build_plan(FakeCatalog(), ME, ["sell:42", "sell:44"], None, allow_single=True)
+
+    def test_floor_18_accepted_for_a_17_5_card_and_17_refused(self):
+        mal06 = [p for p in self.plan if p["asset_id"] == 42]
+        kept, refused = chato.apply_floor(mal06, 18)
+        self.assertEqual((len(kept), refused), (1, []))
+        self.assertEqual(kept[0]["value"], 18)                     # replaces 17.5 + 2
+        kept, refused = chato.apply_floor(mal06, 17)
+        self.assertEqual(kept, [])
+        self.assertEqual(refused[0]["asset_id"], 42)
+        self.assertIn("below our private value 17.5", refused[0]["why"])
+        self.assertEqual(chato.apply_floor(mal06, None), (mal06, []))   # no flag: floor stays 19.5
+
+    def test_floor_is_per_copy(self):
+        kept, refused = chato.apply_floor(self.plan, 18)        # MAL-08 here is worth 49: never at 18
+        self.assertEqual([p["asset_id"] for p in kept], [42])
+        self.assertEqual([p["asset_id"] for p in refused], [44])
+
+    def test_negotiation_takes_a_final_at_the_new_floor(self):
+        target = chato.apply_floor([p for p in self.plan if p["asset_id"] == 42], 18)[0][0]
+        b = FakeDealer("pilar", 42, opening=16, final=19)        # 19 was a walk at the default floor 20
+        r = chato.negotiate(b, target, False)
+        self.assertEqual(b.says, [48, 44, 40, 36, 32, 28, 24, 20, 18])   # max(48, 18 + 20), -4, never below 18
+        self.assertEqual(b.calls[-1][0], "accept")
+        self.assertEqual(b.calls[-1][2], 19)
+        self.assertEqual(r["result"], "deal")
+
+    def test_run_stops_before_any_thread_when_floor_is_refused(self):
+        class Fake(FakeCatalog):
+            opened = []
+
+            def __init__(self, *a, **k):
+                super().__init__()
+
+            def me(self):
+                return dict(ME, name="t03", level=3, score={"deals": 0}, unlocked=[])
+
+            def dealer(self, d):
+                return {}
+
+            def open_thread(self, *a, **k):
+                Fake.opened.append(a)
+                return {"id": 1}
+
+        saved = (chato.Bazaar, chato.load_env, chato.duel_lock_fresh, sys.argv, chato.os.environ.get("BAZAAR_KEY"))
+        chato.Bazaar, chato.load_env, chato.duel_lock_fresh = Fake, (lambda: None), (lambda *a: False)
+        chato.os.environ["BAZAAR_KEY"] = "test-dummy"
+        sys.argv = ["chato.py", "run", "--dealer", "pilar", "--only", "sell:42", "--allow-single", "--floor", "17"]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                with self.assertRaises(SystemExit) as e:
+                    chato.main()
+        finally:
+            chato.Bazaar, chato.load_env, chato.duel_lock_fresh, sys.argv = saved[:4]
+            if saved[4] is None:
+                chato.os.environ.pop("BAZAAR_KEY", None)
+            else:
+                chato.os.environ["BAZAAR_KEY"] = saved[4]
+        self.assertEqual(e.exception.code, 2)
+        self.assertEqual(Fake.opened, [])
+        self.assertIn("REFUSED sell:42", out.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                chato.parse_args(["plan", "--dealer", "pilar", "--only", "sell:42", "--floor", "0"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -32,11 +32,15 @@ copy + 2), and take her final offer if it is at or above the floor. Logs go to l
 --allow-single lets an explicitly listed `sell:<asset_id>` go even when it is our last copy (or the copy we keep);
 nothing is ever auto-selected that way: without an explicit id the agent sells spares only.
 --sell-anchor N (absolute first ask) and --sell-step N override the dealer's selling defaults; the floor still holds.
+--floor P replaces the default sell floor (private value + 2) with P for this run; a copy whose private value is above
+P (hard minimum ceil(private value)) is refused: plan shows it, run stops before opening any thread.
+    python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --floor 18 --max-deals 2
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -356,6 +360,23 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
     return plan
 
 
+def apply_floor(plan: list[dict], floor: int | None) -> tuple[list[dict], list[dict]]:
+    """--floor P replaces the default sell floor (private value + 2) with P for this run. P below our private value of
+    a copy (hard minimum ceil(private)) is refused for that copy: it comes back in the second list and is never sold."""
+    if floor is None:
+        return plan, []
+    kept, refused = [], []
+    for p in plan:
+        if p["side"] != "sell":
+            kept.append(p)
+        elif int(floor) < math.ceil(p["private"]):
+            refused.append(dict(p, why=f"--floor {floor} is below our private value {p['private']} "
+                                       f"(minimum {math.ceil(p['private'])})"))
+        else:
+            kept.append(dict(p, value=int(floor), floor_override=True))
+    return kept, refused
+
+
 def bid_ladder(limit: float, spendable: int) -> list:
     """The bids a buy would walk through with --anchor (shown by plan; she may cross or stop us earlier)."""
     top = int(min(limit, spendable, MAX_BID if MAX_BID is not None else limit))
@@ -388,11 +409,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     help="absolute first ask when selling, in P (default per dealer: chato 1.6 x his bid, "
                          "pilar max(3 x her bid, floor + 20)); never below the floor")
     ap.add_argument("--sell-step", type=int, default=None, help="primas per round when selling (default chato 2, pilar 4)")
+    ap.add_argument("--floor", type=int, default=None,
+                    help="sell floor in P for this run, replacing private value + 2; refused below ceil(private value)")
     args = ap.parse_args(argv)
     if args.step < 1 or (args.anchor is not None and args.anchor < 1):
         ap.error("--step and --anchor must be >= 1")
     if (args.sell_step is not None and args.sell_step < 1) or (args.sell_anchor is not None and args.sell_anchor < 1):
         ap.error("--sell-step and --sell-anchor must be >= 1")
+    if args.floor is not None and args.floor < 1:
+        ap.error("--floor must be >= 1")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
     if args.allow_single and not listed_sell_ids(only):
         ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
@@ -433,7 +458,7 @@ def main() -> None:
     args = parse_args()
     apply_dealer(args.dealer, args.sell_anchor, args.sell_step)
     extra = (args.dealer != DEFAULT_DEALER or args.allow_single or args.sell_anchor is not None
-             or args.sell_step is not None)  # print/log the new selling details; plain chato output is unchanged
+             or args.sell_step is not None or args.floor is not None)  # print/log the new selling details; plain chato output is unchanged
     if args.cmd == "run" and duel_lock_fresh():
         print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
               f"Not starting {DEALER_NAME}; try again after the duel wave.", flush=True)
@@ -443,6 +468,7 @@ def main() -> None:
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap, allow_single=args.allow_single)
+    plan, floor_refused = apply_floor(plan, args.floor)
     CASH_RESERVE = args.reserve
     MAX_ROUNDS = args.max_rounds
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
@@ -480,16 +506,21 @@ def main() -> None:
                 then = f"she crosses: deal at {eg}" if asks[-1] <= eg else f"then her final; take it if >= {floor}"
                 print(f"  asks {p['item']} (asset {p['asset_id']}) if she bids {eg}: "
                       f"{' '.join(str(x) for x in asks)} ({then})")
-        for s in sell_skips(me, only, plan, args.allow_single):
+        for s in sell_skips(me, only, plan + floor_refused, args.allow_single):
             print(s)
+        for p in floor_refused:
+            print(f"  REFUSED sell:{p['asset_id']} {p['item']}: {p['why']}")
     if args.cmd == "plan":
         return
+    if floor_refused:  # never sell a copy below our private value: stop before any thread opens
+        print(f"Not starting: {len(floor_refused)} sell(s) refused by --floor; raise it or drop those ids.", flush=True)
+        sys.exit(2)
     if args.dealer != DEFAULT_DEALER:
         RUN = RunLog(args.dealer)  # logs/<dealer>/<date>.jsonl
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
               plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]],
               **({"dealer": DEALER, "allow_single": args.allow_single, "sell_anchor": SELL_ANCHOR_ABS,
-                  "sell_step": SELL_STEP} if extra else {}))
+                  "sell_step": SELL_STEP, "floor": args.floor} if extra else {}))
     done = 0
     for target in plan:
         if done >= args.max_deals:
