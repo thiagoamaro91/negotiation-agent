@@ -747,6 +747,22 @@ class Public(unittest.TestCase):
         self.assertEqual(ok, public_plan(book))
         self.assertEqual(ok, [(11, 12, 12)])  # the 30 P bid is the seller's own maker
 
+    def test_policy_stall_crosses_public_offers_too_during_a_market_test_and_outside_one(self):
+        """The factory runs `--policy stall`: teams' public v20 offers are crossed on every book it reads, whether
+        a bench session is on or not (plan_book adds public_plan for every policy), so outreach may say so."""
+        offers = [
+            {"id": 21, "maker": "pA", "venue": "v20",
+             "give": {"cash": 0, "assets": [{"id": 647, "kind": "card", "ref": "LAT-07"}], "types": []},
+             "want": {"cash": 26, "assets": [], "types": []}},
+            {"id": 22, "maker": "pB", "venue": "v20", "give": {"cash": 30, "assets": [], "types": []},
+             "want": {"cash": 0, "assets": [], "types": ["card:LAT-07"]}},
+        ]
+        bench = [seller("b1-1", 10, maker="bench"), buyer("b1-2", 20, maker="bench")]
+        for b in ([], bench):
+            ok, bad, _ = brk.plan_book(book_of(b, offers), 1, None)
+            self.assertIn((21, 22, 28), ok)
+            self.assertEqual(bad, [])
+
 
 class FeeBearing(unittest.TestCase):
     """A venue that charges a fee (Codex on #44): a pair that crosses on quotes but not after the fee is never sent,

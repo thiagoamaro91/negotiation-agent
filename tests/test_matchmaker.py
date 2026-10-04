@@ -431,7 +431,15 @@ class Census(unittest.TestCase):
                "unfinished": census(10, self.CARDS, tick_end=None),
                "bad ref": census(10, self.CARDS + [(103, "nope", "t02")]),
                "id not an int": census(10, self.CARDS + [("104", "LAV-04", "t02")]),
-               "owner not a string": census(10, self.CARDS + [(105, "LAV-04", 7)])}
+               "owner not a string": census(10, self.CARDS + [(105, "LAV-04", 7)]),
+               # Sunday's live census: the server shows "a team" for every rival's card, names only ours
+               "owners redacted": census(10, [(1, "LAV-01", "a team"), (2, "LAV-02", "a team"),
+                                               (100, "LAV-04", "a team"), (101, "LAV-04", "t03"),
+                                               (102, "LAV-04", "abuela")]),
+               "only our own cards named": census(10, [(1, "LAV-01", "t03"), (2, "LAV-02", "t03"),
+                                                        (100, "LAV-04", "t03"), (102, "LAV-04", "abuela")]),
+               "one rival team only": census(10, [(1, "LAV-01", "t01"), (2, "LAV-02", "t01"),
+                                                   (3, "LAV-03", "t01"), (102, "LAV-04", "abuela")])}
         for why, snap in bad.items():
             with self.subTest(why):
                 res = build(T01 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)), census=snap)
@@ -731,3 +739,42 @@ class SolRound2(unittest.TestCase):
                 self.assertFalse(ex.trusted)
         ex, _ = mm.exclude_from([], self.MAL, (), say=lambda m: None, now_tick=10**400)
         self.assertFalse(ex.trusted)
+
+
+def settle(i, tick, aid, ref, frm, to, price):
+    return ev(i, tick, "settlement", price=price, venue=None, items=[{"kind": "card", "id": aid, "ref": ref,
+                                                                      "frm": frm, "to": to}])
+
+
+class Holders(unittest.TestCase):
+    """`holders REF`: who holds one card, for our own decisions (private, stdout only)."""
+
+    def test_named_holders_come_with_their_asset_ids_and_team_3_is_never_one(self):
+        r = mm.card_holders(JOIN + T01 + T02 + T03, cat(), LB, "LAV-04")
+        self.assertEqual([(x["team"], x["copies"], x["assets"]) for x in r["named"]], [("t02", 2, [N + 1, N + 2])])
+        self.assertNotIn("t03", {x["team"] for x in r["named"] + r["counts"]})
+
+    def test_a_page_the_leaderboard_says_is_complete_holds_the_card_the_feed_never_named(self):
+        # t01 names LAV-01..03; album 4 and one complete page leave one choice: it holds LAV-04 too
+        r = mm.card_holders(JOIN + T01, cat(), lb(t01=(4, 1), t02=(0, 0)), "LAV-04")
+        self.assertEqual([(x["team"], x["p_missing"]) for x in r["counts"]], [("t01", 0.0)])
+        self.assertEqual(r["named"], [])
+        no_page = mm.card_holders(JOIN + T01, cat(), lb(t01=(3, 0), t02=(0, 0)), "LAV-04")   # no page complete
+        self.assertEqual(no_page["counts"], [])
+
+    def test_dealer_copies_come_from_the_census_brought_forward_by_settlements(self):
+        snap = census(10, [(500, "LAV-04", "pilar"), (501, "LAV-04", "pilar"), (502, "LAV-04", "a team"),
+                           (503, "LAV-03", "pilar")])
+        moved = [settle(20, 12, 501, "LAV-04", "pilar", "t02", 80), settle(21, 13, 502, "LAV-04", "t01", "chato", 40)]
+        r = mm.card_holders(JOIN + moved, cat(), LB, "LAV-04", snap)
+        self.assertEqual(r["dealers"], {"pilar": 1, "chato": 1})
+        self.assertEqual([(s["tick"], s["frm"], s["to"], s["price"]) for s in r["recent"]],
+                         [(12, "pilar", "t02", 80), (13, "t01", "chato", 40)])
+        self.assertIn("PRIVATE", mm.holders_report(r))
+
+    def test_the_cli_needs_a_card_ref(self):
+        import contextlib
+        import io
+        for argv in (["holders"], ["holders", "not a ref"]):
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                mm.main(argv)

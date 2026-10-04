@@ -7,17 +7,34 @@ step sal10 / r3-s1-sal10-picaros), this script buys it from Los Picaros (sold 8 
 
 `run`, in order:
   1. Reads /api/me: if we already hold SAL-10, logs a nothing-to-do marker and exits 0.
-  2. Creates logs/state/page-yield-SAL-10 and waits (at most --ack-ticks game ticks or --ack-wall-s seconds) for the
-     desk's logs/state/page-yield-SAL-10.ack with "open_bid": false (the desk cancels its SAL-10 bid and stops buying
-     that ref while the yield file exists). No ack: removes the yield (the desk resumes), logs it and exits 2, so the
-     watchdog flags it. Two copies would be the worst case: the second is worth 22.75.
-  3. Re-checks the game hour (clear of the next Market Test and of the Final's quiet window), waits for any other
-     Los Picaros run to end (one process per dealer), then runs agent/chato.py --dealer picaros --only SAL-10 with
-     cap 88, reserve 40, one deal. chato accepts only an offer whose structured give is exactly one SAL-10 card for
-     cash (agent/dealer_client.py exact_offer): a SAL-09 named in a SAL-10 thread is logged as a mismatch, never taken.
-  4. Mirrors chato's outcome into logs/sal10/<date>.jsonl, the log the factory reads: a deal (`result` status deal)
+  2. Waits for any other Los Picaros run to end (one process per dealer) BEFORE yielding, so the desk keeps its bid
+     meanwhile. A 40-round Picaros run lasts about 40 ticks, so this wait is bounded by window() (re-checked on every
+     poll: it ends the moment a run started now could reach the next Market Test, the Final's quiet window or the
+     finale warning: exit 6) and by --busy-wall-s, which only binds on a paused clock.
+  3. Creates logs/state/page-yield-SAL-10 and waits for the desk's logs/state/page-yield-SAL-10.ack (the desk rewrites
+     it every tick) with "open_bid": false and an integer "held" (the desk cancels its SAL-10 bid and stops buying
+     that ref while the yield file exists). "held" > 0 means our own bid filled meanwhile: the yield goes, a
+     nothing-to-do marker is logged and it exits 0 without chato. The ack wait has the same bounds as step 2; the
+     window closing first removes the yield and exits 2. Two copies would be the worst case: the second is worth 22.75.
+  4. Re-checks, with the yield kept, that no other Picaros run started and the ack still shows held 0 (same bounds),
+     then reads the clock once more (a failed read raises and removes the yield), checks the window, checks for
+     another Picaros run one last time and runs agent/chato.py --dealer picaros --only SAL-10 with cap 88, reserve
+     40, one deal. chato accepts only an offer whose structured give is exactly one SAL-10 card for cash
+     (agent/dealer_client.py exact_offer): a SAL-09 named in a SAL-10 thread is logged as a mismatch, never taken.
+  5. Mirrors chato's outcome into logs/sal10/<date>.jsonl, the log the factory reads: a deal (`result` status deal)
      keeps the yield file; a no-deal exit 0 removes it so the desk bids again; a non-zero chato exit is passed through
      and keeps the yield only when an accept may have traded (6 unsettled, or a crash); a dealer stop (quota, cooloff, locked) exits 9.
+
+Retry later: a wall bound (--busy-wall-s / --ack-wall-s, i.e. a clock paused for that long) removes the yield, logs
+`retry_later` and exits 0 WITHOUT a done marker. tools/factory.py treats that like a no-deal run and relaunches the
+step (up to the process's max_attempts) once its gates (clock running, duel quiet) are open again; a non-zero exit is
+never relaunched. The window closing is final: nothing could be bought anyway, so it exits non-zero (6, or 2 with no
+ack) and the watchdog shows it.
+
+Residual race: there is no per-dealer lock (agent/lease.py governs accepts, not runs). Both this script and the
+picaros keeper check the process table milliseconds before they spawn, so a keeper launch in that gap could put two
+Picaros runs side by side. chato's --only SAL-10 and exact_offer still prevent a wrong buy, and the keeper refuses to
+launch while our chato runs (its launch_check matches agent/chato.py picaros).
 
 The key is read from .env by chato.py itself (never passed, never printed). `plan` is read-only: keyless clock and
 schedule reads, plus /api/me only when BAZAAR_KEY is already set.
@@ -48,9 +65,9 @@ YIELD = STATE / f"page-yield-{REF}"
 ACK = STATE / f"page-yield-{REF}.ack"
 BASE = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai")
 
-EXIT_NO_ACK = 2          # the desk never confirmed it dropped its bid: nothing bought
+EXIT_NO_ACK = 2          # the desk never confirmed it dropped its bid before the window closed: nothing bought
 EXIT_WINDOW = 6          # too close to a Market Test or past the last safe game hour: nothing bought
-EXIT_BUSY = 7            # another Los Picaros run kept the dealer busy: nothing bought
+EXIT_RETRY = 0           # a wall bound (paused clock): no done marker, so the factory relaunches the step
 EXIT_DEALER_STOP = 9     # chato stopped on persona_quota / cooloff / locked without a deal
 CLEAN_EXITS = {2, 3, 4, 5, 7, 8}   # chato refused or closed WITHOUT an accept going out (dealer_client EXIT_*): the yield
                                   # goes; 6 (unsettled) or a crash may have traded, so the yield stays
@@ -102,32 +119,46 @@ def window(t_hours: float, events: list, run_game_min: float) -> tuple[bool, str
 
 
 def ack_ok(ack: dict, yield_tick: int) -> bool:
+    """A fresh, well-formed desk ack: our ref, no open bid, a tick from this yield and an integer `held` count. Whether
+    it lets us buy (held == 0) or says we already hold the card (held > 0) is the caller's branch."""
     return (isinstance(ack, dict) and ack.get("ref") == REF and ack.get("open_bid") is False
-            and isinstance(ack.get("tick"), int) and ack["tick"] >= yield_tick - 1)
+            and isinstance(ack.get("tick"), int) and ack["tick"] >= yield_tick - 1
+            and isinstance(ack.get("held"), int) and not isinstance(ack.get("held"), bool) and ack["held"] >= 0)
 
 
-def read_ack(path: Path = ACK):
+def read_ack(path: Path | None = None):
     try:
-        return json.loads(path.read_text())
+        return json.loads((path or ACK).read_text())
     except (OSError, ValueError):
         return None
 
 
-def wait_ack(yield_tick: int, read_tick, ack_ticks: int, wall_s: float, poll_s: float = 3.0,
-             path: Path = ACK, sleep=time.sleep, now=time.monotonic):
-    """The ack dict, or None after ack_ticks game ticks past yield_tick or wall_s seconds (a paused clock never
-    ticks, so the wall bound always ends the wait)."""
+def fresh_ack(yield_tick: int, path: Path | None = None):
+    a = read_ack(path)
+    return a if ack_ok(a, yield_tick) else None
+
+
+def wait_for(ready, read_hours, events: list, run_game_min: float, wall_s: float, poll_s: float,
+             sleep=None, now=None) -> tuple[str, object]:
+    """Poll ready() until it returns something other than None: ("ready", value). ("window", why) as soon as the game
+    clock says a Picaros run started now could no longer finish in time (window()); ("wall", None) after wall_s
+    seconds, which only binds on a paused clock. A failed clock read only means the wall bound decides."""
+    sleep, now = sleep or time.sleep, now or time.monotonic     # looked up per call so tests can patch the module
     end = now() + wall_s
     while True:
-        a = read_ack(path)
-        if ack_ok(a, yield_tick):
-            return a
+        v = ready()
+        if v is not None:
+            return "ready", v
         try:
-            tick = read_tick()
-        except Exception:  # noqa: BLE001  (a failed clock read only means we rely on the wall bound)
-            tick = None
-        if (tick is not None and tick > yield_tick + ack_ticks) or now() >= end:
-            return None
+            h = float(read_hours())
+        except Exception:  # noqa: BLE001
+            h = None
+        if h is not None:
+            ok, why = window(h, events, run_game_min)
+            if not ok:
+                return "window", why
+        if now() >= end:
+            return "wall", None
         sleep(poll_s)
 
 
@@ -203,12 +234,20 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--reserve", type=int, default=40)
     ap.add_argument("--max-rounds", type=int, default=40)
     ap.add_argument("--max-wait-ticks", type=int, default=20, help="longest Picaros cooloff chato waits out")
-    ap.add_argument("--ack-ticks", type=int, default=3, help="game ticks to wait for the desk's ack")
-    ap.add_argument("--ack-wall-s", type=float, default=120.0, help="wall seconds to wait for the desk's ack")
+    ap.add_argument("--ack-wall-s", type=float, default=1500.0,
+                    help="wall cap on the wait for the desk's ack (the window closing ends it first on a running clock)")
     ap.add_argument("--run-game-min", type=float, default=20.0,
                     help="game minutes a Picaros run may take (40 ticks at 15 s, two game hours per wall hour)")
-    ap.add_argument("--busy-wall-s", type=float, default=300.0, help="wait this long for another Picaros run to end")
+    ap.add_argument("--busy-wall-s", type=float, default=1500.0,
+                    help="wall cap on the wait for another Picaros run to end (the window closing ends it first on a "
+                         "running clock; a 40-round run takes about 10 wall minutes)")
+    ap.add_argument("--ack-poll-s", type=float, default=3.0)
+    ap.add_argument("--busy-poll-s", type=float, default=10.0)
     return ap.parse_args(argv)
+
+
+def clock_hours():
+    return get_json("clock").get("t_hours")
 
 
 def main(argv=None) -> int:
@@ -230,6 +269,9 @@ def main(argv=None) -> int:
         print(f"  window now: {'clear' if ok else why}")
         print(f"  yield file {rel(YIELD)} {'EXISTS' if YIELD.exists() else 'absent'}; "
               f"ack {rel(ACK)}: {read_ack() or 'absent'}")
+        print(f"  waits: another Picaros run, then the desk ack (held 0 to buy, held > 0 = ours), each until the window "
+              f"closes (exit {EXIT_WINDOW} / {EXIT_NO_ACK}) or {a.busy_wall_s:g} / {a.ack_wall_s:g} wall s "
+              f"(exit {EXIT_RETRY} without a done marker: the factory relaunches)")
         print(f"  then: {' '.join(chato_argv(a)[1:])}")
         return 0
     from dealer_client import DealerBazaar
@@ -243,6 +285,22 @@ def main(argv=None) -> int:
     if not ok:
         run.event("refused", why=why, t_hours=h)
         return EXIT_WINDOW
+    busy = other_picaros_runs()     # wait BEFORE yielding, so the desk keeps its SAL-10 bid meanwhile
+    if busy:
+        run.event("busy_wait", pids=busy, phase="before_yield", wall_s=a.busy_wall_s)
+        state, why = wait_for(lambda: None if other_picaros_runs() else True, clock_hours, events, a.run_game_min,
+                              a.busy_wall_s, a.busy_poll_s)
+        if state == "window":
+            run.event("refused", why=why, phase="busy_before_yield")
+            return EXIT_WINDOW
+        if state == "wall":
+            run.event("retry_later", phase="busy_before_yield", wall_s=a.busy_wall_s,
+                      why="another Picaros run outlasted the wall cap (paused clock?): the factory relaunches")
+            return EXIT_RETRY
+        try:
+            tick = int(get_json("clock").get("tick"))
+        except Exception:  # noqa: BLE001  (an older yield tick only widens which acks count; any old ack is deleted)
+            pass
     write_yield(tick)
     try:      # until chato is spawned, any failure must give the bid back to the desk (nobody clears it by hand today)
         return after_yield(a, run, tick, events)
@@ -258,27 +316,52 @@ SPAWNED = False
 def after_yield(a: argparse.Namespace, run, tick: int, events: list) -> int:
     global SPAWNED
     run.event("yield_written", path=rel(YIELD), tick=tick)
-    ack = wait_ack(tick, lambda: int(get_json("clock").get("tick")), a.ack_ticks, a.ack_wall_s)
-    if ack is None:
+    state, ack = wait_for(lambda: fresh_ack(tick), clock_hours, events, a.run_game_min, a.ack_wall_s, a.ack_poll_s)
+    if state != "ready":
         drop_yield()
-        run.event("no_ack", tick=tick, ack_ticks=a.ack_ticks, ack_wall_s=a.ack_wall_s,
-                  why="the desk did not confirm open_bid false: nothing bought, yield removed")
-        print("NO ACK from the market desk: not buying SAL-10 from Los Picaros (yield removed).", flush=True)
-        return EXIT_NO_ACK
-    run.event("ack", **{k: ack.get(k) for k in ("ref", "tick", "open_bid")})
-    end = time.monotonic() + a.busy_wall_s
-    while (busy := other_picaros_runs()) and time.monotonic() < end:
-        time.sleep(10)
-    if busy:
-        drop_yield()
-        run.event("busy", pids=busy, why="another Los Picaros run is live: nothing bought, yield removed")
-        return EXIT_BUSY
-    clock = get_json("clock")
-    ok, why = window(float(clock.get("t_hours") or 0.0), events, a.run_game_min)
-    if not ok:
-        drop_yield()
-        run.event("refused", why=why, t_hours=clock.get("t_hours"))
-        return EXIT_WINDOW
+        if state == "window":
+            run.event("no_ack", tick=tick, why=f"no desk ack (open_bid false, held count) before the window closed "
+                                               f"({ack}): nothing bought, yield removed")
+            print("NO ACK from the market desk before the window closed: not buying SAL-10 (yield removed).", flush=True)
+            return EXIT_NO_ACK
+        run.event("retry_later", phase="ack", tick=tick, wall_s=a.ack_wall_s,
+                  why="no desk ack within the wall cap (paused clock?): yield removed, the factory relaunches")
+        return EXIT_RETRY
+    run.event("ack", **{k: ack.get(k) for k in ("ref", "tick", "open_bid", "held")})
+    deadline = time.monotonic() + a.busy_wall_s
+
+    def ready():
+        cur = fresh_ack(tick) or ack      # the desk rewrites the ack every tick: a fill since shows as held > 0
+        if cur["held"] > 0:
+            return "held", cur
+        return None if other_picaros_runs() else ("go", cur)
+    while True:
+        state, v = wait_for(ready, clock_hours, events, a.run_game_min, max(0.0, deadline - time.monotonic()),
+                            a.busy_poll_s)
+        if state == "window":
+            drop_yield()
+            run.event("refused", why=v, phase="after_ack")
+            return EXIT_WINDOW
+        if state == "wall":
+            drop_yield()
+            run.event("retry_later", phase="busy_after_ack", wall_s=a.busy_wall_s,
+                      why="another Picaros run outlasted the wall cap (paused clock?): yield removed, the factory relaunches")
+            return EXIT_RETRY
+        kind, cur = v
+        if kind == "held":     # our desk's bid filled: the desk stops on its own, the yield can go
+            drop_yield()
+            run.start(plan=[], tick=cur.get("tick"), why=f"{REF} held via the market desk (ack held {cur['held']})")
+            return 0
+        clock = get_json("clock")       # unguarded on purpose: a failed read raises and main() removes the yield
+        ok, why = window(float(clock.get("t_hours") or 0.0), events, a.run_game_min)
+        if not ok:
+            drop_yield()
+            run.event("refused", why=why, t_hours=clock.get("t_hours"))
+            return EXIT_WINDOW
+        busy = other_picaros_runs()     # last look, right before the spawn (see the residual race in the docstring)
+        if not busy:
+            break
+        run.event("busy_wait", pids=busy, phase="before_spawn")
     log = ROOT / "logs" / "picaros" / (time.strftime("%Y-%m-%d") + ".jsonl")
     offset = log.stat().st_size if log.exists() else 0
     argv = chato_argv(a)

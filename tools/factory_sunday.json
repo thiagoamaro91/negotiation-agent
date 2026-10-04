@@ -61,6 +61,8 @@
       "steps": [
         {
           "label": "r3-a1-ret-uncommons",
+          "enabled": false,
+          "disabled_note": "09:22 mini-conductor: 3 runs, no deal; Abuela final 23 on RET-08 vs cap 22 (value 22.5). Off so r3-a2 can run; cap unchanged.",
           "after_event": {"action": "grant_all", "delay_min": 1},
           "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-06,RET-07,RET-08", "--cap", "22",
                   "--reserve", "20", "--max-deals", "3"],
@@ -279,10 +281,10 @@
     {
       "name": "outreach",
       "kind": "service",
-      "enabled": false,
+      "enabled": true,
       "required": false,
       "gates": {"doors_open": true, "clock_running": true},
-      "cmd": ["{python}", "-u", "tools/outreach.py", "run", "--yes", "--max-teams", "3"],
+      "cmd": ["{python}", "-u", "tools/outreach.py", "run", "--yes", "--max-teams", "6", "--pitch", "--pair"],
       "match": ["tools/outreach.py", "run"],
       "log": "logs/outreach/{date}.jsonl",
       "stale_ticks": null,
@@ -293,7 +295,7 @@
       "kind": "service",
       "required": false,
       "gates": {"doors_open": true, "clock_running": false},
-      "cmd": ["/bin/bash", "-c", "while true; do {python} -u tools/snapshot.py --me-only || exit 1; sleep 600; done"],
+      "cmd": ["/bin/bash", "-c", "while true; do {python} -u tools/snapshot.py --me-only --score || exit 1; sleep 600; done"],
       "match": ["tools/snapshot.py", "--me-only"],
       "log": "logs/state/me.json",
       "stale_ticks": null,

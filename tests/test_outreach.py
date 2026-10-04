@@ -455,3 +455,303 @@ class SolRound2(unittest.TestCase):
                 ex = out.lacking(argparse.Namespace(exclude_from="/nonexistent", exclude_max_age_min=60), {"tick": 1}, ())
                 got = out.targets({"matches": [page, epic, unknown]}, {}, "d", 5, exclude=ex | {"NOT-01"})
                 self.assertEqual([x[1]["card"] for x in got], allowed)
+
+
+TEAMS = {"t03": {"active": True, "last_move_tick": 1550}, "t05": {"active": True, "last_move_tick": 1500},
+         "t07": {"active": True, "last_move_tick": 1540}, "t08": {"active": False, "last_move_tick": 1549},
+         "t11": {"active": True, "last_move_tick": None}}
+
+
+class SteerToV20(unittest.TestCase):
+    """Matches on El Rastro keep their action and get the v20 line while it fits; the pitch is opt-in, once per team."""
+
+    def test_an_offer_off_our_venue_keeps_its_call_and_adds_the_v20_line(self):
+        for x, to in ((DOC["matches"][0], "t05"), (DOC["matches"][2], "t14")):
+            text = out.message(x, to)
+            self.assertIn(f"POST /api/offers/{x['action']['offer']}/accept", text)
+            self.assertIn(out.V20_LINE.strip(), text)
+            self.assertIn("5 % + 1 P a card", text)
+            self.assertLessEqual(len(text), out.MAX_CHARS)
+            self.assertTrue(text.endswith("We will not message you again today."))
+
+    def test_an_offer_on_v20_or_a_swap_gets_no_v20_line(self):
+        on_v20 = m("t09", "SAL-06", 1, ("bid", 20259, "v20", 20, "t09"), who=("t05",))
+        swap = m("t06", "RET-12", 1, ("swap", 20068, "rastro", 0, "t06"), who=("t05",))
+        for x in (on_v20, swap):
+            self.assertNotIn("Next time", out.message(x, "t05"))
+
+    def test_an_inferred_need_without_an_offer_proposes_the_v20_bid(self):
+        text = out.message(DOC["matches"][3], "t13")
+        self.assertIn('La Celestina (v20, 0 % fee; El Rastro charges the taker 5 % + 1 P a card): POST /api/offers '
+                      '{"venue": "v20", "give": {"cash": 24}, "want": {"cards": ["MAL-08"]}}', text)
+        self.assertLessEqual(len(text), out.MAX_CHARS)
+
+    def test_the_v20_line_is_dropped_whole_never_the_call_when_it_would_not_fit(self):
+        x = m("t09", "SAL-06", 1, ("bid", 20259, "rastro", 20, "t09"), who=("t05",))
+        x["card_name"], x["action"]["maker_name"] = "N" * 500, "M" * 400
+        text = out.message(x, "t05")
+        self.assertNotIn("Next time", text)
+        self.assertIn('POST /api/offers/20259/accept with {"assets": [<your SAL-06 asset id>]}.', text)
+        self.assertTrue(text.endswith("We will not message you again today."))
+
+    def test_the_pitch_names_no_card_fits_and_claims_nothing_about_our_buying_by_default(self):
+        text = out.pitch_message()
+        self.assertLessEqual(len(text), out.MAX_CHARS)
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"cash": <your price>}, "want": {"cards": '
+                      '["<card ref>"]}}', text)
+        self.assertIn('{"venue": "v20", "give": {"assets": [<your asset id>]}, "want": {"cash": <your price>}}', text)
+        self.assertNotIn("buying desk", text)
+        self.assertNotRegex(text, r"[A-Z]{3}-\d\d")       # no card named
+        self.assertIn("buying desk", out.pitch_message(reciprocity=True))
+        self.assertLessEqual(len(out.pitch_message(reciprocity=True)), out.MAX_CHARS)
+        for t in (text, out.pitch_message(True)):
+            self.assertNotIn("trade on ours", t.lower())
+
+    def test_pitch_targets_active_teams_once_per_game_never_us_never_messaged_today(self):
+        doc = {"teams": TEAMS}
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, {}, "d", 10)], ["t07", "t05", "t11"])
+        state = {"teams": {"d": ["t07"]}, "keys": ["pitch:t05"]}
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, state, "d", 10)], ["t11"])
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, {}, "d", 10, taken=["t07"])], ["t05", "t11"])
+        self.assertEqual(out.pitch_targets(doc, {}, "d", 0), [])
+        self.assertEqual(out.key_of(out.pitch_targets(doc, {}, "d", 1)[0][1]), "pitch:t07")
+
+
+class PitchCli(unittest.TestCase):
+    BOOK = Cli.BOOK
+    run_main = Cli.run_main
+    DOC2 = dict(DOC, teams=TEAMS)
+
+    def test_the_pitch_is_off_by_default(self):
+        text, _, _ = self.run_main(["plan", "--max-teams", "10"], doc=self.DOC2)
+        self.assertNotIn("is a board venue", text)
+
+    def test_the_pitch_fills_only_the_slots_left_and_is_recorded_once(self):
+        text, _, _ = self.run_main(["plan", "--max-teams", "2", "--pitch"], doc=self.DOC2)
+        self.assertNotIn("is a board venue", text)                       # 2 matches fill the 2 slots
+        c = FakeClient()
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "6", "--pitch"], client=c, doc=self.DOC2)
+        opened = [x[1] for x in c.calls if x[0] == "open"]
+        self.assertEqual(opened[:2], ["t05", "t14"])                    # the matches first
+        self.assertEqual(opened[-2:], ["t07", "t11"])                   # then the pitch; t05 got a match: no pitch
+        self.assertEqual(opened.count("t05"), 1)
+        self.assertEqual([k for k in state["keys"] if k.startswith("pitch:")], ["pitch:t07", "pitch:t11"])
+        c2 = FakeClient()
+        self.run_main(["run", "--yes", "--max-teams", "5", "--pitch"], client=c2, doc=self.DOC2, state=state)
+        self.assertEqual([x for x in c2.calls if x[0] == "open"], [])
+
+    def test_reciprocity_needs_the_pitch(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            out.main(["plan", "--pitch-reciprocity"])
+
+
+def want(team, card, price, venue, oid, holders, set_=None):
+    x = m(team, card, 2, ("bid", oid, venue, price, team))
+    x["set"] = set_ or card.split("-")[0]
+    x["holders"] = [dict({"team": t, "name": f"Team {int(t[1:])}", "active": True, "as_of": 1660}, copies=c, asset=a)
+                    for t, c, a in holders]
+    return x
+
+
+PDOC = {"generated_at": 0, "tick": 1660, "matches": [
+    want("t05", "LAT-06", 9, "v15", 21791, [("t16", 2, 613)]),                    # a spare, a high bid
+    want("t12", "LAV-07", 5, "rastro", 21800, [("t07", 2, 700)]),                 # a spare, the last card of t12's page
+    want("t04", "SAL-03", 4, "rastro", 21486, [("t01", 1, 934)]),                 # one copy, t01 is filling SAL
+    m("t06", "CHA-12", 2, ("swap", 21645, "v02", 0, "t06")),                      # a swap: never paired
+    want("t09", "RET-02", 30, "v20", 21900, [("t08", 3, 800)]),                   # already on v20: never paired
+], "teams": {
+    "t12": {"active": True, "consistent": True, "near_pages": [
+        {"set": "LAV", "have": 9, "size": 10, "appears_missing": ["LAV-07"]}]},
+    "t01": {"active": True, "consistent": True, "near_pages": [
+        {"set": "SAL", "have": 8, "size": 10, "appears_missing": ["SAL-04", "SAL-06"]}]},
+    "t05": {"active": True, "last_move_tick": 1650}, "t16": {"active": True, "last_move_tick": 1640},
+    "t07": {"active": True, "last_move_tick": 1630}, "t02": {"active": True, "last_move_tick": 1620},
+}}
+PDOC["matches"][3]["holders"] = [{"team": "t10", "copies": 2, "active": True}]
+
+
+class Pair(unittest.TestCase):
+    """--pair: a tier-2 cash bid and a holder the decks name both get one message; the trade happens on v20."""
+
+    def test_a_pair_is_found_and_both_texts_carry_the_post_shapes(self):
+        got = out.pair_targets(PDOC, {}, "d", 6)
+        self.assertEqual([to for to, _, _ in got], ["t12", "t07", "t05", "t16"])
+        (w, mw, tw), (h, mh, th) = got[2], got[3]
+        self.assertEqual((mw["role"], mh["role"], mw["want"], mw["holder"], mw["card"]),
+                         ("want", "holder", "t05", "t16", "LAT-06"))
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"cash": 9}, "want": {"cards": ["LAT-06"]}}', tw)
+        self.assertIn("Team 16 holding 2 copies", tw)
+        self.assertIn("appears to have a spare", tw)
+        self.assertIn("Team 5 bids 9 P for LAT-06 on venue v15: offer #21791", th)
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"assets": [613]}, "want": {"cash": <your price>}}', th)
+        for t in (tw, th):
+            self.assertIn("0 % fee", t)
+            self.assertIn("5 % + 1 P a card", t)
+            self.assertIn("at the midpoint", t)
+            self.assertLessEqual(len(t), out.MAX_CHARS)
+            self.assertTrue(t.endswith("We will not message you again today."))
+            self.assertNotIn(chr(0x2014), t)
+        self.assertNotIn('"cash": 9', th)                         # the holder's ask never carries the bidder's price
+        self.assertEqual(len({out.key_of(x[1]) for x in got}), 4)
+        self.assertEqual(out.key_of(mw), "pair:t05:LAT-06:t16:want")
+        self.assertEqual(out.key_of(mh), "pair:t05:LAT-06:t16:holder")
+
+    def test_last_card_of_a_page_ranks_first_then_the_bid(self):
+        got = out.pair_targets(PDOC, {}, "d", 6)
+        self.assertEqual(got[0][1]["card"], "LAV-07")              # 5 P, the last card of t12's page
+        self.assertIn("last card of the", got[0][1]["reason"])
+        self.assertEqual(got[2][1]["card"], "LAT-06")              # 9 P, no near page
+        self.assertEqual(out.page_gap(PDOC, "t12", "LAV-07", "LAV"), 1)
+        self.assertEqual(out.page_gap(PDOC, "t05", "LAT-06", "LAT"), out.FAR)
+
+    def test_skipped_when_either_side_was_messaged_today_or_taken_by_this_run(self):
+        for state in ({"teams": {"d": ["t07"]}}, {"teams": {"d": ["t12"]}}):
+            with self.subTest(state=state):
+                self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, state, "d", 6)], ["t05", "t16"])
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, {}, "d", 6, taken=["t16"])], ["t12", "t07"])
+        sent = {"keys": ["pair:t12:LAV-07:t07:want"]}             # a want sent before is never sent again
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, sent, "d", 6)], ["t05", "t16"])
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, {}, "d", 6, exclude=("LAV-07",))], ["t05", "t16"])
+
+    def test_skipped_when_the_holder_has_no_spare(self):
+        cards = [x[1]["card"] for x in out.pair_targets(PDOC, {}, "d", 10)]
+        self.assertNotIn("SAL-03", cards)                          # one copy of a set t01 is filling
+        self.assertNotIn("CHA-12", cards)                          # a swap
+        self.assertNotIn("RET-02", cards)                          # a bid already on v20
+        free = json.loads(json.dumps(PDOC))
+        free["teams"]["t01"]["near_pages"] = []                   # one copy of a set its consistent deck is not filling
+        got = [x for x in out.pair_targets(free, {}, "d", 10) if x[1]["card"] == "SAL-03"]
+        self.assertEqual([to for to, _, _ in got], ["t04", "t01"])
+        self.assertIn("holding a copy of it", got[0][2])
+        self.assertNotIn("spare", got[0][2])
+        free["teams"]["t01"]["consistent"] = False                 # an inconsistent deck proves nothing
+        self.assertFalse([x for x in out.pair_targets(free, {}, "d", 10) if x[1]["card"] == "SAL-03"])
+        idle = json.loads(json.dumps(PDOC))
+        idle["matches"][0]["holders"][0]["active"] = False         # an idle holder would never list it
+        self.assertNotIn("LAT-06", [x[1]["card"] for x in out.pair_targets(idle, {}, "d", 10)])
+
+    def test_a_pair_takes_two_slots_never_one(self):
+        self.assertEqual(len(out.pair_targets(PDOC, {}, "d", 3)), 2)
+        self.assertEqual(out.pair_targets(PDOC, {}, "d", 1), [])
+
+    def test_long_names_are_capped_and_the_post_shapes_always_fit(self):
+        x = json.loads(json.dumps(PDOC["matches"][0]))
+        x["card_name"], x["action"]["maker_name"] = "N" * 3000, "M" * 2000
+        x["holders"][0]["name"] = "H" * 2000
+        tw, th = out.pair_messages(x, x["holders"][0], 2)
+        for t in (tw, th):
+            self.assertLessEqual(len(t), out.MAX_CHARS)
+            self.assertIn('POST /api/offers {"venue": "v20"', t)
+            self.assertTrue(t.endswith("We will not message you again today."))
+            self.assertNotIn("N" * (out.NAME_CAP + 1), t)
+
+
+class PairCli(unittest.TestCase):
+    run_main = Cli.run_main
+    BOOK = {"rastro": [{"id": 21800, "status": "open", "expires_tick": 1900,
+                        "give": {"cash": 5, "assets": [], "types": []},
+                        "want": {"cash": 0, "assets": [], "types": ["card:LAV-07"]}}],
+            "v15": [{"id": 21791, "status": "open", "expires_tick": 1900, "give": {"cash": 9, "assets": [], "types": []},
+                     "want": {"cash": 0, "assets": [], "types": ["card:LAT-06"]}}]}
+
+    def go(self, argv, **k):
+        with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+            return self.run_main(argv, doc=PDOC, book=k.pop("book", self.BOOK), **k)
+
+    def test_flag_off_is_the_old_behaviour(self):
+        with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+            self.assertNotIn("tier pair", self.run_main(["plan", "--max-teams", "6"], doc=PDOC)[0])
+            self.assertEqual(self.run_main(["plan", "--max-teams", "6"], doc=DOC)[0],
+                             self.run_main(["plan", "--max-teams", "6", "--pair"], doc=DOC)[0])  # no holder: no pair
+
+    def test_plan_prints_each_pair_and_both_texts(self):
+        text = self.go(["plan", "--max-teams", "4", "--pair"])[0]
+        self.assertIn("pair: W t12 wants LAV-07, H t07 holds it; reason: last card of the", text)
+        self.assertIn("pair: W t05 wants LAT-06, H t16 holds it", text)
+        self.assertEqual(text.count("/messages "), 4)
+
+    def test_run_sends_both_sides_records_both_keys_and_the_pitch_takes_what_is_left(self):
+        c = FakeClient()
+        text, logged, state = self.go(["run", "--yes", "--max-teams", "5", "--pair", "--pitch"], client=c)
+        opened = [x[1] for x in c.calls if x[0] == "open"]
+        self.assertEqual(opened, ["t12", "t07", "t05", "t16", "t02"])
+        self.assertEqual(state["keys"][:4], ["pair:t12:LAV-07:t07:want", "pair:t12:LAV-07:t07:holder",
+                                             "pair:t05:LAT-06:t16:want", "pair:t05:LAT-06:t16:holder"])
+        self.assertEqual(state["keys"][4:], ["pitch:t02"])
+
+    def test_the_holder_is_not_told_when_the_bidder_was_not(self):
+        c = FakeClient()
+        book = {"rastro": [], "v15": self.BOOK["v15"]}            # t12's bid is gone: neither side of that pair
+        text, logged, state = self.go(["run", "--yes", "--max-teams", "4", "--pair"], client=c, book=book)
+        self.assertEqual([x[1] for x in c.calls if x[0] == "open"], ["t05", "t16"])
+        self.assertIn(("skipped", {"to": "t07", "key": "pair:t12:LAV-07:t07:holder",
+                                   "reason": "the bidder of this pair was not told"}), logged)
+
+
+class PairAfterPitch(unittest.TestCase):
+    """A team whose only message today was the venue pitch may still get ONE pair message; nobody else messaged today."""
+    TODAY = {"teams": {"d": ["t12", "t07", "t05", "t16"]}}
+
+    def test_a_pitch_only_team_is_eligible(self):
+        got = {t: {"pitch"} for t in self.TODAY["teams"]["d"]}
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)],
+                         ["t12", "t07", "t05", "t16"])
+        self.assertEqual(out.pair_targets(PDOC, self.TODAY, "d", 6), [])          # nothing known: fail closed
+
+    def test_a_team_matched_today_is_still_excluded(self):
+        for t07 in ({"match"}, {"pitch", "match"}, None):                        # None: not accounted for
+            got = {t: {"pitch"} for t in ("t12", "t05", "t16")}
+            if t07 is not None:
+                got["t07"] = t07
+            with self.subTest(t07=t07):
+                self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)],
+                                 ["t05", "t16"])
+
+    def test_a_second_pair_message_to_the_same_team_the_same_day_is_refused(self):
+        got = {"t12": {"pitch"}, "t07": {"pitch", "pair"}, "t05": {"pitch"}, "t16": {"pitch"}}
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)], ["t05", "t16"])
+        state = {"teams": {"d": ["t12"]}, "kinds": {"d": {"t12": ["pair"]}}}       # a pair only, no pitch before
+        self.assertNotIn("t12", [to for to, _, _ in out.pair_targets(PDOC, state, "d", 6,
+                                                                      got=out.received(state, "d"))])
+
+    def test_an_inactive_bidder_is_never_paired(self):
+        idle = json.loads(json.dumps(PDOC))
+        idle["teams"]["t12"]["active"] = False
+        self.assertEqual([to for to, _, _ in out.pair_targets(idle, {}, "d", 6)], ["t05", "t16"])
+
+    def test_received_reads_state_kinds_and_the_run_log(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "log.jsonl"
+            p.write_text("\n".join([json.dumps({"event": "sent", "to": "t12", "tier": "pitch", "key": "[redacted]"}),
+                                    json.dumps({"event": "sent", "to": "t18", "tier": 1, "card": "SAL-11"}),
+                                    json.dumps({"event": "sent", "to": "t07", "tier": "pair"}),
+                                    json.dumps({"event": "open", "to": "t05"}), "not json"]))
+            got = out.received({"kinds": {"d": {"t16": ["pitch"]}}}, "d", p)
+            self.assertEqual(got, {"t12": {"pitch"}, "t18": {"match"}, "t07": {"pair"}, "t16": {"pitch"}})
+            self.assertEqual(out.received({}, "d", Path(d) / "missing.jsonl"), {})
+        self.assertEqual(out.pair_eligible({"teams": {"d": ["t12", "t18", "t07", "t09"]}}, "d", got), {"t12"})
+
+
+class PairAfterPitchCli(unittest.TestCase):
+    run_main = Cli.run_main
+    BOOK = PairCli.BOOK
+
+    def test_run_sends_to_pitch_only_teams_once_and_records_the_kind(self):
+        day = time.strftime("%Y-%m-%d")
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "sent.jsonl"
+            log.write_text("\n".join(json.dumps({"event": "sent", "to": t, "tier": "pitch"})
+                                     for t in ("t12", "t07", "t05", "t16")))
+            state = {"teams": {day: ["t12", "t07", "t05", "t16"]},
+                     "keys": ["pitch:t12", "pitch:t07", "pitch:t05", "pitch:t16"]}
+            c = FakeClient()
+            with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+                _, _, s2 = self.run_main(["run", "--yes", "--max-teams", "6", "--pair", "--sent-log", str(log)],
+                                         client=c, doc=PDOC, book=self.BOOK, state=state)
+                self.assertEqual([x[1] for x in c.calls if x[0] == "open"], ["t12", "t07", "t05", "t16"])
+                self.assertEqual(s2["kinds"][day], {t: ["pair"] for t in ("t12", "t07", "t05", "t16")})
+                s2["keys"] = [k for k in s2["keys"] if not k.startswith("pair:")]   # even with the pair keys gone
+                c2 = FakeClient()
+                self.run_main(["run", "--yes", "--max-teams", "6", "--pair", "--sent-log", str(log)],
+                              client=c2, doc=PDOC, book=self.BOOK, state=s2)
+                self.assertEqual([x for x in c2.calls if x[0] == "open"], [])    # one pair message per team a day

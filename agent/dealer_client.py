@@ -504,3 +504,15 @@ def wait_out_cooloff(b, r: dict, retry, log, max_wait_ticks: int = MAX_WAIT_TICK
         return end("cooloff_again", waited, r2)
     return r2, None
 
+
+def retry_rate_limited(call, tries: int = 4, pause_s: float = 1.2):
+    """Run `call()`; on a `rate_limited` refusal wait `pause_s` and try again, at most `tries` times in all.
+    A rate_limited write is refused before the server acts, so a retry cannot double it. Any other refusal,
+    and the last rate_limited one, is raised as is."""
+    for i in range(tries):
+        try:
+            return call()
+        except BazaarError as e:
+            if e.code != "rate_limited" or i == tries - 1:
+                raise
+            time.sleep(pause_s * (i + 1))

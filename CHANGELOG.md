@@ -1,5 +1,10 @@
 # Changelog
 
+## [2026-10-04] Dashboard: scoreboard by category
+
+### Added
+- `tools/dashboard.html`: a "Scoreboard · by category" panel between the main grid and Rivals, the official leaderboard one level down. Three boards side by side (stacked below 1000 px): Negotiating /30 and Market /30, all 18 teams with category rank, points, gap to the category leader and a bar on the 30-point scale, competition ranking on the 2-dp value (1, 2, 2, 4) with equal values listed by team id so rows do not jump between polls; Judges /40, every team "pending" (nothing published, never estimated) with the official overall rank and the game-score gap to us, the judge margin we would need to make up. A summary strip on top (our rank, points and gap in each category, overall rank) is computed from the same leaderboard snapshot as the boards, and a muted line under each category shows our raw inputs from `/api/me` (`duel_points`, `ladder_points`, `neg_points`; `mm_points`, `bench_points`) when present. Page only, no change to `tools/dashboard.py`: `tools/deploy_mini.sh --page` ships it without a restart.
+
 ## [2026-10-04] Sunday autopilot and handoff
 
 ### Changed
