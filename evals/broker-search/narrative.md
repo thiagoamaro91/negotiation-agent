@@ -90,7 +90,7 @@ and 3b) are worse than the stall on every refit.
 
 ## In one sentence (for the pitch)
 
-"Overnight we pitted 6,600 blind broker policies against the free stall under rules we fixed before the first run:
+"Overnight we pitted 9,000 blind broker policies against the free stall under rules we fixed before the first run:
 knowing who leaves when would be worth 2–3 points of efficiency, but getting just 5 % of departures wrong erases it, and
 quote paths predict departures far worse than that, so the best blind policy beats the stall by less than a tenth of a
 point. We run the stall's rule, and we can show why."
