@@ -1138,7 +1138,8 @@ if __name__ == "__main__":
 def match(team, card, set_="MAL", tier=4, holders=(("t05", "Team 5"),), dealers=("Abuela",), price=24, action=None):
     """One entry of tools/matchmaker.py's output, as announce reads it. action: (side, offer, venue, price, maker,
     expires, gives)."""
-    m = {"tier": tier, "inferred": tier >= 3, "team": team, "team_name": f"Team {int(team[1:])}", "set": set_,
+    m = {"tier": tier, "inferred": tier >= 3, "p_missing": 0.9 if tier >= 3 else None, "team": team,
+         "team_name": f"Team {int(team[1:])}", "set": set_,
          "set_name": {"MAL": "Malasaña", "SAL": "Salamanca"}.get(set_, set_), "card": card, "card_name": None,
          "holders": [{"team": t, "name": n, "as_of": 1445} for t, n in holders], "dealers": [{"name": d} for d in dealers],
          "price": price, "action": None, "proposal": None}
@@ -1334,3 +1335,132 @@ class TestMissingVariant(unittest.TestCase):
     def test_variant_takes_only_numbers_or_missing(self):
         with self.assertRaises(SystemExit):
             an.main(["plan", "--variant", "pairs"])
+
+
+class InferredThreshold(unittest.TestCase):
+    """--variant missing names an inferred need only at p_missing >= MIN_P_ANNOUNCE and never for a team whose deck
+    contradicts the leaderboard (docs/plans/matchmaker-validation.md). Mutation-first: each fails without its guard."""
+
+    def doc(self, p, consistent=None):
+        m = match("t13", "MAL-08")
+        m["p_missing"] = p
+        d = {"matches": [m]}
+        if consistent is not None:
+            d["teams"] = {"t13": {"consistent": consistent}}
+        return d
+
+    def test_the_default_threshold_is_the_validated_one(self):
+        self.assertEqual(an.MIN_P_ANNOUNCE, 0.8)
+
+    def test_an_inferred_need_below_the_threshold_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(0.62), {}))
+        self.assertIsNotNone(an.pick_match(self.doc(0.62), {}, min_p=0.6))
+        self.assertIsNotNone(an.pick_match(self.doc(0.91), {}))
+
+    def test_an_inferred_need_without_a_probability_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(None), {}, min_p=0.0))
+        m = match("t13", "MAL-08")
+        m["inferred"] = None    # a malformed entry is treated as an inference
+        m["p_missing"] = None
+        self.assertIsNone(an.pick_match({"matches": [m]}, {}, min_p=0.0))
+
+    def test_a_team_whose_deck_contradicts_the_leaderboard_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(0.95, consistent=False), {}))
+        self.assertIsNotNone(an.pick_match(self.doc(0.95, consistent=True), {}))
+
+    def test_a_live_want_needs_no_probability(self):
+        doc = {"matches": [match("t09", "SAL-06", "SAL", tier=1,
+                                 action=("bid", 20259, "rastro", 20, "t09", 1505, None))]}
+        books = {"rastro": [dict(bid("SAL-06", 20, oid=20259), expires_tick=1505)]}
+        self.assertIsNotNone(an.pick_match(doc, books, tick=1445))
+
+
+import unittest.mock as um  # noqa: E402
+
+
+class ProbabilityAndExclusion(unittest.TestCase):
+    """Sol's round 1 on #73: p_missing must be a real probability; a bad holdings snapshot never stops the announcer
+    and never lets a page card through (fails closed)."""
+
+    def doc(self, p):
+        m = match("t13", "MAL-08")
+        m["p_missing"] = p
+        return {"matches": [m]}
+
+    def test_only_a_real_probability_passes(self):
+        for bad in (float("nan"), True, 1.5, -0.1, "0.9", float("inf")):
+            with self.subTest(bad=bad):
+                self.assertIsNone(an.pick_match(self.doc(bad), {}, min_p=0.0))
+        self.assertIsNotNone(an.pick_match(self.doc(1), {}))
+        self.assertIsNotNone(an.pick_match(self.doc(0.85), {}))
+
+    def test_min_p_is_validated(self):
+        import argparse
+        for bad in ("nan", "1.5", "-0.1", "x", "inf"):
+            with self.subTest(bad=bad), self.assertRaises(argparse.ArgumentTypeError):
+                an.min_p_arg(bad)
+        self.assertEqual(an.min_p_arg("0.8"), 0.8)
+        with um.patch("sys.stderr"), self.assertRaises(SystemExit):
+            an.main(["plan", "--variant", "missing", "--min-p", "nan"])
+
+    def run_plan(self, me_body, catalog_error=None):
+        """plan --variant missing with every read faked: no network. Returns what it printed."""
+        import io
+        import value_inference
+        with tempfile.TemporaryDirectory() as d:
+            mp = Path(d) / "latest.json"
+            mp.write_text(json.dumps({"generated_at": time.time(), "tick": 1500, "matches": [match("t13", "MAL-08")]}))
+            me = Path(d) / "me.json"
+            me.write_text(json.dumps(me_body))
+            out = io.StringIO()
+            cat = {"sets": [{"id": "MAL", "released": True, "cards": [
+                {"id": f"MAL-0{i}", "rarity": "common", "page": True} for i in range(1, 9)]}]}
+            catalog = um.MagicMock(side_effect=catalog_error) if catalog_error else um.MagicMock(return_value=cat)
+            with um.patch.object(an, "get_json", lambda url: {"events": [{"id": 1, "tick": 1500}], "tick": 1500}), \
+                    um.patch.object(value_inference, "catalog", catalog), um.patch("sys.stdout", out), \
+                    um.patch.object(an, "recorded_events", lambda *a, **k: []):
+                an.main(["plan", "--variant", "missing", "--matches", str(mp), "--exclude-from", str(me)])
+        return out.getvalue()
+
+    GOOD = {"id": "t03", "tick": 1500, "tick_seconds": 15, "assets": []}
+
+    def test_a_trusted_snapshot_lets_a_card_we_lack_be_hidden_and_others_through(self):
+        self.assertIn("nothing to post", self.run_plan(self.GOOD))                     # we lack MAL-08: hidden
+        holds = dict(self.GOOD, assets=[{"id": 1, "kind": "card", "ref": "MAL-08"}])
+        self.assertIn("MAL-08", self.run_plan(holds).split("chars:")[-1])              # we hold it: shown
+
+    def test_a_bad_snapshot_suppresses_page_cards_and_never_raises(self):
+        holds = dict(self.GOOD, assets=[{"id": 1, "kind": "card", "ref": "MAL-08"}])
+        for bad in (dict(holds, tick_seconds="bad"), dict(holds, id=None), dict(holds, tick=1000)):
+            with self.subTest(bad=bad):
+                text = self.run_plan(bad)
+                self.assertIn("nothing to post", text)
+                self.assertIn("page cards suppressed", text)
+
+    def test_a_catalog_failure_is_no_post_not_a_crash(self):
+        text = self.run_plan(self.GOOD, catalog_error=OSError("down"))
+        self.assertIn("nothing to post (exclude: OSError", text)
+
+
+class SolRound2(unittest.TestCase):
+    def test_6_a_huge_integer_p_missing_is_refused_not_raised(self):
+        m = match("t13", "MAL-08")
+        m["p_missing"] = 10**400
+        self.assertIsNone(an.pick_match({"matches": [m]}, {}, min_p=0.0))
+        import argparse
+        with self.assertRaises(argparse.ArgumentTypeError):
+            an.min_p_arg("1" + "0" * 400)
+
+    def test_1_an_incomplete_catalog_announces_no_page_card(self):
+        import io
+        import value_inference
+        with tempfile.TemporaryDirectory() as d:
+            mp = Path(d) / "latest.json"
+            mp.write_text(json.dumps({"generated_at": time.time(), "tick": 1500, "matches": [match("t13", "MAL-08")]}))
+            out = io.StringIO()
+            with um.patch.object(an, "get_json", lambda url: {"events": [{"id": 1, "tick": 1500}], "tick": 1500}), \
+                    um.patch.object(value_inference, "catalog", lambda *a, **k: {"sets": []}), \
+                    um.patch("sys.stdout", out), um.patch.object(an, "recorded_events", lambda *a, **k: []):
+                an.main(["plan", "--variant", "missing", "--matches", str(mp), "--exclude-from", d])
+        self.assertIn("nothing to post", out.getvalue())
+        self.assertIn("incomplete catalog", out.getvalue())

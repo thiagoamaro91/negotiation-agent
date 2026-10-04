@@ -18,7 +18,7 @@ from bazaar_sdk import BazaarError  # noqa: E402
 
 
 def m(team, card, tier, action=None, who=(), price=24):
-    x = {"tier": tier, "inferred": tier >= 3, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
+    x = {"tier": tier, "inferred": tier >= 3, "p_missing": 0.9 if tier >= 3 else None, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
          "card_name": None, "set_name": "Malasaña", "action": None,
          "proposal": {"buyer": {"post": {"venue": "v20", "give": {"cash": price}, "want": {"cards": [card]},
                                          "expires_in_ticks": 240}}} if tier == 4 else None}
@@ -380,3 +380,78 @@ class Cli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Guards(unittest.TestCase):
+    """The same two guards as the announcer: never a card we lack, never an unconfident inference."""
+
+    def test_an_unconfident_or_inconsistent_inference_is_never_messaged(self):
+        low = m("t13", "MAL-08", 4)
+        low["p_missing"] = 0.6
+        self.assertEqual(out.targets({"matches": [low]}, {}, "d", 3), [])
+        self.assertEqual(len(out.targets({"matches": [low]}, {}, "d", 3, min_p=0.5)), 1)
+        ok = m("t13", "MAL-08", 4)
+        self.assertEqual(len(out.targets({"matches": [ok]}, {}, "d", 3)), 1)
+        self.assertEqual(out.targets({"matches": [ok], "teams": {"t13": {"consistent": False}}}, {}, "d", 3), [])
+
+    def test_a_swap_giving_a_card_we_lack_is_never_messaged(self):
+        sw = m("t06", "RET-12", 1, action=("swap", 9, "rastro", 0, "t06"), who=("t05",))   # gives SAL-02
+        self.assertEqual(out.targets({"matches": [sw]}, {}, "d", 3, exclude=("SAL-02",)), [])
+
+    def test_the_default_reads_our_account_and_fails_closed_without_it(self):
+        import argparse
+        import value_inference
+        fallback = ("NOT-01",)
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 1500, "tick_seconds": 15, "assets": [
+                {"id": 1, "kind": "card", "ref": "MAL-08"}]}))
+            with um.patch("builtins.print"):
+                got = out.lacking(argparse.Namespace(exclude_from=d, exclude_max_age_min=60), {"tick": 1500}, fallback)
+                none = out.lacking(argparse.Namespace(exclude_from=d + "/nope", exclude_max_age_min=60),
+                                   {"tick": 1500}, fallback)
+                off = out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1500}, fallback)
+        self.assertIn("MAL-07", got)                               # a page card we do not hold
+        self.assertNotIn("MAL-08", got)                            # one we hold
+        self.assertNotIn("NOT-01", got.cards)                      # a trusted file needs no built-in list
+        self.assertTrue(got.trusted)
+        every = {c["id"] for c in value_inference.catalog()["sets"][0]["cards"] if c.get("page")}
+        for closed in (none, off):                                 # no trusted file: every page card, not MISSING alone
+            self.assertTrue(all(r in closed for r in every))
+            self.assertFalse(closed.trusted)
+            self.assertIn("MAL-08", closed)
+        src = (ROOT / "tools" / "outreach.py").read_text(encoding="utf-8")
+        self.assertIn('ap.add_argument("--exclude-from", default=str(ACCOUNT_DIR),', src)
+        self.assertEqual(out.ACCOUNT_DIR, ROOT / "logs" / "state")
+
+
+class SolRound1(unittest.TestCase):
+    def test_only_a_real_probability_is_messaged(self):
+        for bad in (float("nan"), True, 1.5, -0.1):
+            x = m("t13", "MAL-08", 4)
+            x["p_missing"] = bad
+            with self.subTest(bad=bad):
+                self.assertEqual(out.targets({"matches": [x]}, {}, "d", 3, min_p=0.0), [])
+
+    def test_no_catalog_means_nothing_is_sent(self):
+        import argparse
+        import value_inference
+        with um.patch.object(value_inference, "catalog", um.MagicMock(side_effect=OSError("down"))), \
+                self.assertRaises(LookupError):
+            out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1}, ())
+
+
+class SolRound2(unittest.TestCase):
+    def test_1_without_trusted_holdings_only_epic_and_legendary_cards_are_messaged(self):
+        import argparse
+        import value_inference
+        cat_ = {"sets": [{"id": "MAL", "cards": [{"id": "MAL-08", "rarity": "uncommon", "page": True},
+                                                 {"id": "MAL-11", "rarity": "epic", "page": False}]}]}
+        page = m("t13", "MAL-08", 1, action=("bid", 7, "rastro", 20, "t13"), who=("t05",))
+        epic = m("t14", "MAL-11", 1, action=("bid", 8, "rastro", 150, "t14"), who=("t05",))
+        unknown = m("t15", "ZZZ-01", 1, action=("bid", 9, "rastro", 20, "t15"), who=("t05",))
+        for catalog, allowed in ((cat_, ["MAL-11"]), ({"sets": []}, [])):
+            with self.subTest(complete=bool(catalog["sets"])), \
+                    um.patch.object(value_inference, "catalog", lambda *a, **k: catalog), um.patch("builtins.print"):
+                ex = out.lacking(argparse.Namespace(exclude_from="/nonexistent", exclude_max_age_min=60), {"tick": 1}, ())
+                got = out.targets({"matches": [page, epic, unknown]}, {}, "d", 5, exclude=ex | {"NOT-01"})
+                self.assertEqual([x[1]["card"] for x in got], allowed)

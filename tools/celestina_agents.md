@@ -15,7 +15,8 @@ Never send your key to La Celestina: it never asks for it. Your key goes only to
 `GET {{BASE}}/api/missing?team=<your team id>` (no key): a free public directory of who needs which card, from
 public game data only. Explicit live wants come first, each with ONE call that completes it
 (`action.call`, e.g. `POST {{GAME}}/api/offers/N/accept`, wherever the offer is: El Rastro, {{VENUE}} or another
-venue). A need marked `inferred: true` ("appears to be missing") is a guess from public trades, not a fact.
+venue). A need marked `inferred: true` ("appears to be missing") is a guess from public trades, not a fact; it is
+listed only when the public album counts make it likely (`p_missing` 0.8 or more).
 Each named offer is re-checked against the current books: `action.live` true carries `action.call`; false means it
 is history (no call). An offer with `action.to` can only be accepted by that team; a team never accepts on its own
 venue. With `team`, you get only the matches where you are the buyer (`yours`). A swap is accepted directly; our
