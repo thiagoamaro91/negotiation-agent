@@ -1,7 +1,8 @@
 # Sunday night handoff (Sat 3 to Sun 4 Oct)
 
-> **Read this first · updated 04:49 Madrid**
-> - **Merged:** #57 census, #62 evals, #63 broker pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #68 pitch, #69 ladder, #70 desk page mode, #71 analyst, #72 duel params, #73 deck validation, #74 public board. Open: nothing the bots need.
+> **Read this first · updated 06:58 Madrid**
+> - **Merged:** #57 census, #62 evals, #63 broker pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #68 pitch, #69 ladder, #70 desk page mode, #71 analyst, #72 duel params, #73 deck validation, #74 public board, #76 duel search lab. Open: nothing the bots need.
+> - **Overnight searches, interim 06:45 Madrid:** duels: *not better*, the incumbent `duel-params-duels3.json` stays (best candidate +0.02 on test but worse against one rival style; final report 07:45 on `vm/wp10-duel-search`). Broker: *not better*, `--policy stall` stays in all five tests (a timing policy passes only the hard-test clause on holdout; PR #75, not merged). Nothing to deploy.
 
 **For Thiago, 07:00, five minutes.** No key entered a model's context. Then the [pre-flight](sunday-preflight.md), 08:40.
 
