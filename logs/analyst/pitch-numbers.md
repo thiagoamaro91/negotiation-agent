@@ -11,3 +11,4 @@ Filled at each trigger; the final set is written at the freeze read.
 
 - hard test b121 (ticks 1690-1706): 7 matches, 178 P = 85% of best, 100% of the quote-respecting ceiling (source: logs/analyst/bench-b121-1705.md)
 - test b138 (ticks 1774-1790): 4 matches, 97 P = 73% of best, 92% of the quote-respecting ceiling (source: logs/analyst/bench-b138-1788.md)
+- Final params check (12:15, after PR #99): the deployed Duels III params match the bot's run_start (23 values); on the Duels III refit the lab gives 0.398 per duel for them (live 0.411). Neither candidate wins: hold_while_conceding -0.016 ±0.002 (worse), silent_last_margin +0.05 +0.000 ±0.000 -> keep the Duels III params for the Final (source: logs/analyst/matrix-s3/matrix.md)

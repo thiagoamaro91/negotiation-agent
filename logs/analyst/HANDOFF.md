@@ -1,6 +1,6 @@
-TRIGGER 12:05 Duels III read-out (68/68 complete, duels.finished tick 2074; tick 2117, logs from origin/mini/logs at 12:01)
-VERDICT 55/68 deals, 1475.4 P surplus; pitch: lab 0.420 per duel, live 0.411 (deal rate 81%), field linear 36 / fast 11 / oneshot 11 / absent 8 / steady 2. Matrix REFUSED: baseline check saw days_best "buyer:0,seller:10" vs run "buyer:0,seller:10;robust" (the tag agent/duel.py make_cfg adds when days_confirmed is false; every other key matched). No Final params yet. Ladder 5/15 unchanged; no new Market Test since b138 (next ~12:37)
-PROPOSE merge PR #99 (tools/analyst.py: deployed_check strips make_cfg's ";robust" tag only when the run logged days_confirmed false; +1 test, 91 OK, mutation-checked); then I rerun `duels --session 3 --matrix` and it writes docs/duel-lab/duel-params-final.json only if a candidate passes 2 SE (levers on record: hold_while_conceding 42 duels, silent_last_margin +0.05 8 duels)
-NEEDS YES a human merges #99 by ~12:50 so a winning params file can be applied before the keeper relaunches ~13:49 (the Duels III process runs --until 15:05 and stays alive into the Final: any new params need `tmux kill-window -t factory:duel` + `up --yes`, docs/plans/sunday-analyst.md "Applying a change"). No merge = Final runs duel-params-duels3.json, which is fine
-PR https://github.com/thiagoamaro91/negotiation-agent/pull/99 (fix) ; https://github.com/thiagoamaro91/negotiation-agent/pull/91 (reports)
-ORGANISERS: nothing new since 10:46 (Duels III finished tick 2074 ~11:52; next: Market Test ~12:37, finale warning ~13:47, stalls close + Final ~13:59)
+TRIGGER 12:15 Duels III matrix rerun after PR #99 (tick ~2160, logs from origin/mini/logs at 12:12)
+VERDICT baseline proven (23 values match run 20261004-104947-a0b5); refit field: base 0.398 per duel (live gave 0.411); hold_while_conceding -0.016 ±0.002 (worse on every mix, -0.105 on D-1 stress), silent_last_margin +0.05 +0.000 ±0.000 -> keep the Duels III params for the Final
+PROPOSE nothing: no duel-params-final.json, factory_sunday.json duel params path stays docs/duel-lab/duel-params-duels3.json
+NEEDS YES none (do NOT restart the duel window; the Duels III process carries into the Final with the right params)
+PR https://github.com/thiagoamaro91/negotiation-agent/pull/91 (reports; #99 merged)
+ORGANISERS: nothing new since 12:05 (next: Market Test ~12:37, finale warning ~13:47, stalls close + Final ~13:59)
