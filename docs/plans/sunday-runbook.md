@@ -1,12 +1,12 @@
 # Sunday runbook: the factory
 
-Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
+Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot, the dealer bots and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
 
-**The dealer bots (Abuela, Chato, Pilar) are off by default and `up` does not start them**: `up` prints each as `off` with the reason. Their safety fixes live in pull request #35 (duel lock checked before every accept, pause-safe waits, distinct exit statuses). Until #35 is merged and deployed, run dealer steps by hand from the `manual` lines that `plan` prints, one dealer at a time, only while the clock runs, the doors are open and no duel wave is live. After #35, an operator may set a dealer's `"enabled": true` and run `up --yes`.
+**The dealer bots (Abuela, Pícaros, Pilar; Chato has every step off) are on** since their safety fixes merged (#35 and #38: duel lock checked before every accept, pause-safe waits, distinct exit statuses). Each runs its enabled steps one after the other, a step starting after its gate (for the Round 3 steps: one minute after the +150 P allowance, never within 25 game minutes of a duel wave). A dealer with no enabled step is skipped by `up`. `rastro_seller` stays off; `market_desk` runs from 09:00 in page mode (it bids for SAL-10 from a team on El Rastro, `docs/plans/pages-sunday.md`, on #70). The 08:40 checks and the expected 09:01 table are on [`sunday-preflight.md`](sunday-preflight.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 ## Saturday night (before you sleep)
 
-1. Pull `main` on the Mini once the open pull requests are merged. **Pull request #35 is the prerequisite for any automatic dealer run** (see above); Hector's duel rewrite is the other one.
+1. Pull `main` on the Mini once the open pull requests are merged (an auto-pull may or may not be on there: compare the checkout with `origin/main` as in the pre-flight page; a pull restarts no bot).
 2. Clear every `todo` in `tools/factory_sunday.json`: `python3 tools/factory.py plan` prints each one under its command. The duel params file must exist: `plan` says `MISSING input file` and `up` refuses the duel until it does.
 3. Set `notify_cmd` to the Mini's Telegram notifier, so the watchdog can reach you.
 4. Stop Saturday's hand-started bots (the broker loop, gate scripts, desks) once the doors close, **by hand**: `ps -ax | grep -E 'broker_loop|pilar_gate|_gate.sh'`. The factory recognises a bot by its script name plus its mode (`broker.py run`, also `cd agent; python3 broker.py run`, `python3 -m agent.broker run`, and a `bash -c` loop around them). It never opens a file to look inside a script, so a restart loop kept in a script file is visible only while its child runs. `plan` lists what it sees, `up` refuses it, and a keeper never launches beside it. A shell that merely mentions the command (a grep) can also be flagged: check the pid it names.
@@ -40,30 +40,32 @@ Expected at 09:01:
 | feed | `RUNNING`, log a few seconds old |
 | broker | `RUNNING`, log under a minute old |
 | duel | `WAITING`, next duel wave at 18.650 h |
-| abuela, chato, pilar | `off` (pull request #35 first) |
+| abuela, picaros, pilar | `WAITING`, `waiting for grant_all at 16.717 h`, `16.733 h`, `16.967 h` (their Round 3 steps) |
+| chato | `DONE` (every step off) |
 | watchdog | `RUNNING` |
 
 At 09:05 check the leaderboard `rounds` to confirm Saturday's round still counts until Round 3 starts.
 
 ## Timeline (game hours from the schedule)
 
-Wall times come from `plan`: the game clock stops during any pause, so every pause moves the later events (Saturday's lunch pause already moved Sunday's events by more than half an hour). The factory gates on game hours, so a pause only delays it.
+The organisers' published schedule (Madrid) is the reference for humans: [`sunday-night-handoff.md`](sunday-night-handoff.md) lists it. The wall times `plan` prints (marked `+`) are estimates from the game clock at the pace the keepers measured; they ignore the pause near 12:30 and can be off by up to an hour. The factory gates on game hours from the live clock and schedule (re-read every loop), so a pause or a different pace only changes the Madrid time at which a step happens, never whether it happens.
 
 | Game hour | Event | What the factory does |
 |---|---|---|
 | doors open (09:00) | Sunday opens, 15 s ticks | broker starts (feed and watchdog run from 08:55); dealers and duels keep waiting. No bot launches or restarts while the clock is paused |
+| 14.65, 15.00 | The hard Market Test and the Market Test (they count in Saturday's round) | broker matches; watchdog checks dropped and matched |
 | 16.65 | Round 3 starts, Chamberí released | nothing yet: the ladder work waits for the cash |
-| 16.70 | 150 P allowance | dealers off: run the Abuela slots 1-3 and the Chato rare by hand from `plan`'s manual lines (or, after #35 and an explicit enable, they start one minute later) |
+| 16.70 | 150 P allowance | the dealer steps with `after_event: grant_all` start after their delay in game minutes (Abuela +1, Pícaros +2, Pilar +16, +30, +45, +60) |
 | 17.00 | Market Test (16 ticks) | broker matches; watchdog checks dropped and matched |
-| 18.45 | 12 min before Duels III | no new dealer run from here: by hand too |
+| 18.23 | 25 game min before Duels III | no new dealer run from here (`duel_quiet_min`) |
 | 18.48 | 10 min before Duels III | duel run starts: `--duel-ticks 12` from the schedule, `--late-poll 4`, `--until` closing time + 5 min |
 | 18.65 | Duels III (2 rounds, 12-tick duels, decay 0.1, max 4) | status checks the duel log while the wave is live: something logged since it began, and no silence over 8 ticks while our duel lock exists |
 | 19.00, 21.00 | Market Tests | as at 17.00 |
 | 21.45 | finale warning | nothing |
-| 21.65 | The Final (12-tick duels) and the dealer stalls close | a fresh duel run 10 min before, but only if the wave projects inside opening hours (rechecked every loop) |
+| 21.65 | The Final (12-tick duels) and the dealer stalls close | a fresh duel run 10 game min before, decided on the game-hour window alone; refused only when Madrid time is already past the 15:00 close (rechecked every loop) |
 | closing time | The Bazaar closes | gates close; keepers wait |
 
-As of Saturday 14:30 the Final at 21.65 fell after Sunday's 15:00 close because of the lunch pause. `plan` marks it `OUTSIDE OPENING HOURS` until the organisers move it, and the factory follows whatever the schedule says.
+The clock closed Saturday at 13.37 h, not at the schedule's 16.65 h, so Sunday's events land earlier or later in wall time depending on the clock's speed (see the 09:05 read in the pre-flight page). At Sunday 01:30 `plan` projected the Final at about 14:00, inside opening hours; it marks an event `OUTSIDE OPENING HOURS` when its projection falls past the 15:00 close (the `Scores freeze` line always does, at exactly 15:00), and the factory follows whatever the schedule says.
 
 ## Alerts and the one action for each
 
@@ -85,7 +87,7 @@ The watchdog window runs `status --notify --every 60` and sends a message when t
 | `<name> log silent for N s` | bot alive but not logging for 4 ticks (broker) or 20 ticks (feed): hung call or frozen loop | `tmux kill-window -t factory:<name>` then `up --yes` |
 | `broker dropped N matches in Market Test bXX` | Saturday's b36 failure: the broker saw pairs and refused them | read the `why` of the last `dropped` line in `logs/broker/<date>.jsonl` and post it on the bus; a restart does not fix a policy bug |
 | `broker has no match in Market Test bXX after N ticks` | bench offers on our book, nothing sent | look at the broker window for `refused` or `send_error`; post it on the bus |
-| `<dealer> dealer run live while the clock is paused` | a dealer run is live across a pause | none with #35 merged (its waits are pause-safe); without it, watch the thread |
+| `<dealer> dealer run live while the clock is paused` | a dealer run is live across a pause | none: the dealers' waits are pause-safe since #35 |
 | `clock unreachable` | game server or network down | `curl -s https://bazaar.causaprima.ai/api/clock`; keepers wait on their own |
 
 At `up`, `REFUSE <name>: already running outside the factory (pid N)` means an old copy is still running: stop it, then run `up --yes` again.
@@ -93,17 +95,17 @@ At `up`, `REFUSE <name>: already running outside the factory (pid N)` means an o
 ## Changing things during the day
 
 - Edit `tools/factory_sunday.json`. Each keeper re-reads it before every start, so a change applies to the next start.
-- To run a step that was off (the Pilar resale once the RET asset ids are known, Chato slots 2-3 once the cash is there): fill in its values, set `"enabled": true`, run `up --yes`. Steps already done today are not rerun.
+- To run a step that was off (the Chato SAL-10 fallback, a Chamberí sale by hand): fill in its values, set `"enabled": true`, run `up --yes`. Steps already done today are not rerun.
 - To stop one bot: `tmux kill-window -t factory:<name>`. Its keeper stops the bot, releases its lock and the bus claim.
 - Bots get no key from the factory's environment, even one exported in the shell: they read `.env`.
 - After 15:00: `tmux kill-session -t factory`.
 
 ## Decisions that stay with people
 
-- Page-completing team buys (LAT-03, SAL-02, MAL-05 style), the LAT-09 or LAV-10 bids, and any other spend that is not a configured dealer step.
+- Page-completing team buys other than the configured SAL-10 page bid, the LAT-09 or LAV-10 bids, and any other spend that is not a configured step.
 - The reciprocal venue cross-listing deal with another team, and any message to another team. The owner sends all outreach.
 - Asking the desk whether venue v20 can switch to auto.
-- Turning on `rastro_seller` or `market_desk` (both off by default), and every `todo` in the config.
+- Turning on `rastro_seller` (off), changing the market desk's page bid, and every `todo` in the config.
 
 ## Dry run
 

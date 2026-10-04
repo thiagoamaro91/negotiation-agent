@@ -1,5 +1,8 @@
 # Duel matrix: Duels III
 
+**Read first:** the `duels3` column is the params file as first proposed, with F4 (`last_while_moving`) on. The
+shipped file has F4 off (review of #72), so it plays exactly as `blend`, with the days confirmed.
+
 200 fresh sessions per cell (seeds 970000..), paired limit never visible, 2.2 min. Cells: mean score per duel (share of the pie x decay^rounds, 0 without a deal). Delta: each candidate minus `blend` on the same seeds, with its standard error; **bold** = more than 2 SE better, _italic_ = more than 2 SE worse.
 
 | world | mode | blend | duels3 | v1 | blend-no-days-best |

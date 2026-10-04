@@ -42,7 +42,8 @@ def pack_sizes(cat: dict) -> dict:
 
 
 def build(events: list, cat: dict, upto: int | None = None) -> dict:
-    """team -> {known: {ref: n}, unknown_ids: n, floating: {ref: n}, unplaced: n, burned: n, total: n, ids: [...]}"""
+    """team -> {known: {ref: n}, unknown_ids: n, floating: {ref: n}, unplaced: n, burned: n, total: n, ids: [...],
+    assets: {ref: [asset ids]}}"""
     names = {c["name"]: c["id"] for s in cat["sets"] for c in s["cards"]}
     sizes = pack_sizes(cat)
     order = [e["payload"]["team"] for e in events if e["type"] == "team.joined"]
@@ -112,9 +113,13 @@ def build(events: list, cat: dict, upto: int | None = None) -> dict:
         unknown = sum(1 for a in mine if a not in ref_of)
         fl = {r: n for r, n in floating[team].items() if n > 0}
         total = sum(known.values()) + unknown + sum(fl.values()) + unplaced[team] - burned[team]
+        assets = collections.defaultdict(list)   # ref -> the asset ids we can name (tools/matchmaker.py posts them)
+        for a in sorted(mine):
+            if a in ref_of:
+                assets[ref_of[a]].append(a)
         out[team] = {"known": dict(sorted(known.items())), "unknown_ids": unknown, "floating": fl,
                      "unplaced": unplaced[team], "burned": burned[team], "packs": packs[team], "total": total,
-                     "ids": sorted(mine)}
+                     "ids": sorted(mine), "assets": dict(sorted(assets.items()))}
     return out
 
 

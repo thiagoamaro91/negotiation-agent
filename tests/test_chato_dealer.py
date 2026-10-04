@@ -82,10 +82,21 @@ class FakeDealer:
         return {}
 
     def me(self):
-        return {"cash": 1000}
+        """As /api/me: the bots re-read holdings before every decision. The card is the one sell_target() registered for
+        this asset id, held twice (the spare we sell and the copy we keep), the spare's API value as it was registered."""
+        ref = REFS.get(self.asset_id, ("SAL-03", 1.0))
+        base = {"kind": "card", "ref": ref[0], "rarity": "uncommon", "set": ref[0].split("-")[0], "name": ref[0]}
+        return {"cash": 1000, "affinity": dict(AFFINITY),
+                "assets": [dict(base, id=self.asset_id, serial=9, your_value=ref[1]),
+                           dict(base, id=self.asset_id + 100000, serial=1, your_value=40.0)]}
+
+
+AFFINITY = {"LAV": 1.6, "SAL": 1.3, "LAT": 1.1, "RET": 0.9, "MAL": 0.7, "CHA": 0.5}
+REFS = {}   # asset id -> (card ref, API value), filled by sell_target() for FakeDealer.me()
 
 
 def sell_target(asset_id, ref, your_value):
+    REFS[asset_id] = (ref, your_value)
     return {"side": "sell", "item": ref, "asset_id": asset_id, "value": your_value + 2, "private": your_value}
 
 
@@ -211,7 +222,7 @@ def asset(aid, ref, rarity, serial, your_value, kind="card"):
             "name": ref}
 
 
-ME = {"cash": 400, "assets": [
+ME = {"cash": 400, "affinity": {"LAV": 1.6, "SAL": 1.3, "LAT": 1.1, "RET": 0.9, "MAL": 0.7, "CHA": 0.5}, "assets": [
     asset(42, "MAL-06", "uncommon", 5, 17.5),        # single
     asset(44, "MAL-08", "rare", 3, 49),              # single
     asset(50, "SAL-03", "uncommon", 3, 32.5),        # kept (lowest serial)
@@ -316,6 +327,7 @@ class TestFloor(DealerCase):
 
     def test_negotiation_takes_a_final_at_the_new_floor(self):
         target = chato.apply_floor([p for p in self.plan if p["asset_id"] == 42], 18)[0][0]
+        REFS[42] = ("MAL-06", 17.5)                               # what FakeDealer.me() reports for asset 42
         b = FakeDealer("pilar", 42, opening=16, final=19)        # 19 was a walk at the default floor 20
         r = chato.negotiate(b, target, False)
         self.assertEqual(b.says, list(range(27, 17, -1)))   # max(20, 18 + 9) = 27, -1, never below 18
