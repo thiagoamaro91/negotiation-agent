@@ -69,6 +69,13 @@
         "note": "Same line later (it falls after the Duels III window and waits for the gates). Only worth running while Pilar has fewer than three deals this round."
       },
       {
+        "label": "r3-l5-resell-ret-rare-after-duels3",
+        "after_event": {"action": "duels", "contains": "Duels III", "delay_min": 145},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10", "--allow-single", "--floor", "64",
+                "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "1", "--max-rounds", "40", "--max-wait-ticks", "12"],
+        "note": "The third L3 slot (Pilar 2/3 at 10:50: RET-09 at 73, RET-10 at 67). Sells the RET rare that r3-p3-ret-09-after-duels3 buys from Los Picaros at 62 or less: a first copy worth 63.0 (70 x 0.9), floor 64, so the sale clears our value by 1 or more (she paid 67 to 73 for RET rares this morning). Duels III (15.367 h) + 145 game min = 17.783 h (about 13:24 Madrid at 1 game h per wall h): 39 game min after the Picaros buy may start, 10 before the Final's 25 min quiet window (17.95 h), so its accepts finish before the stalls close at 18.367 h. If the buy has not landed yet the plan is empty and the step is marked done without a trade (an empty slot, never a loss). Worst case for the buy: three no-deal attempts of up to 40 rounds (40 ticks, 10 game min each) plus 6 min cooloff waits, about 17.13 to 17.75 h; a deal on any attempt settles before 17.78. --max-wait-ticks 12 keeps a Pilar cooloff from running into the Final."
+      },
+      {
         "label": "r3-cha-sell-uncommons",
         "enabled": false,
         "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:CHA-06,sell:CHA-07,sell:CHA-08", "--allow-single",
@@ -115,6 +122,13 @@
         "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-10", "--cap", "62",
                 "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
         "note": "Same as r3-p1a for RET-10 (also worth 63.0, resold to Pilar at 64 or more)."
+      },
+      {
+        "label": "r3-p3-ret-09-after-duels3",
+        "after_event": {"action": "duels", "contains": "Duels III", "delay_min": 106},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09", "--cap", "62", "--anchor",
+                "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40", "--max-wait-ticks", "24"],
+        "note": "The third L4 slot (Picaros 2/3 at 10:50: RET-09 at 59, RET-10 at 62, both since resold to Pilar, so RET-09 is again a card we lack). RET-09 is a first copy worth 63.0 (70 x 0.9): cap 62 keeps the buy strictly inside our value; his rares closed 46 to 62 this morning (RET-09 at 59). It is also the stock for the third Pilar slot (r3-l5, floor 64). One card on purpose (RET-09: Pilar paid 73 and 69 for it today); a walk on it then an open on RET-10 would invite a cooloff. Duels III (15.367 h) + 106 game min = 17.134 h (about 12:45 Madrid at 1 game h per wall h): after the wave's configured end (17.067 h) and the 17.0 Market Test (16 ticks, to 17.067 h), one minute after sal10's check, about 49 game min before the Final's quiet window (17.95 h). --max-wait-ticks 24 (6 game min) makes a cooloff fail fast (exit 8) instead of eating the window. --reserve 20 as the other dealer steps (the 250 P venue bond is already posted, v20 open since tick 269)."
       },
       {
         "label": "r3-p2-sal10",
