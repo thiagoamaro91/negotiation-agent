@@ -25,3 +25,5 @@ logs/state/STOP
 # the second worktree tools/logs_push.py keeps on branch mini/logs (the Mini only)
 .logs-push/
 .logs-push.lock
+# clearing house store: team tokens (hashed), books with reservation prices, invite codes
+logs/clearing/

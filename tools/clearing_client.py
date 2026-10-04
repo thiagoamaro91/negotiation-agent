@@ -136,10 +136,15 @@ def cmd_book(a) -> None:
             wants.append({"card": ref, "max": max(1, int(math.floor(v * (1 - a.margin)))), "qty": 1})
     cash = me.get("cash")
     wants = sorted(wants, key=lambda w: -w["max"])[: a.max_wants]
+    if len(haves) + len(wants) > 60:                       # the server takes at most 60 items in all
+        haves = sorted(haves, key=lambda h: -h["min"])[: max(10, 60 - min(len(wants), 40))]
+        wants = wants[: 60 - len(haves)]
     if a.dry_run:
         print(json.dumps({"haves": haves, "wants": wants, "cash": cash}, indent=1))
         return
     r = call(f"{cfg['server']}/api/clearing/book", {"token": cfg["token"], "haves": haves, "wants": wants})
+    if r.get("_status") or "error" in r:
+        sys.exit(f"book REFUSED by the server, nothing listed: {r}")
     cfg["book"] = {"haves": haves, "wants": wants, "team": me.get("id"), "sent": datetime.now().isoformat(timespec="seconds")}
     cfg_path(cfg["team"]).write_text(json.dumps(cfg))
     print(f"book sent: {r}  (cash {cash}); a copy is kept locally and every plan action is checked against it")
@@ -158,7 +163,8 @@ def cmd_vote(a) -> None:
     cfg = load_cfg(a)
     if a.ok == a.no:
         sys.exit("say --ok or --no")
-    body = {"token": cfg["token"], "ok": bool(a.ok)}
+    plan = call(f"{cfg['server']}/api/clearing/plan?token={cfg['token']}")
+    body = {"token": cfg["token"], "ok": bool(a.ok), "version": plan.get("version")}
     if a.no:
         body["why"] = a.why or "no reason given"
         if a.trades:
@@ -236,9 +242,12 @@ def cmd_execute(a) -> None:
             key_v = (plan.get("round"), plan.get("version"))
             mine = [x for x in (plan.get("actions") or []) if x.get("round_status") == "proposed"]
             if mine and plan.get("your_vote") is None:
-                if a.auto_approve and key_v not in voted:
+                if a.auto_approve and key_v not in voted and a.dry_run:
                     voted.add(key_v)
-                    r = call(f"{cfg['server']}/api/clearing/vote", {"token": cfg["token"], "ok": True})
+                    print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: dry run, NOT voting")
+                elif a.auto_approve and key_v not in voted:
+                    voted.add(key_v)
+                    r = call(f"{cfg['server']}/api/clearing/vote", {"token": cfg["token"], "ok": True, "version": key_v[1]})
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: auto-approved -> {r.get('status')}, waiting for {r.get('waiting_for')}")
                 elif key_v not in voted:
                     voted.add(key_v)

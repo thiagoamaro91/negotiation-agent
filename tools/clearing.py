@@ -272,15 +272,26 @@ class Store:
                 return t
         raise Refused(401, "bad_token", "unknown token: join first")
 
+    open_join = False      # set by serve --open-join; otherwise a missing invites file refuses every new team
+
     def invites(self) -> dict:
-        """{team: invite code} from invites.json next to state.json; re-read on every join so codes can be added
-        without a restart. Empty or missing file: joining is open."""
-        f = self.path.with_name("invites.json")
+        """{team: invite code} from the invites file (default <store>/invites.json, or --invites PATH outside logs/);
+        re-read on every join so codes can be added without a restart. A malformed or missing file fails CLOSED:
+        nobody new can join (unless --open-join)."""
+        f = Path(self.invites_path) if getattr(self, "invites_path", None) else self.path.with_name("invites.json")
         try:
-            d = json.loads(f.read_text()) if f.exists() else {}
+            if not f.exists():
+                if self.open_join:
+                    return {}
+                raise Refused(503, "invites_unavailable", "no invite list on this server; ask Team 3")
+            d = json.loads(f.read_text())
+            if not isinstance(d, dict):
+                raise ValueError("not an object")
             return {t: str(c) for t, c in d.items() if isinstance(t, str) and TEAM_RE.match(t) and c}
-        except Exception:
-            return {}
+        except Refused:
+            raise
+        except Exception as e:
+            raise Refused(503, "invites_unavailable", f"invite list unreadable ({e.__class__.__name__}); ask Team 3")
 
     def forget(self, team) -> dict:
         team = clean_team(team)
@@ -294,9 +305,9 @@ class Store:
         venue = body.get("venue")
         if venue is not None and (not isinstance(venue, str) or not VENUE_RE.match(venue)):
             raise Refused(400, "bad_venue", "venue must look like v29")
-        inv = self.invites()
         with self.lock:
             rec = self.state["teams"].get(team)
+            inv = self.invites() if rec is None else {}
             if inv and rec is None:
                 code = body.get("invite")
                 if team not in inv:
@@ -430,7 +441,7 @@ class Store:
                 self.save()
                 return {"round": None, **attempt}
             if open_round:
-                rid, version = open_round["id"], open_round.get("version", 1) + 1
+                rid, version = open_round["id"], open_round.get("version", 1) + (0 if open_round.get("votes") == {} and open_round.get("rejections") else 1)
                 self.state["rounds"].remove(open_round)
             else:
                 rid, version = len(self.state["rounds"]) + 1, 1
@@ -503,8 +514,11 @@ class Store:
             if team not in self.needed(r):
                 raise Refused(409, "not_involved", f"{team} has no trade in round {r['id']}; nothing to vote on")
             ok = body.get("ok")
+            ver = body.get("version")
+            if ver is not None and ver != r.get("version", 1):
+                raise Refused(409, "stale_version", f"the open proposal is version {r.get('version', 1)}; re-read your plan")
             if ok is True:
-                r["votes"][team] = {"ok": True, "at": now_iso()}
+                r["votes"][team] = {"ok": True, "at": now_iso(), "version": r.get("version", 1)}
                 approved = self._maybe_approve(r)
                 self.save()
                 return {"round": r["id"], "version": r["version"], "status": r["status"], "your_vote": "ok",
@@ -524,8 +538,15 @@ class Store:
                 r["banned"].append([t["seller"], t["buyer"], t["card"]])
             r.setdefault("rejections", []).append({"team": team, "why": why, "trades": [t["id"] for t in rejected],
                                                    "at": now_iso()})
+            rejected_ids = {t["id"] for t in rejected}
+            r["trades"] = [t for t in r["trades"] if t["id"] not in rejected_ids]   # the old proposal is void
+            r["votes"] = {}
+            r["version"] = r.get("version", 1) + 1
+            r["proposed_at"] = now_iso()
             self.save()
         res = self.run(venues_fn() if venues_fn else [])
+        if res.get("held"):
+            res["note"] = "re-proposal held; the vetoed trades are gone and all votes were cleared"
         return {"your_vote": "not ok", "why": why, "rejected": [t["id"] for t in rejected], "reproposed": res}
 
     def plan(self, token) -> dict:
@@ -797,6 +818,8 @@ def live_venues() -> list:
 def cmd_serve(a) -> None:
     store = Store(Path(a.store) / "state.json")
     Path(a.store).mkdir(parents=True, exist_ok=True)
+    store.invites_path = a.invites or None
+    store.open_join = bool(a.open_join)
     run_at = [x.strip() for x in (a.run_at or "").split(",") if x.strip()]
     anyway = (a.run_anyway_at or "").strip()
     store.state["policy"] = {"run_at": run_at, "run_anyway_at": anyway or None, "vote_minutes": a.vote_minutes}
@@ -844,7 +867,7 @@ def cmd_run(a) -> None:
 
 def cmd_invite(a) -> None:
     """Mint one code per team into <store>/invites.json (existing codes are kept) and print them for the operator."""
-    f = Path(a.store) / "invites.json"
+    f = Path(a.out) if a.out else Path(a.store) / "invites.json"
     f.parent.mkdir(parents=True, exist_ok=True)
     d = json.loads(f.read_text()) if f.exists() else {}
     for t in a.teams:
@@ -930,6 +953,11 @@ def selftest() -> None:
             except urllib.error.HTTPError as e:
                 return e.code, json.loads(e.read())
 
+        st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29", "invite": "x"})
+        assert st == 503 and r["error"] == "invites_unavailable", r          # no file: closed
+        (Path(d) / "invites.json").write_text("{not json")
+        st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29", "invite": "x"})
+        assert st == 503, r                                                   # malformed: closed
         (Path(d) / "invites.json").write_text(json.dumps({"t03": "c03", "t07": "c07", "t18": "c18", "t11": "c11"}))
         st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29"})
         assert st == 403 and r["error"] == "bad_invite", r
@@ -981,8 +1009,14 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/report", {"token": toks["t07"], "action": sell["id"], "offer": 4567})
         assert st == 409, r
         buy07 = next(x for x in acts if x["role"] == "buy")
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1})
+        assert st == 200, r
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": False, "why": "too dear", "trades": [buy07["id"]]})
         assert st == 200 and r["rejected"] == [buy07["id"]] and r["reproposed"]["version"] == 2, r
+        st, r = call("GET", "/api/clearing/status")
+        assert r["rounds"][-1]["votes"] == {}, r                              # t03's earlier OK no longer counts
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1})
+        assert st == 409 and r["error"] == "stale_version", r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"][0]["why"] == "too dear", r
         st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
@@ -1028,6 +1062,8 @@ def main() -> None:
     s.add_argument("--admin-token", default="")
     s.add_argument("--run-at", default="", help="HH:MM[,HH:MM] wall clock runs")
     s.add_argument("--run-anyway-at", default="", help="HH:MM: a round still held at this time runs with what there is")
+    s.add_argument("--invites", default="", help="invite codes file (default <store>/invites.json); keep it outside logs/")
+    s.add_argument("--open-join", action="store_true", help="let any team join when there is no invites file")
     s.add_argument("--vote-minutes", type=float, default=8.0,
                    help="minutes a proposal waits for every OK; then silent teams' trades are dropped and the rest is approved")
     s.set_defaults(fn=cmd_serve)
@@ -1041,6 +1077,7 @@ def main() -> None:
     i = sub.add_parser("invite", help="mint invite codes: invite t07 t17 ...")
     i.add_argument("teams", nargs="+")
     i.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    i.add_argument("--out", default="", help="invites file (default <store>/invites.json); use a path outside logs/")
     i.set_defaults(fn=cmd_invite)
     f = sub.add_parser("forget", help="drop a team from the running server (needs CLEARING_ADMIN in the env)")
     f.add_argument("team")
