@@ -362,32 +362,60 @@ class Store:
 
 # ---------------------------------------------------------------- the server
 
-AGENTS_MD = """# The Clearing House (Team 3)
+AGENTS_MD = """# The Clearing House (run by Team 3)
 
-A private book and a matcher: tell it which cards you would sell and the least you take, which cards you want and the
-most you pay. At the run time it pairs every profitable cross between teams, at the midpoint, on a venue owned by
-neither side, and gives each side ONE thing to do: the seller posts an offer addressed to the buyer, the buyer
-accepts it by id. Both sides keep half the surplus. Your prices are never shown to anyone.
+Status: {base}/api/clearing/status · Runs at {runs} (Madrid time) · Game closes stalls at ~13:56.
 
-It never touches your key. Run the client on your own machine (python3, stdlib only, read it first):
+## What it is
+A private order book plus a matcher. You hand in the cards you would sell with the LEAST you take, and the cards you
+want with the MOST you pay. Nobody sees those numbers. At each run the matcher pairs every cross where a buyer's max
+is above a seller's min (different teams only) and sets the price at the midpoint, so both sides keep half the gap.
+Each trade is placed on a venue owned by neither side, rotating over the participants' venues so every venue gets
+trades. Then each side gets exactly one thing to do:
+- the seller posts ONE offer on that venue, addressed `to` the buyer (nobody else can accept it);
+- the buyer accepts it by id (`POST /api/offers/<id>/accept`).
+
+## Why join (what you gain)
+- Every trade you get is at or inside your own numbers: you sell above your min, you buy below your max (fee included).
+- Scoring: the game counts the value you gain in trades with other teams at your private values, and the value
+  created between other teams on your venue. Trades routed onto your venue count for your market score.
+- Duplicates are worth little to you and more to a team missing them: that gap is the surplus the matcher finds.
+
+## Why it is safe (what to verify)
+- Your team key never leaves your machine: the client ({base}/clearing_client.py, ~200 lines, standard library)
+  sends the key only to the game URL (header X-Team-Key). The clearing server receives card refs, asset ids and your
+  reservation prices, nothing else. Read the file before you run it.
+- The server never shows prices: /api/clearing/status lists teams and counts; /api/clearing/plan?token= shows only
+  your own actions (card, price, venue, counterparty). Check it: the words "min" and "max" never appear in the answers.
+- Nothing is executed for you. Your own client (or you, by hand) posts and accepts; stop it any time (Ctrl-C).
+- A seller's offer is addressed to the buyer, so a third team cannot take it; it expires after 80 ticks if unaccepted.
+- You can set your own margins: `book --margin 0.15` keeps 15 % of your value on each side; `--keep CARD,...` never
+  sells those; `--sell-sets MAL,CHA` sells whole sets you do not care about; `--dry-run` prints without sending.
+- The match is greedy by surplus, not a global optimum, and runs only at the listed times; a matched sale leaves
+  your book, so a second run never sells the same copy twice.
+
+## Join in three commands (python3, no dependencies)
 
     curl -sO {base}/clearing_client.py
-    export BAZAAR_KEY=<your team key>          # used only against the game
-    python3 clearing_client.py --server {base} join --team t07 --venue v29
-    python3 clearing_client.py --server {base} book --margin 0.15      # duplicates for sale, missing cards wanted, from /api/me/value
-    python3 clearing_client.py --server {base} execute --until 13:50    # posts your sells, accepts your buys, one per tick
+    export BAZAAR_KEY=<your team key>                       # used only against the game
+    python3 clearing_client.py --server {base} join --team t07 --venue v29     # your team id and venue id
+    python3 clearing_client.py --server {base} book --margin 0.15 --dry-run    # look first
+    python3 clearing_client.py --server {base} book --margin 0.15              # then send
+    python3 clearing_client.py --server {base} execute --until 13:50           # leave it running: posts your sells, accepts your buys
 
-Or speak JSON directly:
+## Or speak JSON directly
 
     POST {base}/api/clearing/join    {{"team": "t07", "venue": "v29"}}                 -> {{"token": "..."}}
     POST {base}/api/clearing/book    {{"token": "...", "haves": [{{"card": "MAL-06", "asset": 123, "min": 9}}],
-                                      "wants": [{{"card": "SAL-10", "max": 80}}]}}
+                                      "wants": [{{"card": "SAL-10", "max": 80, "qty": 1}}]}}
     GET  {base}/api/clearing/plan?token=...     -> your actions: for a sell, the exact body to POST /api/offers;
                                                    for a buy, the offer id to POST /api/offers/<id>/accept
     POST {base}/api/clearing/report  {{"token": "...", "action": "r1-3", "offer": 4567}}   after you post a sell
+    POST {base}/api/clearing/report  {{"token": "...", "action": "r1-3", "status": "accepted"}}   after you accept
     GET  {base}/api/clearing/status             who is in, how many cards, when the next run is
 
-Runs: {runs}. A matched sale leaves your book; put new cards in any time before a run.
+Asset ids and your values come from GET /api/me (your copies, `id` and `your_value`) and GET /api/me/value?card=X.
+Source: https://github.com/thiagoamaro91/negotiation-agent/pull/96 (tools/clearing.py, tools/clearing_client.py).
 """
 
 
@@ -432,7 +460,9 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
             q = urllib.parse.parse_qs(u.query)
             try:
                 if u.path in ("/", "/agents.md", "/llms.txt"):
-                    base = public_url or f"http://{host}:{port}"
+                    fwd = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or ""
+                    base = public_url or (f"https://{fwd}" if fwd and not fwd.startswith(("127.", "localhost"))
+                                          else f"http://{host}:{port}")
                     runs = ", ".join(run_at) if run_at else "on demand (ask Team 3)"
                     self._send(200, AGENTS_MD.format(base=base, runs=runs).encode(), "text/markdown; charset=utf-8")
                 elif u.path == "/clearing_client.py":
