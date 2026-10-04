@@ -108,7 +108,7 @@ To us: CHA (x0.5) uncommon = 12.5 and CHA rare = 35, so a dealer sale beats our 
 | Chato | rare (LAV 112; SAL 91 only if <= 84) | 60 | +4 to 76, then +2 (60,64,68,72,76,78,80,82) | 82-84 | own bids max 84; accept his final <= 93 for LAV |
 | Abuela welcome | any | take it at 17/7 on the first thread of each kind | - | - | - |
 
-## Jay's lessons, checked
+## A former teammate's lessons, checked
 - Welcome 17 for uncommons and packs, 7 for commons: HOLDS (12 field welcome deals at 17/7).
 - Openings 29 / 30 / 12: HOLDS (25/25, 24/24, 22/22 standard openings).
 - "Final lands at 23" for uncommons and packs: ROUGHLY. Uncommon finals were 22,22,22,22,23,24,25; pack finals 19-24 (median 22).

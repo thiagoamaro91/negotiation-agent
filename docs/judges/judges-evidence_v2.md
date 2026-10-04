@@ -6,7 +6,7 @@ Companion to [`judges-story_draft_v2.md`](judges-story_draft_v2.md). What to hav
 
 - **Thiago**: speaks. Holds the clicker if there are slides. Does not drive a terminal on stage.
 - **Hector**: drives the laptop. Opens each screen on cue, in the order below.
-- **Jay**: timer (signals at 1:00, 2:00, 2:40) and the backup: the screenshots folder, ready to show if the live screens fail.
+- **a former teammate**: timer (signals at 1:00, 2:00, 2:40) and the backup: the screenshots folder, ready to show if the live screens fail.
 
 ## Safety tags
 
@@ -47,5 +47,5 @@ Companion to [`judges-story_draft_v2.md`](judges-story_draft_v2.md). What to hav
 2. Duels I results: pick the swap-in line from section 9 of the story draft.
 3. `git pull` on the demo laptop, so tests and docs match `origin/main`.
 4. Open the screens above in tabs, in order, with the MASK ones already cropped or zoomed.
-5. Take the backup screenshots and drop them in one folder on Jay's machine.
+5. Take the backup screenshots and drop them in one folder on a former teammate's machine.
 6. Read the "Do not say, do not show" list in the story draft once more.

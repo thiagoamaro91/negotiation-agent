@@ -2,7 +2,7 @@
 
 **Lever.** The largest single block: 40 of the 100 points go to "your ideas and your craft".
 
-**Suggested owner.** Jay, with everyone feeding material.
+**Suggested owner.** A former teammate, with everyone feeding material.
 
 ## First: ask the organisers
 

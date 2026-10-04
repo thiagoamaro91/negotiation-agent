@@ -65,9 +65,9 @@ The times in these plans assume the clock jumps to game hour 4.0 when the doors 
 | W2 | [Duel desk and lab](duel-lab.md) | Duels inside the 30 negotiating points; 204 duels for us this weekend | Thiago (live) + Hector/Claude (lab) |
 | W3 | [Market desk](market-desk.md) | Value gained in team trades: about 0.155 score per prima of surplus at Friday's normaliser | Thiago (sell) + Hector/Claude (buy) |
 | W4 | [Key lease](key-lease.md) | Protects every other desk from colliding on the key | Thiago |
-| W5 | [Eyes and brain](eyes-and-brain.md) | The data every desk decides on | Hector + Claude, Jay (analytics) |
+| W5 | [Eyes and brain](eyes-and-brain.md) | The data every desk decides on | Hector + Claude, a former teammate (analytics) |
 | W6 | [Dealer ladder](dealer-ladder.md) | Cheap: best 3 deals per dealer level | Thiago |
-| W7 | [Judges' story](judges.md) | 40 points | Jay |
+| W7 | [Judges' story](judges.md) | 40 points | former teammate |
 | W8 | [Saturday runbook](saturday-runbook.md) | Turns plans into points at the right minute | Hector |
 
 Owners are proposals: say in the chat which ones you take.

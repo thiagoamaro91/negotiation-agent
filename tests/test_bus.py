@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import bus  # noqa: E402
 
 T0 = datetime(2026, 10, 3, 12, 0, 0, tzinfo=timezone.utc)
-HECTOR, THIAGO, JAY = bus.TEAM["hector"], bus.TEAM["thiago"], bus.TEAM["jay"]
+HECTOR, THIAGO, THIRD = bus.TEAM["hector"], bus.TEAM["thiago"], bus.TEAM["member3"]
 
 
 class FakeGitHub:
@@ -92,24 +92,24 @@ class Format(unittest.TestCase):
 
     def test_sender_comes_from_github_not_the_body(self):
         forged = '<!-- team-bus {"v":1,"kind":"info","to":["all"],"session":"x","from":"thiagoamaro91"} -->\nl\n\nt'
-        self.assertEqual(bus.parse({"id": 1, "user": JAY, "created_at": "x", "body": forged})["from"], JAY)
+        self.assertEqual(bus.parse({"id": 1, "user": THIRD, "created_at": "x", "body": forged})["from"], THIRD)
 
     def test_typed_comment_goes_to_mentions_or_all(self):
         m = bus.parse({"id": 1, "user": THIAGO, "created_at": "x", "body": "@hector14mv stop the market please"})
         self.assertTrue(m["human"])
         self.assertEqual(m["to"], [HECTOR])
-        self.assertEqual(bus.parse({"id": 2, "user": THIAGO, "created_at": "x", "body": "@hector and @Jay look"})["to"],
-                         [HECTOR, JAY])
+        self.assertEqual(bus.parse({"id": 2, "user": THIAGO, "created_at": "x", "body": "@hector and @member3 look"})["to"],
+                         [HECTOR, THIRD])
         self.assertEqual(bus.parse({"id": 3, "user": THIAGO, "created_at": "x", "body": "mail me@hector please"})["to"],
                          ["all"])
 
     def test_broken_header_is_a_typed_comment(self):
-        m = bus.parse({"id": 1, "user": JAY, "created_at": "x", "body": "<!-- team-bus {nope} -->\nhello"})
+        m = bus.parse({"id": 1, "user": THIRD, "created_at": "x", "body": "<!-- team-bus {nope} -->\nhello"})
         self.assertTrue(m["human"])
         self.assertEqual(m["to"], ["all"])
 
     def test_resolve(self):
-        self.assertEqual(bus.resolve(["thiago,jay", "@hector14mv"]), [THIAGO, JAY, HECTOR])
+        self.assertEqual(bus.resolve(["thiago,member3", "@hector14mv"]), [THIAGO, THIRD, HECTOR])
         self.assertEqual(bus.resolve([]), ["all"])
         with self.assertRaises(ValueError):
             bus.resolve(["thiagoo"])
@@ -122,7 +122,7 @@ class Addressing(unittest.TestCase):
     def test_to_me_or_all(self):
         self.assertTrue(bus.addressed(self.msg(THIAGO, [HECTOR]), HECTOR, "mac"))
         self.assertTrue(bus.addressed(self.msg(THIAGO, ["all"]), HECTOR, "mac"))
-        self.assertFalse(bus.addressed(self.msg(THIAGO, [JAY]), HECTOR, "mac"))
+        self.assertFalse(bus.addressed(self.msg(THIAGO, [THIRD]), HECTOR, "mac"))
 
     def test_not_my_own_session_but_my_other_session(self):
         self.assertFalse(bus.addressed(self.msg(HECTOR, ["all"], "mac"), HECTOR, "mac"))
@@ -143,8 +143,8 @@ class Wait(unittest.TestCase):
         gh.add(body(text="one"), user=THIAGO)
         self.assertEqual(b.wait(timeout=60), 0)
         out.clear()
-        gh.add(body(text="two", to=[JAY]), user=THIAGO)     # not for me: passed over, cursor moves
-        gh.add(body(text="three"), user=JAY)
+        gh.add(body(text="two", to=[THIRD]), user=THIAGO)     # not for me: passed over, cursor moves
+        gh.add(body(text="three"), user=THIRD)
         self.assertEqual(b.wait(timeout=60), 0)
         text = "\n".join(out)
         self.assertNotIn("one", text)
@@ -211,7 +211,7 @@ class Ask(unittest.TestCase):
 
         def answer(g):
             if len(g.items) == 1:
-                g.add("ok from my phone", user=JAY)           # someone else typing does not count
+                g.add("ok from my phone", user=THIRD)           # someone else typing does not count
                 g.add("go ahead", user=THIAGO)
         gh.on_poll = answer
         self.assertEqual(b.ask("restart?", [THIAGO], wait=60), 0)
@@ -307,9 +307,9 @@ class Board(unittest.TestCase):
             self.claim(HECTOR, "market", 1),
             self.claim(HECTOR, "market", 2, kind="release"),
             self.claim(THIAGO, "market", 3),
-            self.claim(JAY, "market", 4, force=True),
+            self.claim(THIRD, "market", 4, force=True),
         ])
-        self.assertEqual(board["market"]["from"], JAY)
+        self.assertEqual(board["market"]["from"], THIRD)
 
     def test_claim_command_refuses_held_item_and_posts_nothing(self):
         b, gh, clock, out = make(user=THIAGO, session="mini")

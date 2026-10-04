@@ -11,7 +11,7 @@ Verdicts sit in /tmp/codex-batch/pr<N>/verdict.md (PR #46: the file named in /tm
 - #45 announce on new v20 offers (Hector, stacked on #44): BLOCK.
 - #42 ledger package trades (Hector): BLOCK.
 - #43 brain live data, keyless team relay (Hector): BLOCK. Check hardest for leaks of our key, holdings or values to other teams.
-- #41 trade_desk H2 engine (Jay): BLOCK. #40 decisions log H2 (Jay): BLOCK.
+- #41 trade_desk H2 engine (a former teammate): BLOCK. #40 decisions log H2 (a former teammate): BLOCK.
 First job: read each verdict, verify the top finding against the code yourself (one look, not a re-review), then post it on its PR as a comment headed `**Codex review at <sha>: VERDICT: ...**`, with repo-relative file:line references (strip the /tmp paths). Use the #46 comment as the format: gh pr view 46 --comments.
 
 ## Automatic review loop

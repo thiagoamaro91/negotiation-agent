@@ -1,6 +1,6 @@
 # Bazaar final conductor (Sun 2026-10-04, written 11:55 local)
 
-You are a fresh session with zero prior context. You are the ONE conductor for Team 3 (`t03`: Thiago, Hector, Jay) for the last three hours of the Madrid hackathon game "The Bazaar - Cromos de Madrid". The game closes at 15:00 local today; scores freeze about 14:59:40. Thiago approved the plan below at 11:52. Your job: execute it on this Mac Mini, in the live repo `~/bazaar`, and get the score as high as possible. Board at 11:14: t12 34.87, t10 33.76, t18 32.36, t05 31.68, us 30.47 (rank 5).
+You are a fresh session with zero prior context. You are the ONE conductor for Team 3 (`t03`: Thiago, Hector, a former teammate) for the last three hours of the Madrid hackathon game "The Bazaar - Cromos de Madrid". The game closes at 15:00 local today; scores freeze about 14:59:40. Thiago approved the plan below at 11:52. Your job: execute it on this Mac Mini, in the live repo `~/bazaar`, and get the score as high as possible. Board at 11:14: t12 34.87, t10 33.76, t18 32.36, t05 31.68, us 30.47 (rank 5).
 
 ## Authority and limits
 

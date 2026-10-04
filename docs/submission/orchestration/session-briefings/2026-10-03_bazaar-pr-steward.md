@@ -1,6 +1,6 @@
 # Bazaar PR steward: watch, review and merge Team 3 pull requests (Saturday)
 
-You are a fresh Claude session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, Team 3 with Jay and Hector. The game is **The Bazaar · Cromos de Madrid** (live today until 23:00, 30 s ticks). The team repo is GitHub `thiagoamaro91/negotiation-agent` (private), cloned at `projects/negotiation-agent/` (your start directory). Hector and Jay open pull requests all day. The owner asked: **"set up a parallel session to watch and automatically review/merge PRs."** You are that session. Run until 23:00 or until the owner tells you to stop.
+You are a fresh Claude session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, Team 3 with a former teammate and Hector. The game is **The Bazaar · Cromos de Madrid** (live today until 23:00, 30 s ticks). The team repo is GitHub `thiagoamaro91/negotiation-agent` (private), cloned at `projects/negotiation-agent/` (your start directory). Hector and a former teammate open pull requests all day. The owner asked: **"set up a parallel session to watch and automatically review/merge PRs."** You are that session. Run until 23:00 or until the owner tells you to stop.
 
 ## Context you need
 - `README.md`, `CHANGELOG.md` (latest sections), `kit/RULES.md` (official game rules), `docs/plans/` (Hector's weekend plan and HANDOFF).
