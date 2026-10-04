@@ -1270,6 +1270,96 @@ def announce_missing() -> tuple:
         return ()
 
 
+HOLD_P = 0.02             # holders: an unnamed card is "held by the counts" when p_missing is at most this
+RECENT_SETTLEMENTS = 12   # holders: the last settlements of the card shown
+
+
+def card_holders(events: list, cat: dict, leaderboard: dict | None, ref: str, census: dict | None = None) -> dict:
+    """Who holds `ref` right now, from everything recorded, for a decision of OURS (e.g. which team a page bid goes
+    to). PRIVATE: `ref` may be a card we lack, so this never goes into latest.json or any public file.
+      named   a team whose rebuilt deck names a copy (asset ids, from the feed);
+      counts  a team whose deck does not name it but whose leaderboard counts (album_filled, pages_complete) leave
+              no other choice: p_missing <= HOLD_P in missing_odds (a page that must be complete holds every card);
+      dealers copies a dealer holds: a census names dealer owners (rival owners are redacted), brought forward by the
+              settlements since its walk started;
+      recent  the last settlements of the card (who sold to whom, at what price)."""
+    events = dedupe(events)
+    info, pages = card_info(cat), page_cards(cat)
+    rarity_of = {r: i["rarity"] for r, i in info.items()}
+    deck = decks.build(events, cat)
+    alb, rare = albums(leaderboard), rarest(leaderboard)
+    last_in = {}
+    for e in events:
+        if e.get("type") == "settlement":
+            for it in (e.get("payload") or {}).get("items") or []:
+                if isinstance(it, dict) and it.get("ref") == ref and isinstance(it.get("to"), str):
+                    last_in[it["to"]] = e["tick"]
+    named, counts = [], []
+    for team in sorted(deck):
+        if team == US:
+            continue
+        h = holdings(deck[team])
+        if rare.get(team) and h.get(rare[team], 0) <= 0:
+            h = h.copy()
+            h[rare[team]] = 1
+        odds = missing_odds(h, pages, alb.get(team), rarity_of)
+        row = {"team": team, "consistent": consistency(odds, alb.get(team)) is None,
+               "pages_complete": (alb.get(team) or (None, None))[1], "last_received_tick": last_in.get(team)}
+        if h.get(ref, 0) > 0:
+            named.append({**row, "copies": h[ref], "assets": (deck[team].get("assets") or {}).get(ref) or []})
+        elif odds["p"].get(ref) is not None and odds["p"][ref] <= HOLD_P and odds["pages_exact"]:
+            counts.append({**row, "p_missing": odds["p"][ref]})
+    named.sort(key=lambda r: (-r["copies"], -(r["last_received_tick"] or -1)))
+    dealers, c_tick = collections.Counter(), None
+    if isinstance(census, dict) and isinstance(census.get("cards"), list):
+        c_tick = census_tick(census)
+        meta = census.get("meta") if isinstance(census.get("meta"), dict) else {}
+        since = meta["tick_start"] if _int(meta.get("tick_start")) else c_tick
+        owner = {c["id"]: c.get("owner") for c in census["cards"]
+                 if isinstance(c, dict) and _int(c.get("id")) and c.get("ref") == ref}
+        for e in events:
+            if e.get("type") != "settlement" or not _int(since) or e["tick"] < since:
+                continue
+            for it in (e.get("payload") or {}).get("items") or []:
+                if isinstance(it, dict) and it.get("ref") == ref and _int(it.get("id")):
+                    owner[it["id"]] = it.get("to")
+        dealers.update(o for o in owner.values() if o in DEALER_NAMES)
+    recent = []
+    for e in events:
+        if e.get("type") == "settlement":
+            p = e.get("payload") or {}
+            for it in p.get("items") or []:
+                if isinstance(it, dict) and it.get("ref") == ref:
+                    recent.append({"tick": e["tick"], "id": it.get("id"), "frm": it.get("frm"), "to": it.get("to"),
+                                   "price": p.get("price"), "venue": p.get("venue")})
+    ci = info.get(ref) or {}
+    return {"ref": ref, "name": ci.get("name"), "rarity": ci.get("rarity"), "left": ci.get("left"),
+            "tick": events[-1]["tick"] if events else None, "named": named, "counts": counts,
+            "dealers": dict(dealers), "census_tick": c_tick, "recent": recent[-RECENT_SETTLEMENTS:]}
+
+
+def holders_report(r: dict) -> str:
+    lines = [f"{r['ref']} {r['name'] or ''} ({r['rarity']}, {r['left']} left in the print run) at tick {r['tick']}"
+             f"  [PRIVATE: never post]"]
+    lines.append("named in the feed (a copy we can point at):")
+    for x in r["named"] or [{}]:
+        if x:
+            lines.append(f"  {x['team']}: {x['copies']} cop{'y' if x['copies'] == 1 else 'ies'}, asset {x['assets']}, "
+                         f"last received tick {x['last_received_tick']}, deck "
+                         f"{'consistent' if x['consistent'] else 'INCONSISTENT with the leaderboard'}")
+        else:
+            lines.append("  none")
+    lines.append(f"held by the leaderboard counts (p_missing <= {HOLD_P}, pages_complete forces it):")
+    lines += [f"  {x['team']}: p_missing {x['p_missing']}, pages complete {x['pages_complete']}"
+              for x in r["counts"]] or ["  none"]
+    lines.append(f"dealers (census tick {r['census_tick']} + settlements since): "
+                 + (", ".join(f"{DEALER_NAMES.get(d, d)} {n}" for d, n in sorted(r["dealers"].items())) or "none"))
+    lines.append("last settlements:")
+    lines += [f"  tick {s['tick']}: #{s['id']} {s['frm']} -> {s['to']} at {s['price']} ({s['venue'] or 'dealer'})"
+              for s in r["recent"]] or ["  none"]
+    return "\n".join(lines)
+
+
 def default_exclude() -> str:
     return ",".join(announce_missing())
 
@@ -1422,7 +1512,8 @@ def selftest() -> None:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="Rival teams' missing page cards, who holds spares, and the v20 orders.")
-    ap.add_argument("cmd", choices=["report", "json", "selftest", "validate"])
+    ap.add_argument("cmd", choices=["report", "json", "selftest", "validate", "holders"])
+    ap.add_argument("ref", nargs="?", default=None, help="holders: the card (e.g. SAL-10); PRIVATE, stdout only")
     ap.add_argument("--live", action="store_true", help="add live keyless reads (feed window, leaderboard, books)")
     ap.add_argument("--feed", default=None, help="the recorder's directory (default: BAZAAR_FEED or logs/feed)")
     ap.add_argument("--exclude", default=None, help="comma list of cards never shown (default: announce.MISSING)")
@@ -1444,6 +1535,24 @@ def main(argv=None) -> None:
     args = ap.parse_args(argv)
     if args.cmd == "selftest":
         return selftest()
+    if args.cmd == "holders":   # offline, keyless, PRIVATE: may name a card we lack; stdout only, never --out
+        if not args.ref or not REF_RE.match(args.ref):
+            ap.error("holders needs a card ref, e.g. SAL-10")
+        data = offline_inputs(Path(args.feed).expanduser() if args.feed else vi.FEED)
+        snap = None
+        if args.census:   # dealer owners only: rival owners are redacted, so no completeness check is needed here
+            try:
+                p = Path(args.census).expanduser()
+                if p.is_dir():
+                    files = sorted(p.glob("cards-*-t*.json"), key=lambda f: f.stat().st_mtime)
+                    files = [f for f in files if not f.name.endswith("-history.json")]
+                    p = files[-1] if files else p
+                snap = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as e:
+                print(f"census: WARNING {args.census} unusable ({type(e).__name__}: {e}); no dealer counts",
+                      file=sys.stderr)
+        print(holders_report(card_holders(data["events"], data["catalog"], data["leaderboard"], args.ref, snap)))
+        return None
     if args.cmd == "validate":   # offline, keyless; prints OUR holdings: private, never into anything public
         data = offline_inputs(Path(args.feed).expanduser() if args.feed else vi.FEED)
         mes = git_snapshots() if args.git else [json.loads(Path(f).read_text(encoding="utf-8"))
