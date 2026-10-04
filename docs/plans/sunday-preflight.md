@@ -61,7 +61,7 @@ The team key sits in `~/bazaar/.env` and the bots read it themselves; the factor
 
 ## If a pull request is not on `main` by 08:00
 
-- **#70 (desk page mode).** `grep -c 'add_argument("--page",' agent/market_desk.py` must print `1`. If it prints `0`, the desk's page flags are unknown and it would crash-loop. In `tools/factory_sunday.json`, replace `market_desk.cmd` with the fallback below, or set `"enabled": false` to keep the cash for the dealers. SAL-10 then waits for the 13:30 decision.
+- **#70 (desk page mode), merged.** `grep -c 'add_argument("--page",' agent/market_desk.py` must print `1`. If it prints `0`, the Mini has not pulled (check 1); the desk's page flags would be unknown and it would crash-loop. Only if it still prints `0` after a pull: in `tools/factory_sunday.json`, replace `market_desk.cmd` with the fallback below, or set `"enabled": false` to keep the cash for the dealers. SAL-10 then waits for the 13:30 decision.
   ```bash
   python3 agent/market_desk.py run --no-team-venues --no-bids --min-cash 40 --until 15:05
   ```

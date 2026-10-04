@@ -1,8 +1,8 @@
 # Sunday night handoff (Sat 3 to Sun 4 Oct)
 
 > **Read this first · updated 03:55 Madrid**
-> - **Merged:** #62 evals, #63 broker 15 s pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #69 dealer ladder steps, #72 Duels III params.
-> - **Open:** #70 desk page mode (not in by 08:00: pre-flight fallback), #71 analyst, #68 pitch (bots do not need them).
+> - **Merged:** #62 evals, #63 broker 15 s pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #68 pitch, #69 dealer ladder steps, #70 desk page mode, #72 Duels III params.
+> - **Open:** #71 analyst (the bots do not need it).
 
 **For Thiago, 07:00, five minutes.** No key entered a model's context; nothing was sent or spent outside review. Next: the [pre-flight](sunday-preflight.md) at 08:40.
 
@@ -18,7 +18,7 @@
 - **Broker:** `--policy stall` all day; `maxpairs` lost everywhere and the overnight search (none confirmed) agrees. Verdict 06:45: `evals/broker-search/`.
 - **Open Bazaar** (#67): the matchmaker writes who-needs-which-card every 2 minutes from 08:55; the announcer posts one match every 12 minutes from 09:00 (own Market Test silence; nothing without a match); `outreach` stays off until a human flips it.
 - **Ladder steps** (#69): Abuela buys RET uncommons, Pícaros two RET rares, Pilar resells.
-- **Page buy** (#70): from 09:00 the desk bids 80 rising to 110 for SAL-10, our last Salamanca page card, from a team (only a team copy pays the page bonus; dealer SAL-10 steps stay off).
+- **Page buy** (#70, merged): from 09:00 the desk bids 80 rising to 110 for SAL-10, our last Salamanca page card, from a team (only a team copy pays the page bonus; dealer SAL-10 steps stay off).
 
 ## What runs where
 
