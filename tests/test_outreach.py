@@ -455,3 +455,91 @@ class SolRound2(unittest.TestCase):
                 ex = out.lacking(argparse.Namespace(exclude_from="/nonexistent", exclude_max_age_min=60), {"tick": 1}, ())
                 got = out.targets({"matches": [page, epic, unknown]}, {}, "d", 5, exclude=ex | {"NOT-01"})
                 self.assertEqual([x[1]["card"] for x in got], allowed)
+
+
+TEAMS = {"t03": {"active": True, "last_move_tick": 1550}, "t05": {"active": True, "last_move_tick": 1500},
+         "t07": {"active": True, "last_move_tick": 1540}, "t08": {"active": False, "last_move_tick": 1549},
+         "t11": {"active": True, "last_move_tick": None}}
+
+
+class SteerToV20(unittest.TestCase):
+    """Matches on El Rastro keep their action and get the v20 line while it fits; the pitch is opt-in, once per team."""
+
+    def test_an_offer_off_our_venue_keeps_its_call_and_adds_the_v20_line(self):
+        for x, to in ((DOC["matches"][0], "t05"), (DOC["matches"][2], "t14")):
+            text = out.message(x, to)
+            self.assertIn(f"POST /api/offers/{x['action']['offer']}/accept", text)
+            self.assertIn(out.V20_LINE.strip(), text)
+            self.assertIn("5 % + 1 P a card", text)
+            self.assertLessEqual(len(text), out.MAX_CHARS)
+            self.assertTrue(text.endswith("We will not message you again today."))
+
+    def test_an_offer_on_v20_or_a_swap_gets_no_v20_line(self):
+        on_v20 = m("t09", "SAL-06", 1, ("bid", 20259, "v20", 20, "t09"), who=("t05",))
+        swap = m("t06", "RET-12", 1, ("swap", 20068, "rastro", 0, "t06"), who=("t05",))
+        for x in (on_v20, swap):
+            self.assertNotIn("Next time", out.message(x, "t05"))
+
+    def test_an_inferred_need_without_an_offer_proposes_the_v20_bid(self):
+        text = out.message(DOC["matches"][3], "t13")
+        self.assertIn('La Celestina (v20, 0 % fee; El Rastro charges the taker 5 % + 1 P a card): POST /api/offers '
+                      '{"venue": "v20", "give": {"cash": 24}, "want": {"cards": ["MAL-08"]}}', text)
+        self.assertLessEqual(len(text), out.MAX_CHARS)
+
+    def test_the_v20_line_is_dropped_whole_never_the_call_when_it_would_not_fit(self):
+        x = m("t09", "SAL-06", 1, ("bid", 20259, "rastro", 20, "t09"), who=("t05",))
+        x["card_name"], x["action"]["maker_name"] = "N" * 500, "M" * 400
+        text = out.message(x, "t05")
+        self.assertNotIn("Next time", text)
+        self.assertIn('POST /api/offers/20259/accept with {"assets": [<your SAL-06 asset id>]}.', text)
+        self.assertTrue(text.endswith("We will not message you again today."))
+
+    def test_the_pitch_names_no_card_fits_and_claims_nothing_about_our_buying_by_default(self):
+        text = out.pitch_message()
+        self.assertLessEqual(len(text), out.MAX_CHARS)
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"cash": <your price>}, "want": {"cards": '
+                      '["<card ref>"]}}', text)
+        self.assertIn('{"venue": "v20", "give": {"assets": [<your asset id>]}, "want": {"cash": <your price>}}', text)
+        self.assertNotIn("buying desk", text)
+        self.assertNotRegex(text, r"[A-Z]{3}-\d\d")       # no card named
+        self.assertIn("buying desk", out.pitch_message(reciprocity=True))
+        self.assertLessEqual(len(out.pitch_message(reciprocity=True)), out.MAX_CHARS)
+        for t in (text, out.pitch_message(True)):
+            self.assertNotIn("trade on ours", t.lower())
+
+    def test_pitch_targets_active_teams_once_per_game_never_us_never_messaged_today(self):
+        doc = {"teams": TEAMS}
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, {}, "d", 10)], ["t07", "t05", "t11"])
+        state = {"teams": {"d": ["t07"]}, "keys": ["pitch:t05"]}
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, state, "d", 10)], ["t11"])
+        self.assertEqual([t for t, _, _ in out.pitch_targets(doc, {}, "d", 10, taken=["t07"])], ["t05", "t11"])
+        self.assertEqual(out.pitch_targets(doc, {}, "d", 0), [])
+        self.assertEqual(out.key_of(out.pitch_targets(doc, {}, "d", 1)[0][1]), "pitch:t07")
+
+
+class PitchCli(unittest.TestCase):
+    BOOK = Cli.BOOK
+    run_main = Cli.run_main
+    DOC2 = dict(DOC, teams=TEAMS)
+
+    def test_the_pitch_is_off_by_default(self):
+        text, _, _ = self.run_main(["plan", "--max-teams", "10"], doc=self.DOC2)
+        self.assertNotIn("is a board venue", text)
+
+    def test_the_pitch_fills_only_the_slots_left_and_is_recorded_once(self):
+        text, _, _ = self.run_main(["plan", "--max-teams", "2", "--pitch"], doc=self.DOC2)
+        self.assertNotIn("is a board venue", text)                       # 2 matches fill the 2 slots
+        c = FakeClient()
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "6", "--pitch"], client=c, doc=self.DOC2)
+        opened = [x[1] for x in c.calls if x[0] == "open"]
+        self.assertEqual(opened[:2], ["t05", "t14"])                    # the matches first
+        self.assertEqual(opened[-2:], ["t07", "t11"])                   # then the pitch; t05 got a match: no pitch
+        self.assertEqual(opened.count("t05"), 1)
+        self.assertEqual([k for k in state["keys"] if k.startswith("pitch:")], ["pitch:t07", "pitch:t11"])
+        c2 = FakeClient()
+        self.run_main(["run", "--yes", "--max-teams", "5", "--pitch"], client=c2, doc=self.DOC2, state=state)
+        self.assertEqual([x for x in c2.calls if x[0] == "open"], [])
+
+    def test_reciprocity_needs_the_pitch(self):
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            out.main(["plan", "--pitch-reciprocity"])

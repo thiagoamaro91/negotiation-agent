@@ -9,6 +9,16 @@ Who gets the message, per match (from the matchmaker's output, read as it is, ne
   tier 3 (a live ask, a team that appears to need it) that team: accepting the ask is the action;
   tier 4 (an inferred need, no live offer)            that team: the v20 bid our broker would cross;
   tier 2 (a live want, no holder we can name)          nobody: there is no one to tell.
+A match whose offer stands off our venue (El Rastro, another team's) keeps its action: the counterparty is there, so a
+v20 order would not cross. It gets one short line more, while it fits in MAX_CHARS: next time, the same trade on
+La Celestina costs no fee. A message never names a venue as a condition of anything.
+
+--pitch (off by default): the slots a run has left after the matches go to active teams that were never pitched, one
+message each, once per game: La Celestina's fee next to El Rastro's, the exact v20 orders, and what our broker crosses
+(agent/broker.py crosses teams' public v20 offers card by card on every book it reads, with any --policy). It never
+names a card, a price or anything about Team 3's album. --pitch-reciprocity adds one line about Team 3's own buying:
+enable it ONLY while the trade desk runs without --no-team-venues (it is false otherwise, and a false line is a bad
+faith flag); it states a standing price rule, never "trade on ours and we trade on yours".
 
 Thread slots are scarce: a team holds at most 6 open threads and the dealer bots need them on Sunday. So `run` opens
 ONE thread at a time, sends ONE message, and closes it at once (POST /api/threads/{id}/close); before opening it
@@ -54,6 +64,16 @@ GAP_S = 20                # run: seconds between two teams (more than one Sunday
 NAME = "Open Bazaar · who needs which card"
 ACCOUNT_DIR = ROOT / "logs" / "state"   # --exclude-from default: our account snapshots (me*.json, the highest tick wins)
 MIN_P = 0.8               # an inferred need is messaged only from this p_missing (announce.MIN_P_ANNOUNCE)
+MAX_CHARS = 1200          # the server keeps 1,200 characters of a message (announce.MAX_CHARS)
+RASTRO_FEE = "5 % + 1 P a card"   # El Rastro's fee, paid by the taker (kit/RULES.md)
+V20_LINE = (" Next time, the same trade costs no fee on La Celestina (v20, 0 % fee; El Rastro charges the taker "
+            + RASTRO_FEE + "): post your offer with \"venue\": \"v20\" and our broker crosses it with an opposite "
+            "offer for the same card from another team when the prices meet.")
+PITCH_KEY = "pitch:"      # state["keys"] entry of a team pitched once (never again in the game)
+PITCH_ASK = '{"venue": "v20", "give": {"assets": [<your asset id>]}, "want": {"cash": <your price>}}'
+PITCH_BID = '{"venue": "v20", "give": {"cash": <your price>}, "want": {"cards": ["<card ref>"]}}'
+RECIPROCITY_LINE = (" Team 3's own buying desk reads team venues too and takes a buy where its all-in cost (price + "
+                    "fee) is lowest, so a fair ask on your venue is weighed exactly like one on El Rastro.")
 
 
 def _team(t) -> bool:
@@ -84,25 +104,63 @@ def message(m: dict, to: str) -> str:
             "El Rastro" if a.get("venue") in (None, "rastro") else a.get("venue"))
         until = f", open until tick {a['expires_tick']}" if isinstance(a.get("expires_tick"), int) else ""
         maker = a.get("maker_name") or a.get("maker")
+        extra = V20_LINE if a.get("venue") != VENUE else ""
         if a.get("side") == "ask":
-            return (head + f"{maker} sells {card} for {a['price']} P on {where}: offer #{a['offer']}{until}. You appear "
+            body = (head + f"{maker} sells {card} for {a['price']} P on {where}: offer #{a['offer']}{until}. You appear "
                     f"to be missing it for the {page} page (inferred from public trades, may be wrong). To take it: "
-                    f"POST /api/offers/{a['offer']}/accept." + tail)
+                    f"POST /api/offers/{a['offer']}/accept.")
+            return fit(body, extra, tail)
         what = (f"{maker} bids {a['price']} P for {card}" if a.get("side") == "bid"
                 else f"{maker} gives {a.get('gives')} for any {card} (a swap: accept it directly)")
         held = next((h.get("as_of") for h in m.get("holders") or [] if isinstance(h, dict) and h.get("team") == to), None)
         seen = (f"Public trades showed you holding a copy at tick {held} (reconstructed, may have changed)."
                 if isinstance(held, int) else "If you hold a copy:")
-        return (head + f"{what} on {where}: offer #{a['offer']}{until}. {seen} To take it: "
-                f"POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}." + tail)
+        body = (head + f"{what} on {where}: offer #{a['offer']}{until}. {seen} To take it: "
+                f"POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}.")
+        return fit(body, extra if a.get("side") != "swap" else "", tail)
     bid = ((m.get("proposal") or {}).get("buyer") or {}).get("post") or {}
     order = json.dumps({k: v for k, v in bid.items() if k != "expires_in_ticks"})
     from announce import BROKER_TERMS
     return (head + f"you appear to be missing {card} for the {page} page (inferred from public trades, may be wrong). "
-            f"A bid on La Celestina (v20, 0 % fee): POST /api/offers {order}; there {BROKER_TERMS}." + tail)
+            f"A bid on La Celestina (v20, 0 % fee; El Rastro charges the taker {RASTRO_FEE}): POST /api/offers "
+            f"{order}; there {BROKER_TERMS}." + tail)
+
+
+def fit(body: str, extra: str, tail: str) -> str:
+    """body + extra + tail when it fits in MAX_CHARS, else body + tail: the optional line is dropped whole, never the
+    offer or its call cut."""
+    return body + extra + tail if len(body) + len(extra) + len(tail) <= MAX_CHARS else body + tail
+
+
+def pitch_message(reciprocity: bool = False) -> str:
+    """The one-time venue pitch: our fee next to El Rastro's, the exact v20 orders, what our broker crosses. No card,
+    no price, nothing about Team 3's album, no ask in return."""
+    from announce import BROKER_TERMS
+    text = (f"{NAME}, from Team 3 (public game data only, no reply needed): La Celestina (v20) is a board venue with "
+            f"0 % fee and 0 P a card; El Rastro charges the taker {RASTRO_FEE}. There {BROKER_TERMS}, on every book it "
+            f"reads. To sell a spare there: POST /api/offers {PITCH_ASK}. To bid for a card you need: POST /api/offers "
+            f"{PITCH_BID}. Only trades you want at your own price: check your own value first."
+            + (RECIPROCITY_LINE if reciprocity else "") + " We will not send this again.")
+    return text[:MAX_CHARS]
+
+
+def pitch_targets(doc: dict, state: dict, day: str, n: int, taken=(), reciprocity: bool = False) -> list:
+    """[(team, pitch, text)] for up to n active teams: never Team 3, never a team messaged today or taken by this run,
+    never a team pitched before (once per game). Most recent mover first."""
+    teams = (doc or {}).get("teams") if isinstance((doc or {}).get("teams"), dict) else {}
+    done = set((state.get("teams") or {}).get(day, [])) | set(taken)
+    keys = set(state.get("keys") or [])
+    rows = [(t, v) for t, v in teams.items() if _team(t) and isinstance(v, dict) and v.get("active") is not False
+            and t not in done and PITCH_KEY + t not in keys]
+    rows.sort(key=lambda r: (-(r[1].get("last_move_tick") if isinstance(r[1].get("last_move_tick"), int) else -1), r[0]))
+    text = pitch_message(reciprocity)
+    return [(t, {"pitch": True, "team": t, "card": None, "tier": "pitch", "action": None}, text)
+            for t, _ in rows[:max(0, n)]]
 
 
 def key_of(m: dict) -> str:
+    if m.get("pitch"):
+        return PITCH_KEY + str(m.get("team"))
     a = m.get("action") or {}
     return f"{m.get('team')}:{m.get('card')}:{a.get('offer') or VENUE}"
 
@@ -318,9 +376,16 @@ def main(argv=None) -> None:
     ap.add_argument("--exclude-max-age-min", type=float, default=60.0)
     ap.add_argument("--min-p", type=float, default=MIN_P, help="lowest p_missing at which an inferred need is messaged")
     ap.add_argument("--state", default=str(STATE))
+    ap.add_argument("--pitch", action="store_true",
+                    help="fill the slots left after the matches with the one-time La Celestina pitch (active teams)")
+    ap.add_argument("--pitch-reciprocity", action="store_true",
+                    help="add the line about Team 3's own buying to the pitch: ONLY while the trade desk runs "
+                         "without --no-team-venues (the line is false otherwise)")
     args = ap.parse_args(argv)
     if args.cmd == "run" and not args.yes:
         ap.error("run opens threads with other teams: add --yes")
+    if args.pitch_reciprocity and not args.pitch:
+        ap.error("--pitch-reciprocity only changes the --pitch message: add --pitch")
     import announce   # noqa: E402  (the Market Test gate and the list of cards Team 3 lacks)
     exclude = tuple(x.strip() for x in (args.exclude or "").split(",") if x.strip())
     day = time.strftime("%Y-%m-%d")
@@ -366,6 +431,9 @@ def main(argv=None) -> None:
         print(f"nothing to send: {e}")
         return stop("no catalog") if session else None
     plan = targets(doc, state, day, max(0, args.max_teams), exclude, args.min_p)
+    if args.pitch:
+        plan += pitch_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan],
+                              args.pitch_reciprocity)
     print(f"{NAME} outreach, matchmaker tick {doc.get('tick')}: {len(plan)} message(s), one thread at a time.")
     print(f"slot budget: {MAX_THREADS} threads per team; each send holds 1 for a few seconds (open, one message, "
           f"close); run opens only while {RESERVE_SLOTS} stay free for the dealer bots once it is open. Already "
