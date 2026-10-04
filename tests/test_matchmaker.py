@@ -273,3 +273,236 @@ class Report(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def two_pages():
+    """LAV and SAL, four page cards each (three commons, one rare), plus a non-page epic in LAV."""
+    sets = []
+    for sid in ("LAV", "SAL"):
+        cards = [{"id": f"{sid}-0{i}", "name": f"{sid} {i}", "rarity": "common" if i < 4 else "rare",
+                  "book": 10 if i < 4 else 70, "print_run": 300, "minted": 20, "page": True} for i in range(1, 5)]
+        if sid == "LAV":
+            cards.append({"id": "LAV-11", "name": "Epic", "rarity": "epic", "book": 150, "print_run": 9, "minted": 3,
+                          "page": False})
+        sets.append({"id": sid, "name": sid, "released": True, "cards": cards})
+    return {"sets": sets, "packs": [], "values": {"page_bonus": 0.25}}
+
+
+def lb(**rows):
+    """{"t01": (album_filled, pages_complete[, rarest ref])} -> a leaderboard body."""
+    out = []
+    for t, r in rows.items():
+        row = {"team": t, "name": f"Team {int(t[1:])}", "album_filled": r[0], "pages_complete": r[1]}
+        if len(r) > 2:
+            row["rarest"] = {"ref": r[2]}
+        out.append(row)
+    return {"teams": out}
+
+
+def need(res, team, card):
+    return next((m for m in res["matches"] if (m["team"], m["card"]) == (team, card) and m["tier"] >= 3), None)
+
+
+T01_LAV2 = [ask(4, 5, "t01", 1, "LAV-01", 9), ask(5, 5, "t01", 2, "LAV-02", 9)]
+
+
+class LeaderboardFacts(unittest.TestCase):
+    """Hard facts of the public leaderboard bound the deck inference (mutation-first: each test fails without its
+    guard in build())."""
+
+    def test_a_teams_rarest_card_is_held_so_it_is_never_missing(self):
+        # t01 names LAV-01, LAV-02; one more page card unseen: LAV-04 (a rare) is "missing" at p ~0.87 by rarity alone
+        base = build(T01_LAV2 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)))
+        self.assertIsNotNone(need(base, "t01", "LAV-04"))
+        res = build(T01_LAV2 + T02, values={}, lb=lb(t01=(3, 0, "LAV-04"), t02=(1, 0)))
+        self.assertIsNone(need(res, "t01", "LAV-04"))
+        self.assertEqual(res["teams"]["t01"]["held_by_leaderboard"], ["LAV-04"])
+
+    def test_a_deck_naming_more_page_cards_than_album_filled_gets_no_inferred_need(self):
+        # t01 names LAV-01..03 but the leaderboard says it fills 2 slots: one named card is gone. Without the guard,
+        # unseen = max(0, 2 - 3) = 0 and LAV-04 reads as missing at p 1.0, the most confident exactly when wrong.
+        res = build(T01 + T02, values={}, lb=lb(t01=(2, 0), t02=(1, 0)))
+        self.assertIsNone(need(res, "t01", "LAV-04"))
+        self.assertFalse(res["teams"]["t01"]["consistent"])
+        self.assertIn("album_filled is 2", res["teams"]["t01"]["inconsistent"])
+        self.assertEqual(res["withheld_inconsistent"], 1)
+
+    def test_a_deck_no_choice_of_unnamed_cards_fits_gets_no_inferred_need(self):
+        # t01 names three cards of each page; album 7 with 2 complete pages needs LAV-04 AND SAL-04 from 1 unseen card.
+        # Without the guard the fallback drops the page count and both read as missing at p 0.5.
+        n = N
+        t01 = T01 + [ask(20, 5, "t01", 4, "SAL-01", 9), ask(21, 5, "t01", 5, "SAL-02", 9),
+                     ask(22, 5, "t01", 6, "SAL-03", 9)]
+        t02 = T02 + [ask(23, 6, "t02", n + 3, "SAL-04", 90), ask(24, 6, "t02", n + 4, "SAL-04", 90)]
+        res = build(t01 + t02, values={}, catalog=two_pages(), lb=lb(t01=(7, 2), t02=(2, 0)))
+        self.assertEqual([m for m in res["matches"] if m["team"] == "t01"], [])
+        self.assertFalse(res["teams"]["t01"]["consistent"])
+        self.assertIn("pages_complete 2", res["teams"]["t01"]["inconsistent"])
+        ok = build(t01 + t02, values={}, catalog=two_pages(), lb=lb(t01=(7, 1), t02=(2, 0)))   # one page: it fits
+        self.assertTrue(ok["teams"]["t01"]["consistent"])
+
+    def test_a_consistent_deck_still_gets_its_inferred_need(self):
+        res = build(T01 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)))
+        self.assertIsNotNone(need(res, "t01", "LAV-04"))
+        self.assertTrue(res["teams"]["t01"]["consistent"])
+
+
+def census(tick=10, cards=()):
+    return {"meta": {"tick_start": tick - 2, "tick_end": tick},
+            "cards": [{"id": i, "ref": r, "owner": o} for i, r, o in cards]}
+
+
+class Census(unittest.TestCase):
+    """--census: holdings read from the server replace the rebuilt decks."""
+    CARDS = [(1, "LAV-01", "t01"), (2, "LAV-02", "t01"), (3, "LAV-03", "t01"), (100, "LAV-04", "t02"),
+             (101, "LAV-04", "t02"), (102, "LAV-04", "abuela")]
+
+    def test_census_holders_are_facts_dated_by_the_census_tick_with_their_asset_ids(self):
+        # the feed names nothing at all: only the census can say who holds what
+        res = build([], values={}, lb=lb(t01=(3, 0), t02=(1, 0)), census=census(10, self.CARDS))
+        m = need(res, "t01", "LAV-04")
+        self.assertIsNotNone(m)
+        self.assertEqual(m["basis"], "census tick 10")
+        h = m["holders"][0]
+        self.assertEqual((h["team"], h["seen"], h["asset"], h["copies"]), ("t02", "census tick 10", 101, 2))
+        self.assertEqual(res["census_tick"], 10)
+        self.assertEqual(m["p_missing"], 1.0)    # album_filled 3 = the three the census names: nothing unseen
+
+    def test_a_settlement_after_the_census_moves_the_card(self):
+        moved = [ev(30, 12, "settlement", parties=["t02", "t01"], venue="rastro", persona=None, price=60,
+                    items=[{"id": 100, "kind": "card", "ref": "LAV-04", "frm": "t02", "to": "t01"}])]
+        res = build(moved, values={}, lb=lb(t01=(4, 1), t02=(1, 0)), census=census(10, self.CARDS))
+        self.assertIsNone(need(res, "t01", "LAV-04"))
+        self.assertEqual(res["teams"]["t01"]["named_page_cards"], 4)      # the moved copy is t01's now
+        before = build(moved, values={}, lb=lb(t01=(4, 1), t02=(1, 0)), census=census(20, self.CARDS))
+        self.assertEqual(before["teams"]["t01"]["named_page_cards"], 3)   # a settlement before the census is in it
+
+    def test_load_census_picks_the_newest_snapshot_in_a_directory(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for t in (900, 1450):
+                (Path(d) / f"cards-2026-10-04-t{t}.json").write_text(json.dumps(census(t, self.CARDS)))
+            (Path(d) / "cards-2026-10-04-t9999-history.json").write_text("{}")
+            self.assertEqual(mm.census_tick(mm.load_census(d)), 1450)
+            (Path(d) / "cards-2026-10-04-t1500-topup.json").write_text(json.dumps(census(1500, self.CARDS)))
+            self.assertEqual(mm.census_tick(mm.load_census(d)), 1500)
+
+    def test_a_card_that_moved_during_the_walk_ends_with_its_last_holder(self):
+        # the walk ran from tick 8 to 10; id 100 was read at t02 before it settled to t01 at tick 9
+        moved = [ev(30, 9, "settlement", parties=["t02", "t01"], venue="rastro", persona=None, price=60,
+                    items=[{"id": 100, "kind": "card", "ref": "LAV-04", "frm": "t02", "to": "t01"}])]
+        _, by_team = mm.census_holdings(census(10, self.CARDS), moved)
+        self.assertEqual(by_team["t01"]["held"]["LAV-04"], 1)
+        self.assertEqual(by_team["t02"]["held"]["LAV-04"], 1)
+
+
+class RunOnce(unittest.TestCase):
+    def test_a_missing_census_falls_back_to_the_feed_and_never_stops_the_board(self):
+        import argparse
+        import io
+        import unittest.mock as um
+        data = {"events": JOIN + T01 + T02, "catalog": cat(), "leaderboard": LB, "venues": [], "books": {}}
+        args = argparse.Namespace(feed="/nonexistent", live=False, exclude="", exclude_from=None, no_values=True,
+                                  census="/nonexistent/census", exclude_max_age_min=60)
+        err = io.StringIO()
+        with um.patch.object(mm, "offline_inputs", return_value=data), um.patch("sys.stderr", err):
+            res = mm.run_once(args)
+        self.assertIsNone(res["census_tick"])
+        self.assertIsNotNone(need(res, "t01", "LAV-04"))
+        self.assertIn("census: WARNING", err.getvalue())
+
+
+class ExcludeFrom(unittest.TestCase):
+    """--exclude-from: the cards we lack, from our freshest holdings snapshot; the built-in list when it is not."""
+    FALLBACK = ("SAL-01", "SAL-02")
+
+    def write(self, d, name, assets, age_min=0, account="t03"):
+        import json
+        import os
+        import time as _t
+        f = Path(d) / name
+        f.write_text(json.dumps({"id": account, "tick": 1500, "assets": [{"id": i, "kind": "card", "ref": r}
+                                                                          for i, r in enumerate(assets)]
+                                 + [{"id": 99, "kind": "pack", "ref": "sobre_oro"}]}))
+        t = _t.time() - age_min * 60
+        os.utime(f, (t, t))
+        return str(f)
+
+    def run_(self, paths, **kw):
+        said = []
+        cards, line = mm.exclude_from(paths, two_pages(), self.FALLBACK, say=said.append, **kw)
+        return cards, line, said
+
+    def test_a_fresh_snapshot_excludes_exactly_the_page_cards_we_lack(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-03", "LAV-11"])
+            cards, line, said = self.run_([f])
+        self.assertEqual(cards, {"SAL-02", "SAL-04"})     # every lacking page card; no epic, nothing we hold
+        self.assertEqual(said, [])
+        self.assertIn("2 cards we lack", line)
+        self.assertNotIn("SAL-02", line)                   # the line is counts only, never the cards
+
+    def test_a_missing_file_falls_back_to_the_built_in_list_and_says_so(self):
+        cards, line, said = self.run_(["/nonexistent/me.json"])
+        self.assertEqual(cards, set(self.FALLBACK))
+        self.assertEqual(len(said), 1)
+        self.assertIn("WARNING", said[0])
+
+    def test_a_stale_file_adds_the_built_in_list_and_says_so(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02", "SAL-03"],
+                           age_min=90)
+            cards, line, said = self.run_([f], max_age_min=60)
+        self.assertEqual(cards, {"SAL-04"} | set(self.FALLBACK))
+        self.assertEqual(len(said), 1)
+        self.assertIn("min old", said[0])
+
+    def test_age_is_game_time_when_the_tick_is_known(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:   # an old file (git pull overnight) but the clock was paused: fresh
+            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02", "SAL-03"],
+                           age_min=600)
+            self.assertEqual(self.run_([f], now_tick=1510)[0], {"SAL-04"})          # 10 ticks x 15 s
+            self.assertEqual(self.run_([f], now_tick=1800)[0], {"SAL-04"} | set(self.FALLBACK))   # 75 min of play
+
+    def test_another_teams_account_or_garbage_falls_back(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = self.write(d, "me.json", ["LAV-01"], account="t05")
+            g = Path(d) / "bad.json"
+            g.write_text("{not json")
+            self.assertEqual(self.run_([f])[0], set(self.FALLBACK))
+            self.assertEqual(self.run_([str(g)])[0], set(self.FALLBACK))
+
+    def test_the_freshest_of_several_snapshots_is_used(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            old = self.write(d, "me.json", [], age_min=30)
+            new = self.write(d, "me_live.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02",
+                                                 "SAL-03"], age_min=1)
+            cards, _, _ = self.run_([old, new])
+        self.assertEqual(cards, {"SAL-04"})
+
+
+class Validate(unittest.TestCase):
+    def test_validation_counts_recall_precision_and_a_false_missing(self):
+        # we listed LAV-01..03 (ids 31-33 in the test's join order: t03 is third), then sold LAV-03; we hold LAV-04
+        # unseen. The album says 3 filled, 0 complete: one of LAV-03 / LAV-04 unseen, and by rarity LAV-04 (a rare)
+        # reads as missing at p ~0.87 although we hold it.
+        b = 2 * N
+        events = JOIN + [ask(4, 5, "t03", b + 1, "LAV-01", 9), ask(5, 5, "t03", b + 2, "LAV-02", 9),
+                         ask(6, 5, "t03", b + 3, "LAV-03", 9),
+                         ev(7, 6, "settlement", parties=["t03", "t01"], venue="rastro", persona=None, price=9,
+                            items=[{"id": b + 3, "kind": "card", "ref": "LAV-03", "frm": "t03", "to": "t01"}])]
+        me = {"id": "t03", "tick": 10, "assets": [{"id": b + 1, "kind": "card", "ref": "LAV-01"},
+                                                 {"id": b + 2, "kind": "card", "ref": "LAV-02"},
+                                                 {"id": 500, "kind": "card", "ref": "LAV-04"}],
+              "album": {"filled": 3, "pages": [{"set": "LAV", "have": 3, "of": 4, "complete": False}]}}
+        r = mm.validate(events, cat(), me)
+        self.assertEqual((r["page_cards"], r["page_named"], r["page_right"]), (3, 2, 2))
+        self.assertEqual((r["recall"], r["precision"]), (0.667, 1.0))
+        self.assertEqual([f["card"] for f in r["false_missing"]], ["LAV-04"])
+        self.assertTrue(r["consistent"])

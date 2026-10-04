@@ -1138,7 +1138,8 @@ if __name__ == "__main__":
 def match(team, card, set_="MAL", tier=4, holders=(("t05", "Team 5"),), dealers=("Abuela",), price=24, action=None):
     """One entry of tools/matchmaker.py's output, as announce reads it. action: (side, offer, venue, price, maker,
     expires, gives)."""
-    m = {"tier": tier, "inferred": tier >= 3, "team": team, "team_name": f"Team {int(team[1:])}", "set": set_,
+    m = {"tier": tier, "inferred": tier >= 3, "p_missing": 0.9 if tier >= 3 else None, "team": team,
+         "team_name": f"Team {int(team[1:])}", "set": set_,
          "set_name": {"MAL": "Malasaña", "SAL": "Salamanca"}.get(set_, set_), "card": card, "card_name": None,
          "holders": [{"team": t, "name": n, "as_of": 1445} for t, n in holders], "dealers": [{"name": d} for d in dealers],
          "price": price, "action": None, "proposal": None}
@@ -1334,3 +1335,41 @@ class TestMissingVariant(unittest.TestCase):
     def test_variant_takes_only_numbers_or_missing(self):
         with self.assertRaises(SystemExit):
             an.main(["plan", "--variant", "pairs"])
+
+
+class InferredThreshold(unittest.TestCase):
+    """--variant missing names an inferred need only at p_missing >= MIN_P_ANNOUNCE and never for a team whose deck
+    contradicts the leaderboard (docs/plans/matchmaker-validation.md). Mutation-first: each fails without its guard."""
+
+    def doc(self, p, consistent=None):
+        m = match("t13", "MAL-08")
+        m["p_missing"] = p
+        d = {"matches": [m]}
+        if consistent is not None:
+            d["teams"] = {"t13": {"consistent": consistent}}
+        return d
+
+    def test_the_default_threshold_is_the_validated_one(self):
+        self.assertEqual(an.MIN_P_ANNOUNCE, 0.8)
+
+    def test_an_inferred_need_below_the_threshold_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(0.62), {}))
+        self.assertIsNotNone(an.pick_match(self.doc(0.62), {}, min_p=0.6))
+        self.assertIsNotNone(an.pick_match(self.doc(0.91), {}))
+
+    def test_an_inferred_need_without_a_probability_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(None), {}, min_p=0.0))
+        m = match("t13", "MAL-08")
+        m["inferred"] = None    # a malformed entry is treated as an inference
+        m["p_missing"] = None
+        self.assertIsNone(an.pick_match({"matches": [m]}, {}, min_p=0.0))
+
+    def test_a_team_whose_deck_contradicts_the_leaderboard_is_never_named(self):
+        self.assertIsNone(an.pick_match(self.doc(0.95, consistent=False), {}))
+        self.assertIsNotNone(an.pick_match(self.doc(0.95, consistent=True), {}))
+
+    def test_a_live_want_needs_no_probability(self):
+        doc = {"matches": [match("t09", "SAL-06", "SAL", tier=1,
+                                 action=("bid", 20259, "rastro", 20, "t09", 1505, None))]}
+        books = {"rastro": [dict(bid("SAL-06", 20, oid=20259), expires_tick=1505)]}
+        self.assertIsNotNone(an.pick_match(doc, books, tick=1445))
