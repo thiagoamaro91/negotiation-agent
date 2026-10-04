@@ -32,10 +32,12 @@ reach it):
                                               a personal shortlist: fair prices, the market aggregated without venues
                                               or makers, v20 offers with their exact accept calls, a ready bid / ask
                                               for v20 and thread calls to negotiate on v20
-    GET /api/missing?team=tNN                 the missing-card board (tools/matchmaker.py's last output): explicit
-                                              live wants first, each with the one accept call that completes it;
-                                              needs that are only inferred say so; ?team= adds what YOU hold that
-                                              someone wants. Also the first key of /api/match and the page's JSON.
+    GET /api/missing?team=tNN                 Open Bazaar (tools/matchmaker.py's last output), built when served:
+                                              a named offer is "live" with its call only while the current snapshot
+                                              is fresh (SNAPSHOT_MAX_AGE, no failed refresh) and shows it unchanged;
+                                              explicit live wants first; needs that are only inferred say so;
+                                              ?team= keeps only that team's own needs (never what anyone holds).
+                                              Also the first key of /api/match and of /api/celestina.json.
     GET /api/v20                              our venue's book: every offer with its exact accept call
     GET /api/fair/REF                         the fair price block of one card
 
@@ -872,6 +874,16 @@ def _team_ok(t) -> bool:
 BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
                 "the ask plus the fee, at the midpoint, as capacity allows")   # tools/matchmaker.py's words
 MIN_TICKS_LEFT = 8                  # a named offer expiring sooner than this is not served as live
+SNAPSHOT_MAX_AGE = 4 * INTERVAL     # a public snapshot older than this (or after a failed refresh) backs no live claim
+
+
+def checkable(snap, updated: float, err, now: float | None = None):
+    """The snapshot a live claim may be checked against: the current one, only while it is fresh and the last
+    refresh did not fail. None otherwise: every named offer is then served as history, without its call."""
+    now = time.time() if now is None else now
+    if snap is None or err or not updated or now - updated > SNAPSHOT_MAX_AGE:
+        return None
+    return snap
 
 
 def live_index(pub: dict | None) -> dict | None:
@@ -967,6 +979,7 @@ def missing_view(doc, team: str | None = None, now: float | None = None, max_age
                      "first, each with the one call that completes it while the offer still stands; a need marked "
                      f"inferred is a guess from public trades, not a fact. Zero-fee matching on La Celestina ({VENUE}).",
             "tick": doc.get("tick") if isinstance(doc, dict) else None, "checked_at_tick": tick,
+            "live_checked": index is not None,
             "generated_at": at, "stale": stale, "team": team, "matches": rows}
 
 
@@ -1729,8 +1742,7 @@ LOCK = threading.Lock()
 
 
 def publish(snap: dict) -> None:
-    view = public_view(snap)
-    pub = {"missing": missing_view(MISSING.load(), pub=view), **view}
+    pub = public_view(snap)          # the Open Bazaar board is built when served, against a fresh snapshot only
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
                      public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
@@ -1865,15 +1877,21 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 if board is not None:
                     health["concierge_board"] = board.health()  # counts only
                 return self._send(200, json.dumps(health).encode(), "application/json")
+            live = checkable(snap, updated, err) if scope == "public" else None   # backs live claims, or None
             if scope == "public" and path == "/api/missing":
                 q = urllib.parse.parse_qs(u.query)
                 team = (q.get("team") or [None])[0]
                 if team is not None and not MATCH_TEAM_RE.match(team):
                     return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
-                return self._json(200, missing_view(MISSING.load(), team, pub=snap))
+                return self._json(200, missing_view(MISSING.load(), team, pub=live))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
+                if scope == "public":    # the board first, recomputed now: no cached live claim outlives its snapshot
+                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live))
+                    rest = body.decode()
+                    merged = '{"missing": ' + bazaar + (", " + rest[1:] if rest.strip() not in ("{}", "") else "}")
+                    return self._send(200, merged.encode(), "application/json", True)
                 return self._send(200, body, "application/json", True)
             m = re.match(r"^/api/card/([A-Za-z0-9-]{1,12})\.json$", path)
             if m and REF_RE.match(m.group(1).upper()):
@@ -1888,7 +1906,7 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
-                        view = {"missing": missing_view(MISSING.load(), team, pub=snap)["matches"], **view}
+                        view = {"missing": missing_view(MISSING.load(), team, pub=live)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)

@@ -169,14 +169,50 @@ class Routes(unittest.TestCase):
         self.assertLess(page.index('id="missing"'), page.index('id="agents-url"'))
         self.assertLess(page.index('id="missing"'), page.index('id="wanted"'))
 
-    def test_the_published_json_and_match_open_with_the_board(self):
-        snap = {"scope": "private", "cards": {}, "matches": [], "demand": [], "teams": [], "market": {}}
+    def _publish_live(self, age=0.0, err=None):
+        """A snapshot whose book still shows the named bid #20259, published `age` seconds ago."""
+        snap = {"scope": "private", "tick": 1446, "cards": {"SAL-06": {"ref": "SAL-06", "offers": [
+            {"id": 20259, "offer": 20259, "kind": "bid", "ref": "SAL-06", "price": 20, "venue": "rastro", "to": None,
+             "want_ref": None, "expires_tick": 1505, "venue_name": "El Rastro", "team": "t09", "maker": "m",
+             "how": "", "source": "listing", "verdict": None, "summary": None}]}},
+            "matches": [], "demand": [], "teams": [], "market": {}}
         cel.publish(snap)
+        cel.STATE.update(updated=time.time() - age, error=err)
+
+    def get(self, path):
+        with urllib.request.urlopen(self.base + path) as r:
+            return json.loads(r.read())
+
+    def tearDown_state(self):
+        cel.STATE.update(private=None, public=None, private_bytes=None, public_bytes=None, error=None, updated=0.0)
+
+    def test_the_published_json_and_match_open_with_the_board(self):
+        self._publish_live()
         try:
-            self.assertEqual(next(iter(cel.STATE["public"])), "missing")
-            self.assertEqual([e["card"] for e in cel.STATE["public"]["missing"]["matches"]], ["SAL-06", "MAL-08"])
+            body = self.get("/api/celestina.json")
+            self.assertEqual(next(iter(body)), "missing")
+            self.assertEqual([e["card"] for e in body["missing"]["matches"]], ["SAL-06", "MAL-08"])
+            self.assertIn("cards", body)                                    # the rest of the public view follows
+            live = body["missing"]["matches"][0]["action"]
+            self.assertEqual((live["live"], live["call"]), (True, "POST https://bazaar.causaprima.ai/api/offers/20259/accept"))
+            self.assertTrue(self.get("/api/match?team=t09")["missing"][0]["action"]["live"])
         finally:
-            cel.STATE.update(private=None, public=None, private_bytes=None, public_bytes=None)
+            self.tearDown_state()
+
+    def test_no_live_claim_outlives_its_snapshot(self):
+        """Sol round 2, blocker 3: refreshes fail for 1,000 s: the board says nothing is live and gives no call."""
+        for age, err in ((1000.0, None), (0.0, "Traceback: refresh failed")):
+            self._publish_live(age, err)
+            try:
+                for path in ("/api/celestina.json", "/api/missing"):
+                    body = self.get(path)
+                    board = body["missing"] if "missing" in body else body
+                    a = board["matches"][0]["action"]
+                    self.assertEqual((a["live"], "call" in a, board["live_checked"]), (False, False, False), (path, age))
+                a = self.get("/api/match?team=t09")["missing"][0]["action"]          # the agent route too
+                self.assertEqual((a["live"], "call" in a), (False, False), age)
+            finally:
+                self.tearDown_state()
 
 
 if __name__ == "__main__":
