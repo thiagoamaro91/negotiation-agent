@@ -686,3 +686,72 @@ class PairCli(unittest.TestCase):
         self.assertEqual([x[1] for x in c.calls if x[0] == "open"], ["t05", "t16"])
         self.assertIn(("skipped", {"to": "t07", "key": "pair:t12:LAV-07:t07:holder",
                                    "reason": "the bidder of this pair was not told"}), logged)
+
+
+class PairAfterPitch(unittest.TestCase):
+    """A team whose only message today was the venue pitch may still get ONE pair message; nobody else messaged today."""
+    TODAY = {"teams": {"d": ["t12", "t07", "t05", "t16"]}}
+
+    def test_a_pitch_only_team_is_eligible(self):
+        got = {t: {"pitch"} for t in self.TODAY["teams"]["d"]}
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)],
+                         ["t12", "t07", "t05", "t16"])
+        self.assertEqual(out.pair_targets(PDOC, self.TODAY, "d", 6), [])          # nothing known: fail closed
+
+    def test_a_team_matched_today_is_still_excluded(self):
+        for t07 in ({"match"}, {"pitch", "match"}, None):                        # None: not accounted for
+            got = {t: {"pitch"} for t in ("t12", "t05", "t16")}
+            if t07 is not None:
+                got["t07"] = t07
+            with self.subTest(t07=t07):
+                self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)],
+                                 ["t05", "t16"])
+
+    def test_a_second_pair_message_to_the_same_team_the_same_day_is_refused(self):
+        got = {"t12": {"pitch"}, "t07": {"pitch", "pair"}, "t05": {"pitch"}, "t16": {"pitch"}}
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, self.TODAY, "d", 6, got=got)], ["t05", "t16"])
+        state = {"teams": {"d": ["t12"]}, "kinds": {"d": {"t12": ["pair"]}}}       # a pair only, no pitch before
+        self.assertNotIn("t12", [to for to, _, _ in out.pair_targets(PDOC, state, "d", 6,
+                                                                      got=out.received(state, "d"))])
+
+    def test_an_inactive_bidder_is_never_paired(self):
+        idle = json.loads(json.dumps(PDOC))
+        idle["teams"]["t12"]["active"] = False
+        self.assertEqual([to for to, _, _ in out.pair_targets(idle, {}, "d", 6)], ["t05", "t16"])
+
+    def test_received_reads_state_kinds_and_the_run_log(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "log.jsonl"
+            p.write_text("\n".join([json.dumps({"event": "sent", "to": "t12", "tier": "pitch", "key": "[redacted]"}),
+                                    json.dumps({"event": "sent", "to": "t18", "tier": 1, "card": "SAL-11"}),
+                                    json.dumps({"event": "sent", "to": "t07", "tier": "pair"}),
+                                    json.dumps({"event": "open", "to": "t05"}), "not json"]))
+            got = out.received({"kinds": {"d": {"t16": ["pitch"]}}}, "d", p)
+            self.assertEqual(got, {"t12": {"pitch"}, "t18": {"match"}, "t07": {"pair"}, "t16": {"pitch"}})
+            self.assertEqual(out.received({}, "d", Path(d) / "missing.jsonl"), {})
+        self.assertEqual(out.pair_eligible({"teams": {"d": ["t12", "t18", "t07", "t09"]}}, "d", got), {"t12"})
+
+
+class PairAfterPitchCli(unittest.TestCase):
+    run_main = Cli.run_main
+    BOOK = PairCli.BOOK
+
+    def test_run_sends_to_pitch_only_teams_once_and_records_the_kind(self):
+        day = time.strftime("%Y-%m-%d")
+        with tempfile.TemporaryDirectory() as d:
+            log = Path(d) / "sent.jsonl"
+            log.write_text("\n".join(json.dumps({"event": "sent", "to": t, "tier": "pitch"})
+                                     for t in ("t12", "t07", "t05", "t16")))
+            state = {"teams": {day: ["t12", "t07", "t05", "t16"]},
+                     "keys": ["pitch:t12", "pitch:t07", "pitch:t05", "pitch:t16"]}
+            c = FakeClient()
+            with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+                _, _, s2 = self.run_main(["run", "--yes", "--max-teams", "6", "--pair", "--sent-log", str(log)],
+                                         client=c, doc=PDOC, book=self.BOOK, state=state)
+                self.assertEqual([x[1] for x in c.calls if x[0] == "open"], ["t12", "t07", "t05", "t16"])
+                self.assertEqual(s2["kinds"][day], {t: ["pair"] for t in ("t12", "t07", "t05", "t16")})
+                s2["keys"] = [k for k in s2["keys"] if not k.startswith("pair:")]   # even with the pair keys gone
+                c2 = FakeClient()
+                self.run_main(["run", "--yes", "--max-teams", "6", "--pair", "--sent-log", str(log)],
+                              client=c2, doc=PDOC, book=self.BOOK, state=s2)
+                self.assertEqual([x for x in c2.calls if x[0] == "open"], [])    # one pair message per team a day

@@ -19,7 +19,9 @@ tier 2). Then BOTH teams get one message: the bidder W, to post the same bid on 
 H, to list its copy on v20 at its own price; our broker (agent/broker.py) crosses a v20 bid and ask for the same card
 from two teams at the midpoint. Only a cash bid off v20 qualifies (never a swap: the broker never crosses swaps); H is
 active, never W or Team 3, and holds a spare (SPARE_MIN copies) or one copy of a set its consistent deck is not
-filling. Both sides must be unmessaged today and unused by this run; a pair takes two of --max-teams' slots, after the
+filling. Both sides must be unmessaged today, or have had only the venue pitch today (it promises only not to resend
+the pitch; received() reads state["kinds"] and the run log), and be unused by this run: one pair message per team a
+day, and never to a team that got a match text ("We will not message you again today"); a pair takes two of --max-teams' slots, after the
 matches and before the pitch. Best first: the want that is the last card of a page for W, then the higher bid. W is
 sent first; H only once W's message went out (its text says W was told). Public data only: W's own public bid is the
 only price quoted, H's ask says <your price>.
@@ -235,16 +237,51 @@ def pair_messages(m: dict, h: dict, spare_min: int) -> tuple:
     return w_text, h_text
 
 
-def pair_targets(doc: dict, state: dict, day: str, n: int, taken=(), exclude=()) -> list:
+def kind_of(m: dict) -> str:
+    """What a sent message was, for received(): the venue pitch, a pair message, or a match text."""
+    return "pitch" if m.get("pitch") or m.get("tier") == "pitch" else "pair" if m.get("pair") or m.get("tier") == "pair" \
+        else "match"
+
+
+def received(state: dict, day: str, log_path=None) -> dict:
+    """{team: {"pitch" | "pair" | "match"}}: what each team got from us on `day`, from state["kinds"][day] (written by
+    run since --pair-after-pitch) and the run log's "sent" events (logs/outreach/<day>.jsonl: `to` and `tier`, for
+    the sends recorded before state kept kinds). A missing or unreadable log adds nothing."""
+    out = {}
+    for t, kinds in ((state.get("kinds") or {}).get(day) or {}).items():
+        out.setdefault(t, set()).update(k for k in kinds or () if k in ("pitch", "pair", "match"))
+    try:
+        lines = Path(log_path).read_text(encoding="utf-8").splitlines() if log_path else []
+    except OSError:
+        lines = []
+    for line in lines:
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("event") == "sent" and _team(e.get("to")):
+            out.setdefault(e["to"], set()).add(kind_of({"tier": e.get("tier")}))
+    return out
+
+
+def pair_eligible(state: dict, day: str, got: dict | None) -> set:
+    """Teams messaged today that may still get ONE pair message: every message they got today was the venue pitch
+    (it promises only not to resend the pitch). A team that got a match text ("We will not message you again
+    today"), a pair message, or anything we cannot account for stays out (fail closed)."""
+    return {t for t in set((state.get("teams") or {}).get(day, [])) if (got or {}).get(t) == {"pitch"}}
+
+
+def pair_targets(doc: dict, state: dict, day: str, n: int, taken=(), exclude=(), got: dict | None = None) -> list:
     """[(team, entry, text)] for up to n // 2 two-sided v20 matches, each as two rows: the bidder W, then the holder H.
     From the matchmaker's tier-2 cash bids off v20 (confident(), never a card in `exclude`), each with one holder
-    pair_holder() accepts; W and H never Team 3, never messaged today, never taken by this run, each in one pair at
-    most; a want sent before (any pair key for that W and card) is never sent again. Best first: the last card of a
-    page for W (page_gap), then the higher bid."""
+    pair_holder() accepts; W and H never Team 3, never taken by this run, each in one pair at most, and never
+    messaged today unless pair_eligible() (only the pitch so far; `got` is received()); a want sent before (any
+    pair key for that W and card) is never sent again. Best first: the last card of a page for W (page_gap), then
+    the higher bid."""
     import matchmaker   # noqa: E402  (keyless: SPARE_MIN, the matchmaker's own spare rule)
     skip = exclude if hasattr(exclude, "allow") else set(exclude or ())
     teams = (doc or {}).get("teams") if isinstance((doc or {}).get("teams"), dict) else {}
-    used = set((state.get("teams") or {}).get(day, [])) | set(taken) | {US}
+    used = (set((state.get("teams") or {}).get(day, [])) - pair_eligible(state, day, got)) | set(taken) | {US}
     done_keys = set(state.get("keys") or [])
     wants = []
     for m in (doc or {}).get("matches") or []:
@@ -255,7 +292,8 @@ def pair_targets(doc: dict, state: dict, day: str, n: int, taken=(), exclude=())
         if not isinstance(price, int) or isinstance(price, bool) or price <= 0 or not isinstance(a.get("offer"), int):
             continue
         w, card = m.get("team"), m.get("card")
-        if not _team(w) or a.get("maker") not in (None, w) or not isinstance(card, str) or card in skip:
+        if not _team(w) or a.get("maker") not in (None, w) or not isinstance(card, str) or card in skip \
+                or (teams.get(w) or {}).get("active") is False:
             continue
         if a.get("to") or not confident(m, teams) or any(k.startswith(f"{PAIR_KEY}{w}:{card}:") for k in done_keys):
             continue
@@ -513,7 +551,11 @@ def main(argv=None) -> None:
                     help="fill the slots left after the matches with the one-time La Celestina pitch (active teams)")
     ap.add_argument("--pair", action="store_true",
                     help="after the matches: tell both sides of a tier-2 cash bid and a holder the decks name (the "
-                         "bidder: post the bid on v20 too; the holder: list on v20 at its own price); 2 slots a pair")
+                         "bidder: post the bid on v20 too; the holder: list on v20 at its own price); 2 slots a pair. "
+                         "A team whose only message today was the pitch may still get one pair message")
+    ap.add_argument("--sent-log", default=None,
+                    help="--pair: today's outreach run log (default: <state dir>/../outreach/<date>.jsonl), read for "
+                         "what each team got today; anything it cannot account for keeps the team out")
     ap.add_argument("--pitch-reciprocity", action="store_true",
                     help="add the line about Team 3's own buying to the pitch: ONLY after checking the trade "
                          "desk's team-venue rule for its mode (false under --no-team-venues and in page mode)")
@@ -567,8 +609,10 @@ def main(argv=None) -> None:
         print(f"nothing to send: {e}")
         return stop("no catalog") if session else None
     plan = targets(doc, state, day, max(0, args.max_teams), exclude, args.min_p)
-    if args.pair:
-        plan += pair_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan], exclude)
+    if args.pair:   # what each team got today: state's kinds + the run log next to the state (logs/outreach/<day>)
+        log_path = Path(args.sent_log) if args.sent_log else state_path.parent.parent / "outreach" / f"{day}.jsonl"
+        plan += pair_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan], exclude,
+                             received(state, day, log_path))
     if args.pitch:
         plan += pitch_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan],
                               args.pitch_reciprocity)
@@ -627,6 +671,7 @@ def main(argv=None) -> None:
             if m.get("pair") and m.get("role") == "want":
                 told.add(m["pair"])
             state.setdefault("teams", {}).setdefault(day, []).append(to)
+            state.setdefault("kinds", {}).setdefault(day, {}).setdefault(to, []).append(kind_of(m))
             state.setdefault("keys", []).append(key_of(m))
             save_state(state, state_path)
             log.event("sent", to=to, key=key_of(m), card=m.get("card"), tier=m.get("tier"),
