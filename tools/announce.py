@@ -568,20 +568,148 @@ class Silenced(Exception):
     """Raised instead of making a request inside a Market Test silence."""
 
 
+SESSIONS = ROOT / "logs" / "state" / "announce-sessions.json"   # the Market Tests the gate knows, across restarts
+FEED_LIMIT = 1000        # the API's feed window: fewer events than this is the whole feed
+COVER_TICKS = 2 * BENCH_TICKS   # a fresh status needs the feed to cover at least this many ticks back (or more, when
+                                # a known session is longer): a test that started before the window must not be missed
+FIRE_SLACK_H = 0.05      # a bench start event within this many game hours of a scheduled session is that session
+
+
+class Malformed(ValueError):
+    """A schedule, clock or feed whose shape the gate cannot trust: the Market Test status is then unknown."""
+
+
+def _int(x) -> bool:
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _num(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def checked_schedule(schedule) -> list:
+    """The schedule's upcoming entries, every bench entry checked: a dict with a numeric at_hours and, if given, a
+    positive whole number of ticks. Anything else raises Malformed."""
+    if not isinstance(schedule, dict) or not isinstance(schedule.get("upcoming", []), list):
+        raise Malformed("schedule")
+    out = []
+    for e in schedule.get("upcoming", []):
+        if not isinstance(e, dict):
+            raise Malformed("schedule entry")
+        if e.get("action") == "bench":
+            ticks = (e.get("params") or {}).get("ticks") if isinstance(e.get("params") or {}, dict) else "bad"
+            if not _num(e.get("at_hours")) or (ticks is not None and not (_int(ticks) and ticks > 0)):
+                raise Malformed("bench entry")
+        out.append(e)
+    return out
+
+
+def checked_clock(clock) -> tuple:
+    if not isinstance(clock, dict) or not _int(clock.get("tick")) or not _num(clock.get("tick_seconds")) \
+            or clock["tick_seconds"] <= 0 or not _num(clock.get("t_hours")):
+        raise Malformed("clock")
+    return clock["tick"], float(clock["tick_seconds"]), float(clock["t_hours"])
+
+
+def checked_events(events) -> list:
+    """The feed's events, checked: a list of dicts with a whole tick. Anything else raises Malformed (a feed that
+    says "unavailable" is not an empty feed)."""
+    if not isinstance(events, list):
+        raise Malformed("feed")
+    out = []
+    for e in events:
+        if not isinstance(e, dict) or not _int(e.get("tick")):
+            raise Malformed("event")
+        out.append(e)
+    return out
+
+
+def bench_starts(events) -> list:
+    """[(start tick, ticks or None, game hours or None)] from bench.started and schedule.fired (action bench) among
+    checked events: a bench start needs a whole start tick and, if given, a positive whole number of ticks; anything
+    else raises Malformed."""
+    out = []
+    for e in events:
+        pl = e.get("payload")
+        if e.get("type") == "bench.started":
+            if not isinstance(pl, dict):
+                raise Malformed("bench.started")
+            st, n = pl.get("start_tick", e["tick"]), pl.get("ticks")
+            if not _int(st) or (n is not None and not (_int(n) and n > 0)):
+                raise Malformed("bench.started")
+            out.append((st, n, e.get("t") if _num(e.get("t")) else None))
+        elif e.get("type") == "schedule.fired" and isinstance(pl, dict) and pl.get("action") == "bench":
+            out.append((e["tick"], None, e.get("t") if _num(e.get("t")) else None))
+    return out
+
+
+def recorded_span(path: Path = FEED_FILE):
+    """(first tick, last tick) of the recorded feed, or None: how far the recorder's copy reaches."""
+    try:
+        with open(path, "rb") as f:
+            first = json.loads(f.readline())["tick"]
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - 65536))
+            last = json.loads([x for x in f.read().splitlines() if x.strip()][-1])["tick"]
+        return (first, last) if _int(first) and _int(last) else None
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return None
+
+
 class Gate:
     """Every request and every post asks the gate first: silence checked right before each request and right before
-    posting; no post while the Market Test status is unknown or stale (Codex BLOCKERs on #45).
+    posting; no post while the Market Test status is unknown or stale (Codex BLOCKERs on #45). It fails closed: the
+    status is known only when every input is well formed and nothing about a running test is left to guess.
 
-    The gate remembers every Market Test it has seen, as (start tick, ticks): from bench.started in the feed (the
-    API's window and the recorded feed) and from scheduled sessions it saw coming that have since fired. Their
-    windows are placed from the clock's tick, so a paused clock keeps a running session silent, and a session whose
-    bench.started has scrolled out of the feed is still known. A later read never shortens a window already placed."""
+    Sessions are (start tick -> ticks), from authoritative events only (bench.started, or schedule.fired for a bench),
+    never reconstructed from elapsed game hours (the pace can change between 5 s and 60 s and the clock can pause).
+    Two reports of one start tick keep the longer duration. The sessions are kept in `state_path` on every update and
+    read back at start, with the tick up to which the feed was covered. A refresh is known only when:
+      - the schedule, the clock and the feed are well formed (Malformed otherwise);
+      - every scheduled bench that has fired is matched to its start event (else: when did it start? unknown);
+      - the feed reaches far enough back (COVER_TICKS, or the longest known session): the API window is the whole
+        feed (fewer than FEED_LIMIT events), or it starts early enough, or the recorded feed or the saved state
+        reaches back to its first event.
+    Windows are placed from the clock's tick, so a paused clock keeps a running session silent; a later read never
+    shortens a window already placed."""
 
-    def __init__(self, manual=(), clock=None):
+    def __init__(self, manual=(), clock=None, state_path: Path | None = None):
         self.manual, self.windows, self.status_at, self.tried_at = list(manual), list(manual), None, None
         self.sessions = {}      # start tick -> ticks
-        self.expected = {}      # scheduled game hour -> ticks, until it fires
+        self.expected = {}      # scheduled game hour -> ticks, until its start event is seen
+        self.covered_to = None  # the last tick through which the feed was known to be covered (saved state)
+        self.state_path = state_path
         self.clock = clock or (lambda: time.time())  # looked up at call time, so a patched clock is honoured
+        self._load()
+
+    def _load(self) -> None:
+        if self.state_path is None:
+            return
+        try:
+            data = json.loads(Path(self.state_path).read_text())
+            sessions = {int(k): v for k, v in (data.get("sessions") or {}).items()}
+            if all(_int(v) and v > 0 for v in sessions.values()) and (data.get("covered_to") is None
+                                                                      or _int(data.get("covered_to"))):
+                self.sessions, self.covered_to = sessions, data.get("covered_to")
+        except (OSError, ValueError, AttributeError, TypeError):
+            pass   # no saved state (or a bad one): the feed alone must then cover the recent ticks
+
+    def _save(self) -> None:
+        if self.state_path is None:
+            return
+        try:
+            path = Path(self.state_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"sessions": {str(k): v for k, v in sorted(self.sessions.items())},
+                                       "covered_to": self.covered_to}))
+            os.replace(tmp, path)
+        except OSError:
+            pass
+
+    def _add(self, start: int, ticks) -> None:
+        n = ticks if _int(ticks) and ticks > 0 else BENCH_TICKS
+        self.sessions[start] = max(self.sessions.get(start, 0), n)   # never the shorter of two reports
 
     def quiet_end(self):
         return quiet_until(self.windows, self.clock())
@@ -604,51 +732,65 @@ class Gate:
             return False
         return self.tried_at is None or now - self.tried_at >= STATUS_RETRY_S
 
-    def _place(self, schedule, clock, at_clock) -> list:
-        tick, tick_s, t_now = int(clock["tick"]), float(clock["tick_seconds"]), float(clock["t_hours"])
-        upcoming = [e for e in (schedule or {}).get("upcoming") or [] if isinstance(e, dict)]
-        listed = set()
-        for e in upcoming:
-            at = e.get("at_hours")
-            if e.get("action") == "bench" and isinstance(at, (int, float)):
-                listed.add(at)
-                ticks = (e.get("params") or {}).get("ticks")
-                self.expected[at] = ticks if isinstance(ticks, int) and ticks > 0 else BENCH_TICKS
-        for at, ticks in list(self.expected.items()):
-            if at not in listed and at <= t_now:   # it fired: its start tick from the game hours since
-                self.sessions.setdefault(tick - round((t_now - at) * 3600 / tick_s), ticks)
-                del self.expected[at]
+    def _place(self, upcoming, clock, at_clock) -> list:
         known = [{"type": "bench.started", "payload": {"start_tick": st, "ticks": n}} for st, n in self.sessions.items()]
         kept = [w for w in self.windows if w[1] > at_clock]
-        placed = self.manual + quiet_windows(schedule, clock, at_clock) + active_windows(known, clock, at_clock) + kept
+        placed = (self.manual + quiet_windows({"upcoming": upcoming}, clock, at_clock)
+                  + active_windows(known, clock, at_clock) + kept)
         return sorted(set(placed))
 
-    def refresh(self, get, extra_events=()) -> bool:
+    def refresh(self, get, extra_events=(), recorded=None) -> bool:
         """Read the schedule and the clock, place their windows at once, then read the feed for sessions already
-        running (each request gated); True when the status is known again. Any failure or bad shape: unknown."""
+        running (each request gated); True only when the status is known (see the class). `extra_events`: bench
+        events from the recorded feed; `recorded`: its (first tick, last tick)."""
         self.tried_at = self.clock()
         try:
             self.check()
-            schedule = get(f"{URL}/api/schedule")
+            upcoming = checked_schedule(get(f"{URL}/api/schedule"))
             self.check()
             clock = get(f"{URL}/api/clock")
             at_clock = self.clock()                    # the windows are placed from this instant, not later
-            self.windows = self._place(schedule, clock, at_clock)   # installed before the feed read
+            tick, _, t_now = checked_clock(clock)
+            for e in upcoming:
+                if e.get("action") == "bench":
+                    self.expected[e["at_hours"]] = (e.get("params") or {}).get("ticks") or BENCH_TICKS
+            self.windows = self._place(upcoming, clock, at_clock)   # installed before the feed read
             self.check()
-            events = get(f"{URL}/api/feed?limit=1000").get("events", [])
-            for e in list(events) + list(extra_events):
-                if isinstance(e, dict) and e.get("type") == "bench.started":
-                    pl = e.get("payload") or {}
-                    st = pl.get("start_tick", e.get("tick"))
-                    n = pl.get("ticks")
-                    if isinstance(st, int):
-                        self.sessions.setdefault(st, n if isinstance(n, int) and n > 0 else BENCH_TICKS)
-            self.windows = self._place(schedule, clock, at_clock)
+            body = get(f"{URL}/api/feed?limit={FEED_LIMIT}")
+            if not isinstance(body, dict):
+                raise Malformed("feed")
+            api = checked_events(body.get("events"))
+            starts = bench_starts(api) + bench_starts(checked_events(list(extra_events)))
+            for st, n, _ in starts:
+                self._add(st, n)
+            listed = {e["at_hours"] for e in upcoming if e.get("action") == "bench"}
+            unresolved = []
+            for at, n in sorted(self.expected.items()):
+                if at in listed or at > t_now:
+                    continue                           # not fired yet
+                match = [(st, m) for st, m, t in starts if t is not None and t >= at - FIRE_SLACK_H]
+                if not match:
+                    unresolved.append(at)              # it fired, and nothing says when: unknown, never a guess
+                    continue
+                self._add(min(x for x, _ in match), n)   # a longer reported duration was added above: max wins
+                del self.expected[at]
+            self.windows = self._place(upcoming, clock, at_clock)
+            cover = max([COVER_TICKS] + list(self.sessions.values()) + list(self.expected.values()))
+            lo = min((e["tick"] for e in api), default=tick)
+            covered = len(api) < FEED_LIMIT or lo <= tick - cover \
+                or (recorded is not None and recorded[0] <= tick - cover and recorded[1] >= lo - 1) \
+                or (self.covered_to is not None and self.covered_to >= lo - 1)
+            if unresolved or not covered:
+                print(f"Market Test status unknown ({'a fired session without its start event' if unresolved else 'the feed does not reach back far enough'}); no post", flush=True)
+                self._save()
+                return False
         except Silenced:
             return False
         except Exception as e:  # unreachable, slow or malformed: a running session cannot be ruled out
             print(f"Market Test status unavailable ({type(e).__name__}); no post until it is known", flush=True)
             return False
+        self.covered_to = tick
+        self._save()
         self.status_at = at_clock
         return True
 
@@ -759,7 +901,7 @@ def main(argv: list[str] | None = None) -> None:
         from runlog import RunLog
         log = RunLog("announce")
         log.start(plan={"count": args.count, "every_min": args.every_min, "link": bool(link)})
-    gate = Gate(parse_quiet(args.quiet))
+    gate = Gate(parse_quiet(args.quiet), state_path=SESSIONS if args.cmd == "run" else None)
 
     def api(url: str) -> dict:
         """Every request of a run goes through the gate (plan mode never has windows)."""
@@ -830,7 +972,7 @@ def main(argv: list[str] | None = None) -> None:
             gate.expire()
             continue
         if gate.due_refresh():
-            gate.refresh(get_json, recorded_events(kinds=("bench.started",)))
+            gate.refresh(get_json, recorded_events(kinds=("bench.started", "schedule.fired")), recorded_span())
             continue                                   # start again from the silence check with what was learnt
         if not gate.known():                           # status unknown: no request but the status read, no post
             time.sleep(POLL_S)
