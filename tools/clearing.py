@@ -74,12 +74,14 @@ def h(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def commitment(team: str, rid, version, actions: list) -> str:
-    """SHA-256 of exactly what a team approves: its team id, the round, the version and its actions (id, role,
-    card, asset, price, venue, counterparty) in a canonical order. The client computes the same from its plan."""
+def commitment(team: str, rid, version, actions: list, nonce: str = "") -> str:
+    """SHA-256 of exactly what a team approves: its team id, the round, the version, a per-round random nonce and
+    its actions (id, role, card, asset, price, venue, counterparty) in a canonical order. The nonce (given to
+    participants in their plan, never published) makes the hash useless to anyone guessing prices from the
+    outside. The client computes the same from its plan."""
     rows = sorted((a["id"], a["role"], a["card"], a.get("asset"), a["price"], a["venue"], a.get("to") or a.get("from"))
                   for a in actions)
-    return hashlib.sha256(json.dumps([team, rid, version, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(json.dumps([team, rid, version, nonce, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 class Refused(Exception):
@@ -357,19 +359,22 @@ class Store:
                        "rejections": r.get("rejections", []), "trades": len(r["trades"]),
                        "done": sum(1 for a in r["trades"] if a.get("status") == "settled"),
                        "venues": sorted({a["venue"] for a in r["trades"]})} for r in self.state["rounds"]]
+            # only SETTLED trades are public with their price (they are in the game's public feed anyway): a
+            # proposed or failed zero-surplus trade's price would be both sides' reservation prices
             ledger = [{"id": t["id"], "round": r["id"], "seller": t["seller"], "buyer": t["buyer"], "card": t["card"],
                        "price": t["price"], "venue": t["venue"], "host": t.get("host"), "status": t["status"]}
-                      for r in self.state["rounds"] for t in r["trades"]]
+                      for r in self.state["rounds"] for t in r["trades"] if t["status"] == "settled"]
+            pending = {r["id"]: sum(1 for t in r["trades"] if t["status"] != "settled") for r in self.state["rounds"]}
             hosting = {}
             for row in ledger:
-                if row["status"] != "failed":
-                    hh = hosting.setdefault(row["venue"], {"host": row["host"], "trades": 0, "value": 0})
-                    hh["trades"] += 1
-                    hh["value"] += row["price"]
+                hh = hosting.setdefault(row["venue"], {"host": row["host"], "trades": 0, "value": 0})
+                hh["trades"] += 1
+                hh["value"] += row["price"]
             return {"teams": sorted(teams), "venues": {t: v.get("venue") for t, v in teams.items()},
                     "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
                             "the venue with the least value hosted today; a side that did not execute sits out the next round",
-                    "hosting": hosting, "ledger": ledger, "last_attempt": self.state.get("last_attempt"),
+                    "hosting": hosting, "ledger": ledger, "unsettled_trades_per_round": pending,
+                    "last_attempt": self.state.get("last_attempt"),
                     "policy": self.state.get("policy"), "reliability": self.reliability(),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
@@ -461,7 +466,7 @@ class Store:
                 tr.update({"id": f"r{rid}-{i}", "offer": None, "status": "planned", "posted": None, "accepted": None,
                            "error": None})
             r = {"id": rid, "version": version, "status": "proposed", "proposed_at": now_iso(), "at": now_iso(),
-                 "trades": trades, "sat_out": bad, "banned": banned, "votes": {},
+                 "trades": trades, "sat_out": bad, "banned": banned, "votes": {}, "nonce": secrets.token_urlsafe(16),
                  "rejections": open_round.get("rejections", []) if open_round else []}
             self.state["rounds"].append(r)
             self.state["last_attempt"] = {**attempt, "round": rid, "version": version}
@@ -531,7 +536,7 @@ class Store:
                 raise Refused(409, "stale_version", f"the open proposal is version {r.get('version', 1)}; re-read your plan")
             if ok is True:
                 mine = self._actions_of(team, r)
-                want = commitment(team, r["id"], r.get("version", 1), mine)
+                want = commitment(team, r["id"], r.get("version", 1), mine, r.get("nonce", ""))
                 got = body.get("commitment")
                 if not (isinstance(got, str) and hmac.compare_digest(got, want)):
                     raise Refused(409, "bad_commitment", "your OK must carry the commitment hash of the plan you read "
@@ -632,7 +637,8 @@ class Store:
             mine_now = [a for a in out if a["round_status"] == cur["status"] and
                         any(t["id"] == a["id"] for t in cur["trades"])]
             return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
-                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now),
+                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now, cur.get("nonce", "")),
+                    "nonce": cur.get("nonce", ""),
                     "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
                     "votes": {t: v.get("ok") for t, v in cur.get("votes", {}).items()},
                     "rejections": cur.get("rejections", []),
@@ -1163,6 +1169,7 @@ def selftest() -> None:
         assert r["status"] == "settled", r
         st, r = call("GET", "/api/clearing/status")
         assert r["hosting"] and r["ledger"] and '"min"' not in json.dumps(r), r
+        assert all(row["status"] == "settled" for row in r["ledger"]) and len(r["ledger"]) == 1, r["ledger"]
         # second run: the unexecuted trades fail, their idle sides sit out, the sold copy is gone
         st, r = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})
         assert st == 200 and r["sat_out"], r
