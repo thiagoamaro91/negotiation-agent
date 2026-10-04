@@ -21,7 +21,7 @@ NOW = 1_000_000.0
 
 def m(team, card, tier=4, inferred=True, holders=(("t05", 890),), action=None, price=24, to=None, owner=None):
     out = {"tier": tier, "inferred": inferred, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
-           "card_name": "Name", "rarity": "uncommon", "set_name": "Malasaña", "p_missing": 0.77 if inferred else None,
+           "card_name": "Name", "rarity": "uncommon", "set_name": "Malasaña", "p_missing": 0.9 if inferred else None,
            "holders": [{"team": t, "name": f"Team {int(t[1:])}", "copies": 2, "asset": a, "spare": True}
                        for t, a in holders],
            "dealers": [{"name": "Abuela"}], "price": price, "prices": {"fair": 16.5, "team_range": {"low": 15, "high": 20}},
@@ -217,3 +217,102 @@ class Routes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PublicGuards(unittest.TestCase):
+    """The public side never names a page card we lack and shows an inferred need only when confident (the same two
+    guards as tools/announce.py). Mutation-first: each test fails without its guard in tools/celestina.py."""
+
+    def test_the_default_threshold_is_the_announcers(self):
+        import announce
+        self.assertEqual(cel.MIN_P, announce.MIN_P_ANNOUNCE)
+
+    def test_a_card_we_lack_never_appears_on_the_board(self):
+        v = cel.missing_view(DOC, now=NOW, pub=PUB, exclude=frozenset({"MAL-08"}))
+        self.assertEqual([e["card"] for e in v["matches"]], ["SAL-06"])
+        swap = {"generated_at": NOW - 60, "matches": [
+            m("t09", "SAL-06", tier=2, inferred=False, action=("swap", 9, "rastro", 0, "t09"))]}   # gives SAL-02
+        self.assertEqual(cel.missing_view(swap, now=NOW, exclude=frozenset({"SAL-02"}))["matches"], [])
+        self.assertEqual(len(cel.missing_view(swap, now=NOW)["matches"]), 1)
+
+    def test_an_inferred_need_is_shown_only_when_confident(self):
+        def board(p, consistent=None, **kw):
+            x = m("t13", "MAL-08")
+            x["p_missing"] = p
+            doc = {"generated_at": NOW - 60, "matches": [x]}
+            if consistent is not None:
+                doc["teams"] = {"t13": {"consistent": consistent}}
+            return [e["card"] for e in cel.missing_view(doc, now=NOW, **kw)["matches"]]
+        self.assertEqual(board(0.77), [])
+        self.assertEqual(board(0.77, min_p=0.7), ["MAL-08"])
+        self.assertEqual(board(0.9), ["MAL-08"])
+        self.assertEqual(board(None, min_p=0.0), [])
+        self.assertEqual(board(0.95, consistent=False), [])
+        self.assertEqual(board(0.95, consistent=True), ["MAL-08"])
+
+    def test_live_wants_need_no_probability(self):
+        v = cel.missing_view(DOC, now=NOW, pub=PUB, min_p=1.0)
+        self.assertEqual([e["card"] for e in v["matches"]], ["SAL-06"])
+
+    def test_the_public_view_drops_cards_we_lack_from_every_suggestion_but_keeps_the_books(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_celestina as tc
+        snap = tc.snapshot()
+        base = cel.public_view(snap)
+        self.assertIn("LAV-09", [x["ref"] for x in base["matches"]])
+        self.assertIn("LAV-05", [x["ref"] for x in base["our_book"]] + [x["ref"] for x in base["invitations"]])
+        pub = cel.public_view(snap, exclude=frozenset({"LAV-09", "LAV-05", "LAV-02"}))
+        self.assertEqual([x["ref"] for x in pub["matches"]], ["LAV-04"])        # LAV-01 swap wants LAV-02: gone too
+        self.assertEqual((pub["our_book"], pub["invitations"]), ([], []))
+        self.assertEqual([d["ref"] for d in pub["demand"]], ["LAV-04", "LAV-01"])
+        self.assertEqual(sorted(pub["cards"]), sorted(base["cards"]))          # every venue's public book stays
+        self.assertEqual(sorted(pub), sorted(base))                            # same keys for every reader
+
+
+class PublicExcludeFile(unittest.TestCase):
+    CAT = {"sets": [{"id": "MAL", "released": True, "cards": [
+        {"id": f"MAL-0{i}", "rarity": "common", "page": True} for i in range(1, 5)]}]}
+
+    def test_refresh_reads_the_newest_account_file_in_a_directory(self):
+        ex = cel.PublicExclude()
+        self.assertEqual(ex.refresh(self.CAT, 100), frozenset())           # unconfigured (once, unit tests): nothing
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 100, "assets": [
+                {"id": 1, "kind": "card", "ref": "MAL-01"}]}))
+            ex.configure([d], 60, ("RET-01",))
+            self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"MAL-02", "MAL-03", "MAL-04"}))
+            self.assertEqual(ex.refresh(self.CAT, 100 + 61 * 4), frozenset({"MAL-02", "MAL-03", "MAL-04", "RET-01"}))
+        ex.configure(["/nonexistent"], 60, ("RET-01",))
+        self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"RET-01"}))  # no file: the built-in list
+        ex.configure([], 60, ("RET-01",))
+        self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"RET-01"}))  # no flag when served: the built-in list
+
+
+class GuardedRoutes(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        path = Path(self.tmp.name) / "latest.json"
+        path.write_text(json.dumps(dict(DOC, generated_at=time.time())))
+        self.old = (cel.MISSING.path, cel.EXCLUDE.cards, cel.PUBLIC_MIN_P[0])
+        cel.MISSING.path, cel.MISSING.key = path, None
+        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), cel.handler("public"))
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+        self.base = f"http://127.0.0.1:{self.srv.server_address[1]}"
+
+    def tearDown(self):
+        self.srv.shutdown()
+        self.srv.server_close()
+        cel.MISSING.path, cel.EXCLUDE.cards, cel.PUBLIC_MIN_P[0] = self.old
+        cel.MISSING.key = None
+        self.tmp.cleanup()
+
+    def get(self):
+        with urllib.request.urlopen(self.base + "/api/missing") as r:
+            return [e["card"] for e in json.loads(r.read())["matches"]]
+
+    def test_the_served_board_applies_the_configured_exclusion_and_threshold(self):
+        self.assertEqual(self.get(), ["SAL-06", "MAL-08"])
+        cel.EXCLUDE.cards = frozenset({"SAL-06"})
+        self.assertEqual(self.get(), ["MAL-08"])
+        cel.PUBLIC_MIN_P[0] = 0.95
+        self.assertEqual(self.get(), [])

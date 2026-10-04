@@ -24,6 +24,15 @@ The holder map is Team 3's edge, so the output has two sides:
     python3 tools/celestina.py once --json [--public]             # the private (or public) snapshot as JSON
     python3 tools/celestina.py serve --access-log logs/celestina/access.jsonl   # one JSONL line per public request
     python3 tools/celestina.py visits --access-log FILE [--since MINUTES]       # who read /agents.md, called /api/match
+    python3 tools/celestina.py serve --exclude-from <dir>          # never point anyone at a page card WE lack
+
+The public side never names a page card Team 3 lacks (pointing its holders at another buyer works against us):
+--exclude-from (files, or a directory of me*.json: our account as tools/snapshot.py saves it; the highest tick wins,
+re-read at every refresh; only the list of cards we lack is kept, nothing else of the file) gives the list, tools/matchmaker.py exclude_from(); without it, or when the file is missing, foreign
+or stale (--exclude-max-age-min of game time), announce.MISSING is used (stale: both). It is applied to the Open
+Bazaar board and to the public view's matches, invitations, our venue's book and demand (the raw per-card books stay:
+they are every venue's public book). The Open Bazaar board shows an inferred need (tier 3-4) only at p_missing >=
+--min-p (0.8, docs/plans/matchmaker-validation.md) and never for a team whose deck contradicts the leaderboard.
 
 The agent API (public side, keyless, read-only, CORS open; built from the public view only, so the holder map cannot
 reach it):
@@ -69,6 +78,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fairprice  # noqa: E402  (the fair price rule shared with tools/concierge.py)
+import matchmaker  # noqa: E402  (exclude_from: the cards we lack, the same rule announce.py and outreach.py apply)
 
 BASE = "https://bazaar.causaprima.ai/api/"
 ROOT = Path(__file__).resolve().parent.parent
@@ -777,11 +787,14 @@ def suggested_bid(ref: str, card: dict, vid: str | None) -> dict | None:
             "order": order("bid", ref, price, vid)}
 
 
-def public_view(snap: dict) -> dict:
+def public_view(snap: dict, exclude=()) -> dict:
     """The PUBLIC snapshot, cut out of the private one by whitelisting. Open offers are public in every venue's book,
     so they are shown per card and per team (with the team behind them when the feed says so), each with its source
     and a price verdict; matches built from open offers alone come with ready-to-post orders for our venue. The holder
-    map (who is known to hold which copies), the matches built on it and the announcement drafts never leave here."""
+    map (who is known to hold which copies), the matches built on it and the announcement drafts never leave here.
+    Cards in `exclude` (the page cards we lack) never appear in the matches, invitations, our venue's book or the
+    demand list; the per-card books stay (every venue's public book)."""
+    skip = frozenset(exclude or ())
     ours = snap.get("our_venue") or None
     vid = ours["venue"] if ours else None
     cards = snap.get("cards") or {}
@@ -790,7 +803,8 @@ def public_view(snap: dict) -> dict:
     def name(ref):
         return (cards.get(ref) or {}).get("name")
 
-    book = sorted((r for r in rows.values() if vid and r["venue"] == vid and not r["to"]),
+    book = sorted((r for r in rows.values() if vid and r["venue"] == vid and not r["to"]
+                   and not excluded((r.get("ref"), r.get("want_ref")), skip)),
                   key=lambda r: ({"bid": 0, "ask": 1, "swap": 2}.get(r["kind"], 3), -(r["price"] or 0), r["id"]))
     our_book, invitations = [], []
     for r in book:
@@ -820,9 +834,11 @@ def public_view(snap: dict) -> dict:
               **{k: [dict(o) for o in t.get(k) or []] for k in ("bids", "asks", "swaps")}} for t in snap.get("teams") or []]
     matches = [{k: m.get(k) for k in ("kind", "ref", "want_ref", "score", "buy", "sell", "stranded", "on_ours", "why",
                                       "gap", "meet", "orders")}
-               for m in snap.get("matches") or [] if m.get("kind") in PUBLIC_MATCHES]
+               for m in snap.get("matches") or [] if m.get("kind") in PUBLIC_MATCHES
+               and not excluded((m.get("ref"), m.get("want_ref")), skip)]
     demand = [{k: d[k] for k in ("ref", "name", "rarity", "bids", "bidders", "best_bid", "asks", "best_ask",
-                                 "swaps_wanting", "swaps_giving", "ref_price", "trades")} for d in snap.get("demand") or []]
+                                 "swaps_wanting", "swaps_giving", "ref_price", "trades")} for d in snap.get("demand") or []
+              if d.get("ref") not in skip]
     m = snap.get("market") or {}
     return {
         "scope": "public",
@@ -865,6 +881,41 @@ MATCHES_FILE = ROOT / "logs" / "matchmaker" / "latest.json"
 MATCHES_MAX_AGE = 900.0             # an older file shows an empty board: a stale match names a card already bought
 MISSING_MAX = 12
 INFERRED_NOTE = "appears to be missing (inferred from public trades, not confirmed)"
+MIN_P = 0.8                         # an inferred need is shown only from this p_missing (announce.MIN_P_ANNOUNCE): on our
+                                    # own account p >= 0.8 was really missing 91 % of the time, 0.5-0.8 only 62 %
+
+
+def excluded(refs, exclude) -> bool:
+    """Any of these card refs is one we never show."""
+    skip = exclude or ()
+    return any(isinstance(r, str) and r in skip for r in refs)
+
+
+class PublicExclude:
+    """The page cards Team 3 lacks, never shown on the public side. Configured by serve (--exclude-from), refreshed at
+    every engine refresh against the snapshot's tick; `cards` is replaced whole (a reader never sees half a set).
+    Unconfigured (unit tests, `once`): nothing. The log line carries counts and the file, never the cards."""
+
+    def __init__(self):
+        self.paths, self.max_age, self.fallback, self.cards, self.line = None, 60.0, (), frozenset(), None
+
+    def configure(self, paths, max_age_min: float, fallback) -> None:
+        self.paths, self.max_age, self.fallback = list(paths or []), max_age_min, tuple(fallback or ())
+        self.cards = frozenset(self.fallback)
+
+    def refresh(self, catalog: dict | None, tick=None) -> frozenset:
+        if self.paths and isinstance(catalog, dict) and catalog.get("sets"):
+            cards, line = matchmaker.exclude_from(self.paths, catalog, self.fallback, self.max_age,
+                                                  now_tick=tick if isinstance(tick, int) else None, say=lambda m: None)
+            self.cards = frozenset(cards)
+            if line != self.line:
+                print(f"[{time.strftime('%H:%M:%S')}] {line}", file=sys.stderr, flush=True)
+                self.line = line
+        return self.cards
+
+
+EXCLUDE = PublicExclude()
+PUBLIC_MIN_P = [MIN_P]              # serve --min-p
 
 
 def _team_ok(t) -> bool:
@@ -957,17 +1008,32 @@ def missing_entry(m: dict, team: str | None = None, index: dict | None = None, t
     return e
 
 
+def confident(m: dict, teams: dict, min_p: float = MIN_P) -> bool:
+    """A live want (tier 1-2, inferred False) always; an inference only at p_missing >= min_p and from a deck that fits
+    the leaderboard (the matchmaker's teams[team].consistent). A malformed entry counts as an inference."""
+    if m.get("inferred") is False and (m.get("tier") or 0) < 3:
+        return True
+    pm = m.get("p_missing")
+    return isinstance(pm, (int, float)) and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+
+
 def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE,
-                 pub: dict | None = None) -> dict:
+                 pub: dict | None = None, exclude=(), min_p: float = MIN_P) -> dict:
     """GET /api/missing: the board from the matchmaker's output, best first, every named offer re-checked against the
     current public snapshot `pub`. With `team`, only the matches where that team is the buyer: nothing here says who
-    holds what (anyone can pass any team id)."""
+    holds what (anyone can pass any team id). Never a card in `exclude` (the card, or the card a swap gives), never
+    an inferred need below `min_p` or from a deck that contradicts the leaderboard (confident())."""
     now = time.time() if now is None else now
     at = doc.get("generated_at") if isinstance(doc, dict) else None
     stale = not isinstance(at, (int, float)) or now - at > max_age
     index, tick = live_index(pub), (pub or {}).get("tick") if isinstance(pub, dict) else None
     rows = []
+    teams = (doc.get("teams") if isinstance(doc, dict) and isinstance(doc.get("teams"), dict) else None) or {}
     for m in [] if stale else (doc.get("matches") or []):
+        if not isinstance(m, dict) or not confident(m, teams, min_p) or excluded(
+                (m.get("card"), (m.get("action") or {}).get("gives") if isinstance(m.get("action"), dict) else None),
+                exclude):
+            continue
         e = missing_entry(m, team, index, tick)
         if e is None or (team and not e["yours"]):
             continue
@@ -1741,8 +1807,8 @@ STATE = {"private": None, "public": None, "private_bytes": None, "public_bytes":
 LOCK = threading.Lock()
 
 
-def publish(snap: dict) -> None:
-    pub = public_view(snap)          # the Open Bazaar board is built when served, against a fresh snapshot only
+def publish(snap: dict, catalog: dict | None = None) -> None:
+    pub = public_view(snap, EXCLUDE.refresh(catalog, snap.get("tick")))   # the Open Bazaar board is built when served
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
                      public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
@@ -1752,7 +1818,7 @@ def worker(engine: Engine, interval: float) -> None:
     while True:
         t0 = time.time()
         try:
-            publish(engine.refresh())
+            publish(engine.refresh(), engine.catalog)
         except Exception:  # noqa: BLE001  keep serving the last good snapshot
             with LOCK:
                 STATE["error"] = traceback.format_exc(limit=2)[-400:]
@@ -1883,12 +1949,14 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 team = (q.get("team") or [None])[0]
                 if team is not None and not MATCH_TEAM_RE.match(team):
                     return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
-                return self._json(200, missing_view(MISSING.load(), team, pub=live))
+                return self._json(200, missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
+                                                    min_p=PUBLIC_MIN_P[0]))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
                 if scope == "public":    # the board first, recomputed now: no cached live claim outlives its snapshot
-                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live))
+                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live, exclude=EXCLUDE.cards,
+                                                     min_p=PUBLIC_MIN_P[0]))
                     rest = body.decode()
                     merged = '{"missing": ' + bazaar + (", " + rest[1:] if rest.strip() not in ("{}", "") else "}")
                     return self._send(200, merged.encode(), "application/json", True)
@@ -1906,7 +1974,8 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
-                        view = {"missing": missing_view(MISSING.load(), team, pub=live)["matches"], **view}
+                        view = {"missing": missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
+                                                        min_p=PUBLIC_MIN_P[0])["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
@@ -1994,6 +2063,14 @@ def main() -> None:
                                                               "(default: --concierge-url)")
     s.add_argument("--matches", type=Path, default=MATCHES_FILE, help="tools/matchmaker.py's json output, read for "
                                                                       "the missing-card board (/api/missing)")
+    s.add_argument("--exclude-from", default=None,
+                   help="comma list of our account snapshots (tools/snapshot.py), or a directory of me*.json (the highest tick "
+                        "wins, re-read every refresh): the page cards we lack are never shown publicly. Without it, "
+                        "or when it is missing/foreign: announce.MISSING; stale: both")
+    s.add_argument("--exclude-max-age-min", type=float, default=matchmaker.EXCLUDE_MAX_AGE_MIN,
+                   help="--exclude-from: older than this (game time) is stale")
+    s.add_argument("--min-p", type=float, default=MIN_P, help="Open Bazaar: lowest p_missing at which an inferred "
+                                                             "need is shown")
     s.add_argument("--access-log", type=Path, default=None, help="append one JSONL line per public request (no "
                                                                   "bodies, no keys; /healthz skipped) to this file")
     o = sub.choices["once"]
@@ -2013,6 +2090,9 @@ def main() -> None:
         args.snapshots_file = guess if guess.exists() else None
     if args.cmd == "serve":
         MISSING.path = args.matches
+        EXCLUDE.configure(args.exclude_from.split(",") if args.exclude_from else [], args.exclude_max_age_min,
+                          matchmaker.announce_missing())
+        PUBLIC_MIN_P[0] = args.min_p
         args.private_port = args.port + 1 if args.private_port is None else args.private_port
         serve(args)
         return

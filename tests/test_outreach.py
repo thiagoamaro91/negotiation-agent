@@ -18,7 +18,7 @@ from bazaar_sdk import BazaarError  # noqa: E402
 
 
 def m(team, card, tier, action=None, who=(), price=24):
-    x = {"tier": tier, "inferred": tier >= 3, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
+    x = {"tier": tier, "inferred": tier >= 3, "p_missing": 0.9 if tier >= 3 else None, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
          "card_name": None, "set_name": "Malasaña", "action": None,
          "proposal": {"buyer": {"post": {"venue": "v20", "give": {"cash": price}, "want": {"cards": [card]},
                                          "expires_in_ticks": 240}}} if tier == 4 else None}
@@ -380,3 +380,38 @@ class Cli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Guards(unittest.TestCase):
+    """The same two guards as the announcer: never a card we lack, never an unconfident inference."""
+
+    def test_an_unconfident_or_inconsistent_inference_is_never_messaged(self):
+        low = m("t13", "MAL-08", 4)
+        low["p_missing"] = 0.6
+        self.assertEqual(out.targets({"matches": [low]}, {}, "d", 3), [])
+        self.assertEqual(len(out.targets({"matches": [low]}, {}, "d", 3, min_p=0.5)), 1)
+        ok = m("t13", "MAL-08", 4)
+        self.assertEqual(len(out.targets({"matches": [ok]}, {}, "d", 3)), 1)
+        self.assertEqual(out.targets({"matches": [ok], "teams": {"t13": {"consistent": False}}}, {}, "d", 3), [])
+
+    def test_a_swap_giving_a_card_we_lack_is_never_messaged(self):
+        sw = m("t06", "RET-12", 1, action=("swap", 9, "rastro", 0, "t06"), who=("t05",))   # gives SAL-02
+        self.assertEqual(out.targets({"matches": [sw]}, {}, "d", 3, exclude=("SAL-02",)), [])
+
+    def test_the_default_reads_our_account_and_falls_back_to_the_built_in_list(self):
+        import argparse
+        fallback = ("NOT-01",)
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 1500, "assets": [
+                {"id": 1, "kind": "card", "ref": "MAL-08"}]}))
+            with um.patch("builtins.print"):
+                got = out.lacking(argparse.Namespace(exclude_from=d, exclude_max_age_min=60), {"tick": 1500}, fallback)
+                none = out.lacking(argparse.Namespace(exclude_from=d + "/nope", exclude_max_age_min=60),
+                                   {"tick": 1500}, fallback)
+        self.assertIn("MAL-07", got)                               # a page card we do not hold
+        self.assertNotIn("MAL-08", got)                            # one we hold
+        self.assertNotIn("NOT-01", got)                            # a fresh file needs no built-in list
+        self.assertEqual(none, set(fallback))                      # no file: the built-in list
+        src = (ROOT / "tools" / "outreach.py").read_text(encoding="utf-8")
+        self.assertIn('ap.add_argument("--exclude-from", default=str(ACCOUNT_DIR),', src)
+        self.assertEqual(out.ACCOUNT_DIR, ROOT / "logs" / "state")

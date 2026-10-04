@@ -204,3 +204,24 @@ python3 tools/snapshot.py --me-only
 ```
 
 The matchmaker picks the newest snapshot by itself at its next 2-minute build; nothing restarts.
+
+## The same guards on La Celestina and outreach (follow-up PR)
+
+The public board (`/api/missing`, the `missing` key of `/api/celestina.json` and `/api/match`, the page) now applies
+the announcer's two guards:
+
+- **The cards we lack.** `celestina.py serve --exclude-from FILES|DIR` reads our account snapshots. A directory means
+  its `me*.json` files, and the one with the highest game tick wins. The file is re-read at every 15 s refresh and
+  aged against the snapshot's tick (`--exclude-max-age-min`, default 60). No flag or no file falls back to
+  `announce.MISSING`; a stale file adds `announce.MISSING` to its own list. The exclusion covers the board, the
+  public view's matches, invitations, our venue's book and the demand list. The per-card books stay (they are every
+  venue's public book), and the JSON keys are unchanged.
+- **Confident needs only.** An inferred need (tier 3-4) is shown only at `p_missing >= --min-p` (0.8) and never for a
+  deck marked `consistent: false`. Live wants (tiers 1-2) are unchanged.
+
+`outreach.py` now reads the same exclusion by default (`--exclude-from logs/state`, falling back to MISSING) and
+applies the same threshold (`--min-p`, 0.8).
+
+On the VM (main checkout), add to the serve command: `--exclude-from logs/state --exclude-max-age-min 90`.
+`--min-p` is already 0.8 by default. The VM's `logs/state/me.json` changes only when someone pushes a fresh one. A
+file more than 90 min of game time old falls back to its cards plus MISSING, so it hides more, never less.

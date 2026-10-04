@@ -51,6 +51,8 @@ NEAR_SILENCE_TICKS = 2    # no thread is opened within this many ticks of a Mark
 THREAD_VENUE = "rastro"   # the thread is only a message channel; nothing is traded in it
 GAP_S = 20                # run: seconds between two teams (more than one Sunday tick)
 NAME = "Open Bazaar · who needs which card"
+ACCOUNT_DIR = ROOT / "logs" / "state"   # --exclude-from default: our account snapshots (me*.json, the highest tick wins)
+MIN_P = 0.8               # an inferred need is messaged only from this p_missing (announce.MIN_P_ANNOUNCE)
 
 
 def _team(t) -> bool:
@@ -120,15 +122,27 @@ def save_state(state: dict, path: Path | None = None) -> None:
     os.replace(tmp, path)
 
 
-def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=()) -> list:
+def confident(m: dict, teams: dict, min_p: float = MIN_P) -> bool:
+    """A live want always; an inference (tier 3-4) only at p_missing >= min_p, from a deck that fits the leaderboard."""
+    if m.get("inferred") is False and (m.get("tier") or 0) < 3:
+        return True
+    pm = m.get("p_missing")
+    return isinstance(pm, (int, float)) and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+
+
+def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=(), min_p: float = MIN_P) -> list:
     """[(team, match, text)] in the matchmaker's order: one per team, never a team messaged today, never a match sent
-    before, never Team 3, never a card in `exclude`."""
+    before, never Team 3, never a card in `exclude` (the card, or the one a swap gives), never an unconfident
+    inference (confident())."""
     skip = set(exclude or ())
+    teams = (doc or {}).get("teams") if isinstance((doc or {}).get("teams"), dict) else {}
     done_teams = set((state.get("teams") or {}).get(day, []))
     done_keys = set(state.get("keys") or [])
     out, seen = [], set()
     for m in (doc or {}).get("matches") or []:
         if not isinstance(m, dict) or not isinstance(m.get("card"), str) or m["card"] in skip:
+            continue
+        if (isinstance(m.get("action"), dict) and m["action"].get("gives") in skip) or not confident(m, teams, min_p):
             continue
         if len(out) >= max_teams:
             break
@@ -269,6 +283,25 @@ def recover(client, state: dict, state_path: Path, log, gate) -> str | None:
     return None
 
 
+def lacking(args, doc: dict, fallback) -> set:
+    """The page cards we lack, from our freshest account snapshot (matchmaker.exclude_from, aged against the
+    matchmaker's tick); announce.MISSING when there is none. Printed as a count, never the cards."""
+    import matchmaker      # noqa: E402  (keyless)
+    import value_inference  # noqa: E402
+    if not args.exclude_from:
+        return set(fallback)
+    try:
+        cat = value_inference.catalog()
+    except (OSError, ValueError) as e:
+        print(f"exclude-from: WARNING no catalog ({type(e).__name__}); using the built-in list ({len(fallback)} cards)")
+        return set(fallback)
+    cards, line = matchmaker.exclude_from(args.exclude_from.split(","), cat, fallback, args.exclude_max_age_min,
+                                          now_tick=(doc or {}).get("tick") if isinstance((doc or {}).get("tick"), int)
+                                          else None, say=print)
+    print(line)
+    return set(cards)
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="Open Bazaar outreach: one thread, one message, closed. Plan by default.")
     ap.add_argument("cmd", nargs="?", default="plan", choices=["plan", "run"])
@@ -277,14 +310,18 @@ def main(argv=None) -> None:
     ap.add_argument("--max-teams", type=int, default=1, help="teams messaged in this run (one thread at a time); "
                                                              "0 = run does nothing at all")
     ap.add_argument("--venue", default=THREAD_VENUE, help="the venue the thread is opened on (a channel only)")
-    ap.add_argument("--exclude", default=None, help="comma list of cards never named (default: announce.MISSING)")
+    ap.add_argument("--exclude", default=None, help="comma list of cards never named, added to --exclude-from's")
+    ap.add_argument("--exclude-from", default=str(ACCOUNT_DIR),
+                    help="our account snapshots (files, or a directory of me*.json; the highest tick wins): every page "
+                         "card we lack is never named; missing/foreign -> announce.MISSING, stale -> both")
+    ap.add_argument("--exclude-max-age-min", type=float, default=60.0)
+    ap.add_argument("--min-p", type=float, default=MIN_P, help="lowest p_missing at which an inferred need is messaged")
     ap.add_argument("--state", default=str(STATE))
     args = ap.parse_args(argv)
     if args.cmd == "run" and not args.yes:
         ap.error("run opens threads with other teams: add --yes")
     import announce   # noqa: E402  (the Market Test gate and the list of cards Team 3 lacks)
-    exclude = tuple(x.strip() for x in (args.exclude if args.exclude is not None else ",".join(announce.MISSING)).split(",")
-                    if x.strip())
+    exclude = tuple(x.strip() for x in (args.exclude or "").split(",") if x.strip())
     day = time.strftime("%Y-%m-%d")
     state_path = Path(args.state)
     state = load_state(state_path)
@@ -322,7 +359,8 @@ def main(argv=None) -> None:
     except (OSError, ValueError, LookupError) as e:
         print(f"nothing to send: {type(e).__name__}: {e}")
         return stop("no fresh matches") if session else None
-    plan = targets(doc, state, day, max(0, args.max_teams), exclude)
+    exclude = tuple(sorted(set(exclude) | lacking(args, doc, announce.MISSING)))
+    plan = targets(doc, state, day, max(0, args.max_teams), exclude, args.min_p)
     print(f"{NAME} outreach, matchmaker tick {doc.get('tick')}: {len(plan)} message(s), one thread at a time.")
     print(f"slot budget: {MAX_THREADS} threads per team; each send holds 1 for a few seconds (open, one message, "
           f"close); run opens only while {RESERVE_SLOTS} stay free for the dealer bots once it is open. Already "
