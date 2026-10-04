@@ -137,7 +137,7 @@ def clean_book(body: dict) -> tuple:
 
 # ---------------------------------------------------------------- the matcher (pure)
 
-def match(books: dict, venues: list, participants: dict, hosted: dict | None = None) -> dict:
+def match(books: dict, venues: list, participants: dict, hosted: dict | None = None, banned: list | None = None) -> dict:
     """books: {team: {"haves": [...], "wants": [...]}}; venues: public /api/venues list; participants: {team: venue id
     or None}; hosted: {venue: value hosted so far today}. Returns {"trades": [...], "uncovered": [teams whose venue
     would host nothing], "hosting": {venue: value}}. Trades are chosen greedily by surplus; venues are then assigned
@@ -155,7 +155,7 @@ def match(books: dict, venues: list, participants: dict, hosted: dict | None = N
                 if t == s:
                     continue
                 for i, w in enumerate(bb.get("wants", [])):
-                    if w["card"] != hv["card"] or w["max"] < hv["min"]:
+                    if w["card"] != hv["card"] or w["max"] < hv["min"] or [s, t, hv["card"]] in (banned or []):
                         continue
                     cands.append({"surplus": w["max"] - hv["min"], "seller": s, "buyer": t, "card": hv["card"],
                                   "asset": hv["asset"], "min": hv["min"], "max": w["max"], "want": (t, i),
@@ -329,7 +329,9 @@ class Store:
     def status(self, next_run: str | None = None) -> dict:
         with self.lock:
             teams = self.state["teams"]
-            rounds = [{"id": r["id"], "at": r["at"], "trades": len(r["trades"]),
+            rounds = [{"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
+                       "votes": {t: v.get("ok") for t, v in r.get("votes", {}).items()}, "votes_needed": self.needed(r),
+                       "rejections": r.get("rejections", []), "trades": len(r["trades"]),
                        "done": sum(1 for a in r["trades"] if a.get("status") == "settled"),
                        "venues": sorted({a["venue"] for a in r["trades"]})} for r in self.state["rounds"]]
             ledger = [{"id": t["id"], "round": r["id"], "seller": t["seller"], "buyer": t["buyer"], "card": t["card"],
@@ -355,22 +357,40 @@ class Store:
     def hosted(self) -> dict:
         out: dict = {}
         for r in self.state["rounds"]:
+            if r.get("status") == "proposed":
+                continue
             for t in r["trades"]:
                 if t["status"] != "failed":
                     out[t["venue"]] = out.get(t["venue"], 0) + t["price"]
         return out
 
     def defaulters(self) -> set:
-        """Teams that left a planned trade of an earlier round unexecuted: a seller that never posted, a buyer that
-        never accepted. They sit out the next round (their book stays)."""
+        """Teams that left an approved trade of an earlier round unexecuted: a seller that never posted, a buyer
+        that never accepted. They sit out the next round (their book stays)."""
         bad = set()
         for r in self.state["rounds"]:
+            if r.get("status") != "approved":
+                continue
             for t in r["trades"]:
                 if t["status"] == "planned":
                     bad.add(t["seller"])
                 elif t["status"] == "posted":
                     bad.add(t["buyer"])
         return bad
+
+    @staticmethod
+    def needed(r: dict) -> list:
+        return sorted({x for t in r["trades"] for x in (t["seller"], t["buyer"])})
+
+    def _propose(self, venues: list, banned: list, bad: set) -> tuple:
+        books = {}
+        for t, v in self.state["teams"].items():
+            if t in bad:
+                continue
+            books[t] = {"haves": [h for h in v["haves"]], "wants": [dict(w) for w in v["wants"]]}
+        parts = {t: v.get("venue") for t, v in self.state["teams"].items() if t not in bad}
+        res = match(books, venues, parts, self.hosted(), banned=banned)
+        return res["trades"], res["uncovered"], sorted(bad), books
 
     @staticmethod
     def why_uncovered(uncovered: list, books: dict, trades: list) -> dict:
@@ -389,42 +409,124 @@ class Store:
         return out
 
     def run(self, venues: list, force: bool = False) -> dict:
+        """Propose a round (or re-propose the open one). Nothing is consumed or executable until every team with a
+        trade in it has voted OK (see vote); then the round is approved and the books are consumed."""
         with self.lock:
-            bad = self.defaulters()
-            for r in self.state["rounds"]:              # earlier rounds are closed: what was not done is failed
-                for t in r["trades"]:
-                    if t["status"] in ("planned", "posted"):
-                        t["status"], t["error"] = "failed", "not executed before the next round"
-            books = {t: {"haves": v["haves"], "wants": v["wants"]} for t, v in self.state["teams"].items() if t not in bad}
-            parts = {t: v.get("venue") for t, v in self.state["teams"].items() if t not in bad}
-            res = match(books, venues, parts, self.hosted())
-            trades, uncovered = res["trades"], res["uncovered"]
-            attempt = {"at": now_iso(), "trades": len(trades), "uncovered": uncovered, "sat_out": sorted(bad),
+            open_round = next((r for r in self.state["rounds"] if r.get("status") == "proposed"), None)
+            banned = open_round.get("banned", []) if open_round else []
+            bad = self.defaulters()                     # before closing: who left an approved trade undone
+            for r in self.state["rounds"]:              # earlier approved rounds are closed: what was not done is failed
+                if r.get("status") == "approved":
+                    for t in r["trades"]:
+                        if t["status"] in ("planned", "posted"):
+                            t["status"], t["error"] = "failed", "not executed before the next round"
+                    r["status"] = "closed"
+            trades, uncovered, bad, books = self._propose(venues, banned, bad)
+            attempt = {"at": now_iso(), "trades": len(trades), "uncovered": uncovered, "sat_out": bad,
                        "held": bool(uncovered) and not force, "why": self.why_uncovered(uncovered, books, trades)}
             if uncovered and not force:
                 attempt["note"] = "round held: every participant's venue must host at least one trade"
                 self.state["last_attempt"] = attempt
                 self.save()
                 return {"round": None, **attempt}
-            rid = len(self.state["rounds"]) + 1
+            if open_round:
+                rid, version = open_round["id"], open_round.get("version", 1) + 1
+                self.state["rounds"].remove(open_round)
+            else:
+                rid, version = len(self.state["rounds"]) + 1, 1
             for i, tr in enumerate(trades, 1):
                 tr.update({"id": f"r{rid}-{i}", "offer": None, "status": "planned", "posted": None, "accepted": None,
                            "error": None})
-            self.state["rounds"].append({"id": rid, "at": now_iso(), "trades": trades, "sat_out": sorted(bad)})
-            self.state["last_attempt"] = {**attempt, "round": rid}
-            sold = {tr["asset"] for tr in trades}
-            for t, v in self.state["teams"].items():
-                v["haves"] = [x for x in v["haves"] if x["asset"] not in sold]
-                for tr in trades:
-                    if tr["buyer"] == t:
-                        for w in v["wants"]:
-                            if w["card"] == tr["card"] and w.get("qty", 1) > 0:
-                                w["qty"] = w.get("qty", 1) - 1
-                                break
-                v["wants"] = [w for w in v["wants"] if w.get("qty", 1) > 0]
+            r = {"id": rid, "version": version, "status": "proposed", "proposed_at": now_iso(), "at": now_iso(),
+                 "trades": trades, "sat_out": bad, "banned": banned, "votes": {},
+                 "rejections": open_round.get("rejections", []) if open_round else []}
+            self.state["rounds"].append(r)
+            self.state["last_attempt"] = {**attempt, "round": rid, "version": version}
             self.save()
-            return {"round": rid, "trades": len(trades), "venues": sorted({t["venue"] for t in trades}),
-                    "surplus": sum(t["surplus"] for t in trades), "uncovered": uncovered, "sat_out": sorted(bad)}
+            self._maybe_approve(r)
+            return {"round": rid, "version": version, "status": r["status"], "trades": len(trades),
+                    "venues": sorted({t["venue"] for t in trades}), "surplus": sum(t["surplus"] for t in trades),
+                    "uncovered": uncovered, "sat_out": bad, "votes_needed": self.needed(r)}
+
+    def vote_deadline(self, minutes: float) -> None:
+        """A proposal older than `minutes` with votes still missing: the silent teams' trades are dropped and the
+        rest is approved, so one quiet team never holds everyone else."""
+        if not minutes:
+            return
+        with self.lock:
+            r = next((x for x in self.state["rounds"] if x.get("status") == "proposed"), None)
+            if r is None:
+                return
+            age = (datetime.now().astimezone() - datetime.fromisoformat(r["proposed_at"])).total_seconds() / 60
+            if age < minutes:
+                return
+            silent = [t for t in self.needed(r) if t not in r["votes"]]
+            if silent:
+                r["trades"] = [t for t in r["trades"] if t["seller"] not in silent and t["buyer"] not in silent]
+                r["dropped_for_silence"] = silent
+            if not self._maybe_approve(r):
+                r["status"] = "closed" if not r["trades"] else r["status"]
+                self.save()
+
+    def _consume(self, r: dict) -> None:
+        sold = {tr["asset"] for tr in r["trades"]}
+        for t, v in self.state["teams"].items():
+            v["haves"] = [x for x in v["haves"] if x["asset"] not in sold]
+            for tr in r["trades"]:
+                if tr["buyer"] == t:
+                    for w in v["wants"]:
+                        if w["card"] == tr["card"] and w.get("qty", 1) > 0:
+                            w["qty"] = w.get("qty", 1) - 1
+                            break
+            v["wants"] = [w for w in v["wants"] if w.get("qty", 1) > 0]
+
+    def _maybe_approve(self, r: dict) -> bool:
+        need = self.needed(r)
+        if r["status"] != "proposed" or not r["trades"]:
+            return False
+        if all(r["votes"].get(t, {}).get("ok") for t in need):
+            r["status"], r["approved_at"] = "approved", now_iso()
+            self._consume(r)
+            self.save()
+            return True
+        return False
+
+    def vote(self, body: dict, venues_fn=None) -> dict:
+        """{"token", "ok": true} approves the open proposal for this team. {"ok": false, "why": "...", "trades":
+        ["r1-3", ...]} rejects those trades (all of the team's trades when none are listed): the pairs are banned
+        for this round, the proposal is recomputed (new version, votes cleared) and returned."""
+        team = self.team_of(body.get("token"))
+        with self.lock:
+            r = next((x for x in self.state["rounds"] if x.get("status") == "proposed"), None)
+            if r is None:
+                raise Refused(409, "no_proposal", "no round is open for votes")
+            if team not in self.needed(r):
+                raise Refused(409, "not_involved", f"{team} has no trade in round {r['id']}; nothing to vote on")
+            ok = body.get("ok")
+            if ok is True:
+                r["votes"][team] = {"ok": True, "at": now_iso()}
+                approved = self._maybe_approve(r)
+                self.save()
+                return {"round": r["id"], "version": r["version"], "status": r["status"], "your_vote": "ok",
+                        "waiting_for": [t for t in self.needed(r) if not r["votes"].get(t, {}).get("ok")],
+                        "approved": approved}
+            if ok is not False:
+                raise Refused(400, "bad_vote", "ok must be true or false")
+            why = str(body.get("why") or "")[:300]
+            ids = body.get("trades") or []
+            if not isinstance(ids, list):
+                raise Refused(400, "bad_vote", "trades must be a list of action ids")
+            mine = [t for t in r["trades"] if team in (t["seller"], t["buyer"])]
+            rejected = [t for t in mine if not ids or t["id"] in ids]
+            if not rejected:
+                raise Refused(400, "bad_vote", "none of those trades is yours")
+            for t in rejected:
+                r["banned"].append([t["seller"], t["buyer"], t["card"]])
+            r.setdefault("rejections", []).append({"team": team, "why": why, "trades": [t["id"] for t in rejected],
+                                                   "at": now_iso()})
+            self.save()
+        res = self.run(venues_fn() if venues_fn else [])
+        return {"your_vote": "not ok", "why": why, "rejected": [t["id"] for t in rejected], "reproposed": res}
 
     def plan(self, token) -> dict:
         team = self.team_of(token)
@@ -432,7 +534,10 @@ class Store:
             if not self.state["rounds"]:
                 return {"team": team, "round": None, "actions": [], "note": "no round yet"}
             out = []
+            cur = self.state["rounds"][-1]
             for r in self.state["rounds"]:
+                if r.get("status") == "closed":
+                    continue
                 for tr in r["trades"]:
                     if tr["status"] in ("settled", "failed"):
                         continue
@@ -447,7 +552,14 @@ class Store:
                                     "fee": tr["fee"], "venue": tr["venue"], "from": tr["seller"],
                                     "offer": tr["offer"], "status": tr["status"],
                                     "accept": None if tr["offer"] is None else f"POST /api/offers/{tr['offer']}/accept"})
-            return {"team": team, "round": self.state["rounds"][-1]["id"], "actions": out}
+            for a in out:
+                a["round_status"] = next(r["status"] for r in self.state["rounds"] if any(t["id"] == a["id"] for t in r["trades"]))
+            return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
+                    "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
+                    "votes": {t: v.get("ok") for t, v in cur.get("votes", {}).items()},
+                    "rejections": cur.get("rejections", []),
+                    "note": "execute only actions whose round_status is approved; vote first" if cur["status"] == "proposed" else None,
+                    "actions": out}
 
     def report(self, body: dict) -> dict:
         team = self.team_of(body.get("token"))
@@ -456,6 +568,9 @@ class Store:
             tr = next((t for r in self.state["rounds"] for t in r["trades"] if t["id"] == aid), None)
             if tr is None or team not in (tr["seller"], tr["buyer"]):
                 raise Refused(404, "no_such_action")
+            rnd = next(r for r in self.state["rounds"] if any(t["id"] == aid for t in r["trades"]))
+            if rnd.get("status") != "approved":
+                raise Refused(409, "not_approved", f"round {rnd['id']} is {rnd.get('status')}: vote first, execute after approval")
             if "offer" in body and team == tr["seller"]:
                 tr["offer"] = clean_int(body.get("offer"), 1, 10_000_000, "offer")
                 tr["status"], tr["posted"] = "posted", now_iso()
@@ -529,6 +644,15 @@ trades. Then each side gets exactly one thing to do:
 - The match is greedy by surplus, not a global optimum, and runs only at the listed times; a matched sale leaves
   your book, so a second run never sells the same copy twice.
 
+## Review before anything happens: OK / NOT OK
+A run only PROPOSES. Each team with a trade in the proposal reads it (`plan`, or GET /api/clearing/plan?token=)
+and votes: `POST /api/clearing/vote {{"token": "...", "ok": true}}`, or `{{"ok": false, "why": "...", "trades":
+["r1-3"]}}` to reject those trades (all of yours when none are listed). A rejection bans those pairs for the
+round and the Cámara proposes again (new version, all votes cleared, the reason is shown to everyone). The round
+is approved, and only then executable, when every team in it has said OK; a team silent for {vote} minutes has
+its trades dropped and the rest goes ahead. The client does this for you: `vote --ok`, `vote --no --why "..."`,
+or `execute --auto-approve` if you trust your own numbers (every price is inside them).
+
 ## Which venue, and what binds
 - Every round is for everyone or it does not run: the matcher first gives every participant's venue one trade
   (a trade cannot sit on a venue owned by one of its two sides). If some participant's venue would host nothing, the
@@ -574,7 +698,7 @@ Source: https://github.com/thiagoamaro91/negotiation-agent/pull/96 (tools/cleari
 
 
 def make_server(store: Store, host: str, port: int, *, admin_token: str, public_url: str, run_at: list,
-                venues_fn, anyway: str = "") -> ThreadingHTTPServer:
+                venues_fn, anyway: str = "", vote_minutes: float = 8.0) -> ThreadingHTTPServer:
     class H(BaseHTTPRequestHandler):
         server_version = "clearing/1"
 
@@ -618,7 +742,7 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                     base = public_url or (f"https://{fwd}" if fwd and not fwd.startswith(("127.", "localhost"))
                                           else f"http://{host}:{port}")
                     runs = ", ".join(run_at) if run_at else "on demand (ask Team 3)"
-                    self._send(200, AGENTS_MD.format(base=base, runs=runs, anyway=anyway or "the last run").encode(),
+                    self._send(200, AGENTS_MD.format(base=base, runs=runs, anyway=anyway or "the last run", vote=vote_minutes).encode(),
                                "text/markdown; charset=utf-8")
                 elif u.path == "/clearing_client.py":
                     self._send(200, (ROOT / "tools" / "clearing_client.py").read_bytes(), "text/x-python")
@@ -642,6 +766,8 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                     self._json(200, store.book(body))
                 elif self.path == "/api/clearing/report":
                     self._json(200, store.report(body))
+                elif self.path == "/api/clearing/vote":
+                    self._json(200, store.vote(body, venues_fn))
                 elif self.path == "/api/clearing/forget":
                     if not admin_token or body.get("admin") != admin_token:
                         raise Refused(403, "forbidden")
@@ -673,15 +799,17 @@ def cmd_serve(a) -> None:
     Path(a.store).mkdir(parents=True, exist_ok=True)
     run_at = [x.strip() for x in (a.run_at or "").split(",") if x.strip()]
     anyway = (a.run_anyway_at or "").strip()
-    store.state["policy"] = {"run_at": run_at, "run_anyway_at": anyway or None}
+    store.state["policy"] = {"run_at": run_at, "run_anyway_at": anyway or None, "vote_minutes": a.vote_minutes}
     srv = make_server(store, a.host, a.port, admin_token=a.admin_token or os.environ.get("CLEARING_ADMIN", ""),
-                      public_url=a.public_url, run_at=run_at, venues_fn=live_venues, anyway=anyway)
+                      public_url=a.public_url, run_at=run_at, venues_fn=live_venues, anyway=anyway,
+                      vote_minutes=a.vote_minutes)
     print(f"clearing house on http://{a.host}:{a.port}  store={a.store}  runs={run_at or 'on demand'}", flush=True)
 
     def ticker():
         fired, held_since, last_retry = set(), None, 0.0
         while True:
             try:
+                store.vote_deadline(a.vote_minutes)
                 n = store.watch_books()
                 if n:
                     print(f"{now_iso()} offer ids seen on the books: {n}", flush=True)
@@ -841,12 +969,33 @@ def selftest() -> None:
         call("POST", "/api/clearing/book", {"token": toks["t11"], **books3["t11"]})
         call("POST", "/api/clearing/book", {"token": toks["t07"], **books2["t07"]})
         st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
-        assert st == 200 and r["round"] == 1 and r["uncovered"] == [], r
+        assert st == 200 and r["round"] == 1 and r["uncovered"] == [] and r["status"] == "proposed", r
+        need = r["votes_needed"]
         st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
         acts = r["actions"]
+        assert r["round_status"] == "proposed" and all(a["round_status"] == "proposed" for a in acts), r
         assert {x["role"] for x in acts} == {"sell", "buy"} and '"min"' not in json.dumps(r), r
         sell = next(x for x in acts if x["role"] == "sell")
         assert sell["post"]["to"] == "t03" and sell["post"]["give"] == {"assets": [3]} and sell["post"]["want"] == {"cash": 75}, sell
+        # a report before approval is refused; a NOT OK re-proposes without that pair
+        st, r = call("POST", "/api/clearing/report", {"token": toks["t07"], "action": sell["id"], "offer": 4567})
+        assert st == 409, r
+        buy07 = next(x for x in acts if x["role"] == "buy")
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": False, "why": "too dear", "trades": [buy07["id"]]})
+        assert st == 200 and r["rejected"] == [buy07["id"]] and r["reproposed"]["version"] == 2, r
+        st, r = call("GET", "/api/clearing/status")
+        assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"][0]["why"] == "too dear", r
+        st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
+        assert not any(x["role"] == "buy" and x["card"] == buy07["card"] and x.get("from") == buy07["from"] for x in r["actions"]), r
+        sell = next(x for x in r["actions"] if x["role"] == "sell")
+        # everyone says OK -> approved, books consumed
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t16"] if "t16" in toks else "zz-zz-zz-zz", "ok": True})
+        assert st == 401, r
+        for t in need:
+            st, r = call("POST", "/api/clearing/vote", {"token": toks[t], "ok": True})
+            assert st == 200 or r.get("error") == "not_involved", r
+        st, r = call("GET", "/api/clearing/status")
+        assert r["rounds"][-1]["status"] == "approved", r
         st, r = call("POST", "/api/clearing/report", {"token": toks["t07"], "action": sell["id"], "offer": 4567})
         assert st == 200 and r["status"] == "posted", r
         st, r = call("GET", f"/api/clearing/plan?token={toks['t03']}")
@@ -859,6 +1008,8 @@ def selftest() -> None:
         # second run: the unexecuted trades fail, their idle sides sit out, the sold copy is gone
         st, r = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})
         assert st == 200 and r["sat_out"], r
+        st, r = call("GET", "/api/clearing/status")
+        assert r["rounds"][0]["status"] == "closed" and r["rounds"][-1]["status"] == "proposed", r
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/agents.md", timeout=5) as r:
             assert r.status == 200 and b"clearing_client.py" in r.read()
         srv.shutdown()
@@ -877,6 +1028,8 @@ def main() -> None:
     s.add_argument("--admin-token", default="")
     s.add_argument("--run-at", default="", help="HH:MM[,HH:MM] wall clock runs")
     s.add_argument("--run-anyway-at", default="", help="HH:MM: a round still held at this time runs with what there is")
+    s.add_argument("--vote-minutes", type=float, default=8.0,
+                   help="minutes a proposal waits for every OK; then silent teams' trades are dropped and the rest is approved")
     s.set_defaults(fn=cmd_serve)
     r = sub.add_parser("run")
     r.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
