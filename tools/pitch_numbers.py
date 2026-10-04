@@ -1,15 +1,18 @@
 """The pitch's numbers at 14:50: which version to read (A or B) and the five figures to refresh. Read-only, no key.
 
-Version A ("the network worked") needs at least one settlement on our venue v20 between two OTHER teams: both parties
-are teams (tNN) and neither is us. Anything else (no trade, a trade we were part of, a Market Test bench pair) is
-version B. The feed is the source; `--live` also reads the keyless leaderboard, whose v20 row counts trades too.
+Version A ("the network worked") needs at least one settlement on our venue v20 between two OTHER teams: two distinct
+parties, both teams (tNN), neither of them us, AND the keyless leaderboard's v20 row confirming at least one trade.
+Anything else is version B: no trade, a trade we were part of, a Market Test bench pair, a feed settlement the
+leaderboard does not confirm, or no leaderboard read at all (run without --live, or the server unreachable).
 
-    python3 tools/pitch_numbers.py                  # from logs/feed/ (BAZAAR_FEED=<dir> or --feed DIR for another clone)
-    python3 tools/pitch_numbers.py --live           # plus GET /api/leaderboard (keyless) for v20's trades and pairs
+    python3 tools/pitch_numbers.py --live           # the 14:50 command: feed plus GET /api/leaderboard (keyless)
+    python3 tools/pitch_numbers.py                  # offline: the numbers, but never VERSION A (nothing confirms it)
+    (BAZAAR_FEED=<dir> or --feed DIR reads another clone's logs/feed/)
     python3 tools/pitch_numbers.py --json
 
 The five numbers: (1) v20 trades between two other teams, the A/B fact; (2) other teams that posted on v20, and how
-many offers; (3) public events recorded; (4) ledger readings that match our real cash; (5) pull requests merged.
+many offers; (3) public events recorded, our recorder's copy merged with the complete copies of the stretches it missed
+(logs/feed-vm/, the same GAP_SOURCES tools/ledger.py fills from); (4) ledger readings that match our real cash; (5) pull requests merged.
 (4) runs tools/ledger.py --json and (5) runs `gh`; each prints "unknown" if it cannot run.
 Output stays internal: it names team ids, which the script on stage never does.
 """
@@ -30,18 +33,22 @@ VENUE, US = "v20", "t03"
 REPO = "thiagoamaro91/negotiation-agent"
 URL = "https://bazaar.causaprima.ai"
 TEAM = re.compile(r"^t\d\d$")
+GAP_SOURCES = (ROOT / "logs" / "feed-vm" / "feed.jsonl",)  # as tools/ledger.py
 
 
-def load(path: Path) -> list:
-    """Every event once (the recorder can write one twice), in id order."""
+def load(path: Path, extra: tuple = ()) -> list:
+    """Every event once (a recorder can write one twice; two copies overlap), in id order. Missing extras are skipped."""
     seen = {}
-    for line in path.read_text().splitlines():
-        try:
-            e = json.loads(line)
-        except ValueError:
+    for p in (path, *extra):
+        if p != path and not p.exists():
             continue
-        if isinstance(e, dict) and e.get("id") is not None:
-            seen.setdefault(e["id"], e)
+        for line in p.read_text().splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(e, dict) and e.get("id") is not None:
+                seen.setdefault(e["id"], e)
     return [seen[k] for k in sorted(seen)]
 
 
@@ -53,14 +60,21 @@ def others_trades(events: list, venue: str = VENUE, us: str = US) -> list:
         if e.get("type") != "settlement" or p.get("venue") != venue:
             continue
         parties = p.get("parties") or []
-        if len(parties) == 2 and all(TEAM.match(str(t)) and t != us for t in parties):
+        if len(parties) == 2 and parties[0] != parties[1] and all(TEAM.match(str(t)) and t != us for t in parties):
             out.append({"tick": e.get("tick"), "parties": parties, "price": p.get("price"),
                         "cards": [i.get("ref") for i in p.get("items") or [] if i.get("kind") == "card"]})
     return out
 
 
-def version(trades: list) -> str:
-    return "A" if trades else "B"
+def version(trades: list, board: dict | None) -> tuple:
+    """(A or B, why). A needs the feed's trade AND the leaderboard's v20 row; when the two disagree, B."""
+    if not trades:
+        return "B", "no settlement on v20 between two other teams in the feed"
+    if board is None:
+        return "B", "the feed shows one, but no leaderboard read confirms it: rerun with --live"
+    if not board.get("trades"):
+        return "B", "the feed shows one, but the leaderboard's v20 row says 0 trades: they disagree, so B"
+    return "A", f"feed and leaderboard agree (leaderboard v20 trades {board.get('trades')})"
 
 
 def venue_makers(events: list, venue: str = VENUE, us: str = US) -> collections.Counter:
@@ -117,26 +131,28 @@ def main() -> None:
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     feed = Path(a.feed).expanduser()
-    events = load(feed / "feed.jsonl")
+    events = load(feed / "feed.jsonl", GAP_SOURCES)
     trades = others_trades(events)
+    board = leaderboard_v20() if a.live else None
+    ver, why = version(trades, board)
     makers = venue_makers(events)
     led = ledger_check(feed)
-    out = {"version": version(trades), "v20_other_team_trades": trades,
+    out = {"version": ver, "why": why, "v20_other_team_trades": trades,
            "v20_other_makers": dict(makers), "v20_other_offers": sum(makers.values()),
            "events": len(events), "last_tick": events[-1].get("tick") if events else None,
            "ledger": led and {"ok": led[0], "readings": led[1], "last_tick": led[2]},
-           "merged_prs": merged_prs(), "leaderboard_v20": leaderboard_v20() if a.live else None}
+           "merged_prs": merged_prs(), "leaderboard_v20": board}
     if a.json:
         print(json.dumps(out, indent=1))
         return
-    print(f"VERSION {out['version']}  ({len(trades)} settlement(s) on {VENUE} between two other teams)")
+    print(f"VERSION {ver}: {why}")
     for t in trades:
         print(f"  tick {t['tick']}: {' / '.join(t['cards']) or 'no card'} for {t['price']} P ({' and '.join(t['parties'])})")
     if a.live:
         print(f"  leaderboard {VENUE}: {out['leaderboard_v20'] or 'unknown'}")
     print(f"1. {VENUE} trades between two other teams: {len(trades)}")
     print(f"2. other teams that posted on {VENUE}: {len(makers)}, {out['v20_other_offers']} offers")
-    print(f"3. public events recorded: {len(events):,} (to tick {out['last_tick']})")
+    print(f"3. public events recorded (two recorder copies merged): {len(events):,} (to tick {out['last_tick']})")
     print("4. ledger vs our real cash: " + (f"{led[0]} of {led[1]} readings match (to tick {led[2]})" if led
                                            else "unknown (tools/ledger.py --json failed)"))
     print(f"5. pull requests merged: {out['merged_prs'] if out['merged_prs'] is not None else 'unknown (gh failed)'}")

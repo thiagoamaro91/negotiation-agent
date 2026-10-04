@@ -46,7 +46,7 @@ Version B is the default. Version A changes row 5 only.
 | Question | Screen | Tag | Notes |
 |---|---|---|---|
 | "Show us a decision with its reason" | One `matched` line from `logs/broker/<date>.jsonl` | SAFE | The broker's lines hold bench quotes, no team values. Never a dealer `run_start`, a duel `duel_new` (`your_limit`) or `decisions.jsonl` without reading it first |
-| "How do you stop a runaway bot?" | `agent/abuela.py`, `agent/chato.py` cap code; `agent/lease.py`; `tools/factory.py` docstring | SAFE | Code holds no values. **Not** `tools/factory.py plan` output or `tools/factory_sunday.json`: they print caps and reserves |
+| "How do you stop a runaway bot?" | A screenshot prepared at 14:52 of the guard logic only: the lines where `--cap` can only lower our limit, and `guarded_accept` in `agent/dealer_client.py` (the duel-lock check before an accept) | MASK | **Never open `agent/abuela.py` or `agent/chato.py` whole on stage**: both hold a numeric cash reserve constant near the top, and Chato's docstring carries example commands with caps. The screenshot shows no constant, no default and no example command; read it once before saving. `agent/lease.py` is the market desk's lease only: do not present it as the dealers' or the duel bot's. **Not** `tools/factory.py plan` output or `tools/factory_sunday.json`: they print caps and reserves |
 | "Show the evals" | `evals/broker/narrative.md` table; `evals/duels-arena/narrative.md` table | SAFE | **Not** `evals/dealers/recommended.md` or `evals/market-desk*/`: they print caps or derive our values |
 | "Show the tests" | Skip, or a mutation matrix in a PR body (#63: 6 of 6, #65: 8 of 8) | SAFE | Do not run the suite on stage. On the VM this branch runs 994 tests: with `TZ=Europe/Madrid` only the 5 known failures; in UTC 4 more fail on time zone alone |
 | "Who's on your venue?" | Do not answer with names | | "Two other teams posted offers" is the most we say |
@@ -73,9 +73,11 @@ Version B is the default. Version A changes row 5 only.
 
 | Wall time | Step | Who |
 |---|---|---|
-| 14:39 | Scores freeze. Bots stop by the factory's gates; nothing to do on stage until 15:00 | |
-| 14:45 | `git pull` on the demo laptop. Run `python3 tools/pitch_numbers.py --live` on the Mini (its `logs/feed/` is the live recorder) | Hector |
-| 14:50 | **Version A or B** from that output (story section 0). Refresh the five numbers and the lines in story section 3's table. Tell Thiago in one line: "Version B, two teams, twelve of twelve" | Hector |
+| 14:39 | Scores freeze. **The bots keep running**: the factory's gates only decide launches, a running bot is not stopped by the freeze | |
+| 14:40 | **Explicit shutdown on the Mini**, by whoever is at it, after one line in the team chat (CLAUDE.md rule 5): `tmux kill-window -t factory:<name>` for broker, duel, abuela, chato, pilar and watchdog (each keeper stops its bot and releases its lock and claim). Leave `factory:feed` running for the numbers | Mini operator (Thiago, or Hector on his yes) |
+| 14:42 | **Verify** before any screen is prepared: `python3 tools/factory.py status` shows no trading bot running, and `ps -ax \| grep -E 'agent/(broker\|duel\|abuela\|chato\|pilar)\|agent\.(broker\|duel)'` prints only the grep itself. Anything still alive: kill that pid, then check again. No live terminal of a bot is opened on stage either way | Mini operator |
+| 14:45 | `git pull` on the demo laptop. Run `python3 tools/pitch_numbers.py --live` on the Mini (its `logs/feed/` is the live recorder). Then `tmux kill-session -t factory` | Hector |
+| 14:50 | **Version A or B** from that output (story section 0; the tool prints B itself when feed and leaderboard disagree). Refresh the five numbers and the lines in story section 3's table. Tell Thiago in one line: "Version B, two teams, twelve of twelve" | Hector |
 | 14:50 | `python3 tools/value_inference.py check`: does "beats chance, not repeat" still hold? (story section 3 table) | Hector |
 | 14:52 | Screenshots (backup step 1). Open the tabs in row order | Hector |
 | 14:55 | Thiago reads the "Do not say" list once (story section 7) | Thiago |

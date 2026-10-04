@@ -20,24 +20,38 @@ def listed(eid, maker, venue="v20"):
             "payload": {"venue": venue, "offer": {"id": 1000 + eid, "maker": maker, "venue": venue}}}
 
 
+BOARD_ONE = {"trades": 1, "pairs": 1}
+
+
 class VersionFact(unittest.TestCase):
-    def test_a_trade_between_two_other_teams_on_v20_is_version_a(self):
+    def test_a_trade_between_two_other_teams_confirmed_by_the_leaderboard_is_version_a(self):
         trades = pn.others_trades([settle(1, ["t05", "t07"])])
-        self.assertEqual(pn.version(trades), "A")
+        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "A")
         self.assertEqual(trades[0]["cards"], ["SAL-10"])
 
+    def test_feed_and_leaderboard_disagree_is_version_b(self):
+        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), {"trades": 0})[0], "B")
+
+    def test_no_leaderboard_read_is_version_b(self):
+        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), None)[0], "B")
+
     def test_a_trade_we_were_part_of_is_not_the_network_working(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t03", "t07"]), settle(2, ["t05", "t03"])])), "B")
+        trades = pn.others_trades([settle(1, ["t03", "t07"]), settle(2, ["t05", "t03"])])
+        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
+
+    def test_one_team_on_both_sides_is_not_two_teams(self):
+        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t05"])]), BOARD_ONE)[0], "B")
 
     def test_market_test_bench_and_dealer_parties_do_not_count(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["bench", "t07"]), settle(2, ["pilar", "t05"])])), "B")
+        trades = pn.others_trades([settle(1, ["bench", "t07"]), settle(2, ["pilar", "t05"])])
+        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
 
     def test_other_venues_do_not_count(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"], venue="v01"),
-                                                      settle(2, ["t05", "t07"], venue=None)])), "B")
+        trades = pn.others_trades([settle(1, ["t05", "t07"], venue="v01"), settle(2, ["t05", "t07"], venue=None)])
+        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
 
     def test_no_trade_is_version_b(self):
-        self.assertEqual(pn.version(pn.others_trades([listed(1, "t05")])), "B")
+        self.assertEqual(pn.version(pn.others_trades([listed(1, "t05")]), BOARD_ONE)[0], "B")
 
 
 class Makers(unittest.TestCase):
@@ -54,6 +68,13 @@ class Load(unittest.TestCase):
             p.write_text("\n".join([json.dumps(settle(2, ["t05", "t07"])), "not json",
                                     json.dumps(settle(1, ["t05", "t07"])), json.dumps(settle(2, ["t05", "t07"]))]))
             self.assertEqual([e["id"] for e in pn.load(p)], [1, 2])
+
+    def test_merges_a_second_copy_and_skips_a_missing_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            main, gap = Path(d) / "feed.jsonl", Path(d) / "gap.jsonl"
+            main.write_text(json.dumps(settle(1, ["t05", "t07"])) + "\n" + json.dumps(settle(4, ["t05", "t07"])))
+            gap.write_text(json.dumps(settle(2, ["t05", "t07"])) + "\n" + json.dumps(settle(4, ["t05", "t07"])))
+            self.assertEqual([e["id"] for e in pn.load(main, (gap, Path(d) / "missing.jsonl"))], [1, 2, 4])
 
 
 if __name__ == "__main__":
