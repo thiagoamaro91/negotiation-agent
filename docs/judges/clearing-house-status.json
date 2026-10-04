@@ -1,0 +1,92 @@
+{
+ "taken_at": "2026-10-04T13:50:00+02:00",
+ "source": "operator export of the live server's state.json with every price removed",
+ "teams": {
+  "t03": {
+   "venue": "v20",
+   "haves": 2,
+   "wants": 15,
+   "book_sent_at": "2026-10-04T13:36:56+02:00"
+  },
+  "t07": {
+   "venue": "v29",
+   "haves": 11,
+   "wants": 36,
+   "book_sent_at": "2026-10-04T12:55:18+02:00"
+  },
+  "t13": {
+   "venue": "v24",
+   "haves": 5,
+   "wants": 32,
+   "book_sent_at": "2026-10-04T13:41:15+02:00"
+  },
+  "t14": {
+   "venue": "v27",
+   "haves": 4,
+   "wants": 34,
+   "book_sent_at": "2026-10-04T13:22:58+02:00"
+  },
+  "t15": {
+   "venue": "v15",
+   "haves": 4,
+   "wants": 34,
+   "book_sent_at": "2026-10-04T13:19:28+02:00"
+  },
+  "t16": {
+   "venue": "v16",
+   "haves": 0,
+   "wants": 0,
+   "book_sent_at": null
+  }
+ },
+ "same_card_pairs_at_export": 40,
+ "pairs_with_buyer_max_at_or_above_seller_min": 0,
+ "rounds": [
+  {
+   "id": 1,
+   "version": 1,
+   "status": "closed",
+   "proposed_at": "2026-10-04T12:10:10+02:00",
+   "trades": 0,
+   "votes": {},
+   "sat_out": []
+  },
+  {
+   "id": 2,
+   "version": 1,
+   "status": "approved",
+   "proposed_at": "2026-10-04T13:42:25+02:00",
+   "trades": 1,
+   "votes": {
+    "t13": {
+     "at": "2026-10-04T13:42:29+02:00",
+     "commitment": "ae4d9b853fa948fe21bea94de4ece9c15a9341c634d2626a820a885f5452b935",
+     "ok": true,
+     "version": 1
+    },
+    "t15": {
+     "at": "2026-10-04T13:42:32+02:00",
+     "commitment": "09eab0ed4b4419f81fe785e02ce6283e3bee137651ae8bf4f659e3337016356a",
+     "ok": true,
+     "version": 1
+    }
+   },
+   "sat_out": []
+  }
+ ],
+ "last_attempt": {
+  "at": "2026-10-04T13:42:25+02:00",
+  "held": false,
+  "round": 2,
+  "sat_out": [],
+  "trades": 1,
+  "uncovered": [
+   "t07",
+   "t13",
+   "t14",
+   "t15"
+  ],
+  "version": 1
+ },
+ "note": "books at export: t03 and t13 re-sent with --margin 0 at 13:36 and 13:41; the 13:33 attempt (zero crosses, held) ran on the 15 % books"
+}

@@ -1,68 +1,80 @@
 # The Clearing House: six teams, one private order book, zero bad trades
 
-**Sunday 4 October 2026, 10:50 to 13:45. Built, reviewed, deployed and run in under three hours.**
+**Sunday 4 October 2026, 10:50 to 13:45 (Madrid). Built, reviewed, deployed and run in under three hours.**
+Sources: PRs #96, #101 and this one; `docs/judges/clearing-house-status.json`, an operator export of the live
+server's state with every price removed; the team bus (issue #25). Times without a PR or export behind them are
+the operator's recollection and are marked so.
 
 ## What it is
 
 A private clearing house between teams, run by Team 3 and open to any invited team. Each team hands in, in
-private, the cards it would sell with the least it takes and the cards it wants with the most it pays. At a set
-time a matcher crosses every pair where a buyer's max covers a seller's min, prices at the midpoint (each side
-keeps half the gap), and spreads the trades over the participants' venues: coverage first (every participant's
-venue gets a trade, never one owned by one of its two sides), then the venue with the least value hosted today.
-A round is only a proposal: every team in it reads its own actions and signs OK with a SHA-256 of exactly what it
-read; a NOT OK vetoes those pairs and the matcher proposes again. Only with every OK does anything execute, and
-it is each team's own client that executes, on its own laptop, with its own key.
+private, the cards it would sell with the least it takes and the cards it wants with the most it pays. On a run
+a greedy matcher takes same-card pairs where a buyer's max covers a seller's min, prices at the midpoint of
+[seller min, buyer max minus the venue fee] (so a cross can have zero surplus when the two numbers meet), and
+assigns venues: it tries to give every participant's venue one trade (never a venue owned by one of the two
+sides), then sends the rest to the venue with the least value hosted today. A round is held when some
+participant's venue would host nothing, unless the operator forces it or a deadline passes; one copy serves one
+buyer, so coverage is a goal, not a guarantee. A run is only a proposal: every team in it reads its own actions
+and signs OK with a SHA-256 of exactly what it read; a NOT OK vetoes those pairs and the matcher proposes again.
+Only with every OK does anything execute, and it is each team's own client that executes, on its own laptop,
+with its own key.
 
 - Server: `tools/clearing.py` (keyless; join by invite code, book, propose, vote, plan, report, status with a
   public allocation ledger and a per-team reliability record).
 - Client: `tools/clearing_client.py` (one file, standard library). `book` reads the team's cards and private
-  values from the game and sends only card, copy id and reservation price. `execute` posts a sell only if the
-  offer body gives exactly one of the team's own listed copies, for plain cash, at or above its own min, addressed
-  to the named buyer; it accepts a buy only after finding the seller's offer in the game's public feed (maker, to,
-  venue, one copy of that card, cash only, open, unexpired), re-reading the card's current value, the venue's live
-  fee including pending changes, and its own cash reserve. The server is never trusted.
+  values from the game and sends only card, copy id and reservation price; it keeps a local copy. `execute`
+  posts a sell only if the server's offer body gives exactly one of the team's own listed copies, for plain
+  cash, at or above the min the team itself stored, addressed to the buyer the plan names (the seller's current
+  value is not re-read). It accepts a buy only after finding the seller's offer in the game's public feed
+  (maker, addressed to this team, venue, one copy of that card, cash only, open, unexpired), and only if the
+  debit (price plus the venue's live fee, any announced change included) is at or below the max the team stored,
+  at or below the card's current marginal value re-read from the game, within the quantity it asked for, and
+  leaves its cash above a reserve (40 P by default). Equality is allowed on every bound. The server is never
+  trusted: the client acts only on actions it signed itself.
 - Agent-readable onboarding at `/agents.md`; the server serves its own source for audit; both files are also a
   public gist. Invite codes are the only gate and were handed out in person.
 
 ## What happened
 
-| time | event |
-|---|---|
-| 10:50 | Hector's idea: teams with few trades pool their spares privately and get guaranteed trades on every venue |
-| 11:10 | PR #96 opened: server, client, selftest |
-| 11:18 | live behind a tunnel on Hector's laptop; invitation message and visual explainer (bilingual) to teams |
-| 11:30 to 13:05 | rule changes as Hector sharpened the contract: a round for everyone or no round; balance by value hosted; proposal and OK / NOT OK with reasons; signed commitments; invite codes per team |
-| 12:2x | Team 13 joins, first external team; within the hour Teams 7, 15, 16, 14 and Team 3 itself (from the Mini) |
-| 12:44 | Team 13 reports that the hardened client could never see addressed offers on a venue's public book; fixed in minutes against the public feed. Team 7 reports a parser trap in the published join command; fixed |
-| 11:50 to 13:30 | five adversarial review rounds by Codex (Sol) on PR #96, every finding fixed on the live code within minutes; merged at 13:0x; follow-up PR #101 merged at 13:2x |
-| 13:33 | first round, 5 teams with books, 30 cards for sale, 160 wanted: **held, zero crosses** |
-| 13:42 | books re-sent with no margin: one cross (SAL-01, 4 P, surplus 0). Hector stops the system before any vote |
+| time (Madrid) | event | source |
+|---|---|---|
+| 10:50 | Hector's idea: teams with few trades pool their spares privately and get trades on every venue | operator |
+| 11:07 | PR #96 opened: server, client, selftest | GitHub |
+| ~11:18 | live behind a tunnel on Hector's laptop; invitation message and a bilingual visual explainer to teams | operator |
+| 11:30 to 13:05 | rules added as Hector sharpened the contract: a round for everyone or no round; balance by value hosted; proposal and OK / NOT OK with reasons; signed commitments; invite codes per team | PR #96 history |
+| 12:2x to 13:13 | six teams join: t13, t07, t16, t15, t03 (from the Mini), t14 | status export |
+| ~12:44 | Team 7 hits a parser trap in the published join command; fixed. Team 13 reports that addressed offers never show on a venue's public book, so the hardened buyer could never verify one; fixed against the public feed | PR #96 commits, operator |
+| 11:07 to 13:07 | five adversarial review rounds by Codex (Sol) on PR #96; the proven money-safety blockers were fixed on the live code; merged 13:07 | GitHub, review logs |
+| 13:08 to 13:17 | follow-up PR #101 (feed state: cancellations, expiry) merged "ship with fixes": two lost-trade recovery defects remain open, neither spends money | GitHub, review log |
+| 13:33 | first run, five teams with books: **held, zero crosses** (no buyer max reached any seller min) | status export |
+| 13:36 to 13:41 | two teams re-send books with no margin | status export |
+| 13:42 | operator-forced run: one zero-surplus candidate between two teams, both clients auto-approved it, and the **seller's own client refused to post** because the proposed price was below the min it had stored locally. Nothing executed. Hector stopped the server at ~13:43 | status export (round 2: approved, trade `failed: client refused`) |
 
-Six of the eighteen teams joined: a third of the market organised under one private book in an afternoon.
-Cash spent by the clearing house: 0. Trades executed: 0. Trades at a loss, gifts between teams, keys shared: 0.
+Six of the eighteen teams joined, five with books: at export, 26 copies for sale and 151 wanted, 40 same-card
+pairs, 0 with a buyer max at or above a seller min (`clearing-house-status.json`; counts after two books were
+re-sent). Trades executed by the clearing house: 0. Cash it moved: 0. Keys shared: 0.
 
 ## Why zero trades is the right answer
 
-The matcher looked at 51 seller-buyer pairs on the same card. In none did the buyer's max reach the seller's
-min. Everyone had the same cards to spare (commons of Chamberí, Malasaña, Salamanca) and nobody valued them;
-what everyone wanted (Lavapiés and Salamanca rares, Latina rares) nobody would sell, because its holders value
-it too. The teams that joined were the teams like us: lower in the table, same neighbourhoods left over.
-Liquidity needs heterogeneity; the heterogeneous teams (the leaders, who value other neighbourhoods) were the
-ones we chose not to invite.
+In no same-card pair did the buyer's max reach the seller's min. Our reading, from the sanitized export and the
+cards on offer: the teams that joined had the same neighbourhoods to spare (commons of Chamberí, Malasaña,
+Salamanca) and did not value them; what they wanted, nobody in the group would sell. The teams that joined were
+the teams like us: lower in the table, same cards left over. Liquidity needs heterogeneity; the heterogeneous
+teams (the leaders, who value other neighbourhoods) were the ones we chose not to invite.
 
-The system promised not to invent trades and not to move money unless both sides gained at their own private
-values. It kept that promise. In a game whose fair-play rule voids deals where one team feeds another, a matcher
-that answers "there is no value to share" is the correct behaviour, and the 13:42 forced round shows the floor:
-the best legitimate cross in the whole book was worth 0 P of surplus.
+The system promised not to invent trades and never to let a client act outside its own stored numbers. It kept
+that promise twice: the matcher held the round, and when a forced run produced a zero-surplus candidate, the
+seller's own client, checking against its own local book, refused it. In a game whose fair-play rule voids deals
+where one team feeds another, a clearing house that answers "there is no value to share" is the correct
+behaviour.
 
 ## What we would do with one more hour
 
-Start at 10:00, not 12:30. Invite the heterogeneous teams. Let `book` list the whole album at value (it already
-lists duplicates, non-collected sets and valued page cards). Add card-for-card swaps and three-way cycles, which
-is where most of the surplus between similar teams hides.
+Start at 10:00, not 12:30. Invite the heterogeneous teams. Add card-for-card swaps and three-way cycles, which
+is where most of the surplus between similar teams hides. Close the two open recovery defects from #101.
 
 ## Credits
 
 Idea and every product decision: Hector. Code, reviews and deployment: Claude (this session) with Codex (Sol)
-as the independent reviewer across five rounds; two live defects found by Team 13 and Team 7. Team 3 joined from
-the Mini through Thiago's sessions on the bus.
+as the independent reviewer across five rounds on #96 and one on #101; two live defects reported by Team 7 and
+Team 13. Team 3 joined from the Mini through Thiago's sessions on the bus.
