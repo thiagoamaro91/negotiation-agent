@@ -35,6 +35,11 @@ process `duel`): `agent/duel.py run --params docs/duel-lab/duel-params-duels3.js
 | F4 `last_while_moving` on (new flag in `agent/duel.py`, default off) | Duels II 5905: the rival conceded 2 P a tick at day 5 and ended 3 P outside our limit; we never spoke. In Duels II, rivals that had spoken took our last chance 10 times out of 21 | **+0.0083 ± 0.0007** a duel; +0.0092 if a deadline-1 accept never settles; positive in all 8 climb worlds |
 | `duel_ticks` 12, `late_poll` 4 | Duels III shape; the factory passes both anyway | - |
 
+**Messages and the tick budget** (review of #72). With F4, several duels can take a message in the same tick. The
+run loop takes the tick's accept first. Each message then goes once, with no client retries, and its timeout is
+capped so it ends 1 s before the tick ends, or 5 s before when the tick has a late read. After that point nothing
+more is sent this tick (`say_budget` in the log), and the next tick decides again on fresh duels.
+
 Where F4 loses (matrix): `llmfair` rivals alone -0.014, light day weights (0-1 P/day) -0.008. Neither matches the
 Duels II field (real weights 0.6-8.9 P/day). On the Duels II replay F4 is neutral (rivals there never accept, so a
 last chance cannot convert). On the Duels I replay it costs 2.9 P of 558. A paced variant tested offline cut both
@@ -48,7 +53,21 @@ deadline. It is not shipped (more code, the same gain in the Duels II field).
   day costs you this much cash". **If either reads otherwise, delete the `days_best` line from the params file and
   restart the duel process.** Robust mode never deals below our limit, whatever the wording. In the matrix, if the
   direction flipped, this file would score 0.318 against robust mode's 0.398.
-- Also watch for `accept_mismatch`, `bad_duel`, `late_failed` / `late_off` (see duels2-params.md).
+- Also watch for `accept_mismatch`, `bad_duel`, `late_failed` / `late_off` (see duels2-params.md), and
+  `say_budget` (a message dropped for lack of time: fine now and then; in every tick it means the server is slow).
+
+## Known gap: the accept race (inherited, not fixed)
+
+`POST /api/duels/{id}/accept` names no offer: the server accepts whatever stands when the POST lands. Right before
+the POST the bot re-reads the duel and compares the offer's id AND its terms (`fresh_check`). A worse replacement is
+skipped, and the tick's accept goes to the next candidate. What no client-side guard can close is the gap between
+that re-read and the POST landing, a fraction of a second. If the rival replaces its offer inside that gap, the
+accept takes the new terms. Example: a buyer approves (90, day 0), the rival posts (110, day 10), and the deal
+settles at -40 P for us. A rival can post once per tick, and with the late read our accept goes 4 s before the tick
+ends. The bot logs it afterwards as `accept_mismatch`, once from the POST response and once with where=settled from the
+result. Saturday had one, and it went our way (5667: approved 102 / day 0, settled 87 / day 10, worth 53.7 P
+instead of 27). **Operator check:** grep `accept_mismatch` after each wave. If one shows a loss, tell the team; the
+fix would be on the server side (an offer id on the accept).
 
 ## What Duels II showed (the field we refit on)
 
@@ -105,8 +124,12 @@ Sources: `logs/duels/` server session 3 (our 68 duels, Saturday 21:16-23:00) and
 ## Hypotheses (a) to (e)
 
 600 fresh sessions per cell (seeds 900000..), each a one-lever change on the blend; delta vs the blend with 95 % CI.
+Every cell also has the accept slot taken by another agent in 3 % of ticks (`slot_busy` 0.03, the tuner's
+assumption); the "slot busy 15 %" column raises that to 15 %. The matrix uses a free slot (0 %), so its numbers
+differ slightly.
 **Bold** = better beyond the CI, _italic_ = worse. Kept only if better beyond noise in the Duels II field AND no
-world worse beyond noise. Climb script: `climb3.py` (VM `~/lab/duels3`, not committed).
+world worse beyond noise. Climb script: `docs/duel-lab/duels3-lab/climb3.py` (`hyp`: this table; `eval`: the
+1000-session rows, with `TEST0=1100000`; `coord`: the search below).
 
 | change | Duels II field | ... D-1 never settles | ... slot busy 15 % | Duels I mix | likely field |
 |---|---|---|---|---|---|
@@ -137,7 +160,7 @@ world worse beyond noise. Climb script: `climb3.py` (VM `~/lab/duels3`, not comm
 | `ratios` [2.0, 1.4] | +0.0000 ±0.0004 | _-0.0006_ ±0.0005 | -0.0000 ±0.0004 | **+0.0008** ±0.0004 | -0.0000 ±0.0008 |
 | `late_poll` 0 (no late read) | _-0.0211_ ±0.0008 | _-0.0132_ ±0.0011 | _-0.0190_ ±0.0009 | _-0.0212_ ±0.0008 | _-0.0301_ ±0.0010 |
 | **F4 `last_while_moving`** (1000 sessions from 1100000) | **+0.0083** ±0.0007 | **+0.0092** ±0.0008 | **+0.0080** ±0.0007 | **+0.0037** ±0.0006 | **+0.0014** ±0.0008 |
-| v1 from the evals climb (final + `last_chance_ticks` 2) | -0.0010 ±0.0017 | _-0.0859_ ±0.0025 | _-0.0188_ ±0.0019 | _-0.0052_ ±0.0015 | -0.0006 ±0.0022 |
+| v1 from the evals climb (final + `last_chance_ticks` 2; file `duels3-lab/v1-evals.json`) | -0.0010 ±0.0017 | _-0.0859_ ±0.0025 | _-0.0188_ ±0.0019 | _-0.0052_ ±0.0015 | -0.0006 ±0.0022 |
 
 Answers:
 
@@ -148,8 +171,13 @@ Answers:
   (2) or the tick-12 last chance (1). Tick 3 (the blend) stays. `silent_last_margin` 0.1 clears the bar by +0.0005,
   but it is left out: real silent no-deals refused 1.08 x L in Duels I too, so they look like dead bots, and 5917
   took our 1.155 last chance (64 P at day 10), where 1.10 would have given away 4 P.
-- **(b) Last-chance timing.** 4 ticks left stays. 2 ticks (v1) loses 0.021 when a deadline-1 accept never settles,
-  and 1 tick loses 0.016 to 0.037 everywhere. The gain is in who gets the last chance (F4), not when.
+- **(b) Last-chance timing.** 4 ticks left stays. 2 ticks loses 0.021 when a deadline-1 accept never settles,
+  and 1 tick loses 0.016 to 0.037 everywhere. The gain is in who gets the last chance (F4), not when. **v1** (the
+  evals climb's file, `last_chance_ticks` 2 plus the Duels II final's window `accept_any_ticks 2, near_ticks 0`)
+  depends on the slot. Over seeds 1100000-1100999 in the Duels II field it is +0.0031 ± 0.0012 against the blend
+  with a free accept slot and -0.0020 ± 0.0013 with the slot busy 3 % of ticks. Either way it loses 0.084 when a
+  deadline-1 accept never settles: rejected on that stress. Reproduce: `python3
+  docs/duel-lab/duels3-lab/paired_v1.py`. (The shipped file: +0.0082 and +0.0083 there.)
 - **(c) Accept while the rival concedes, or wait.** Wait: accepting at once loses 0.15, and turning off the window
   wait loses 0.07. The levers that wait longer (`window_retry` 0, F1 without the counter, `accept_any_ticks` 3-4)
   gain up to +0.012 when deadline-1 settles. They lose 0.006 to 0.12 when it does not, and on the Duels II replay a
