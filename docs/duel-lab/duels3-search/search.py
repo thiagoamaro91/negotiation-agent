@@ -88,7 +88,8 @@ SPACE = {
     "prem1": ("f", 0.0, 1.2, [0.0, 0.2, 0.3, 0.6, 0.8, 1.0]),
     "late_ticks": ("i", 1, 5, [1, 2, 4, 5]),
     "slot_demand": ("c", ["open", "spoke", "acceptable"], None, ["open", "spoke"]),
-    "min_surplus": ("i", 1, 5, [2, 3, 5]),
+    # min_surplus > 1 fails duel.py selftest ("say retreats": a last chance above our previous offer), found by the
+    # 04:14 gate run; kept out of the space since then.
     "hold_while_conceding": ("b", None, None, [True]),
     "hold_ticks": ("i", 1, 4, [3, 4]),
     "hold_counter": ("b", None, None, [False]),

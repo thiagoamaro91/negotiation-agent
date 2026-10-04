@@ -50,6 +50,21 @@ def worse_kinds(row: dict) -> list:
     return [k for k, (m, se) in (row.get("kinds") or {}).items() if m + 2 * se < 0]
 
 
+MAIN_MIX = {"linear": 28, "oneshot": 11, "steady": 8, "fast": 8, "tft": 5, "absent": 5, "silent": 3, "self": 8}
+
+
+def without_self(row: dict):
+    """Main-world delta with the self-play duels taken out (mix-weighted per-type deltas), and its rough SE."""
+    ks = row.get("kinds") or {}
+    if "self" not in ks:
+        return None
+    w = {k: v for k, v in MAIN_MIX.items() if k != "self" and k in ks}
+    t = sum(w.values())
+    m = sum(w[k] * ks[k][0] for k in w) / t
+    se = sum((w[k] * ks[k][1]) ** 2 for k in w) ** 0.5 / t
+    return m, se
+
+
 def verdict(row: dict, g: dict) -> tuple:
     """(verdict, reasons)"""
     why = []
@@ -95,14 +110,15 @@ def write(rows: list) -> None:
     test = sorted(by_split["test"], key=lambda r: -(r.get("main") or {"delta": -9})["delta"])
     if test:
         L += ["## TEST (seeds 900000.., 2000 sessions)", "",
-              "| candidate | what it changes | TEST Δ main (± 2 SE) | drift | final | worst rival type Δ | D-1 Δ | "
-              "matrix | selftest | verdict |", "|---|---|---|---|---|---|---|---|---|---|"]
+              "| candidate | what it changes | TEST Δ main (± 2 SE) | main without self-play (≈) | drift | final | "
+              "worst rival type Δ | D-1 Δ | matrix | selftest | verdict |", "|---|---|---|---|---|---|---|---|---|---|---|"]
         for r in test:
             wk = worst_kind(r)
             v, why = verdict(r, g)
             gg = g.get(r["id"], {})
+            ws = without_self(r)
             L.append(f"| {r['name']} `{r['id']}` | {r['change']} | {_d(r.get('main'), True)} | "
-                     f"{_d(r.get('drift'))} | {_d(r.get('final'))} | "
+                     f"{f'{ws[0]:+.4f} ±{ws[1]:.4f}' if ws else '-'} | {_d(r.get('drift'))} | {_d(r.get('final'))} | "
                      f"{f'{wk[0]} {wk[1]:+.4f} ±{wk[2]:.4f}' if wk else '-'} | {_d(r.get('d1'))} | "
                      f"{gg.get('matrix', '-')} | {gg.get('selftest', '-')} | "
                      f"**{v}**{' (' + '; '.join(why) + ')' if why else ''} |")
