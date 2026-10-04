@@ -216,3 +216,53 @@
 {"ts": "2026-10-04T13:17:24", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
 {"ts": "2026-10-04T13:17:44", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 17 cards we lack, from logs/state/me.json (tick 2379, 8 min of play old)", "count": 17, "trusted": true}
 {"ts": "2026-10-04T13:17:50", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:18:10", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 17 cards we lack, from logs/state/me.json (tick 2379, 8 min of play old)", "count": 17, "trusted": true}
+{"ts": "2026-10-04T13:18:15", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:18:36", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 17 cards we lack, from logs/state/me.json (tick 2379, 9 min of play old)", "count": 17, "trusted": true}
+{"ts": "2026-10-04T13:18:41", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:19:02", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 17 cards we lack, from logs/state/me.json (tick 2379, 9 min of play old)", "count": 17, "trusted": true}
+{"ts": "2026-10-04T13:19:07", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:19:27", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 17 cards we lack, from logs/state/me.json (tick 2379, 10 min of play old)", "count": 17, "trusted": true}
+{"ts": "2026-10-04T13:19:32", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:19:53", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 0 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:20:05", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:20:26", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 0 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:20:30", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:20:51", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 1 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:20:58", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:21:22", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 2 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:21:27", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:21:49", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 2 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:21:59", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:22:19", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 2 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:22:24", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:22:45", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 3 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:22:51", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:23:12", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 3 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:23:16", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:23:37", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 4 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:23:47", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:24:07", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 4 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:24:13", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:24:33", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 4 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:24:37", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:24:58", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 5 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:25:00", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:25:21", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 5 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:25:27", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:25:48", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 6 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:25:55", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:26:23", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 6 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:26:28", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:26:49", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 7 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:26:53", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:27:13", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 7 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:27:21", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:27:42", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 8 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:27:52", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:28:12", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 8 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:28:17", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:28:38", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2419, 8 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:28:43", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": []}
+{"ts": "2026-10-04T13:29:03", "run": "20261004-092012-a310", "agent": "announce", "event": "exclude", "line": "exclude-from: 16 cards we lack, from logs/state/me.json (tick 2455, 0 min of play old)", "count": 16, "trusted": true}
+{"ts": "2026-10-04T13:29:06", "run": "20261004-092012-a310", "agent": "announce", "event": "deferred", "why": "slot", "reason": "the matchmaker output is stale", "fresh": [27529, 27530]}
