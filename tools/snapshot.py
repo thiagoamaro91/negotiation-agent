@@ -3,7 +3,7 @@ machine: every conversation (dealers and teams) with full transcripts, every due
 one score line per run. Safe to re-run at any time; then commit logs/.
 
     python3 tools/snapshot.py
-    python3 tools/snapshot.py --me-only   # one request (GET /api/me) -> logs/state/me.json: our holdings for
+    python3 tools/snapshot.py --me-only [--score]   # one request (GET /api/me) -> logs/state/me.json: our holdings for
                                           # matchmaker.py / announce.py --exclude-from, cheap enough to run hourly
 """
 from __future__ import annotations
@@ -44,12 +44,13 @@ def main(argv: list | None = None) -> None:
     load_env()
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
-    if "--me-only" in argv:   # one keyed read, nothing else: threads, duels, offers and score.jsonl untouched
+    if "--me-only" in argv:   # one keyed read, nothing else: threads, duels and offers untouched
         save_me(me)
+        if "--score" in argv:   # the same read also gives our score: one score.jsonl row, no extra request
+            append_score(me, threads=None, duels=None)
         print(f"saved holdings: {sum(1 for a in me.get('assets') or [] if a.get('kind') == 'card')} cards, tick "
               f"{me.get('tick')}")
         return
-    ts = time.strftime("%Y-%m-%dT%H:%M:%S")
 
     threads = b.my_threads().get("threads", [])
     for t in threads:  # the listing carries messages; the single read adds standing offers and the item
@@ -61,18 +62,24 @@ def main(argv: list | None = None) -> None:
 
     write_json(LOGS / "state" / "offers.json", b.my_offers())
     save_me(me)
+    line = append_score(me, threads=len(threads), duels=len(duels))
+    print(f"saved {len(threads)} threads, {len(duels)} duels, offers, holdings; score {line['score']['score']} "
+          f"rank {line['score']['rank']} cash {line['cash']} tick {line['tick']}")
 
+
+def append_score(me: dict, threads, duels) -> dict:
+    """Append one row to logs/score.jsonl from a GET /api/me answer (threads/duels: counts, or None when not read)."""
+    ts = time.strftime("%Y-%m-%dT%H:%M:%S")
     s = me.get("score") or {}
     line = {"ts": ts, "tick": me.get("tick"), "cash": me.get("cash"), "level": me.get("level"),
             "unlocked": me.get("unlocked"), "collection_value": me.get("collection_value"),
-            "album_filled": (me.get("album") or {}).get("filled"), "threads": len(threads), "duels": len(duels),
+            "album_filled": (me.get("album") or {}).get("filled"), "threads": threads, "duels": duels,
             "score": {k: s.get(k) for k in ("score", "negotiating", "market", "duel_points", "ladder_points",
                                             "neg_points", "mm_points", "bench_points", "deals", "rank")}}
     LOGS.mkdir(exist_ok=True)
     with (LOGS / "score.jsonl").open("a") as f:
         f.write(json.dumps(redact(line), ensure_ascii=False) + "\n")
-    print(f"saved {len(threads)} threads, {len(duels)} duels, offers, holdings; score {line['score']['score']} "
-          f"rank {line['score']['rank']} cash {line['cash']} tick {line['tick']}")
+    return line
 
 
 if __name__ == "__main__":
