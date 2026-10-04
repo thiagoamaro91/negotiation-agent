@@ -8,10 +8,21 @@ Who gets the message, per match (from the matchmaker's output, read as it is, ne
   tier 1 (a live bid or swap, a holder we can name)   the holder: accepting that offer is the action;
   tier 3 (a live ask, a team that appears to need it) that team: accepting the ask is the action;
   tier 4 (an inferred need, no live offer)            that team: the v20 bid our broker would cross;
-  tier 2 (a live want, no holder we can name)          nobody: there is no one to tell.
+  tier 2 (a live want, no holder we can name)          nobody: there is no one to tell (but see --pair).
 A match whose offer stands off our venue (El Rastro, another team's) keeps its action: the counterparty is there, so a
 v20 order would not cross. It gets one short line more, while it fits in MAX_CHARS: next time, the same trade on
 La Celestina costs no fee. A message never names a venue as a condition of anything.
+
+--pair (off by default): a tier-2 live want has no recipient above, but its card often has a holder the rebuilt
+decks name (the matchmaker's `holders` of that match, e.g. a bid below what the dealers pay keeps a spare-holder in
+tier 2). Then BOTH teams get one message: the bidder W, to post the same bid on La Celestina (v20) too, and the holder
+H, to list its copy on v20 at its own price; our broker (agent/broker.py) crosses a v20 bid and ask for the same card
+from two teams at the midpoint. Only a cash bid off v20 qualifies (never a swap: the broker never crosses swaps); H is
+active, never W or Team 3, and holds a spare (SPARE_MIN copies) or one copy of a set its consistent deck is not
+filling. Both sides must be unmessaged today and unused by this run; a pair takes two of --max-teams' slots, after the
+matches and before the pitch. Best first: the want that is the last card of a page for W, then the higher bid. W is
+sent first; H only once W's message went out (its text says W was told). Public data only: W's own public bid is the
+only price quoted, H's ask says <your price>.
 
 --pitch (off by default): the slots a run has left after the matches go to active teams that were never pitched, one
 message each, once per game: La Celestina's fee next to El Rastro's, the exact v20 orders, and what our broker crosses
@@ -75,6 +86,9 @@ PITCH_ASK = '{"venue": "v20", "give": {"assets": [<your asset id>]}, "want": {"c
 PITCH_BID = '{"venue": "v20", "give": {"cash": <your price>}, "want": {"cards": ["<card ref>"]}}'
 RECIPROCITY_LINE = (" Team 3's own buying desk reads team venues too and takes a buy where its all-in cost (price + "
                     "fee) is lowest.")
+PAIR_KEY = "pair:"        # state["keys"] entries of a two-sided v20 match: pair:<W>:<card>:<H>:want|holder
+FAR = 99                  # pair_targets: rank of a want that is not one or two cards from completing a page
+NAME_CAP = 60             # pair texts: characters of a team or card name kept (game text, of any length)
 
 
 def _team(t) -> bool:
@@ -159,9 +173,127 @@ def pitch_targets(doc: dict, state: dict, day: str, n: int, taken=(), reciprocit
             for t, _ in rows[:max(0, n)]]
 
 
+def where_of(venue) -> str:
+    return ("La Celestina (v20, 0 % fee)" if venue == VENUE else "El Rastro" if venue in (None, "rastro")
+            else f"venue {venue}")
+
+
+def page_gap(doc: dict, team: str, card: str, set_) -> int:
+    """How many cards `team`'s page of `set_` lacks when `card` is one of them (1: the last card), from the
+    matchmaker's teams[team].near_pages; FAR otherwise."""
+    row = ((doc or {}).get("teams") or {}).get(team) or {}
+    gaps = [n["size"] - n["have"] for n in row.get("near_pages") or []
+            if isinstance(n, dict) and n.get("set") == set_ and card in (n.get("appears_missing") or [])
+            and isinstance(n.get("size"), int) and isinstance(n.get("have"), int)]
+    return min(gaps) if gaps else FAR
+
+
+def pair_holder(doc: dict, h, card: str, set_, spare_min: int) -> bool:
+    """A holder the pair may name: active, a spare (spare_min copies or more) or one copy of a set its consistent deck
+    is not filling (no near page of that set)."""
+    if not isinstance(h, dict) or not _team(h.get("team")) or h.get("active") is False:
+        return False
+    copies = h.get("copies") if isinstance(h.get("copies"), int) else 0
+    if copies >= spare_min:
+        return True
+    row = ((doc or {}).get("teams") or {}).get(h["team"]) or {}
+    return (copies >= 1 and row.get("consistent") is True
+            and not any(isinstance(n, dict) and n.get("set") == set_ for n in row.get("near_pages") or []))
+
+
+def pair_messages(m: dict, h: dict, spare_min: int) -> tuple:
+    """(text for the bidder W, text for the holder H). Public data only: W's own public bid is the one price quoted;
+    H's ask carries <your price>. Each keeps its POST shape whole (fit() drops only the optional line)."""
+    from announce import BROKER_TERMS
+    a = m["action"]
+    card = m["card"] + (f" ({str(m['card_name'])[:NAME_CAP]})" if m.get("card_name") else "")
+    w_name = str(a.get("maker_name") or m.get("team_name") or m["team"])[:NAME_CAP]   # names are game text: capped,
+    h_name = str(h.get("name") or h["team"])[:NAME_CAP]                               # so the POST shapes always fit
+    copies = h.get("copies") if isinstance(h.get("copies"), int) else 1
+    at = f" at tick {h['as_of']}" if isinstance(h.get("as_of"), int) else ""
+    where = where_of(a.get("venue"))
+    until = f", open until tick {a['expires_tick']}" if isinstance(a.get("expires_tick"), int) else ""
+    head = f"{NAME}, from Team 3's La Celestina (public game data only, no reply needed): "
+    tail = " Check your own value first. We will not message you again today."
+    v20 = f"La Celestina (v20, 0 % fee; El Rastro charges the taker {RASTRO_FEE})"
+    held = (f"holding {copies} copies of it{at}, so it appears to have a spare" if copies >= spare_min
+            else f"holding a copy of it{at}, for a page it is not filling")
+    bid = json.dumps({"venue": VENUE, "give": {"cash": a["price"]}, "want": {"cards": [m["card"]]}})
+    w_text = fit(head + f"you bid {a['price']} P for {card} on {where}: offer #{a['offer']}{until}. Public trades "
+                 f"showed {h_name} {held} (reconstructed, may have changed). To have the same bid on {v20}: "
+                 f"POST /api/offers {bid}; there {BROKER_TERMS}. If you keep both bids, both can fill.",
+                 f" We are telling {h_name} about your public bid as well.", tail)
+    asset = h.get("asset") if isinstance(h.get("asset"), int) and not isinstance(h.get("asset"), bool) else None
+    ask = ('{"venue": "v20", "give": {"assets": [' + (str(asset) if asset is not None else f"<your {m['card']} asset id>")
+           + ']}, "want": {"cash": <your price>}}')
+    yours = (f"holding {copies} copies{at}" if copies >= spare_min else f"holding a copy{at}, for a page you are not "
+             f"filling")
+    h_text = fit(head + f"{w_name} bids {a['price']} P for {card} on {where}: offer #{a['offer']}{until}. Public trades "
+                 f"showed you {yours} (reconstructed, may have changed). To sell one on {v20} at your own price: "
+                 f"POST /api/offers {ask}; there {BROKER_TERMS}. We asked {w_name} to post its bid there too.",
+                 "", tail)
+    return w_text, h_text
+
+
+def pair_targets(doc: dict, state: dict, day: str, n: int, taken=(), exclude=()) -> list:
+    """[(team, entry, text)] for up to n // 2 two-sided v20 matches, each as two rows: the bidder W, then the holder H.
+    From the matchmaker's tier-2 cash bids off v20 (confident(), never a card in `exclude`), each with one holder
+    pair_holder() accepts; W and H never Team 3, never messaged today, never taken by this run, each in one pair at
+    most; a want sent before (any pair key for that W and card) is never sent again. Best first: the last card of a
+    page for W (page_gap), then the higher bid."""
+    import matchmaker   # noqa: E402  (keyless: SPARE_MIN, the matchmaker's own spare rule)
+    skip = exclude if hasattr(exclude, "allow") else set(exclude or ())
+    teams = (doc or {}).get("teams") if isinstance((doc or {}).get("teams"), dict) else {}
+    used = set((state.get("teams") or {}).get(day, [])) | set(taken) | {US}
+    done_keys = set(state.get("keys") or [])
+    wants = []
+    for m in (doc or {}).get("matches") or []:
+        a = m.get("action") if isinstance(m, dict) else None
+        if not isinstance(a, dict) or m.get("tier") != 2 or a.get("side") != "bid" or a.get("venue") == VENUE:
+            continue
+        price = a.get("price")
+        if not isinstance(price, int) or isinstance(price, bool) or price <= 0 or not isinstance(a.get("offer"), int):
+            continue
+        w, card = m.get("team"), m.get("card")
+        if not _team(w) or a.get("maker") not in (None, w) or not isinstance(card, str) or card in skip:
+            continue
+        if a.get("to") or not confident(m, teams) or any(k.startswith(f"{PAIR_KEY}{w}:{card}:") for k in done_keys):
+            continue
+        wants.append((page_gap(doc, w, card, m.get("set")), -price, w, card, m))
+    wants.sort(key=lambda r: r[:4])
+    out = []
+    for gap, _, w, card, m in wants:
+        if len(out) + 2 > max(0, n):
+            break
+        if w in used:
+            continue
+        hs = [h for h in m.get("holders") or [] if pair_holder(doc, h, card, m.get("set"), matchmaker.SPARE_MIN)
+              and h["team"] not in used and h["team"] != w]
+        hs.sort(key=lambda h: (h.get("copies", 0) < matchmaker.SPARE_MIN, h.get("asset") is None, -h.get("copies", 0)))
+        if not hs:
+            continue
+        h = hs[0]
+        spare = h.get("copies", 0) >= matchmaker.SPARE_MIN
+        reason = ((f"last card of the {m.get('set_name') or m.get('set')} page for {w}" if gap == 1 else
+                   f"{gap} cards from the {m.get('set_name') or m.get('set')} page for {w}" if gap != FAR else
+                   f"{w}'s live bid") + f", bid {m['action']['price']} P on {m['action'].get('venue') or 'rastro'}; "
+                  + (f"{h['team']} holds {h.get('copies')} copies" if spare else
+                     f"{h['team']} holds one copy of a set it is not filling"))
+        w_text, h_text = pair_messages(m, h, matchmaker.SPARE_MIN)
+        pid = f"{w}:{card}:{h['team']}"
+        base = {"pair": pid, "want": w, "holder": h["team"], "card": card, "tier": "pair", "action": m["action"],
+                "reason": reason, "team": w}
+        out.append((w, dict(base, role="want"), w_text))
+        out.append((h["team"], dict(base, role="holder"), h_text))
+        used |= {w, h["team"]}
+    return out
+
+
 def key_of(m: dict) -> str:
     if m.get("pitch"):
         return PITCH_KEY + str(m.get("team"))
+    if m.get("pair"):
+        return f"{PAIR_KEY}{m['pair']}:{m.get('role')}"
     a = m.get("action") or {}
     return f"{m.get('team')}:{m.get('card')}:{a.get('offer') or VENUE}"
 
@@ -379,6 +511,9 @@ def main(argv=None) -> None:
     ap.add_argument("--state", default=str(STATE))
     ap.add_argument("--pitch", action="store_true",
                     help="fill the slots left after the matches with the one-time La Celestina pitch (active teams)")
+    ap.add_argument("--pair", action="store_true",
+                    help="after the matches: tell both sides of a tier-2 cash bid and a holder the decks name (the "
+                         "bidder: post the bid on v20 too; the holder: list on v20 at its own price); 2 slots a pair")
     ap.add_argument("--pitch-reciprocity", action="store_true",
                     help="add the line about Team 3's own buying to the pitch: ONLY after checking the trade "
                          "desk's team-venue rule for its mode (false under --no-team-venues and in page mode)")
@@ -432,6 +567,8 @@ def main(argv=None) -> None:
         print(f"nothing to send: {e}")
         return stop("no catalog") if session else None
     plan = targets(doc, state, day, max(0, args.max_teams), exclude, args.min_p)
+    if args.pair:
+        plan += pair_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan], exclude)
     if args.pitch:
         plan += pitch_targets(doc, state, day, max(0, args.max_teams) - len(plan), [to for to, _, _ in plan],
                               args.pitch_reciprocity)
@@ -441,7 +578,10 @@ def main(argv=None) -> None:
           f"messaged today: {', '.join((state.get('teams') or {}).get(day, [])) or 'nobody'}. Threads left open by an "
           f"earlier run: {', '.join(map(str, state.get('unclosed') or [])) or 'none'}.")
     for to, m, text in plan:
-        print(f"\n-> {to} (tier {m.get('tier')}, {m.get('card')}, {len(text)} chars)")
+        if m.get("pair") and m.get("role") == "want":
+            print(f"\npair: W {m['want']} wants {m['card']}, H {m['holder']} holds it; reason: {m.get('reason')}")
+        print(f"\n-> {to} (tier {m.get('tier')}{', ' + m['role'] if m.get('pair') else ''}, {m.get('card')}, "
+              f"{len(text)} chars)")
         print(f"   POST {URL}/api/threads {json.dumps({'with': to, 'venue': args.venue})}")
         print(f"   POST {URL}/api/threads/<id>/messages {json.dumps({'text': text}, ensure_ascii=False)}")
         print(f"   POST {URL}/api/threads/<id>/close")
@@ -461,7 +601,11 @@ def main(argv=None) -> None:
         return stop("Market Test silence")
     except Exception:  # noqa: BLE001
         tick_s = 60.0
+    told = set()                    # pairs whose bidder's message went out in this run
     for i, (to, m, text) in enumerate(plan):
+        if m.get("pair") and m.get("role") == "holder" and m["pair"] not in told:
+            log.event("skipped", to=to, key=key_of(m), reason="the bidder of this pair was not told")
+            continue
         if i:
             time.sleep(GAP_S)
         try:
@@ -480,6 +624,8 @@ def main(argv=None) -> None:
             save_state(state, state_path)
         if res["sent"]:
             sent += 1
+            if m.get("pair") and m.get("role") == "want":
+                told.add(m["pair"])
             state.setdefault("teams", {}).setdefault(day, []).append(to)
             state.setdefault("keys", []).append(key_of(m))
             save_state(state, state_path)

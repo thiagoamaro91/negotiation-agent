@@ -543,3 +543,146 @@ class PitchCli(unittest.TestCase):
     def test_reciprocity_needs_the_pitch(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             out.main(["plan", "--pitch-reciprocity"])
+
+
+def want(team, card, price, venue, oid, holders, set_=None):
+    x = m(team, card, 2, ("bid", oid, venue, price, team))
+    x["set"] = set_ or card.split("-")[0]
+    x["holders"] = [dict({"team": t, "name": f"Team {int(t[1:])}", "active": True, "as_of": 1660}, copies=c, asset=a)
+                    for t, c, a in holders]
+    return x
+
+
+PDOC = {"generated_at": 0, "tick": 1660, "matches": [
+    want("t05", "LAT-06", 9, "v15", 21791, [("t16", 2, 613)]),                    # a spare, a high bid
+    want("t12", "LAV-07", 5, "rastro", 21800, [("t07", 2, 700)]),                 # a spare, the last card of t12's page
+    want("t04", "SAL-03", 4, "rastro", 21486, [("t01", 1, 934)]),                 # one copy, t01 is filling SAL
+    m("t06", "CHA-12", 2, ("swap", 21645, "v02", 0, "t06")),                      # a swap: never paired
+    want("t09", "RET-02", 30, "v20", 21900, [("t08", 3, 800)]),                   # already on v20: never paired
+], "teams": {
+    "t12": {"active": True, "consistent": True, "near_pages": [
+        {"set": "LAV", "have": 9, "size": 10, "appears_missing": ["LAV-07"]}]},
+    "t01": {"active": True, "consistent": True, "near_pages": [
+        {"set": "SAL", "have": 8, "size": 10, "appears_missing": ["SAL-04", "SAL-06"]}]},
+    "t05": {"active": True, "last_move_tick": 1650}, "t16": {"active": True, "last_move_tick": 1640},
+    "t07": {"active": True, "last_move_tick": 1630}, "t02": {"active": True, "last_move_tick": 1620},
+}}
+PDOC["matches"][3]["holders"] = [{"team": "t10", "copies": 2, "active": True}]
+
+
+class Pair(unittest.TestCase):
+    """--pair: a tier-2 cash bid and a holder the decks name both get one message; the trade happens on v20."""
+
+    def test_a_pair_is_found_and_both_texts_carry_the_post_shapes(self):
+        got = out.pair_targets(PDOC, {}, "d", 6)
+        self.assertEqual([to for to, _, _ in got], ["t12", "t07", "t05", "t16"])
+        (w, mw, tw), (h, mh, th) = got[2], got[3]
+        self.assertEqual((mw["role"], mh["role"], mw["want"], mw["holder"], mw["card"]),
+                         ("want", "holder", "t05", "t16", "LAT-06"))
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"cash": 9}, "want": {"cards": ["LAT-06"]}}', tw)
+        self.assertIn("Team 16 holding 2 copies", tw)
+        self.assertIn("appears to have a spare", tw)
+        self.assertIn("Team 5 bids 9 P for LAT-06 on venue v15: offer #21791", th)
+        self.assertIn('POST /api/offers {"venue": "v20", "give": {"assets": [613]}, "want": {"cash": <your price>}}', th)
+        for t in (tw, th):
+            self.assertIn("0 % fee", t)
+            self.assertIn("5 % + 1 P a card", t)
+            self.assertIn("at the midpoint", t)
+            self.assertLessEqual(len(t), out.MAX_CHARS)
+            self.assertTrue(t.endswith("We will not message you again today."))
+            self.assertNotIn(chr(0x2014), t)
+        self.assertNotIn('"cash": 9', th)                         # the holder's ask never carries the bidder's price
+        self.assertEqual(len({out.key_of(x[1]) for x in got}), 4)
+        self.assertEqual(out.key_of(mw), "pair:t05:LAT-06:t16:want")
+        self.assertEqual(out.key_of(mh), "pair:t05:LAT-06:t16:holder")
+
+    def test_last_card_of_a_page_ranks_first_then_the_bid(self):
+        got = out.pair_targets(PDOC, {}, "d", 6)
+        self.assertEqual(got[0][1]["card"], "LAV-07")              # 5 P, the last card of t12's page
+        self.assertIn("last card of the", got[0][1]["reason"])
+        self.assertEqual(got[2][1]["card"], "LAT-06")              # 9 P, no near page
+        self.assertEqual(out.page_gap(PDOC, "t12", "LAV-07", "LAV"), 1)
+        self.assertEqual(out.page_gap(PDOC, "t05", "LAT-06", "LAT"), out.FAR)
+
+    def test_skipped_when_either_side_was_messaged_today_or_taken_by_this_run(self):
+        for state in ({"teams": {"d": ["t07"]}}, {"teams": {"d": ["t12"]}}):
+            with self.subTest(state=state):
+                self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, state, "d", 6)], ["t05", "t16"])
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, {}, "d", 6, taken=["t16"])], ["t12", "t07"])
+        sent = {"keys": ["pair:t12:LAV-07:t07:want"]}             # a want sent before is never sent again
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, sent, "d", 6)], ["t05", "t16"])
+        self.assertEqual([to for to, _, _ in out.pair_targets(PDOC, {}, "d", 6, exclude=("LAV-07",))], ["t05", "t16"])
+
+    def test_skipped_when_the_holder_has_no_spare(self):
+        cards = [x[1]["card"] for x in out.pair_targets(PDOC, {}, "d", 10)]
+        self.assertNotIn("SAL-03", cards)                          # one copy of a set t01 is filling
+        self.assertNotIn("CHA-12", cards)                          # a swap
+        self.assertNotIn("RET-02", cards)                          # a bid already on v20
+        free = json.loads(json.dumps(PDOC))
+        free["teams"]["t01"]["near_pages"] = []                   # one copy of a set its consistent deck is not filling
+        got = [x for x in out.pair_targets(free, {}, "d", 10) if x[1]["card"] == "SAL-03"]
+        self.assertEqual([to for to, _, _ in got], ["t04", "t01"])
+        self.assertIn("holding a copy of it", got[0][2])
+        self.assertNotIn("spare", got[0][2])
+        free["teams"]["t01"]["consistent"] = False                 # an inconsistent deck proves nothing
+        self.assertFalse([x for x in out.pair_targets(free, {}, "d", 10) if x[1]["card"] == "SAL-03"])
+        idle = json.loads(json.dumps(PDOC))
+        idle["matches"][0]["holders"][0]["active"] = False         # an idle holder would never list it
+        self.assertNotIn("LAT-06", [x[1]["card"] for x in out.pair_targets(idle, {}, "d", 10)])
+
+    def test_a_pair_takes_two_slots_never_one(self):
+        self.assertEqual(len(out.pair_targets(PDOC, {}, "d", 3)), 2)
+        self.assertEqual(out.pair_targets(PDOC, {}, "d", 1), [])
+
+    def test_long_names_are_capped_and_the_post_shapes_always_fit(self):
+        x = json.loads(json.dumps(PDOC["matches"][0]))
+        x["card_name"], x["action"]["maker_name"] = "N" * 3000, "M" * 2000
+        x["holders"][0]["name"] = "H" * 2000
+        tw, th = out.pair_messages(x, x["holders"][0], 2)
+        for t in (tw, th):
+            self.assertLessEqual(len(t), out.MAX_CHARS)
+            self.assertIn('POST /api/offers {"venue": "v20"', t)
+            self.assertTrue(t.endswith("We will not message you again today."))
+            self.assertNotIn("N" * (out.NAME_CAP + 1), t)
+
+
+class PairCli(unittest.TestCase):
+    run_main = Cli.run_main
+    BOOK = {"rastro": [{"id": 21800, "status": "open", "expires_tick": 1900,
+                        "give": {"cash": 5, "assets": [], "types": []},
+                        "want": {"cash": 0, "assets": [], "types": ["card:LAV-07"]}}],
+            "v15": [{"id": 21791, "status": "open", "expires_tick": 1900, "give": {"cash": 9, "assets": [], "types": []},
+                     "want": {"cash": 0, "assets": [], "types": ["card:LAT-06"]}}]}
+
+    def go(self, argv, **k):
+        with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+            return self.run_main(argv, doc=PDOC, book=k.pop("book", self.BOOK), **k)
+
+    def test_flag_off_is_the_old_behaviour(self):
+        with um.patch.object(out, "lacking", lambda *a, **kw: set()):
+            self.assertNotIn("tier pair", self.run_main(["plan", "--max-teams", "6"], doc=PDOC)[0])
+            self.assertEqual(self.run_main(["plan", "--max-teams", "6"], doc=DOC)[0],
+                             self.run_main(["plan", "--max-teams", "6", "--pair"], doc=DOC)[0])  # no holder: no pair
+
+    def test_plan_prints_each_pair_and_both_texts(self):
+        text = self.go(["plan", "--max-teams", "4", "--pair"])[0]
+        self.assertIn("pair: W t12 wants LAV-07, H t07 holds it; reason: last card of the", text)
+        self.assertIn("pair: W t05 wants LAT-06, H t16 holds it", text)
+        self.assertEqual(text.count("/messages "), 4)
+
+    def test_run_sends_both_sides_records_both_keys_and_the_pitch_takes_what_is_left(self):
+        c = FakeClient()
+        text, logged, state = self.go(["run", "--yes", "--max-teams", "5", "--pair", "--pitch"], client=c)
+        opened = [x[1] for x in c.calls if x[0] == "open"]
+        self.assertEqual(opened, ["t12", "t07", "t05", "t16", "t02"])
+        self.assertEqual(state["keys"][:4], ["pair:t12:LAV-07:t07:want", "pair:t12:LAV-07:t07:holder",
+                                             "pair:t05:LAT-06:t16:want", "pair:t05:LAT-06:t16:holder"])
+        self.assertEqual(state["keys"][4:], ["pitch:t02"])
+
+    def test_the_holder_is_not_told_when_the_bidder_was_not(self):
+        c = FakeClient()
+        book = {"rastro": [], "v15": self.BOOK["v15"]}            # t12's bid is gone: neither side of that pair
+        text, logged, state = self.go(["run", "--yes", "--max-teams", "4", "--pair"], client=c, book=book)
+        self.assertEqual([x[1] for x in c.calls if x[0] == "open"], ["t05", "t16"])
+        self.assertIn(("skipped", {"to": "t07", "key": "pair:t12:LAV-07:t07:holder",
+                                   "reason": "the bidder of this pair was not told"}), logged)
