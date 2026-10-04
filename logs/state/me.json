@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 306,
+ "cash": 295,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -332,6 +332,17 @@
    "your_value": 100.4
   },
   {
+   "id": 898,
+   "kind": "card",
+   "ref": "MAL-07",
+   "serial": 13,
+   "rarity": "uncommon",
+   "set": "MAL",
+   "print_run": 90,
+   "name": "Mercado de San Ildefonso",
+   "your_value": 17.5
+  },
+  {
    "id": 967,
    "kind": "card",
    "ref": "LAV-09",
@@ -475,7 +486,7 @@
    "your_value": 177.1
   }
  ],
- "collection_value": 1714.4,
+ "collection_value": 1731.9,
  "album": {
   "pages": [
    {
@@ -489,7 +500,7 @@
    {
     "set": "MAL",
     "name": "Malasaña",
-    "have": 3,
+    "have": 4,
     "of": 10,
     "complete": false,
     "master": false
@@ -527,18 +538,18 @@
     "master": false
    }
   ],
-  "filled": 36,
+  "filled": 37,
   "slots": 60
  },
- "tick": 1625,
+ "tick": 1665,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 28.09,
-  "negotiating": 23.02,
-  "market": 5.07,
-  "neg_points": 50.0,
+  "score": 28.0,
+  "negotiating": 23.07,
+  "market": 4.93,
+  "neg_points": 56.5,
   "mm_points": 0.0,
   "duel_points": 0.0,
   "ladder_points": 0.165,
@@ -546,7 +557,7 @@
   "bench_points": null,
   "bench_venue": null,
   "level": 5,
-  "album_filled": 36,
+  "album_filled": 37,
   "album_slots": 60,
   "pages_complete": 3,
   "rarest": {
@@ -557,7 +568,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 38,
+  "deals": 39,
   "badges": [
    "Sharp ear"
   ],

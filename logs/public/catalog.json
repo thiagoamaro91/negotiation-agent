@@ -539,7 +539,7 @@
      "flavour": "Price on request.",
      "book": 25,
      "print_run": 90,
-     "minted": 18,
+     "minted": 19,
      "hidden": false,
      "page": true
     },
@@ -583,7 +583,7 @@
      "flavour": "One man's collection, everyone's afternoon.",
      "book": 70,
      "print_run": 30,
-     "minted": 23,
+     "minted": 24,
      "hidden": false,
      "page": true
     },
@@ -823,7 +823,7 @@
      "flavour": "Closed in 1966, opened again for you.",
      "book": 25,
      "print_run": 90,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -834,7 +834,7 @@
      "flavour": "Last set at three.",
      "book": 25,
      "print_run": 90,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": true
     },
@@ -845,7 +845,7 @@
      "flavour": "Latin on the walls, football in the yard.",
      "book": 25,
      "print_run": 90,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": true
     },
@@ -878,7 +878,7 @@
      "flavour": "The station time forgot.",
      "book": 180,
      "print_run": 9,
-     "minted": 2,
+     "minted": 3,
      "hidden": false,
      "page": false
     },
