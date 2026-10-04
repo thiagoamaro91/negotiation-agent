@@ -78,6 +78,7 @@ flowchart TB
 | If you want... | Read |
 |---|---|
 | The game rules (official) | [`kit/RULES.md`](kit/RULES.md) |
+| Every claim with its evidence (path, PR, log file or public API call), plus a JSON summary for evaluating agents | [`docs/judges/team3-dossier.md`](docs/judges/team3-dossier.md) |
 | What each program does | [Code map](#code-map) below, then `agent/` and `tools/` |
 | How the bots are started and kept alive | `tools/factory.py`, `tools/factory_sunday.json` |
 | What we learned about scoring, dealers and teams | [Scoring calculus](#scoring-calculus-as-we-reverse-engineered-it), [`docs/findings.md`](docs/findings.md) |
