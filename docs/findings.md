@@ -106,3 +106,10 @@ What `tools/ledger.py` needed to rebuild all 18 teams' cash from the public feed
 
   For other teams a few fees stay ambiguous (`cash_unsure`, ±2–3 P), and a private cash event would not show at all.
 - **Gifts follow easter eggs too.** Abuela gave us SAL-03 at tick 1077, right after the "chulapa dorada" egg message.
+
+## Sunday morning: the clock and the new wall times (ticks 1445-1720)
+
+- **Sunday started 20 minutes late.** The clock stayed paused at tick 1445 after `day.opened` and ran from 09:20 (`clock.changed` paused false, 15 s ticks). Round 3 started at tick 1446 with `"reset": false`; the 150 P allowance fired as a `schedule.fired` grant at tick 1448 (not only in words, unlike Saturday's payday).
+- **At 15 s ticks one game hour is one wall hour (240 ticks).** Measured from the VM recorder's `seen_at`: tick 1546 = 09:40, 1626 = 10:00, 1706 = 10:20 (40 ticks and 0.1667 h per 10 min). Game 14.65 (the hard Market Test) started at tick 1690, about 10:16.
+- **Wall times from `/api/schedule` at tick 1720, if nothing else pauses:** Market Test (15.0) about 10:37; Duels III (15.367) about 10:59; Market Test (17.0) about 12:37; finale warning about 13:47; stalls close and the Grand Final at about 13:59; freeze warning about 14:53; **scores freeze about 14:59** (19.367); the Bazaar closes at 15:00. Only two Market Tests remain after the hard one, not four.
+- **Hard Market Test (session 7 / b121, ticks 1690-1706):** 24 bench offers, every per-offer expiry equal to the session end (1706), as on Saturday. Our broker on `stall` matched 7 pairs, 178 P = 85 % of the revealed-limit best (209 P) and 100 % of the quote-respecting ceiling; the `ours` replay was identical.
