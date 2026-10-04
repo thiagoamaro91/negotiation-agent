@@ -386,7 +386,7 @@
      "flavour": "Carnation behind the ear, opinion on everything.",
      "book": 25,
      "print_run": 90,
-     "minted": 19,
+     "minted": 20,
      "hidden": false,
      "page": true
     },
@@ -430,7 +430,7 @@
      "flavour": "Cellar of 1642, prices of today.",
      "book": 70,
      "print_run": 30,
-     "minted": 9,
+     "minted": 10,
      "hidden": false,
      "page": true
     },
@@ -725,7 +725,7 @@
      "flavour": "A king, a lake, a lot of steps.",
      "book": 70,
      "print_run": 30,
-     "minted": 15,
+     "minted": 16,
      "hidden": false,
      "page": true
     },
@@ -878,7 +878,7 @@
      "flavour": "The station time forgot.",
      "book": 180,
      "print_run": 9,
-     "minted": 3,
+     "minted": 4,
      "hidden": false,
      "page": false
     },
