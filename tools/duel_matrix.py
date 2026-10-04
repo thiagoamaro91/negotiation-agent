@@ -44,7 +44,8 @@ def cell(job: tuple) -> tuple:
     arena.PAIR_SEEN = 0.0
     arena.ARENA_DAYS = world["days_mode"]
     try:
-        res = arena.evaluate(params, seeds, session, kinds=world["kinds"], weights=world["weights"])
+        res = arena.evaluate(params, seeds, session, kinds=world["kinds"], weights=world["weights"],
+                             **world.get("kw", {}))
     finally:
         g.update(saved)
     per_seed = {}
@@ -53,12 +54,30 @@ def cell(job: tuple) -> tuple:
     return row, col, pname, arena.summary(res)["all"], {s: sum(v) / len(v) for s, v in per_seed.items()}
 
 
-def jobs_for(policies: dict, seeds, session: int) -> list:
+def load_mix(path) -> dict:
+    """A --mix file: {arena kind: weight}, every kind known to the arena, weights >= 0, at least one positive."""
+    w = json.loads(Path(path).expanduser().read_text())
+    bad = [k for k in w if k not in arena.KINDS]
+    if bad or not w or any(not isinstance(v, (int, float)) or v < 0 for v in w.values()) or not sum(w.values()):
+        raise SystemExit(f"{path}: bad mix (unknown kinds {bad} or weights not >= 0 with one positive)")
+    return {k: w.get(k, 0) for k in arena.KINDS}
+
+
+def jobs_for(policies: dict, seeds, session: int, mixes: dict | None = None, d1: bool = False) -> list:
+    """Every cell. mixes: extra {label: weights} next to the named MIXES (a field refit from the last session);
+    d1: one more row per mix, robust, where an accept at deadline-1 does not settle (arena d1_settles=False)."""
     out = []
+    all_mixes = {label: mix_weights(mix) for label, mix in MIXES.items()}
+    all_mixes.update(mixes or {})
     for mode, days_mode in (("robust", ""), ("confirmed", "confirmed")):
-        for label, mix in MIXES.items():
-            w = {"mods": {}, "days_mode": days_mode, "weights": mix_weights(mix), "kinds": mix_kinds(mix)}
+        for label, wts in all_mixes.items():
+            w = {"mods": {}, "days_mode": days_mode, "weights": wts, "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0]}
             out += [(f"mix: {label}", mode, n, p, seeds, session, w) for n, p in policies.items()]
+    if d1:
+        for label, wts in all_mixes.items():
+            w = {"mods": {}, "days_mode": "", "weights": wts, "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0],
+                 "kw": {"d1_settles": False}}
+            out += [(f"d1: {label}", "robust", n, p, seeds, session, w) for n, p in policies.items()]
     for kind in arena.KINDS:
         if kind == "absent":
             continue
@@ -84,6 +103,9 @@ def main() -> None:
     ap.add_argument("--sessions", type=int, default=60)
     ap.add_argument("--seed0", type=int, default=970000, help="fresh seeds (the tuner uses 0.. and 500000..)")
     ap.add_argument("--params", action="append", default=[], help="NAME=FILE (repeatable); the first is the baseline")
+    ap.add_argument("--mix", action="append", default=[], help="LABEL=FILE (repeatable): an extra rival mix, "
+                    "{arena kind: weight}, e.g. the field refit by tools/analyst.py duels")
+    ap.add_argument("--d1-stress", action="store_true", help="add a row per mix where a deadline-1 accept does not settle")
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() - 1))
     ap.add_argument("--out-md", default="")
     ap.add_argument("--out-json", default="")
@@ -96,7 +118,11 @@ def main() -> None:
     seeds = list(range(a.seed0, a.seed0 + a.sessions))
     t0 = time.time()
     with mp.Pool(a.workers) as pool:
-        results = pool.map(cell, jobs_for(policies, seeds, a.session))
+        mixes = {}
+        for spec in a.mix:
+            label, _, f = spec.partition("=")
+            mixes[label] = load_mix(f)
+        results = pool.map(cell, jobs_for(policies, seeds, a.session, mixes, a.d1_stress))
     table, per_seed = {}, {}
     for row, col, pname, summ, ps in results:
         table.setdefault((row, col), {})[pname] = summ
