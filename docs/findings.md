@@ -74,6 +74,17 @@ Method and tables in [plans/ladder-sunday.md](plans/ladder-sunday.md). From the 
 - **The ladder value gate is now enforced in code** (`agent/dealer_client.py`): buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy given up, a `--cap` or `--floor` on the wrong side is refused, and every priced message and accept re-prices the card from a fresh `/api/me` read (other bots trade the same cards mid-thread).
 - **`tools/value_inference.py teams` shows CHA as the least liked set of 14 of 18 teams because of an artifact:** t07 opened ten threads for CHA-06 at tick 1074 to 1077, so CHA entered the softmax before it was released. Elimination cannot name the CHA fans (its top pick is right 21 % against 17 % for chance); the first CHA buyers on Sunday can.
 
+## Saturday evening: every team's cash (ticks 630-1243)
+
+What `tools/ledger.py` needed to rebuild all 18 teams' cash from the public feed (PRs #42, #52, #53, #55):
+
+- **The payday came only in words.** At tick 1201 the organisers' `announcement` said "Payday in Madrid: every team gets 400 primas", with no `schedule.fired` grant. Without it, five teams appear to buy epics and rares they could not afford (t05 paid Picaros 128 P for RET-11 at tick 1209). The ledger now reads it. Watch for the Sunday allowance arriving the same way.
+- **Who paid the fee.** The feed has no "offer filled" event: a filled offer just leaves the board without an `offer.cancelled`. An offer accepted on its last tick settles on the next tick. With an ask and a bid both standing, the settled price says which one was taken (t16 sold LAT-09 into our 88 P bid at tick 724 while its own ask stood at 135, so the 6 P fee was t16's).
+- **Card-for-card swaps on El Rastro carry a fee** (2 P each, 8 swaps by tick 1201), paid by the side that took the listing.
+- **Counters to check against:** El Rastro's `/api/venues` totals restart each round. From tick 160 they equal the feed exactly (208 P of fees, 71 trades, 1,843 P of volume at tick 1060). Team venues had charged no fee by then.
+- **How exact it is:** of 153 team settlements to tick 1201, only two fees stay unknown (tick 78, 3 P between t04 and t15; tick 939, 2 P between t14 and t16). The page shows them as ± on those teams' cash. Team 3's rebuilt cash matches every real `/api/me` reading up to tick 1186. The Mini's live score reader (`score.state.json`) stopped at tick 1186 (20:07).
+- **The value inference misreads page-completion buying as taste.** On our own account (tick 961) it ranks La Latina first (1.44) and Lavapiés third (1.17), against a true 1.6 for Lavapiés, because we were buying the last cards of pages. Read other teams' labels with that in mind.
+
 ## Open questions for the organisers
 
 - The judges' criteria (40 of the 100 points).
