@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 221,
+ "cash": 239,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -431,17 +431,6 @@
    "your_value": 4.0
   },
   {
-   "id": 1193,
-   "kind": "card",
-   "ref": "MAL-06",
-   "serial": 24,
-   "rarity": "uncommon",
-   "set": "MAL",
-   "print_run": 90,
-   "name": "Tienda de Discos",
-   "your_value": 17.5
-  },
-  {
    "id": 1206,
    "kind": "card",
    "ref": "RET-04",
@@ -541,7 +530,7 @@
    "your_value": 68.6
   }
  ],
- "collection_value": 1968.1,
+ "collection_value": 1950.6,
  "album": {
   "pages": [
    {
@@ -555,7 +544,7 @@
    {
     "set": "MAL",
     "name": "Malasaña",
-    "have": 4,
+    "have": 3,
     "of": 10,
     "complete": false,
     "master": false
@@ -593,10 +582,10 @@
     "master": false
    }
   ],
-  "filled": 44,
+  "filled": 43,
   "slots": 60
  },
- "tick": 2459,
+ "tick": 2499,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
@@ -607,12 +596,12 @@
   "neg_points": 136.5,
   "mm_points": 0.0,
   "duel_points": 27.94,
-  "ladder_points": 0.336,
+  "ladder_points": 0.371,
   "bench_efficiency": 0.89,
   "bench_points": 0.5,
   "bench_venue": "v20",
   "level": 5,
-  "album_filled": 44,
+  "album_filled": 43,
   "album_slots": 60,
   "pages_complete": 4,
   "rarest": {
@@ -623,7 +612,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 48,
+  "deals": 49,
   "badges": [
    "Sharp ear"
   ],

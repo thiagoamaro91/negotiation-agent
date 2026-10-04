@@ -1,0 +1,317 @@
+{
+ "id": 3939,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    898
+   ]
+  }
+ },
+ "status": "closed",
+ "created_tick": 2493,
+ "messages": [
+  {
+   "id": 18471,
+   "tick": 2494,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 26 P.",
+   "offer": {
+    "id": 27750,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2502,
+    "created_tick": 2494,
+    "final": false
+   }
+  },
+  {
+   "id": 18470,
+   "tick": 2494,
+   "sender": "chato",
+   "text": "You again. Mercado de San Ildefonso. Thirteen. Good card, fair price. Take it or walk.",
+   "offer": {
+    "id": 27749,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2502,
+    "created_tick": 2494,
+    "final": false
+   }
+  },
+  {
+   "id": 18474,
+   "tick": 2495,
+   "sender": "chato",
+   "text": "No. 13 P, and I'm being generous.",
+   "offer": {
+    "id": 27758,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2503,
+    "created_tick": 2495,
+    "final": false
+   }
+  },
+  {
+   "id": 18475,
+   "tick": 2495,
+   "sender": "t03",
+   "text": "I move, you move. 25 P.",
+   "offer": {
+    "id": 27759,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2503,
+    "created_tick": 2495,
+    "final": false
+   }
+  },
+  {
+   "id": 18482,
+   "tick": 2496,
+   "sender": "t03",
+   "text": "Coming down: 24 P.",
+   "offer": {
+    "id": 27765,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2504,
+    "created_tick": 2496,
+    "final": false
+   }
+  },
+  {
+   "id": 18477,
+   "tick": 2496,
+   "sender": "chato",
+   "text": "You moved one. I moved nothing. Thirteen. Same as before, same as next time.",
+   "offer": {
+    "id": 27761,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2504,
+    "created_tick": 2496,
+    "final": false
+   }
+  },
+  {
+   "id": 18486,
+   "tick": 2497,
+   "sender": "chato",
+   "text": "You move, I move. 13 P.",
+   "offer": {
+    "id": 27770,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2505,
+    "created_tick": 2497,
+    "final": false
+   }
+  },
+  {
+   "id": 18491,
+   "tick": 2497,
+   "sender": "t03",
+   "text": "Fair is fair. 23 P.",
+   "offer": {
+    "id": 27775,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3939,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 898,
+       "kind": "card",
+       "ref": "MAL-07",
+       "serial": 13,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2505,
+    "created_tick": 2497,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Mercado de San Ildefonso",
+ "closed_reason": null
+}
