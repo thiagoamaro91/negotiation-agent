@@ -67,6 +67,9 @@ PACE_FASTEST = 4.0       # the fastest game clock we would believe (game hours p
 PACE_MIN_SPAN_S = 120.0  # a pace is reported only after this long of a running clock (tick edges are seen to 10 s)
 PACE_WINDOW_S = 900.0    # ... measured over at most this long
 PACE_MAX_AGE_S = 600.0   # `plan` and `status` trust results/factory/pace.json for this long
+CRASHLOOP_FAILS = 3      # status raises a problem for ANY enabled process after this many failed runs in a row
+FAIL_RUN_S = 300.0       # a run that lived this long is not a crash: it resets the count
+BACKOFF_MAX_S = 120.0    # the longest wait between two launches of a process that keeps dying
 
 
 # --- pure logic (tests/test_factory.py) ----------------------------------------------------------------------------
@@ -894,8 +897,9 @@ def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
                         say(st["why"])
                         return 1
             st["restarts"] = st.get("restarts", 0) + 1
+            st["fails"] = st.get("fails", 0) + 1 if (rc != 0 and ran < FAIL_RUN_S) else 0
             save(state="waiting", why=f"exited rc={rc}", last_rc=rc, child_pid=None)
-            backoff = 5.0 if ran > 300 else min(backoff * 2, 120.0)     # 5, 10, 20 ... 120 s while it keeps dying
+            backoff = 5.0 if ran > FAIL_RUN_S else min(backoff * 2, BACKOFF_MAX_S)     # 5, 10, 20 ... 120 s while it dies
             time.sleep(2 if (step and rc == 0) else backoff)
     finally:
         if child is not None and child.poll() is None:
@@ -969,6 +973,13 @@ def status_once(cfg: dict) -> tuple[list, list]:
             problems.append(f"{name}: {st['why']}")
         if need and keeper and not child and st.get("last_rc") not in (None, 0):
             problems.append(f"{name} exited rc={st['last_rc']}, restart {st.get('restarts', 0)} pending")
+        fails = st.get("fails", st.get("restarts", 0) if st.get("last_rc") not in (None, 0) else 0)
+        if not need and keeper and not child and st.get("last_rc") not in (None, 0) and fails >= CRASHLOOP_FAILS:
+            line += "  CRASH-LOOP"                       # an optional service must not fail unnoticed (the desk's SAL-10 bid)
+            problems.append(f"{name} is crash-looping: {fails} failed runs in a row (last rc {st['last_rc']}), "
+                            f"retrying every {BACKOFF_MAX_S:.0f} s at most")
+        if not need and word == "DOWN" and p["kind"] == "service" and name != "watchdog":
+            problems.append(f"{name} is down (optional service: its work is not being done)")
         grace = max(120.0, 2 * float(p.get("stale_ticks") or 4) * tick_s)
         if child and log and age is None and now - float(st.get("started") or now) > grace:
             line += "  NO LOG"

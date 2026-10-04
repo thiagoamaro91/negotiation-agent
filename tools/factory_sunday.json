@@ -51,7 +51,7 @@
     {
       "name": "abuela",
       "kind": "steps",
-      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run is LAUNCHED within 25 game min of a duel wave (duel_quiet_min). That does not keep a run from overlapping a wave: a run can last longer than 40 ticks when several target threads or cooloff waits pile up, and it may still overlap a wave; then the dealer_client accept lock (results/duel.lock) holds its accepts.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/abuela.py", "run"],
@@ -77,7 +77,7 @@
     {
       "name": "chato",
       "kind": "steps",
-      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run is LAUNCHED within 25 game min of a duel wave (duel_quiet_min). That does not keep a run from overlapping a wave: a run can last longer than 40 ticks when several target threads or cooloff waits pile up, and it may still overlap a wave; then the dealer_client accept lock (results/duel.lock) holds its accepts.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/chato.py", "run"],
@@ -105,7 +105,7 @@
     {
       "name": "pilar",
       "kind": "steps",
-      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run starts within 25 game min of a duel wave: a run is 40 ticks, 10 wall min, which is 20 game min if the clock runs at two game hours per wall hour.",
+      "note": "On since #35 and #38 merged (duel lock checked before every accept, pause-safe waits, distinct exit statuses). A step counts as done only on a deal or a nothing-to-do line in this dealer's log. No run is LAUNCHED within 25 game min of a duel wave (duel_quiet_min). That does not keep a run from overlapping a wave: a run can last longer than 40 ticks when several target threads or cooloff waits pile up, and it may still overlap a wave; then the dealer_client accept lock (results/duel.lock) holds its accepts.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/chato.py", "pilar"],
@@ -171,7 +171,7 @@
     {
       "name": "picaros",
       "kind": "steps",
-      "note": "New dealer: agent/chato.py --dealer picaros buys rares from Los Picaros and never sells him anything. A step counts as done only on a deal or a nothing-to-do line in logs/picaros/<date>.jsonl. Same gates as the other dealers: no run starts within 25 game min of a duel wave.",
+      "note": "New dealer: agent/chato.py --dealer picaros buys rares from Los Picaros and never sells him anything. A step counts as done only on a deal or a nothing-to-do line in logs/picaros/<date>.jsonl. Same gates as the other dealers. No run is LAUNCHED within 25 game min of a duel wave (duel_quiet_min). That does not keep a run from overlapping a wave: a run can last longer than 40 ticks when several target threads or cooloff waits pile up, and it may still overlap a wave; then the dealer_client accept lock (results/duel.lock) holds its accepts.",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25},
       "match": ["agent/chato.py", "picaros"],

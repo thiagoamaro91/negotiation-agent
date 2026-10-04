@@ -1,6 +1,6 @@
 # Sunday pre-flight: 08:40 Madrid, on the Mac Mini
 
-Twelve checks, one line each (check 1 also pulls when behind), then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+Twelve checks, one line each (check 1 also pulls when behind), then the 08:55 command. Most checks only read: check 1 pulls `main`, check 11 pushes the branch `mini/logs` (and creates the worktree `.logs-push`), and the 08:55 command starts the bots. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/factory_sunday.json` (the line is in the handoff, section "What needs you"). Without it the watchdog still prints problems in its tmux window but sends nothing to your phone.
 
@@ -50,7 +50,11 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```bash
    cd ~/bazaar && python3 tools/logs_push.py --once && git ls-remote origin mini/logs
    ```
-   If it prints `push failed` (credentials, network): fix the git credentials if you can in two minutes; otherwise fall back to a manual push every 15 minutes, `cd ~/bazaar && git add logs && git commit -m "logs: $(date +%H:%M)" && git pull --rebase && git push`, and tell the VM analyst (bus post or by hand) that the logs are on `main`, not on `mini/logs`.
+   If it prints `push failed`, the line says what refused. Credentials or network: fix them (`gh auth status`, the `origin` URL), then run the command again. If it cannot be fixed, copy the logs to the VM by hand, screened first (the grep must print nothing), and tell the VM analyst (bus post or by hand) that they arrive by scp, not on `mini/logs`; `<vm-host>` is in `docs/plans/sunday-analyst.md`:
+   ```bash
+   cd ~/bazaar && ! grep -rlE 'tk[-_][A-Za-z0-9]{4}|bk[_-][A-Za-z0-9]{6}|adm[_-][A-Za-z0-9]{4}|(KEY|TOKEN|SECRET|PASSWORD)=' logs/ && scp -r logs <vm-host>:~/work/sunday-data/
+   ```
+   Never run `git add`, `commit`, `pull` or `stash` in `~/bazaar` while the bots run: that is the live checkout.
 
 12. **The matchmaker board is sane** (08:50 Madrid). Expect a first number above 5 (lines), `0`, and `[]`: a board with tiers 1 to 4, no Team 3 row, none of the cards we lack. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
    ```bash

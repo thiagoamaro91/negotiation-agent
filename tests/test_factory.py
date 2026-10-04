@@ -6,6 +6,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -329,7 +330,10 @@ class Sandbox(unittest.TestCase):
                 return {"upcoming": list(schedule)}
             return seq.pop(0) if len(seq) > 1 else seq[0]
 
+        self.slept = []
+
         def sleep(_s):
+            self.slept.append(_s)
             n[0] += 1
             if n[0] >= sleeps:
                 raise Stop
@@ -424,6 +428,54 @@ class ReviewPauseGate(Sandbox):
         rc, st = self.keep(self.config(SERVICE), "broker", clocks, [FakeChild(rc=1), FakeChild(rc=1)], sleeps=8)
         self.assertEqual(len(self.popen), 1)
         self.assertEqual(st["why"], "clock paused")
+
+
+class OptionalServices(Sandbox):
+    """An enabled optional service that fails must not fail in silence (the desk's SAL-10 bid, the announcer)."""
+
+    OPTIONAL = {"name": "market_desk", "kind": "service", "required": False, "gates": {"doors_open": True},
+                "cmd": ["{python}", "-c", "pass"], "match": ["agent/market_desk.py", "run"], "log": "logs/market/{date}.jsonl"}
+
+    def alive_with_state(self, **state):
+        if not getattr(self, "held", False):
+            self.hold("market_desk")
+            self.held = True
+        f.write_json(f.STATE / "market_desk.json", {"date": f.today(), "name": "market_desk", "child_pid": None, **state})
+
+    def test_a_crash_looping_optional_service_is_a_problem(self):
+        self.alive_with_state(state="waiting", last_rc=1, restarts=25, why="exited rc=1")        # no `fails` field at all
+        lines, problems = self.status(self.config(self.OPTIONAL), clock())
+        self.assertTrue([x for x in problems if x.startswith("market_desk is crash-looping: 25 failed runs")], problems)
+        self.assertIn("CRASH-LOOP", "\n".join(lines))
+
+    def test_two_failures_are_not_yet_a_crash_loop_and_a_clean_restart_is_never_one(self):
+        self.alive_with_state(state="waiting", last_rc=1, restarts=2, fails=2)
+        self.assertEqual(self.status(self.config(self.OPTIONAL), clock())[1], [])
+        self.alive_with_state(state="waiting", last_rc=0, restarts=30, fails=0)
+        self.assertEqual(self.status(self.config(self.OPTIONAL), clock())[1], [])
+
+    def test_an_optional_service_whose_keeper_is_gone_is_a_problem_but_the_watchdog_is_not(self):
+        f.write_json(f.STATE / "market_desk.json", {"date": f.today(), "state": "stopped", "child_pid": None})
+        watchdog = dict(self.OPTIONAL, name="watchdog", match=["tools/factory.py", "status"])
+        _, problems = self.status(self.config(self.OPTIONAL, watchdog), clock())
+        self.assertEqual(problems, ["market_desk is down (optional service: its work is not being done)"])
+
+    def test_the_keeper_counts_failed_runs_and_a_clean_exit_resets_them(self):
+        rc, st = self.keep(self.config(self.OPTIONAL), "market_desk", [clock()],
+                           [FakeChild(rc=1, polls=0), FakeChild(rc=1, polls=0), FakeChild(rc=1, polls=0)], sleeps=3)
+        self.assertEqual((st["fails"], st["last_rc"]), (3, 1))
+        rc, st = self.keep(self.config(self.OPTIONAL), "market_desk", [clock()],
+                           [FakeChild(rc=1, polls=0), FakeChild(rc=0, polls=0)], sleeps=2)
+        self.assertEqual((st["fails"], st["last_rc"]), (0, 0))
+
+    def test_the_restart_backoff_is_bounded(self):
+        """A service that dies at once is relaunched at most every BACKOFF_MAX_S: the keeper alone cannot burn the key."""
+        kids = [FakeChild(rc=1, polls=0) for _ in range(14)]
+        self.keep(self.config(self.OPTIONAL), "market_desk", [clock()], kids, sleeps=14)
+        waits = [w for w in self.slept if w > 2]
+        self.assertTrue(waits and max(waits) <= f.BACKOFF_MAX_S, waits)
+        self.assertEqual(waits[:5], [5.0, 10.0, 20.0, 40.0, 80.0])
+        self.assertEqual(max(waits), f.BACKOFF_MAX_S)
 
 
 class ReviewDealerExit(Sandbox):
@@ -865,6 +917,50 @@ class KeylessHelpers(unittest.TestCase):
         self.assertNotIn("--once", p["cmd"])
         self.assertEqual(p["gates"], {"doors_open": False, "clock_running": False})
         self.assertFalse(f.ps_pids(["  61 python3 tools/logs_push.py --once"], p["match"]))     # a hand-run check is not "outside"
+
+
+class OperatorText(unittest.TestCase):
+    """What the handoff and the pre-flight tell the operator to type must work, and must not break the isolation."""
+
+    DOCS = Path(__file__).resolve().parent.parent / "docs" / "plans"
+
+    def handoff(self):
+        return (self.DOCS / "sunday-night-handoff.md").read_text()
+
+    def test_the_sal10_fallback_command_parses_and_keeps_only_40_p_in_reserve(self):
+        """chato's own reserve is 280 P: without --reserve it refuses a 56 P buy with 200 P in cash (Sol, round 1)."""
+        import shlex
+        text = self.handoff()
+        self.assertIn("only if SAL-10 is still missing and the desk has no outstanding bid", text)
+        cmd = re.search(r"`(python3 agent/chato\.py run --dealer picaros --only SAL-10[^`]*)`", text)
+        self.assertIsNotNone(cmd, "the 13:30 fallback command is missing from the handoff")
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "agent"))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "kit"))
+        import chato
+        args = chato.parse_args(shlex.split(cmd.group(1))[2:])
+        self.assertEqual((args.dealer, args.only, args.cap, args.reserve, args.max_deals),
+                         ("picaros", "SAL-10", 88, 40, 1))
+
+    def test_the_handoff_gives_the_duel_bot_start_for_both_paces(self):
+        text = self.handoff()
+        self.assertIn("**11:29 to 11:34** the duel bot starts", text)       # 10 game minutes: 10 or 5 minutes of Madrid time
+        self.assertNotIn("About 11:30", text)
+
+    def test_the_dealer_notes_promise_a_launch_gate_not_a_whole_run_separation(self):
+        for p in f.load_config(f.CONFIG)["processes"]:
+            if p["kind"] != "steps":
+                continue
+            self.assertIn("No run is LAUNCHED within 25 game min of a duel wave", p["note"], p["name"])
+            self.assertIn("may still overlap", p["note"], p["name"])
+            self.assertNotIn("a run is 40 ticks", p["note"], p["name"])
+
+    def test_the_preflight_never_tells_the_operator_to_run_git_on_the_live_checkout(self):
+        text = (self.DOCS / "sunday-preflight.md").read_text()
+        for bad in ("git add logs", "pull --rebase", 'git commit -m "logs'):
+            self.assertNotIn(bad, text)
+        self.assertIn("Never run `git add`, `commit`, `pull` or `stash` in `~/bazaar` while the bots run", text)
+        self.assertIn("scp -r logs", text)
+        self.assertNotIn("Everything here is read-only", text)                # check 1 pulls and check 11 pushes
 
 
 class Round3Matching(unittest.TestCase):
