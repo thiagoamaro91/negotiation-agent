@@ -1,0 +1,13 @@
+11:59:46 START agent/chato.py run --dealer picaros --only RET-09 --cap 61 --anchor 40 --step 1 --reserve 40 --max-deals 1 --max-rounds 40 --until 13:55
+Team 3 cash=355 level=5 deals=39
+  buy  RET-09  limit=  61.0 private=  63.0 ladder=63  El Ángel Caído
+reserve=40 (spendable 315 P) anchor=40 step=1 cap=61.0
+  bids RET-09: 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 (then take his offer once it is <= 61)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[11:59:47] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--only', 'RET-09', '--cap', '61', '--anchor', '40', '--step', '1', '--reserve', '40', '--max-deals', '1', '--max-rounds', '40', '--until', '13:55'] cash=355 level=5 deals=39 reserve=40 cap=61.0 plan=[{'side': 'buy', 'item': 'RET-09', 'asset_id': None, 'value': 61.0, 'private': 63.0, 'ladder_value': 63, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[11:59:48] open thread=3041 side=buy item=RET-09 value=61.0 private=63.0 ladder_value=63
+[12:00:01] her thread=3041 price=73 final=False round=1
+[12:00:01] say thread=3041 price=40 her=73
+[12:00:15] her thread=3041 price=63 final=False round=2
+[12:00:15] say thread=3041 price=41 her=63
+[12:00:30] mismatch thread=3041 offer={'id': 24798, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3041, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:RET-06']}, 'want': {'cash': 57, 'assets': [], 'types': []}, 'expires_tick': 2113, 'created_tick': 2105, 'final': False}

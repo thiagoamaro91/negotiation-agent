@@ -124,7 +124,7 @@
      "flavour": "Curtain at eight, argument at eleven.",
      "book": 25,
      "print_run": 90,
-     "minted": 26,
+     "minted": 27,
      "hidden": false,
      "page": true
     },
@@ -375,7 +375,7 @@
      "flavour": "One song, played forever.",
      "book": 10,
      "print_run": 300,
-     "minted": 23,
+     "minted": 24,
      "hidden": false,
      "page": true
     },
@@ -441,7 +441,7 @@
      "flavour": "A dome bigger than your plans.",
      "book": 180,
      "print_run": 9,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": false
     },
@@ -626,7 +626,7 @@
      "flavour": "Rowing in circles, happily.",
      "book": 10,
      "print_run": 300,
-     "minted": 18,
+     "minted": 19,
      "hidden": false,
      "page": true
     },
@@ -648,7 +648,7 @@
      "flavour": "The puppets know more than he does.",
      "book": 10,
      "print_run": 300,
-     "minted": 16,
+     "minted": 17,
      "hidden": false,
      "page": true
     },
@@ -659,7 +659,7 @@
      "flavour": "No cars, many skaters.",
      "book": 10,
      "print_run": 300,
-     "minted": 19,
+     "minted": 21,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
