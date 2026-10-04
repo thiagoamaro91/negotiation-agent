@@ -1,6 +1,26 @@
 # Pitch numbers (Sunday analyst)
 
-Filled at each trigger; the final set is written at the freeze read.
+Final set, read at the close (15:10, Bazaar closed at tick 2816; logs from origin/mini/logs at 14:59).
+
+## Final standing
+
+- Score 34.19, rank 4 of 18: negotiating 26.04 + market 8.15 (+ judges later); leader t05 37.73; t12 34.51 just above (gap 0.32); cash 17 P (source: logs/analyst/score-2802.md)
+- Inside negotiating at tick 2797: duel_points 40.19, ladder_points 0.371, bench_points 0.5 (source: logs/analyst/score-2802.md)
+- Over the Sunday read-outs: rank 5 (27.71, tick 1702) -> 5 (32.23, tick 2282) -> 4 (33.85, tick 2462) -> 4 (34.19, tick 2802)
+
+## Grand Final duels (server session 5, finished tick 2692)
+
+- 25/34 deals (74%), our surplus 657.3 P; buyer 13/17, seller 12/17; duel_points 27.94 -> 40.19 = +12.25, 0.360 per duel (source: logs/analyst/duels-4-2680.md)
+- pitch: the lab predicted 0.420 per duel; the live wave gave 0.360 per duel (deal rate 74%), field seen {"absent": 3, "linear": 17, "fast": 7, "tft": 3, "steady": 1, "oneshot": 3}; the delivery-day term cost us 79.2 P over the 25 deals (source: logs/analyst/duels-4-2680.md)
+- Sunday duels (Duels III + Final): 80/102 deals, 2132.7 P surplus
+
+## Dealer ladder (Round 3)
+
+- 11/15 slots confirmed, every one bound to the bot thread that made it, 0 unverified, 0 deals that scored 0: Abuela 3/3, Chato 2/3, Pilar 3/3, Picaros 3/3, Banco 0/3 (source: logs/analyst/ladder-2816.md)
+
+## v20 (our venue)
+
+- 32 offers listed on v20 by 3 other teams (t15 16, t13 13, t16 3), 0 settlements between other teams; 28 venue announcements (source: logs/analyst/market-2816.md)
 
 ## Duels III (server session 4, read 12:02, logs from origin/mini/logs at 12:01)
 

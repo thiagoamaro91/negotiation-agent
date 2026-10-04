@@ -1,6 +1,7 @@
-TRIGGER 13:35 last ladder call before stalls close ~14:00 (tick 2479, logs from origin/mini/logs at 13:30)
-VERDICT Ladder R3 10/15 confirmed, 0 unverified (tick 2287 RET-02 @ 8 is now bound to bot thread 3436, value 9, gain 1: it was an unpushed log): L1 3/3, L2 Chato 1/3, L3 3/3, L4 3/3, L5 0/3. Score 33.85 rank 4 (+1.62; t10 33.86 just above, gap 0.01; leader t05 37.26). v20: 32 listings (t15 16, t13 13, t16 3), 0 trades
-PROPOSE nothing for the bots. Last dealer call for Thiago, only while no duel wave is live and before ~14:00: 2 x L2 Chato open, any deal that clears our value (sell a surplus copy above its value, as LAT-07 @ 13 vs 11); L5 Banco 0/3 stays unmeasured, skip unless a deal clears our value
-NEEDS YES none (Final params unchanged: duel-params-duels3.json carries over)
+TRIGGER 15:10 close read-out (Bazaar closed tick 2816; logs from origin/mini/logs at 14:59)
+VERDICT Final score 34.19 rank 4 (negotiating 26.04 + market 8.15; leader t05 37.73, t12 34.51 above, gap 0.32). Grand Final 25/34 deals, 657.3 P, 0.360 per duel (lab 0.420; delivery days cost 79.2 P). Ladder R3 11/15 confirmed, 0 unverified (Banco 0/3, Chato 2/3). v20: 32 listings by 3 teams, 0 trades. Market Tests: 85% / 73% / 72% of best (100% / 92% / 100% of quote ceiling), stall all day
+PROPOSE nothing (game over); pitch numbers in logs/analyst/pitch-numbers.md
+NEEDS YES none (PR #91 carries the day's reports, findings and pitch numbers for review/merge)
 PR https://github.com/thiagoamaro91/negotiation-agent/pull/91
-ORGANISERS: nothing new since 12:46 (finale warning ~13:48, stalls close + Grand Final ~14:00, freeze warning ~14:54, scores freeze ~14:59)
+ORGANISERS: feed#117797 tick 2798 announcement "Scores freeze at 15:00. Thank you, Madrid."
+ORGANISERS: feed#118049 tick 2816 announcement "The Bazaar has closed. Gracias!"
