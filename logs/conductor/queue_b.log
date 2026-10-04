@@ -47,3 +47,348 @@ dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell
 [12:11:38] flag_skipped offer=25130 why=message not found
 [12:11:38] her thread=3110 price=50 final=False round=5
 [12:11:38] say thread=3110 price=12 her=50 switched=True
+[12:11:55] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:12:00] her thread=3110 price=47 final=True round=6
+[12:12:01] walk thread=3110 price=47 reservation=25
+[12:12:03] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=31.88 rank=5
+12:12:19 EXIT 0 neg 76.5 -> 76.5
+{'score': 31.88, 'rank': 5, 'negotiating': 23.78, 'neg_points': 76.5, 'ladder_points': 0.315, 'market': 8.11, 'duel_points': 27.94} cash 288
+12:12:21 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=76.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:12:22] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:12:24] open thread=3136 side=buy item=MAL-10 value=25.0 private=49.0 ladder_value=49
+[12:12:41] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:12:44] mismatch thread=3136 offer={'id': 25158, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3136, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-08']}, 'want': {'cash': 73, 'assets': [], 'types': []}, 'expires_tick': 2161, 'created_tick': 2153, 'final': False}
+[12:12:44] flagged message=16232 offer=25158 result={'flagged': True}
+[12:12:44] her thread=3136 price=73 final=False round=1
+[12:12:45] say thread=3136 price=8 her=73 switched=True
+[12:12:52] her thread=3136 price=66 final=False round=2
+[12:12:52] say thread=3136 price=9 her=66
+[12:13:08] mismatch thread=3136 offer={'id': 25165, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3136, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-07']}, 'want': {'cash': 62, 'assets': [], 'types': []}, 'expires_tick': 2163, 'created_tick': 2155, 'final': False}
+[12:13:08] flag_skipped message=16238 offer=25165 says_ours=False says_theirs=False
+[12:13:08] her thread=3136 price=62 final=False round=3
+[12:13:08] say thread=3136 price=10 her=62 switched=True
+[12:13:22] her thread=3136 price=58 final=False round=4
+[12:13:22] say thread=3136 price=11 her=58
+[12:13:37] her thread=3136 price=55 final=False round=5
+[12:13:38] say thread=3136 price=12 her=55
+[12:13:52] her thread=3136 price=52 final=False round=6
+[12:13:52] say thread=3136 price=13 her=52
+[12:14:08] walk thread=3136 price=52 reservation=25
+[12:14:09] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=31.88 rank=5
+12:14:09 EXIT 0 neg 76.5 -> 86.5
+{'score': 31.88, 'rank': 5, 'negotiating': 23.78, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.11, 'duel_points': 27.94} cash 288
+12:14:11 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:14:12] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:14:13] open thread=3150 side=buy item=CHA-09 value=25.0 private=35.0 ladder_value=35
+[12:14:22] mismatch thread=3150 offer={'id': 25209, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3150, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:CHA-07']}, 'want': {'cash': 73, 'assets': [], 'types': []}, 'expires_tick': 2168, 'created_tick': 2160, 'final': False}
+[12:14:22] flag_skipped offer=25209 why=message not found
+[12:14:22] her thread=3150 price=73 final=False round=1
+[12:14:23] say thread=3150 price=8 her=73 switched=True
+[12:14:37] her thread=3150 price=63 final=False round=2
+[12:14:38] say thread=3150 price=9 her=63
+[12:14:43] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:14:53] her thread=3150 price=57 final=False round=3
+[12:14:53] say thread=3150 price=10 her=57
+[12:15:08] mismatch thread=3150 offer={'id': 25239, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3150, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:CHA-08']}, 'want': {'cash': 52, 'assets': [], 'types': []}, 'expires_tick': 2171, 'created_tick': 2163, 'final': True}
+[12:15:08] flag_skipped message=16311 offer=25239 says_ours=False says_theirs=False
+[12:15:08] her thread=3150 price=52 final=True round=4
+[12:15:08] switched_end thread=3150 ours=10 her=52
+[12:15:09] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:15:09 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:15:11 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:15:12] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:15:13] open thread=3164 side=buy item=CHA-10 value=25.0 private=35.0 ladder_value=35
+[12:15:23] her thread=3164 price=73 final=False round=1
+[12:15:23] say thread=3164 price=8 her=73
+[12:15:38] her thread=3164 price=65 final=False round=2
+[12:15:38] say thread=3164 price=9 her=65
+[12:15:53] her thread=3164 price=60 final=True round=3
+[12:15:54] walk thread=3164 price=60 reservation=25
+[12:15:54] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:15:55 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:15:57 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:15:58] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:15:58] open thread=3169 side=buy item=MAL-09 value=25.0 private=49.0 ladder_value=49
+[12:16:08] her thread=3169 price=73 final=False round=1
+[12:16:09] say thread=3169 price=8 her=73
+[12:16:23] her thread=3169 price=67 final=False round=2
+[12:16:23] say thread=3169 price=9 her=67
+[12:16:38] mismatch thread=3169 offer={'id': 25282, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3169, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-08']}, 'want': {'cash': 63, 'assets': [], 'types': []}, 'expires_tick': 2177, 'created_tick': 2169, 'final': True}
+[12:16:38] flag_skipped offer=25282 why=message not found
+[12:16:38] her thread=3169 price=63 final=True round=3
+[12:16:39] switched_end thread=3169 ours=9 her=63
+[12:16:39] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:16:40 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:16:45 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:16:46] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:16:47] open thread=3174 side=buy item=MAL-10 value=25.0 private=49.0 ladder_value=49
+[12:16:56] mismatch thread=3174 offer={'id': 25294, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3174, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-08']}, 'want': {'cash': 73, 'assets': [], 'types': []}, 'expires_tick': 2178, 'created_tick': 2170, 'final': False}
+[12:16:56] flag_skipped offer=25294 why=message not found
+[12:16:56] her thread=3174 price=73 final=False round=1
+[12:16:56] say thread=3174 price=8 her=73 switched=True
+[12:17:11] her thread=3174 price=64 final=False round=2
+[12:17:11] say thread=3174 price=9 her=64
+[12:17:23] her thread=3174 price=59 final=False round=3
+[12:17:24] say thread=3174 price=10 her=59
+[12:17:38] her thread=3174 price=54 final=False round=4
+[12:17:39] say thread=3174 price=11 her=54
+[12:17:53] her thread=3174 price=50 final=True round=5
+[12:17:54] walk thread=3174 price=50 reservation=25
+[12:17:54] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:17:55 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:17:56 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:17:58] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:17:58] open thread=3184 side=buy item=CHA-09 value=25.0 private=35.0 ladder_value=35
+[12:18:10] her thread=3184 price=73 final=False round=1
+[12:18:11] say thread=3184 price=8 her=73
+[12:18:24] her thread=3184 price=66 final=False round=2
+[12:18:24] say thread=3184 price=9 her=66
+[12:18:39] her thread=3184 price=62 final=False round=3
+[12:18:39] say thread=3184 price=10 her=62
+[12:18:56] her thread=3184 price=58 final=True round=4
+[12:18:56] walk thread=3184 price=58 reservation=25
+[12:18:56] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:18:57 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:18:58 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:18:59] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:00] open_refused item=CHA-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:00] stop code=persona_quota
+[12:19:01] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:01 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:03 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:04] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:04] open_refused item=MAL-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:04] stop code=persona_quota
+[12:19:05] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:05 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:06 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:07] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:08] open_refused item=MAL-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:08] stop code=persona_quota
+[12:19:08] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:08 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:15 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:16] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:17] open_refused item=CHA-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:17] stop code=persona_quota
+[12:19:17] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:17 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:19 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:19] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:20] open_refused item=CHA-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:20] stop code=persona_quota
+[12:19:20] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:21 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:22 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:23] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:23] open_refused item=MAL-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:23] stop code=persona_quota
+[12:19:24] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:25 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:26 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:27] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:28] open_refused item=MAL-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:28] stop code=persona_quota
+[12:19:28] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:36 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:37 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:38] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:38] open_refused item=CHA-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:38] stop code=persona_quota
+[12:19:39] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:42 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:43 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:45] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:46] open_refused item=CHA-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:46] stop code=persona_quota
+[12:19:46] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:47 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:48 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:49] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:50] open_refused item=MAL-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:50] stop code=persona_quota
+[12:19:50] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:51 EXIT 0 neg 86.5 -> 86.5
+{'score': 32.98, 'rank': 5, 'negotiating': 24.84, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.14, 'duel_points': 27.94} cash 288
+12:19:52 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:53] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:53] open_refused item=MAL-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:53] stop code=persona_quota
+[12:19:53] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=32.98 rank=5
+12:19:54 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:19:56 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:19:57] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:19:57] open_refused item=CHA-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:19:57] stop code=persona_quota
+[12:19:58] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:19:58 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:19:59 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:20:00] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:20:01] open_refused item=CHA-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:20:01] stop code=persona_quota
+[12:20:01] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:20:02 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:20:03 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:20:04] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:20:05] open_refused item=MAL-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:20:05] stop code=persona_quota
+[12:20:05] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:20:06 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:20:07 START --only MAL-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  MAL-10  limit=  25.0 private=  49.0 ladder=49  Noche de Movida
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids MAL-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:20:08] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-10', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:20:08] open_refused item=MAL-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:20:08] stop code=persona_quota
+[12:20:08] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:20:08 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:20:11 START --only CHA-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-09  limit=  25.0 private=  35.0 ladder=35  Museo Sorolla
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:20:12] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-09', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:20:13] open_refused item=CHA-09 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:20:13] stop code=persona_quota
+[12:20:14] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:20:14 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:20:16 START --only CHA-10 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=86.5
+Team 3 cash=288 level=5 deals=44
+  buy  CHA-10  limit=  25.0 private=  35.0 ladder=35  Casa de las Flores
+reserve=40 (spendable 248 P) anchor=8 step=1 cap=25.0
+  bids CHA-10: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:20:16] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'CHA-10', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=288 level=5 deals=44 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'CHA-10', 'asset_id': None, 'value': 25.0, 'private': 35.0, 'ladder_value': 35, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:20:17] open_refused item=CHA-10 side=buy code=persona_quota msg=at most 10 conversations per hour with picaros until_tick=None
+[12:20:17] stop code=persona_quota
+[12:20:17] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=33.0 rank=5
+12:20:18 EXIT 0 neg 86.5 -> 86.5
+{'score': 33.0, 'rank': 5, 'negotiating': 24.85, 'neg_points': 86.5, 'ladder_points': 0.315, 'market': 8.15, 'duel_points': 27.94} cash 288
+12:20:19 QUEUE B DONE

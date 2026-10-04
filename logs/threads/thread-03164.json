@@ -1,0 +1,135 @@
+{
+ "id": 3164,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "CHA-10"
+  }
+ },
+ "status": "closed",
+ "created_tick": 2163,
+ "messages": [
+  {
+   "id": 16320,
+   "tick": 2164,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 8 P.",
+   "offer": {
+    "id": 25248,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3164,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-10"
+     ]
+    },
+    "expires_tick": 2172,
+    "created_tick": 2164,
+    "final": false
+   }
+  },
+  {
+   "id": 16319,
+   "tick": 2164,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco here, Nando there — come, come, no time to waste! Look at this beauty: Casa de las Flores, foil edges, warm like summer. Last one in the case, and the train leaves soon. For you, because your face is lucky: seventy-three. Say yes before Nando changes his mind!",
+   "offer": {
+    "id": 25247,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3164,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-10"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2172,
+    "created_tick": 2164,
+    "final": false
+   }
+  },
+  {
+   "id": 16325,
+   "tick": 2165,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 65 P. They stopped printing this one yesterday.",
+   "offer": {
+    "id": 25254,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3164,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-10"
+     ]
+    },
+    "want": {
+     "cash": 65,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2173,
+    "created_tick": 2165,
+    "final": false
+   }
+  },
+  {
+   "id": 16326,
+   "tick": 2165,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 9 P.",
+   "offer": {
+    "id": 25255,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3164,
+    "status": "cancelled",
+    "give": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-10"
+     ]
+    },
+    "expires_tick": 2173,
+    "created_tick": 2165,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Casa de las Flores",
+ "closed_reason": null
+}

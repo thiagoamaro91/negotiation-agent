@@ -1,0 +1,222 @@
+{
+ "id": 3150,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "CHA-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 2159,
+ "messages": [
+  {
+   "id": 16278,
+   "tick": 2160,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 8 P.",
+   "offer": {
+    "id": 25211,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-09"
+     ]
+    },
+    "expires_tick": 2168,
+    "created_tick": 2160,
+    "final": false
+   }
+  },
+  {
+   "id": 16276,
+   "tick": 2160,
+   "sender": "picaros",
+   "text": "\"¡Amigo! Come, come, don't be shy—Paco, show him the good one!\" \"The Museo Sorolla, hermano, look at that light, that gold!\" \"A collector in Valencia wept over this card, truly.\" \"Seventy-three pesetas, for you only, today only—\" \"—because we like your face!\"",
+   "offer": {
+    "id": 25209,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-07"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2168,
+    "created_tick": 2160,
+    "final": false
+   }
+  },
+  {
+   "id": 16289,
+   "tick": 2161,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 63 P.",
+   "offer": {
+    "id": 25220,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-09"
+     ]
+    },
+    "want": {
+     "cash": 63,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2169,
+    "created_tick": 2161,
+    "final": false
+   }
+  },
+  {
+   "id": 16295,
+   "tick": 2161,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 9 P.",
+   "offer": {
+    "id": 25226,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-09"
+     ]
+    },
+    "expires_tick": 2169,
+    "created_tick": 2161,
+    "final": false
+   }
+  },
+  {
+   "id": 16307,
+   "tick": 2162,
+   "sender": "t03",
+   "text": "Fair is fair. 10 P, paid on the spot.",
+   "offer": {
+    "id": 25234,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-09"
+     ]
+    },
+    "expires_tick": 2170,
+    "created_tick": 2162,
+    "final": false
+   }
+  },
+  {
+   "id": 16304,
+   "tick": 2162,
+   "sender": "picaros",
+   "text": "\"¡Nueve! Nando, did you hear? Nine!\" \"He wounds us, hermano, right here.\" \"Look, amigo, a man in Sevilla paid double and kissed our hands—\" \"—but we like you, so: fifty-seven pesetas. Final-ish.\" \"The train leaves soon, eh? Decide fast, Sorolla waits for nobody.\"",
+   "offer": {
+    "id": 25231,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-09"
+     ]
+    },
+    "want": {
+     "cash": 57,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2170,
+    "created_tick": 2162,
+    "final": false
+   }
+  },
+  {
+   "id": 16311,
+   "tick": 2163,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 52 P. Last offer, amigo! Then we are gone, eh?",
+   "offer": {
+    "id": 25239,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3150,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:CHA-08"
+     ]
+    },
+    "want": {
+     "cash": 52,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2171,
+    "created_tick": 2163,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Museo Sorolla",
+ "closed_reason": null
+}

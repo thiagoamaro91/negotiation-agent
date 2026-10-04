@@ -92,3 +92,6 @@
 {"ts": "2026-10-04T12:11:22", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "say", "thread": 3114, "price": 6, "her": 10}
 {"ts": "2026-10-04T12:11:37", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "her", "thread": 3114, "price": 9, "final": false, "round": 4}
 {"ts": "2026-10-04T12:11:37", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "say", "thread": 3114, "price": 7, "her": 9}
+{"ts": "2026-10-04T12:11:52", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "say", "thread": 3114, "price": 8, "her": 9}
+{"ts": "2026-10-04T12:12:10", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "walk", "thread": 3114, "price": 9, "reservation": 8.0}
+{"ts": "2026-10-04T12:12:12", "run": "20261004-121036-f6d4", "agent": "abuela", "event": "run_end", "cash": 288, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 44, "ladder_points": 0.315, "score": 31.88, "rank": 5}

@@ -107,3 +107,9 @@ reserve=40 (spendable 235 P) cap=8.0
 [12:11:22] say thread=3114 price=6 her=10
 [12:11:37] her thread=3114 price=9 final=False round=4
 [12:11:37] say thread=3114 price=7 her=9
+[12:11:52] say thread=3114 price=8 her=9
+[12:12:10] walk thread=3114 price=9 reservation=8.0
+[12:12:12] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=31.88 rank=5
+12:12:12 EXIT 0 agent/abuela.py run --only RET-02 --cap 8 --reserve 40 --max-deals 1 --until 13:55
+SCORE 31.88 neg 76.5 ladder 0.315 negotiating 23.78 rank 5
+12:12:14 QUEUE A DONE
