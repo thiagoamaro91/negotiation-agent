@@ -1,0 +1,396 @@
+{
+ "id": 3095,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-09"
+  }
+ },
+ "status": "deal",
+ "created_tick": 2136,
+ "messages": [
+  {
+   "id": 16096,
+   "tick": 2137,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 40 P.",
+   "offer": {
+    "id": 25010,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 40,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2145,
+    "created_tick": 2137,
+    "final": false
+   }
+  },
+  {
+   "id": 16094,
+   "tick": 2137,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Come, come, don't be shy — Paco, show him the case!\n\n— El Ángel Caído, hermano! Look at that foil, pure fire.\n\n— Last one in the whole province, we swear on our mother.\n\n— Seventy-three pesos and he flies home with you. Only while we're parked here!",
+   "offer": {
+    "id": 25008,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2145,
+    "created_tick": 2137,
+    "final": false
+   }
+  },
+  {
+   "id": 16098,
+   "tick": 2138,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 67 P. Quick, quick, we leave in one minute!",
+   "offer": {
+    "id": 25017,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 67,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2146,
+    "created_tick": 2138,
+    "final": false
+   }
+  },
+  {
+   "id": 16100,
+   "tick": 2138,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 41 P.",
+   "offer": {
+    "id": 25020,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 41,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2146,
+    "created_tick": 2138,
+    "final": false
+   }
+  },
+  {
+   "id": 16108,
+   "tick": 2139,
+   "sender": "t03",
+   "text": "Fair is fair. 42 P, paid on the spot.",
+   "offer": {
+    "id": 25033,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 42,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2147,
+    "created_tick": 2139,
+    "final": false
+   }
+  },
+  {
+   "id": 16106,
+   "tick": 2139,
+   "sender": "picaros",
+   "text": "¡Ay, hermano, one peso? That's not moving, that's breathing!\n\n— Paco, close the case... no, wait, wait. Look at his honest face.\n\n— Sixty-three pesos, amigo. Our mother would weep, but she loves a quick sale.\n\n— Van's running, the motor's hot. Say sí and El Ángel is yours.",
+   "offer": {
+    "id": 25031,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-07"
+     ]
+    },
+    "want": {
+     "cash": 63,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2147,
+    "created_tick": 2139,
+    "final": false
+   }
+  },
+  {
+   "id": 16110,
+   "tick": 2140,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 60 P.",
+   "offer": {
+    "id": 25039,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 60,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2148,
+    "created_tick": 2140,
+    "final": false
+   }
+  },
+  {
+   "id": 16115,
+   "tick": 2140,
+   "sender": "t03",
+   "text": "One more step from me: 43 P.",
+   "offer": {
+    "id": 25044,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 43,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2148,
+    "created_tick": 2140,
+    "final": false
+   }
+  },
+  {
+   "id": 16122,
+   "tick": 2141,
+   "sender": "t03",
+   "text": "No theatre. 44 P.",
+   "offer": {
+    "id": 25052,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 44,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2149,
+    "created_tick": 2141,
+    "final": false
+   }
+  },
+  {
+   "id": 16117,
+   "tick": 2141,
+   "sender": "picaros",
+   "text": "¡Hermano, listen! Two minutes ago another crew waved us down, offered way more than you're saying — and we said no, because we like your face!\n\n— Fifty-eight pesos, amigo. Final music, the motor's singing.\n\n— Say sí now and El Ángel flies home with you. ¡Vámonos!",
+   "offer": {
+    "id": 25047,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 58,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2149,
+    "created_tick": 2141,
+    "final": false
+   }
+  },
+  {
+   "id": 16126,
+   "tick": 2142,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 55 P.",
+   "offer": {
+    "id": 25059,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 55,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2150,
+    "created_tick": 2142,
+    "final": false
+   }
+  },
+  {
+   "id": 16130,
+   "tick": 2142,
+   "sender": "t03",
+   "text": "I am still here and still serious: 45 P.",
+   "offer": {
+    "id": 25063,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3095,
+    "status": "cancelled",
+    "give": {
+     "cash": 45,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 2150,
+    "created_tick": 2142,
+    "final": false
+   }
+  },
+  {
+   "id": 16136,
+   "tick": 2143,
+   "sender": "picaros",
+   "text": "— Paco, shut the case. Amigo, listen: fifty-five pesos. That's the last word out of these two mouths.\n\n— No more dancing, no more music. Say sí and El Ángel is yours; say no and we drive off, and you watch the dust.\n\n¿Qué dices?",
+   "offer": {
+    "id": 25067,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3095,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 55,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2151,
+    "created_tick": 2143,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Ángel Caído",
+ "closed_reason": null
+}

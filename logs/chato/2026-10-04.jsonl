@@ -1,0 +1,10 @@
+{"ts": "2026-10-04T12:10:08", "run": "20261004-121007-f9f5", "agent": "chato", "event": "run_start", "operator": "thiago", "argv": ["run", "--reserve", "40", "--max-deals", "1", "--max-wait-ticks", "20", "--until", "13:50", "--dealer", "chato", "--only", "sell:1192", "--floor", "11", "--max-rounds", "12"], "cash": 352, "level": 5, "deals": 41, "reserve": 40, "cap": null, "plan": [{"side": "sell", "item": "LAT-07", "asset_id": 1192, "value": 11, "private": 6.9, "ladder_value": null, "ladder_floor": 7}], "dealer": "chato", "allow_single": false, "sell_anchor": null, "sell_step": 2, "floor": 11}
+{"ts": "2026-10-04T12:10:08", "run": "20261004-121007-f9f5", "agent": "chato", "event": "open", "thread": 3108, "side": "sell", "item": "LAT-07", "value": 11, "private": 6.9, "ladder_floor": 7}
+{"ts": "2026-10-04T12:10:19", "run": "20261004-121007-f9f5", "agent": "chato", "event": "her", "thread": 3108, "price": 13, "final": false, "round": 1}
+{"ts": "2026-10-04T12:10:20", "run": "20261004-121007-f9f5", "agent": "chato", "event": "say", "thread": 3108, "price": 21, "her": 13}
+{"ts": "2026-10-04T12:10:35", "run": "20261004-121007-f9f5", "agent": "chato", "event": "say", "thread": 3108, "price": 19, "her": 13}
+{"ts": "2026-10-04T12:10:51", "run": "20261004-121007-f9f5", "agent": "chato", "event": "say", "thread": 3108, "price": 17, "her": 13}
+{"ts": "2026-10-04T12:11:08", "run": "20261004-121007-f9f5", "agent": "chato", "event": "say", "thread": 3108, "price": 15, "her": 13}
+{"ts": "2026-10-04T12:11:22", "run": "20261004-121007-f9f5", "agent": "chato", "event": "accept", "thread": 3108, "price": 13, "why": "crossed", "ours": 15, "round": 5}
+{"ts": "2026-10-04T12:11:36", "run": "20261004-121007-f9f5", "agent": "chato", "event": "result", "thread": 3108, "status": "deal", "price": 13, "reason": null}
+{"ts": "2026-10-04T12:11:36", "run": "20261004-121007-f9f5", "agent": "chato", "event": "run_end", "cash": 288, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 44, "ladder_points": 0.315, "score": 31.88, "rank": 5}

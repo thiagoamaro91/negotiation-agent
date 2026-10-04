@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 355,
+ "cash": 288,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -252,7 +252,7 @@
    "set": "LAV",
    "print_run": 30,
    "name": "Fiesta de San Cayetano",
-   "your_value": 28.0
+   "your_value": 218.0
   },
   {
    "id": 491,
@@ -274,7 +274,7 @@
    "set": "LAT",
    "print_run": 90,
    "name": "Vermut del Domingo",
-   "your_value": 6.9
+   "your_value": 100.4
   },
   {
    "id": 525,
@@ -431,17 +431,6 @@
    "your_value": 4.0
   },
   {
-   "id": 1192,
-   "kind": "card",
-   "ref": "LAT-07",
-   "serial": 19,
-   "rarity": "uncommon",
-   "set": "LAT",
-   "print_run": 90,
-   "name": "Vermut del Domingo",
-   "your_value": 6.9
-  },
-  {
    "id": 1193,
    "kind": "card",
    "ref": "MAL-06",
@@ -451,17 +440,6 @@
    "print_run": 90,
    "name": "Tienda de Discos",
    "your_value": 17.5
-  },
-  {
-   "id": 1194,
-   "kind": "card",
-   "ref": "LAV-10",
-   "serial": 13,
-   "rarity": "rare",
-   "set": "LAV",
-   "print_run": 30,
-   "name": "Fiesta de San Cayetano",
-   "your_value": 28.0
   },
   {
    "id": 1206,
@@ -484,9 +462,42 @@
    "print_run": 30,
    "name": "Museo Lázaro Galdiano",
    "your_value": 177.1
+  },
+  {
+   "id": 1349,
+   "kind": "card",
+   "ref": "RET-10",
+   "serial": 15,
+   "rarity": "rare",
+   "set": "RET",
+   "print_run": 30,
+   "name": "Monumento a Alfonso XII",
+   "your_value": 63.0
+  },
+  {
+   "id": 1351,
+   "kind": "card",
+   "ref": "RET-09",
+   "serial": 16,
+   "rarity": "rare",
+   "set": "RET",
+   "print_run": 30,
+   "name": "El Ángel Caído",
+   "your_value": 63.0
+  },
+  {
+   "id": 1353,
+   "kind": "card",
+   "ref": "RET-08",
+   "serial": 21,
+   "rarity": "uncommon",
+   "set": "RET",
+   "print_run": 90,
+   "name": "Palacio de Velázquez",
+   "your_value": 22.5
   }
  ],
- "collection_value": 1731.9,
+ "collection_value": 1845.5,
  "album": {
   "pages": [
    {
@@ -524,7 +535,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 3,
+    "have": 6,
     "of": 10,
     "complete": false,
     "master": false
@@ -538,26 +549,26 @@
     "master": false
    }
   ],
-  "filled": 37,
+  "filled": 40,
   "slots": 60
  },
- "tick": 2101,
+ "tick": 2151,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 30.5,
-  "negotiating": 22.5,
-  "market": 8.01,
-  "neg_points": 56.5,
+  "score": 31.88,
+  "negotiating": 23.78,
+  "market": 8.11,
+  "neg_points": 76.5,
   "mm_points": 0.0,
   "duel_points": 27.94,
-  "ladder_points": 0.165,
+  "ladder_points": 0.315,
   "bench_efficiency": 0.895,
   "bench_points": 0.5,
   "bench_venue": "v20",
   "level": 5,
-  "album_filled": 37,
+  "album_filled": 40,
   "album_slots": 60,
   "pages_complete": 3,
   "rarest": {
@@ -568,7 +579,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 39,
+  "deals": 44,
   "badges": [
    "Sharp ear"
   ],

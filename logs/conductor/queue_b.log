@@ -1,0 +1,49 @@
+12:08:21 START --only RET-09 --cap 61 --anchor 40 --step 1 --max-rounds 40 neg=76.5
+Team 3 cash=302 level=5 deals=40
+  buy  RET-09  limit=  61.0 private=  63.0 ladder=63  El Ángel Caído
+reserve=40 (spendable 262 P) anchor=40 step=1 cap=61.0
+  bids RET-09: 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 (then take his offer once it is <= 61)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:08:22] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'RET-09', '--cap', '61', '--anchor', '40', '--step', '1', '--max-rounds', '40'] cash=302 level=5 deals=40 reserve=40 cap=61.0 plan=[{'side': 'buy', 'item': 'RET-09', 'asset_id': None, 'value': 61.0, 'private': 63.0, 'ladder_value': 63, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:08:23] open thread=3095 side=buy item=RET-09 value=61.0 private=63.0 ladder_value=63
+[12:08:33] her thread=3095 price=73 final=False round=1
+[12:08:34] say thread=3095 price=40 her=73
+[12:08:49] her thread=3095 price=67 final=False round=2
+[12:08:49] say thread=3095 price=41 her=67
+[12:09:06] mismatch thread=3095 offer={'id': 25031, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3095, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:RET-07']}, 'want': {'cash': 63, 'assets': [], 'types': []}, 'expires_tick': 2147, 'created_tick': 2139, 'final': False}
+[12:09:06] flag_skipped offer=25031 why=message not found
+[12:09:06] her thread=3095 price=63 final=False round=3
+[12:09:07] say thread=3095 price=42 her=63 switched=True
+[12:09:21] her thread=3095 price=60 final=False round=4
+[12:09:22] say thread=3095 price=43 her=60
+[12:09:34] her thread=3095 price=58 final=False round=5
+[12:09:34] say thread=3095 price=44 her=58
+[12:09:49] her thread=3095 price=55 final=False round=6
+[12:09:50] say thread=3095 price=45 her=55
+[12:10:05] accept thread=3095 price=55 why=final ours=45 round=7
+[12:10:20] result thread=3095 status=deal price=55 reason=None
+[12:10:20] run_end cash=297 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=42 ladder_points=0.298 score=31.88 rank=5
+12:10:21 EXIT 0 neg 76.5 -> 76.5
+{'score': 31.88, 'rank': 5, 'negotiating': 23.78, 'neg_points': 76.5, 'ladder_points': 0.298, 'market': 8.11, 'duel_points': 27.94} cash 297
+12:10:22 START --only MAL-09 --cap 25 --anchor 8 --step 1 --max-rounds 14 neg=76.5
+Team 3 cash=297 level=5 deals=42
+  buy  MAL-09  limit=  25.0 private=  49.0 ladder=49  La Heroína del Dos de Mayo
+reserve=40 (spendable 257 P) anchor=8 step=1 cap=25.0
+  bids MAL-09: 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 (then take his offer once it is <= 25)
+dealer=picaros (Los Pícaros) buys= first ask=max(1.6 x her bid, floor + 0) sell_step=1 allow_single=False
+[12:10:23] run_start operator=thiago argv=['run', '--dealer', 'picaros', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--only', 'MAL-09', '--cap', '25', '--anchor', '8', '--step', '1', '--max-rounds', '14'] cash=297 level=5 deals=42 reserve=40 cap=25.0 plan=[{'side': 'buy', 'item': 'MAL-09', 'asset_id': None, 'value': 25.0, 'private': 49.0, 'ladder_value': 49, 'ladder_floor': None}] dealer=picaros allow_single=False sell_anchor=None sell_step=1 floor=None
+[12:10:24] open thread=3110 side=buy item=MAL-09 value=25.0 private=49.0 ladder_value=49
+[12:10:35] her thread=3110 price=73 final=False round=1
+[12:10:35] say thread=3110 price=8 her=73
+[12:10:50] her thread=3110 price=64 final=False round=2
+[12:10:51] say thread=3110 price=9 her=64
+[12:11:07] mismatch thread=3110 offer={'id': 25101, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3110, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-07']}, 'want': {'cash': 59, 'assets': [], 'types': []}, 'expires_tick': 2155, 'created_tick': 2147, 'final': False}
+[12:11:07] flag_skipped offer=25101 why=message not found
+[12:11:07] her thread=3110 price=59 final=False round=3
+[12:11:08] say thread=3110 price=10 her=59 switched=True
+[12:11:20] her thread=3110 price=54 final=False round=4
+[12:11:20] say thread=3110 price=11 her=54
+[12:11:38] mismatch thread=3110 offer={'id': 25130, 'maker': 'picaros', 'to': 't03', 'venue': None, 'thread': 3110, 'status': 'open', 'give': {'cash': 0, 'assets': [], 'types': ['card:MAL-06']}, 'want': {'cash': 50, 'assets': [], 'types': []}, 'expires_tick': 2157, 'created_tick': 2149, 'final': False}
+[12:11:38] flag_skipped offer=25130 why=message not found
+[12:11:38] her thread=3110 price=50 final=False round=5
+[12:11:38] say thread=3110 price=12 her=50 switched=True

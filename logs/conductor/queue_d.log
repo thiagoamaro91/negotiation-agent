@@ -1,0 +1,39 @@
+12:08:50 START --dealer pilar --only sell:1194 --floor 50 --sell-anchor 80 --max-rounds 40
+Team 3 cash=302 level=5 deals=40
+  sell LAV-10  limit=  50.0 private=  28.0 ladder_floor=28  Fiesta de San Cayetano  asset=1194
+reserve=40 (spendable 262 P) anchor=0.4 x her ask step=1 cap=None
+dealer=pilar (Doña Pilar) buys=uncommon,rare,epic first ask=80 sell_step=1 allow_single=False
+  asks LAV-10 (asset 1194) if she bids 16: 80 79 78 77 76 75 74 73 72 71 70 69 68 67 66 65 64 63 62 61 60 59 58 57 56 55 54 53 52 51 50 (then her final; take it if >= 50)
+[12:08:51] run_start operator=thiago argv=['run', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--dealer', 'pilar', '--only', 'sell:1194', '--floor', '50', '--sell-anchor', '80', '--max-rounds', '40'] cash=302 level=5 deals=40 reserve=40 cap=None plan=[{'side': 'sell', 'item': 'LAV-10', 'asset_id': 1194, 'value': 50, 'private': 28.0, 'ladder_value': None, 'ladder_floor': 28}] dealer=pilar allow_single=False sell_anchor=80 sell_step=1 floor=50
+[12:08:52] open thread=3096 side=sell item=LAV-10 value=50 private=28.0 ladder_floor=28
+[12:09:07] her thread=3096 price=47 final=False round=1
+[12:09:07] say thread=3096 price=80 her=47
+[12:09:19] her thread=3096 price=48 final=False round=2
+[12:09:20] say thread=3096 price=79 her=48
+[12:09:34] her thread=3096 price=49 final=False round=3
+[12:09:35] say thread=3096 price=78 her=49
+[12:09:49] her thread=3096 price=50 final=True round=4
+[12:09:50] accept thread=3096 price=50 why=final ours=78 round=4
+[12:10:05] result thread=3096 status=deal price=50 reason=None
+[12:10:05] run_end cash=352 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=41 ladder_points=0.256 score=31.88 rank=5
+12:10:05 EXIT 0
+{'score': 31.88, 'rank': 5, 'negotiating': 23.78, 'neg_points': 76.5, 'ladder_points': 0.256, 'market': 8.11, 'duel_points': 27.94} cash 352
+12:10:07 START --dealer chato --only sell:1192 --floor 11 --max-rounds 12
+Team 3 cash=352 level=5 deals=41
+  sell LAT-07  limit=  11.0 private=   6.9 ladder_floor=7  Vermut del Domingo  asset=1192
+reserve=40 (spendable 312 P) anchor=0.4 x her ask step=1 cap=None
+dealer=chato (El Chato) buys=uncommon,rare first ask=max(1.6 x her bid, floor + 0) sell_step=2 allow_single=False
+  asks LAT-07 (asset 1192) if she bids 13: 21 19 17 15 13 (she crosses: deal at 13)
+[12:10:08] run_start operator=thiago argv=['run', '--reserve', '40', '--max-deals', '1', '--max-wait-ticks', '20', '--until', '13:50', '--dealer', 'chato', '--only', 'sell:1192', '--floor', '11', '--max-rounds', '12'] cash=352 level=5 deals=41 reserve=40 cap=None plan=[{'side': 'sell', 'item': 'LAT-07', 'asset_id': 1192, 'value': 11, 'private': 6.9, 'ladder_value': None, 'ladder_floor': 7}] dealer=chato allow_single=False sell_anchor=None sell_step=2 floor=11
+[12:10:08] open thread=3108 side=sell item=LAT-07 value=11 private=6.9 ladder_floor=7
+[12:10:19] her thread=3108 price=13 final=False round=1
+[12:10:20] say thread=3108 price=21 her=13
+[12:10:35] say thread=3108 price=19 her=13
+[12:10:51] say thread=3108 price=17 her=13
+[12:11:08] say thread=3108 price=15 her=13
+[12:11:22] accept thread=3108 price=13 why=crossed ours=15 round=5
+[12:11:36] result thread=3108 status=deal price=13 reason=None
+[12:11:36] run_end cash=288 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=44 ladder_points=0.315 score=31.88 rank=5
+12:11:36 EXIT 0
+{'score': 31.88, 'rank': 5, 'negotiating': 23.78, 'neg_points': 76.5, 'ladder_points': 0.315, 'market': 8.11, 'duel_points': 27.94} cash 288
+12:11:37 QUEUE D DONE

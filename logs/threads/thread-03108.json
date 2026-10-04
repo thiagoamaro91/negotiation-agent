@@ -1,0 +1,354 @@
+{
+ "id": 3108,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1192
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 2143,
+ "messages": [
+  {
+   "id": 16141,
+   "tick": 2144,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 21 P.",
+   "offer": {
+    "id": 25076,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2152,
+    "created_tick": 2144,
+    "final": false
+   }
+  },
+  {
+   "id": 16140,
+   "tick": 2144,
+   "sender": "chato",
+   "text": "You again. Fine. Vermut del Domingo, thirteen. Good card, better than you'll find down that row. Take it or walk.",
+   "offer": {
+    "id": 25075,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2152,
+    "created_tick": 2144,
+    "final": false
+   }
+  },
+  {
+   "id": 16144,
+   "tick": 2145,
+   "sender": "chato",
+   "text": "13 P.",
+   "offer": {
+    "id": 25081,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2153,
+    "created_tick": 2145,
+    "final": false
+   }
+  },
+  {
+   "id": 16148,
+   "tick": 2145,
+   "sender": "t03",
+   "text": "I move, you move. 19 P.",
+   "offer": {
+    "id": 25085,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 19,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2153,
+    "created_tick": 2145,
+    "final": false
+   }
+  },
+  {
+   "id": 16159,
+   "tick": 2146,
+   "sender": "t03",
+   "text": "Coming down: 17 P.",
+   "offer": {
+    "id": 25094,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2154,
+    "created_tick": 2146,
+    "final": false
+   }
+  },
+  {
+   "id": 16153,
+   "tick": 2146,
+   "sender": "chato",
+   "text": "You moved two. I already moved. Thirteen. Still thirteen. Vermut del Domingo doesn't get cheaper while people keep buying it.",
+   "offer": {
+    "id": 25088,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2154,
+    "created_tick": 2146,
+    "final": false
+   }
+  },
+  {
+   "id": 16169,
+   "tick": 2147,
+   "sender": "chato",
+   "text": "You move, I move. 13 P.",
+   "offer": {
+    "id": 25100,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2155,
+    "created_tick": 2147,
+    "final": false
+   }
+  },
+  {
+   "id": 16177,
+   "tick": 2147,
+   "sender": "t03",
+   "text": "Fair is fair. 15 P.",
+   "offer": {
+    "id": 25109,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3108,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2155,
+    "created_tick": 2147,
+    "final": false
+   }
+  },
+  {
+   "id": 16184,
+   "tick": 2148,
+   "sender": "chato",
+   "text": "Fifteen isn't fair, it's just closer. Thirteen. Card's still selling. I don't chase.",
+   "offer": {
+    "id": 25117,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3108,
+    "status": "settled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1192,
+       "kind": "card",
+       "ref": "LAT-07",
+       "serial": 19,
+       "rarity": "uncommon",
+       "set": "LAT",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2156,
+    "created_tick": 2148,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Vermut del Domingo",
+ "closed_reason": null
+}
