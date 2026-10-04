@@ -979,8 +979,12 @@ class Round3Dealers(Sandbox):
         frag = json.loads(self.FRAGMENT.read_text())
         procs = {p["name"]: p for p in f.load_config(f.CONFIG)["processes"]}
         for name in ("abuela", "chato", "pilar", "picaros"):
-            ours = [(s["label"], s.get("enabled", True), s.get("after_event"), s["cmd"]) for s in procs[name]["steps"]]
-            theirs = [(s["label"], s.get("enabled", True), s.get("after_event"), s["cmd"]) for s in frag[name]["steps"]]
+            # a step the operator switched off in the live config says why (disabled_note): its enabled flag may differ
+            off = {s["label"] for s in procs[name]["steps"] if s.get("disabled_note")}
+            ours = [(s["label"], None if s["label"] in off else s.get("enabled", True), s.get("after_event"), s["cmd"])
+                    for s in procs[name]["steps"]]
+            theirs = [(s["label"], None if s["label"] in off else s.get("enabled", True), s.get("after_event"), s["cmd"])
+                      for s in frag[name]["steps"]]
             self.assertEqual(ours, theirs, name)
         self.assertEqual(procs["chato"]["exclude"], frag["chato"]["exclude"])
         self.assertEqual(procs["picaros"]["match"], frag["picaros"]["match"])
@@ -1037,9 +1041,9 @@ class KeylessHelpers(unittest.TestCase):
         self.assertEqual(announce.MATCHES.relative_to(announce.ROOT), written)
         self.assertEqual(outreach.MATCHES.relative_to(outreach.ROOT), written)
         self.assertEqual(a["gates"], {"doors_open": True, "clock_running": True})
-        self.assertIs(o.get("enabled"), False)                          # a human flips it after the 09:05 test thread
+        self.assertIs(o.get("enabled"), True)                           # flipped on Sunday 09:32: the T18/SAL-11 test settled
         self.assertEqual(o["cmd"][2:5], ["tools/outreach.py", "run", "--yes"])
-        self.assertLessEqual(int(o["cmd"][o["cmd"].index("--max-teams") + 1]), 3)
+        self.assertLessEqual(int(o["cmd"][o["cmd"].index("--max-teams") + 1]), 6)   # a pair takes two slots
         self.assertEqual(o["gates"], {"doors_open": True, "clock_running": True})
 
     EXCLUDE = ["--exclude-from", "logs/state/me_live.json,logs/state/me.json", "--exclude-max-age-min", "90"]
