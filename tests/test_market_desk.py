@@ -426,14 +426,18 @@ class DeskLoop(unittest.TestCase):
         d, k = self.desk("run", [listing(1, "SAL-05", 5)], [card(1, "LAV-07")])
         d.tick(d.public.clock())
         accepts = [w for w in k.writes if w[0] == "accept"]
-        lists = [w for w in k.writes if w[0] == "list"]
         self.assertEqual(accepts, [("accept", 1, None)])
+        self.assertEqual([w for w in k.writes if w[0] == "list"], [])   # bids wait for a snapshot after the accept
+        self.assertEqual(self.lease.snapshot()["accept"]["desk"], "market")
+        d.public.board_offers = []
+        d.public.tick = k.tick = 101
+        d.tick(d.public.clock())
+        lists = [w for w in k.writes if w[0] == "list"]
         self.assertEqual(len(lists), 3)                           # bid_max
         for _, give, want, venue, to, exp in lists:
             self.assertEqual(set(give), {"cash"})
             self.assertEqual(list(want), ["cards"])
             self.assertEqual((venue, to, exp), ("rastro", None, 30))
-        self.assertEqual(self.lease.snapshot()["accept"]["desk"], "market")
 
     def test_run_leaves_dealer_thread_offers_alone_and_cancels_duplicate_bids(self):
         # live 2026-10-03: chato.py's offer in its El Chato thread (venue None) was read as our LAV-09 bid and cancelled

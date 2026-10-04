@@ -38,6 +38,12 @@ What it does each tick (module docstring step 8):
      posted. Every other buy keeps 110 P of cash and of hourly and daily spend room free for SAL-10 while we lack it.
    - A replacement that fails after its cancel keeps the step clock: the next tick re-posts at the stepped price.
    - Only a well-formed rival bid (cash only, for SAL-10 alone) moves our first price.
+   - Fail closed: every open or queued cash offer of ours (any agent's, from `/api/me/offers`) holds cash and
+     spend room until its cancel or settlement shows. A tick whose reads crossed a tick boundary, or without the
+     feed, sends cancels only. The clock, cash, our SAL-10 count and our settling offers are read again right
+     before each accept and each batch of posts. No bid planned before an accept attempt is posted that tick, and a
+     failed cancel holds every post. Page writes wait for every live duel; `--duel-guard-ticks` relaxes only
+     ordinary accepts.
    - It is cancelled when SAL-10 arrives or when we take an ask for it. `main()` refuses a page cap above
      `--cap-hour` / `--cap-day` (the defaults 100 / 250 would have blocked every buy above 100 P).
 4. Every decision goes to `logs/market/<date>.jsonl` with `"page": true`, value, ceiling, anchor, price and gain

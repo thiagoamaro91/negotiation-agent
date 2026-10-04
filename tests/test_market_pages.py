@@ -257,8 +257,10 @@ class PageDeskRun(unittest.TestCase):
     def desk(self, **kw):
         assets = [a for lst in SAL9.values() for a in lst]
         keyed = base.FakeKeyed([], assets)
-        keyed.value = lambda ref: {"card": ref, "your_value": 177.1 if ref == "SAL-10" else 0}
-        cfg = pcfg(page_targets={"SAL-10": {"cap": 110, "floor": 72}}, **kw)
+        off = md.Valuer(CAT, AFFINITY, {})
+        keyed.value = lambda ref: {"card": ref, "your_value": 177.1 if ref == "SAL-10" else off.offline_more(ref)}
+        kw.setdefault("page_targets", {"SAL-10": {"cap": 110, "floor": 72}})
+        cfg = pcfg(**kw)
         d = md.Desk("run", cfg, base.FakePublic([]), keyed=keyed, lease=self.lease, log=base.MemLog(),
                     heartbeat=self.dir / "desk-market.json", out=self.lines.append)
         return d, keyed
@@ -350,7 +352,8 @@ class ReviewRun(unittest.TestCase):
     def desk(self, board=(), offers=(), **kw):
         d, k = PageDeskRun.desk(self, **kw)
         d.public.board_offers = k.board_offers = list(board)
-        k.my_offers = lambda: {"offers": [dict(o) for o in offers]}
+        # /api/me/offers as the server keeps it: an offer we cancelled is gone
+        k.my_offers = lambda: {"offers": [dict(o) for o in offers if ("cancel", o["id"]) not in k.writes]}
         return d, k
 
     def quota(self, n):
@@ -367,15 +370,19 @@ class ReviewRun(unittest.TestCase):
 
     def test_blocker1_no_accept_while_a_duplicate_bid_stays_live(self):
         # bids #55 and #56 on SAL-10, an ask at 90, quota for one cancel: #55 goes, #56 cannot, so no accept
-        d, k = self.desk([listing(1, "SAL-10", 90)], [our_bid(55, "SAL-10", 80), our_bid(56, "SAL-10", 80)])
+        # room for the ask (96) and both bids (160), which stay held until their cancels show
+        d, k = self.desk([listing(1, "SAL-10", 90)], [our_bid(55, "SAL-10", 80), our_bid(56, "SAL-10", 80)],
+                         cap_hour=300, cap_day=300)
         self.quota(1)
         d.tick(d.public.clock())
         self.assertEqual(self.accepts(k), [])
         self.assertEqual([w[1] for w in k.writes if w[0] == "cancel"], [55])
-        self.assertTrue([r for r in d.log.rows if r["event"] == "skip_accept" and "56" in r["why"]])
+        self.assertTrue([r for r in d.log.rows if r["event"] == "skip_accept"])
 
     def test_blocker1_every_bid_on_the_card_is_cancelled_before_the_accept(self):
-        d, k = self.desk([listing(1, "SAL-10", 90)], [our_bid(55, "SAL-10", 80), our_bid(56, "SAL-10", 80)])
+        # room for the ask (96) and both bids (160), which stay held until their cancels show
+        d, k = self.desk([listing(1, "SAL-10", 90)], [our_bid(55, "SAL-10", 80), our_bid(56, "SAL-10", 80)],
+                         cap_hour=300, cap_day=300)
         d.tick(d.public.clock())
         self.assertEqual(k.writes[-1], ("accept", 1, None))
         self.assertEqual(sorted(w[1] for w in k.writes if w[0] == "cancel"), [55, 56])
@@ -506,6 +513,197 @@ class ReviewDecide(unittest.TestCase):
         self.assertEqual(rr["action"], "cancel")
         for k in ("value", "ceiling", "anchor", "gain"):
             self.assertIsNotNone(rr.get(k), k)
+
+
+# ---------------------------------------------------------------- review round 2 of PR #70 (head 3360ad3)
+
+class Review2Run(unittest.TestCase):
+    """The reviewer's fixtures against the desk loop, with the Sunday flags (--no-bids, page SAL-10:110:80, min cash
+    40, caps 150 / 250)."""
+    setUp = base.DeskLoop.setUp
+    tearDown = base.DeskLoop.tearDown
+
+    def desk(self, board=(), offers=(), **kw):
+        kw.setdefault("page_targets", {"SAL-10": {"cap": 110, "floor": 80}})
+        kw.setdefault("cap_day", 250)
+        return ReviewRun.desk(self, board, offers, **kw)
+
+    def lists(self, k):
+        return [w for w in k.writes if w[0] == "list"]
+
+    def accepts(self, k):
+        return [w for w in k.writes if w[0] == "accept"]
+
+    def test_b1_a_snapshot_that_spans_ticks_writes_nothing(self):
+        # /api/me at tick 100 says SAL-10 is missing; our bid settles at 101 before /api/me/offers answers
+        for board in ([], [listing(1, "SAL-10", 90)]):
+            d, k = self.desk(board)
+
+            def offers():
+                d.public.tick = k.tick = 101
+                return {"offers": []}
+            k.my_offers = offers
+            d.tick(d.public.clock())
+            self.assertEqual((self.lists(k), self.accepts(k)), ([], []), board)
+            self.assertTrue([r for r in d.log.rows if r["event"] == "snapshot_spans_ticks"])
+
+    def test_b1_inventory_rechecked_right_before_the_accept(self):
+        d, k = self.desk([listing(1, "SAL-10", 90)])
+        me, calls = k.me, {"n": 0}
+
+        def me_then_owned():   # 1: the tick's snapshot, 2: take()'s fresh one, 3: the check before the accept
+            calls["n"] += 1
+            body = me()
+            if calls["n"] >= 3:
+                body = {**body, "assets": body["assets"] + [card(999, "SAL-10")]}
+            return body
+        k.me = me_then_owned
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [])
+        self.assertTrue([r for r in d.log.rows if r["event"] == "skip_accept" and "SAL-10 count" in r["why"]])
+
+    def test_b1_cash_rechecked_right_before_a_bid_post(self):
+        d, k = self.desk()
+        me, calls = k.me, {"n": 0}
+
+        def me_then_spent():   # 1: the snapshot, 2: the check before the post (a bid of ours filled meanwhile)
+            calls["n"] += 1
+            return me() if calls["n"] == 1 else {**me(), "cash": 920}
+        k.me = me_then_spent
+        d.tick(d.public.clock())
+        self.assertEqual(self.lists(k), [])
+        self.assertTrue([r for r in d.log.rows if r["event"] == "posts_deferred" and "cash" in r["why"]])
+
+    def test_b3_no_bid_planned_before_the_accept_is_posted(self):
+        # plan: MAL-09 at 30 (+3) and the SAL-10 bid at 80; take()'s fresh read shows an 80 P maker fill
+        d, k = self.desk([listing(1, "MAL-09", 30)], cap_hour=300, cap_day=300)
+        fill = {"id": 1, "tick": 100, "type": "settlement", "payload": {
+            "settlement": 9, "kind": "trade", "parties": ["t03", "t07"], "venue": "rastro", "fee": 5, "price": 80,
+            "items": [{"id": 5, "kind": "card", "ref": "LAV-10", "frm": "t07", "to": "t03"}]}}
+        calls = {"n": 0}
+
+        def feed(limit=500):
+            calls["n"] += 1
+            return {"events": [] if calls["n"] == 1 else [fill]}
+        d.public.feed = feed
+        d.tick(d.public.clock())
+        self.assertEqual(self.lists(k), [])
+        self.assertTrue([r for r in d.log.rows if r["event"] == "posts_deferred"])
+
+    def test_b4_page_writes_wait_for_every_live_duel(self):
+        # tick 100, a live duel ending at 110, --duel-guard-ticks 1, no local lock
+        d, k = self.desk([listing(1, "SAL-10", 90)], duel_guard_ticks=1)
+        k.duel_list = [{"duel": 30, "status": "live", "deadline_tick": 110}]
+        res = d.tick(d.public.clock())
+        self.assertEqual((self.lists(k), self.accepts(k)), ([], []))
+        self.assertEqual(rec(res, 1)["action"], "defer")
+        self.assertIn("duel 30", rec(res, 1)["reason"])
+        d, k = self.desk([listing(1, "MAL-09", 30)], duel_guard_ticks=1)   # an ordinary accept: the window applies
+        k.duel_list = [{"duel": 30, "status": "live", "deadline_tick": 110}]
+        d.tick(d.public.clock())
+        self.assertEqual(self.accepts(k), [("accept", 1, None)])
+
+    def test_b4_the_post_time_recheck_ignores_the_window_too(self):
+        d, k = self.desk(duel_guard_ticks=1)
+        calls = {"n": 0}
+
+        def duels(done=False):   # quiet at planning, a duel 10 ticks from its end at the post
+            calls["n"] += 1
+            return {"duels": [] if calls["n"] == 1 else [{"duel": 31, "status": "live", "deadline_tick": 110}]}
+        k.duels = duels
+        d.tick(d.public.clock())
+        self.assertEqual(self.lists(k), [])
+
+    def test_b3_lock_fresh_only_at_the_post(self):
+        d, k = self.desk()
+        reads = {"n": 0}
+
+        def lock():           # 1: the snapshot, 2: before the cancels, 3: right before the post
+            reads["n"] += 1
+            return reads["n"] >= 3
+        d.duel_lock_fresh = lock
+        d.tick(d.public.clock())
+        self.assertEqual(self.lists(k), [])
+        self.assertTrue([r for r in d.log.rows if r["event"] == "page_hold" and r["when"] == "at the post"])
+
+    def test_m5_feed_down_no_cash_write(self):
+        for board in ([], [listing(1, "SAL-10", 90)]):
+            d, k = self.desk(board)
+
+            def down(limit=500):
+                raise md.BazaarError("network", "down", 0)
+            d.public.feed = down
+            d.tick(d.public.clock())
+            self.assertEqual((self.lists(k), self.accepts(k)), ([], []), board)
+            self.assertTrue([r for r in d.log.rows if r["event"] == "feed_down"])
+
+    def test_b2_a_failed_cancel_blocks_every_post(self):
+        # ordinary bids on: the cancel of a LAV-09 bid fails; no other bid (SAL-10 or any card) goes up this tick
+        d, k = self.desk(offers=[our_bid(70, "LAV-09", 999)], bids=True, bid_max=3, cap_hour=10 ** 4,
+                         cap_day=10 ** 4)
+
+        def cancel(oid):
+            raise md.BazaarError("rate_limited", "slow down", 429)
+        k.cancel = cancel
+        d.tick(d.public.clock())
+        self.assertEqual(self.lists(k), [])
+
+
+class Review2Decide(unittest.TestCase):
+    def test_b2_other_open_bids_hold_spend_room_under_no_bids(self):
+        # --no-bids: an 80 P LAV-10 bid of ours is open; SAL-10 at 80 would make 160 P in the hour (cap 150)
+        cfg = pcfg(page_targets={"SAL-10": {"cap": 110, "floor": 80}})
+        r = run(config=cfg, mine=[our_bid(70, "LAV-10", 80)])
+        self.assertEqual(page(r)[0]["action"], "skip")
+        self.assertIn("room 70", page(r)[0]["record"]["reason"])
+        r = run(config=cfg, mine=[our_bid(70, "LAV-10", 80, status="queued")])   # settling: still held
+        self.assertEqual(page(r)[0]["action"], "skip")
+        self.assertEqual(page(run(config=cfg))[0]["action"], "post")
+
+    def test_b2_daily_exposure(self):
+        # 100 P spent earlier today (outside the hour) + an open 80 P bid + 80 P = 260 > 250
+        led = md.Ledger([{"side": "buy", "t_hours": 0.2, "cost": 100, "partner": "t09"}])
+        cfg = pcfg(page_targets={"SAL-10": {"cap": 110, "floor": 80}}, cap_day=250)
+        r = run(config=cfg, ledger=led, mine=[our_bid(70, "LAV-10", 80)])
+        self.assertEqual(page(r)[0]["action"], "skip")
+        self.assertIn("room 70", page(r)[0]["record"]["reason"])
+
+    def test_b2_other_buys_count_our_open_bids(self):
+        # MAL-09 at 30 (+3) with the 110 page reserve and an open 20 P bid: 33 + 110 + 20 > 150
+        r = run({"rastro": [listing(1, "MAL-09", 30)]}, mine=[our_bid(70, "LAV-05", 20)])
+        self.assertIsNone(r["accept"])
+        r = run({"rastro": [listing(1, "MAL-09", 30)]})
+        self.assertEqual(r["accept"]["card"], "MAL-09")
+
+    def test_b2_cash_reservations(self):
+        cfg = pcfg(page_targets={"SAL-10": {"cap": 110, "floor": 80}}, cap_hour=10 ** 4, cap_day=10 ** 4)
+        # page bid: cash 190 - min 40 - an open 80 P bid = 70 < 80
+        self.assertEqual(page(run(config=cfg, cash=190, mine=[our_bid(70, "LAV-10", 80)]))[0]["action"], "skip")
+        self.assertEqual(page(run(config=cfg, cash=190))[0]["action"], "post")
+        # other buys: cash 200 - the 110 page reserve - an open 20 P bid - 33 = 37 < 40
+        r = run({"rastro": [listing(1, "MAL-09", 30)]}, config=cfg, cash=200, mine=[our_bid(70, "LAV-05", 20)])
+        self.assertIsNone(r["accept"])
+        self.assertIn("cash after 37 < min 40", rec(r, 1)["reason"])
+        r = run({"rastro": [listing(1, "MAL-09", 30)]}, config=cfg, cash=180)      # 180 - 110 - 33 = 37
+        self.assertIsNone(r["accept"])
+        self.assertEqual(run({"rastro": [listing(1, "MAL-09", 30)]}, config=cfg, cash=200)["accept"]["card"], "MAL-09")
+
+    def test_b4_planning_holds_page_bids_for_any_live_duel(self):
+        r = run(tape=sal10_tape(), duel_live=None)
+        self.assertEqual(page(r)[0]["action"], "post")
+        s = snap({}, SAL9)
+        s.update(duel_live=None, duel_any="duel_live: duel 30 is live, deadline tick 110")
+        valuer = md.Valuer(CAT, AFFINITY, {r: 1 for r in SAL9}, page_bonus=True)
+        r = md.decide(s, valuer, sal10_tape(), md.Ledger(), pcfg(), {}, {})
+        self.assertEqual(page(r)[0]["action"], "skip")
+        self.assertIn("duel 30", page(r)[0]["record"]["reason"])
+
+    def test_m6_held_page_card_ask_records_carry_the_page_numbers(self):
+        r = run({"rastro": [listing(1, "SAL-10", 90)]}, holdings={**SAL9, "SAL-10": [card(5, "SAL-10")]},
+                bidbook=live(80))
+        rr = rec(r, 1)
+        self.assertIn("we hold", rr["reason"])
+        self.assertEqual((rr.get("page"), rr.get("cap"), rr.get("ceiling"), rr.get("anchor")), (True, 110, 110, 80))
 
 
 if __name__ == "__main__":
