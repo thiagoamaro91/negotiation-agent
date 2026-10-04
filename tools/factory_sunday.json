@@ -226,6 +226,50 @@
       "note": "Page mode: SAL-10 from a team, El Rastro only, bid 80 -> 110 over 64 ticks (docs/plans/pages-sunday.md). Needs PR #70 on main (the --page flags). FALLBACK if `grep -c 'add_argument(\"--page\",' agent/market_desk.py` prints 0 at 08:00 (the desk would crash-loop on unknown flags): replace this cmd with `python3 agent/market_desk.py run --no-team-venues --no-bids --min-cash 40 --until 15:05` (plain buys only, no page bid; as a list: [\"{python}\", \"-u\", \"agent/market_desk.py\", \"run\", \"--no-team-venues\", \"--no-bids\", \"--min-cash\", \"40\", \"--until\", \"{until}\"]) or set enabled to false. Starts at 09:00, not after the allowance: cash 253 covers the 110 cap, the dealers get +150 at 10:40. No other bids (--no-bids). Every Chato and Picaros SAL-10 step stays off: a second copy is worth 22.75."
     },
     {
+      "name": "matchmaker",
+      "kind": "service",
+      "required": false,
+      "gates": {"doors_open": false, "clock_running": false},
+      "cmd": ["{python}", "-u", "tools/matchmaker.py", "json", "--live", "--out", "logs/matchmaker/latest.json", "--every", "120"],
+      "match": ["tools/matchmaker.py", "json"],
+      "log": "logs/matchmaker/latest.json",
+      "stale_ticks": null,
+      "note": "Keyless writer (public GETs only; it respects the Market Test silence itself): who needs which card, rebuilt every 2 min, from 08:55 so the board is ready when the doors open. The announcer and outreach read logs/matchmaker/latest.json and refuse it when it is older than 15 min; the log column of `status` is that file's age."
+    },
+    {
+      "name": "announce",
+      "kind": "service",
+      "required": false,
+      "gates": {"doors_open": true, "clock_running": true},
+      "cmd": ["{python}", "-u", "tools/announce.py", "run", "--yes", "--variant", "missing", "--every-min", "12", "--count", "40"],
+      "match": ["tools/announce.py", "run"],
+      "log": "logs/announce/{date}.jsonl",
+      "stale_ticks": null,
+      "note": "KEYED (broker key from ~/.bazaar/broker.env): one missing-card match per public post every 12 min, from the matchmaker's file, each offer re-read in its book right before the post. It carries its own Market Test silence gate (#64) and posts nothing without a fresh file or a match. Keyless dry run: python3 tools/announce.py plan --variant missing."
+    },
+    {
+      "name": "outreach",
+      "kind": "service",
+      "enabled": false,
+      "required": false,
+      "gates": {"doors_open": true, "clock_running": true},
+      "cmd": ["{python}", "-u", "tools/outreach.py", "run", "--yes", "--max-teams", "3"],
+      "match": ["tools/outreach.py", "run"],
+      "log": "logs/outreach/{date}.jsonl",
+      "stale_ticks": null,
+      "note": "OFF until a human flips it, after the 09:05 test thread (python3 tools/outreach.py run --yes --max-teams 1) shows that a team lists, accepts or trades the named card within 40 ticks (logs/outreach/<date>.jsonl names team and card). KEYED. Each run opens one thread at a time, sends one message, closes it, at most one thread per team per day and never within 2 ticks of a Market Test silence; as a service it runs again after each exit, so only new teams are messaged."
+    },
+    {
+      "name": "logs_push",
+      "kind": "service",
+      "required": false,
+      "gates": {"doors_open": false, "clock_running": false},
+      "cmd": ["{python}", "-u", "tools/logs_push.py", "--every", "600"],
+      "match": ["tools/logs_push.py", "--every"],
+      "stale_ticks": null,
+      "note": "Keyless, never calls the game: mirrors logs/ into the worktree .logs-push on branch mini/logs and pushes it every 10 min (the VM analyst reads that branch). Never touches main. One line per cycle in its window: pushed <sha> <n files>, nothing new, or push failed: <reason> (the loop goes on; see docs/plans/sunday-preflight.md)."
+    },
+    {
       "name": "watchdog",
       "kind": "service",
       "required": false,

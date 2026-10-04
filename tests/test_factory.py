@@ -415,7 +415,7 @@ class ReviewPauseGate(Sandbox):
         cfg = f.load_config(f.CONFIG)
         paused = clock(t_hours=18.6, paused=True)
         for p in cfg["processes"]:
-            if p["name"] in ("feed", "watchdog"):
+            if p["name"] in ("feed", "watchdog", "logs_push", "matchmaker"):   # keyless, no key, no gate by design
                 continue
             self.assertFalse(f.check_gates(f.gates_for(p), paused, [], None, SUN_0900)[0], p["name"])
 
@@ -675,6 +675,55 @@ class Round3Dealers(Sandbox):
                 FakeChild(log=log, writes=[{"event": "run_start", "plan": []}, {"event": "run_end"}])]
         rc, st = self.keep(self.config(DEALER), "abuela", [clock()], kids, sleeps=10)
         self.assertEqual((rc, st["state"], st["done_steps"]), (0, "done", ["a", "b"]))
+
+
+class KeylessHelpers(unittest.TestCase):
+    """The two helper services that never touch the key: the matchmaker feed and the logs push."""
+
+    def procs(self):
+        return {p["name"]: p for p in f.load_config(f.CONFIG)["processes"]}
+
+    def test_the_matchmaker_feeds_the_file_outreach_reads_often_enough(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+        import outreach
+        cmd = self.procs()["matchmaker"]["cmd"]
+        self.assertEqual(cmd[cmd.index("--out") + 1], str(outreach.MATCHES.relative_to(outreach.ROOT)))
+        self.assertLessEqual(float(cmd[cmd.index("--every") + 1]), outreach.MATCHES_MAX_AGE_S / 4)    # never stale for outreach
+        self.assertIn("--live", cmd)
+        # the board must exist when the doors open: no gate, started with the factory at 08:55
+        self.assertEqual(self.procs()["matchmaker"]["gates"], {"doors_open": False, "clock_running": False})
+
+    def test_the_announcer_posts_from_the_matchmaker_file_and_outreach_waits_for_a_human(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+        import announce
+        import outreach
+        procs = self.procs()
+        a, o = procs["announce"], procs["outreach"]
+        cmd = a["cmd"]
+        self.assertEqual(cmd[2:4], ["tools/announce.py", "run"])
+        self.assertIn("--yes", cmd)                                     # the only keyed bot that posts on the public feed
+        self.assertEqual(cmd[cmd.index("--variant") + 1], "missing")
+        self.assertEqual(cmd[cmd.index("--every-min") + 1], "12")
+        self.assertEqual(cmd[cmd.index("--count") + 1], "40")
+        self.assertNotIn("--matches", cmd)                              # so it reads its default: the file the matchmaker writes
+        mm = procs["matchmaker"]["cmd"]
+        written = Path(mm[mm.index("--out") + 1])
+        self.assertEqual(announce.MATCHES.relative_to(announce.ROOT), written)
+        self.assertEqual(outreach.MATCHES.relative_to(outreach.ROOT), written)
+        self.assertEqual(a["gates"], {"doors_open": True, "clock_running": True})
+        self.assertIs(o.get("enabled"), False)                          # a human flips it after the 09:05 test thread
+        self.assertEqual(o["cmd"][2:5], ["tools/outreach.py", "run", "--yes"])
+        self.assertLessEqual(int(o["cmd"][o["cmd"].index("--max-teams") + 1]), 3)
+        self.assertEqual(o["gates"], {"doors_open": True, "clock_running": True})
+
+    def test_the_logs_push_is_a_loop_without_a_gate_and_never_the_one_shot(self):
+        p = self.procs()["logs_push"]
+        self.assertIsNot(p.get("enabled"), False)
+        self.assertEqual(p["cmd"][2], "tools/logs_push.py")
+        self.assertEqual(p["cmd"][p["cmd"].index("--every") + 1], "600")
+        self.assertNotIn("--once", p["cmd"])
+        self.assertEqual(p["gates"], {"doors_open": False, "clock_running": False})
+        self.assertFalse(f.ps_pids(["  61 python3 tools/logs_push.py --once"], p["match"]))     # a hand-run check is not "outside"
 
 
 class Round3Matching(unittest.TestCase):

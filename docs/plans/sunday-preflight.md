@@ -1,6 +1,6 @@
 # Sunday pre-flight: 08:40 on the Mac Mini
 
-Ten checks, one line each (check 1 also pulls when behind), then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+Twelve checks, one line each (check 1 also pulls when behind), then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/factory_sunday.json` (the line is in the handoff, section "What needs you"). Without it the watchdog still prints problems in its tmux window but sends nothing to your phone.
 
@@ -31,11 +31,11 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
 7. **No hand-started bot.** Expect no `ps` line, and no `bazaar` session or running `factory` window in `tmux ls`. Kill what shows (`tmux kill-session -t bazaar`, `kill <pid>`), Saturday's feed recorder included: the factory starts its own.
    ```bash
-   ps -axo pid=,args= | grep -E 'agent/(broker|duel|abuela|chato|rastro_seller|market_desk)\.py|feed_recorder|announce\.py|broker_loop|_gate\.sh' | grep -v grep; tmux ls
+   ps -axo pid=,args= | grep -E 'agent/(broker|duel|abuela|chato|rastro_seller|market_desk)\.py|tools/(logs_push|matchmaker|announce|outreach)\.py|feed_recorder|broker_loop|_gate\.sh' | grep -v grep; tmux ls
    ```
 8. **The bus board has no foreign claim on a factory name.** Expect no output. Saturday's `broker` and `duel` rows on `mini` are yours; `up` takes them over.
    ```bash
-   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
+   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|matchmaker|announce|logs_push|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
    ```
 9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40).
    ```bash
@@ -46,17 +46,27 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    T=$(grep '^DASH_TOKEN=' ~/bazaar-dashboard/.env | cut -d= -f2); curl -s -o /dev/null -w '%{http_code}\n' "$(cat ~/bazaar-dashboard/tunnel.url)/?t=$T"
    ```
 
+11. **The logs push works** (08:45). Expect `pushed <sha> <n> files` the first time, `nothing new` after, and one `refs/heads/mini/logs` line from `ls-remote`. This creates the worktree `~/bazaar/.logs-push`; the factory's `logs_push` service reuses it from 08:55 and pushes every 10 minutes. The tool is keyless, never touches `main`, and a failed push does not stop it.
+   ```bash
+   cd ~/bazaar && python3 tools/logs_push.py --once && git ls-remote origin mini/logs
+   ```
+   If it prints `push failed` (credentials, network): fix the git credentials if you can in two minutes; otherwise fall back to a manual push every 15 minutes, `cd ~/bazaar && git add logs && git commit -m "logs: $(date +%H:%M)" && git pull --rebase && git push`, and tell the VM analyst (bus post or by hand) that the logs are on `main`, not on `mini/logs`.
+
+12. **The matchmaker board is sane** (08:50). Expect a first number above 5 (lines), `0`, and `[]`: a board with tiers 1 to 4, no Team 3 row, none of the cards we lack. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
+   ```bash
+   cd ~/bazaar && python3 tools/matchmaker.py report --live > /tmp/mm.txt; wc -l < /tmp/mm.txt; grep -c -E '\| Team 3 \|' /tmp/mm.txt; python3 -c "import re,sys; sys.path.insert(0,'tools'); import announce; t=open('/tmp/mm.txt').read(); print(sorted(c for c in announce.MISSING if re.search(r'\b'+c+r'\b', t)))"
+   ```
+
 The team key sits in `~/bazaar/.env` and the bots read it themselves; the factory never passes a key to a bot. The dashboard's duel and broker panels read the folder named by `BROKER_ROOT` in `~/bazaar-dashboard/.env`; for the factory's bots it must be `~/bazaar` (`grep '^BROKER_ROOT=' ~/bazaar-dashboard/.env`), otherwise those panels stay empty.
 
-## If a pull request did not land by 08:00
+## If a pull request is not on `main` by 08:00
 
 - **#70 (desk page mode).** `grep -c 'add_argument("--page",' agent/market_desk.py` must print `1`. If it prints `0`, the desk's page flags are unknown and it would crash-loop. In `tools/factory_sunday.json`, replace `market_desk.cmd` with the fallback below, or set `"enabled": false` to keep the cash for the dealers. SAL-10 then waits for the 13:30 decision.
   ```bash
   python3 agent/market_desk.py run --no-team-venues --no-bids --min-cash 40 --until 15:05
   ```
   As a `cmd` list: `["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--no-bids", "--min-cash", "40", "--until", "{until}"]` (plain buys only, no page bid).
-- **#72 (duel params).** Check 2 prints `MISSING input file docs/duel-lab/duel-params-duels3.json`. Set `duel.params` in the config to `docs/duel-lab/duel-params-duels2-final.json` (Duels II's set). Never copy one params file over another.
-- **#67 (matchmaker), #64 (announce fix).** Nothing in the factory depends on them: skip the 09:05 test thread and keep `tools/announce.py` off.
+- **#72 (duel params), merged.** If check 2 still prints `MISSING input file docs/duel-lab/duel-params-duels3.json`, the Mini has not pulled: pull (check 1). Only if the file is truly absent from `origin/main`, set `duel.params` in the config to `docs/duel-lab/duel-params-duels2-final.json` (Duels II's set). Never copy one params file over another.
 
 ## 08:55: start
 
@@ -69,7 +79,8 @@ Starting before 09:00 is safe: every gate waits for open doors and a running clo
 ```
 started feed        started broker      started duel
 started abuela      skip    chato: no enabled step left to run today      started pilar      started picaros
-off     rastro_seller: ...              started market_desk                     started watchdog
+off     rastro_seller: ...              started market_desk      started matchmaker
+started announce    off     outreach: ...   started logs_push   started watchdog
 ```
 
 Any `REFUSE` line names its reason. `already running outside the factory`: stop that pid and run `up --yes` again. `missing input file ...`: the duel params file is not on this checkout, pull again. `cannot read the bus board`: GitHub is down; say so in the team chat, then `up --yes --no-bus`.
@@ -84,6 +95,10 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 | abuela, picaros, pilar | `WAITING`, `waiting for grant_all at 16.717 h` (Abuela), `16.733 h` (Pícaros), `16.967 h` (Pilar's first resale) |
 | chato | `DONE` (every step off: nothing a dealer sells is inside our value but SAL-10, and that comes from a team) |
 | market_desk | `RUNNING` (page mode, SAL-10); its log line carries `"page": true` once it bids |
+| matchmaker | `RUNNING` (log is `logs/matchmaker/latest.json`, rebuilt every 2 minutes) |
+| announce | `WAITING` until 09:00, then `RUNNING`; its log `logs/announce/<date>.jsonl` shows `named` events once it posts (nothing without a match) |
+| outreach | `off` until a human flips it after the 09:05 test thread |
+| logs_push | `RUNNING`; its window (`tmux attach -t factory`) prints `pushed ...` or `nothing new` every 10 minutes |
 | rastro_seller | `off` |
 | watchdog | `RUNNING` |
 | last line | `ok` (no `PROBLEM` lines) |
@@ -105,6 +120,17 @@ EOF
 
 `1.0`: use `plan`'s wall times. `2.0`: use the organisers' table in the handoff; `plan`'s wall column is then twice too far. The bots are not affected, they gate on game hours. At 09:05 also check that the leaderboard still shows Saturday's round as the active one until Round 3 starts.
 
+## What the VM analyst does at each trigger
+
+The analyst (PR #71) reads the pushed logs, writes `logs/analyst/LATEST.md` on its own branch, opens a PR per proposal and posts five lines on the bus (issue #25). Applying anything is a human on the Mini: merge, pull, restart one bot. A duel-params candidate replaces the incumbent only if it wins by more than 2 SE on test without losing a gate; the two best of the overnight search fail the D-1 stress, so expect "incumbent stays". Known accept race: a rival replaces its offer between our decision and our POST (`accept_mismatch` in the duel log).
+
+| Trigger | Analyst command | What it may lead to |
+|---|---|---|
+| a Market Test ends | `bench` | the stall stays unless `ours` wins by more than 2 SE; a restart only between tests |
+| Duels III complete (about 12:35, 68 of 68) | `duels --session 3 --matrix` | Final params only by PR plus a human restart of the duel window before 14:00 |
+| each dealer step ends | `ladder` | nothing unless a slot is missing |
+| every hour | `score` | nothing |
+
 ## Alerts and the one action for each
 
 The watchdog window sends one message when its set of problems changes, and "all clear again" when it clears.
@@ -124,6 +150,7 @@ The watchdog window sends one message when its set of problems changes, and "all
 | `broker dropped N matches in Market Test bXX` | read the `why` of the last `dropped` line in `logs/broker/<date>.jsonl` and post it on the bus; a restart does not fix a policy bug |
 | `broker has no match in Market Test bXX after N ticks` | look at the broker window for `refused` or `send_error`; post it on the bus |
 | `rate_limited` in a dealer log (`logs/<dealer>/<date>.jsonl`) | four dealer bots and the desk share the key's 5 requests per second: stagger the steps (raise `after_event.delay_min` of the later ones in `tools/factory_sunday.json`; a keeper re-reads it before its next start) |
+| `push failed: ...` in the `logs_push` window (the watchdog does not see it) | the loop retries every 10 minutes and the commit stays local; read the reason (credentials, network). Still failing after 09:30: the manual fallback of check 11 |
 | `clock unreachable` | `curl -s https://bazaar.causaprima.ai/api/clock`; the keepers wait on their own |
 
 Open the two held packs between dealer steps and before 10:39, never while a step runs. Nothing changes during a duel wave or a Market Test: no restart, no edit, no hand-started bot. Restart one bot between them with `tmux kill-window -t factory:<name>` and `up --yes`. After 15:00: `tmux kill-session -t factory`.
