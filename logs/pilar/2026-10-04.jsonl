@@ -2,3 +2,25 @@
 {"ts": "2026-10-04T09:20:09", "run": "20261004-092009-9b81", "agent": "pilar", "event": "run_end", "cash": 403, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 32, "ladder_points": 0.0, "score": 28.14, "rank": 5}
 {"ts": "2026-10-04T09:32:21", "run": "20261004-093221-33a2", "agent": "pilar", "event": "run_start", "operator": "claude-mini", "argv": ["run", "--dealer", "pilar", "--only", "sell:RET-06,sell:RET-07,sell:RET-08", "--allow-single", "--floor", "23", "--sell-anchor", "32", "--sell-step", "1", "--max-deals", "1", "--max-rounds", "40"], "cash": 395, "level": 5, "deals": 33, "reserve": 280, "cap": null, "plan": [], "dealer": "pilar", "allow_single": true, "sell_anchor": 32, "sell_step": 1, "floor": 23}
 {"ts": "2026-10-04T09:32:21", "run": "20261004-093221-33a2", "agent": "pilar", "event": "run_end", "cash": 395, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 33, "ladder_points": 0.018, "score": 27.13, "rank": 5}
+{"ts": "2026-10-04T09:47:29", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "run_start", "operator": "claude-mini", "argv": ["run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10", "--allow-single", "--floor", "64", "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "2", "--max-rounds", "40"], "cash": 166, "level": 5, "deals": 36, "reserve": 280, "cap": null, "plan": [{"side": "sell", "item": "RET-09", "asset_id": 1241, "value": 64, "private": 63.0, "ladder_value": null, "ladder_floor": 63}, {"side": "sell", "item": "RET-10", "asset_id": 1244, "value": 64, "private": 63.0, "ladder_value": null, "ladder_floor": 63}], "dealer": "pilar", "allow_single": true, "sell_anchor": 85, "sell_step": 2, "floor": 64}
+{"ts": "2026-10-04T09:47:30", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "open", "thread": 2394, "side": "sell", "item": "RET-09", "value": 64, "private": 63.0, "ladder_floor": 63}
+{"ts": "2026-10-04T09:47:37", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 61, "final": false, "round": 1}
+{"ts": "2026-10-04T09:47:37", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 85, "her": 61}
+{"ts": "2026-10-04T09:47:54", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 63, "final": false, "round": 2}
+{"ts": "2026-10-04T09:47:55", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 83, "her": 63}
+{"ts": "2026-10-04T09:48:09", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 65, "final": false, "round": 3}
+{"ts": "2026-10-04T09:48:09", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 81, "her": 65}
+{"ts": "2026-10-04T09:48:22", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 67, "final": false, "round": 4}
+{"ts": "2026-10-04T09:48:23", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 79, "her": 67}
+{"ts": "2026-10-04T09:48:37", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 69, "final": false, "round": 5}
+{"ts": "2026-10-04T09:48:37", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 77, "her": 69}
+{"ts": "2026-10-04T09:48:53", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 71, "final": false, "round": 6}
+{"ts": "2026-10-04T09:48:54", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2394, "price": 75, "her": 71}
+{"ts": "2026-10-04T09:49:07", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2394, "price": 73, "final": true, "round": 7}
+{"ts": "2026-10-04T09:49:08", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "accept", "thread": 2394, "price": 73, "why": "final", "ours": 75, "round": 7}
+{"ts": "2026-10-04T09:49:23", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "result", "thread": 2394, "status": "deal", "price": 73, "reason": null}
+{"ts": "2026-10-04T09:49:24", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "open", "thread": 2398, "side": "sell", "item": "RET-10", "value": 64, "private": 63.0, "ladder_floor": 63}
+{"ts": "2026-10-04T09:49:38", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2398, "price": 61, "final": false, "round": 1}
+{"ts": "2026-10-04T09:49:38", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2398, "price": 85, "her": 61}
+{"ts": "2026-10-04T09:49:53", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "her", "thread": 2398, "price": 63, "final": false, "round": 2}
+{"ts": "2026-10-04T09:49:53", "run": "20261004-094729-7bb4", "agent": "pilar", "event": "say", "thread": 2398, "price": 83, "her": 63}

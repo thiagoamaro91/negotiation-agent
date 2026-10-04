@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 395,
+ "cash": 239,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -76,7 +76,7 @@
    "set": "SAL",
    "print_run": 300,
    "name": "Perrito con Abrigo",
-   "your_value": 13.0
+   "your_value": 99.1
   },
   {
    "id": 35,
@@ -142,7 +142,7 @@
    "set": "SAL",
    "print_run": 300,
    "name": "Taxi Blanco",
-   "your_value": 13.0
+   "your_value": 99.1
   },
   {
    "id": 307,
@@ -153,7 +153,7 @@
    "set": "SAL",
    "print_run": 300,
    "name": "El Portero",
-   "your_value": 13.0
+   "your_value": 99.1
   },
   {
    "id": 339,
@@ -208,7 +208,7 @@
    "set": "SAL",
    "print_run": 90,
    "name": "La Galería",
-   "your_value": 32.5
+   "your_value": 118.6
   },
   {
    "id": 396,
@@ -230,7 +230,7 @@
    "set": "SAL",
    "print_run": 90,
    "name": "Mercado de la Paz",
-   "your_value": 32.5
+   "your_value": 118.6
   },
   {
    "id": 476,
@@ -241,7 +241,7 @@
    "set": "SAL",
    "print_run": 90,
    "name": "Guantería Antigua",
-   "your_value": 32.5
+   "your_value": 118.6
   },
   {
    "id": 490,
@@ -296,7 +296,7 @@
    "set": "SAL",
    "print_run": 300,
    "name": "Café en Goya",
-   "your_value": 13.0
+   "your_value": 99.1
   },
   {
    "id": 580,
@@ -318,7 +318,7 @@
    "set": "SAL",
    "print_run": 300,
    "name": "Escaparate de Serrano",
-   "your_value": 13.0
+   "your_value": 99.1
   },
   {
    "id": 617,
@@ -362,7 +362,7 @@
    "set": "SAL",
    "print_run": 30,
    "name": "El Marqués",
-   "your_value": 91.0
+   "your_value": 177.1
   },
   {
    "id": 1187,
@@ -462,9 +462,31 @@
    "print_run": 300,
    "name": "Paseo de Coches",
    "your_value": 9.0
+  },
+  {
+   "id": 1231,
+   "kind": "card",
+   "ref": "SAL-10",
+   "serial": 22,
+   "rarity": "rare",
+   "set": "SAL",
+   "print_run": 30,
+   "name": "Museo Lázaro Galdiano",
+   "your_value": 177.1
+  },
+  {
+   "id": 1244,
+   "kind": "card",
+   "ref": "RET-10",
+   "serial": 12,
+   "rarity": "rare",
+   "set": "RET",
+   "print_run": 30,
+   "name": "Monumento a Alfonso XII",
+   "your_value": 63.0
   }
  ],
- "collection_value": 1537.2,
+ "collection_value": 1777.4,
  "album": {
   "pages": [
    {
@@ -494,15 +516,15 @@
    {
     "set": "SAL",
     "name": "Salamanca",
-    "have": 9,
+    "have": 10,
     "of": 10,
-    "complete": false,
+    "complete": true,
     "master": false
    },
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 3,
+    "have": 4,
     "of": 10,
     "complete": false,
     "master": false
@@ -516,28 +538,28 @@
     "master": false
    }
   ],
-  "filled": 35,
+  "filled": 37,
   "slots": 60
  },
- "tick": 1505,
+ "tick": 1585,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 27.13,
-  "negotiating": 21.59,
-  "market": 5.54,
-  "neg_points": 0.0,
+  "score": 27.92,
+  "negotiating": 22.71,
+  "market": 5.22,
+  "neg_points": 50.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.018,
+  "ladder_points": 0.145,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 5,
-  "album_filled": 35,
+  "album_filled": 37,
   "album_slots": 60,
-  "pages_complete": 2,
+  "pages_complete": 3,
   "rarest": {
    "ref": "LAV-11",
    "name": "La Casa Encendida",
@@ -546,7 +568,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 33,
+  "deals": 37,
   "badges": [
    "Sharp ear"
   ],
@@ -582,6 +604,6 @@
   "opened_tick": 269
  },
  "open_threads": [
-  2215
+  2398
  ]
 }
