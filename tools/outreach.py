@@ -12,9 +12,11 @@ Who gets the message, per match (from the matchmaker's output, read as it is, ne
 
 Thread slots are scarce: a team holds at most 6 open threads and the dealer bots need them on Sunday. So `run` opens
 ONE thread at a time, sends ONE message, and closes it at once (POST /api/threads/{id}/close); before opening it
-reads our open threads (GET /api/me/threads?status=open) and stops unless at least MIN_FREE_SLOTS stay free. At most
-one thread per team per day and never the same match twice (logs/state/outreach.json). Any 4xx stops the run: the
-thread it opened is closed and nothing more is sent. Market Test silence (announce.Gate): no request inside one.
+reads our open threads (GET /api/me/threads?status=open) and opens only if RESERVE_SLOTS stay free once it is open.
+A thread it could not close stops the run and is closed first next time (logs/state/outreach.json "unclosed").
+Before every send: a fresh Market Test status (announce.Gate.known), no silence now or within NEAR_SILENCE_TICKS
+ticks, and the named offer re-read in its venue's current book (announce.still_live). No write at all inside a
+silence, the close included. At most one thread per team per day, never the same match twice. Any refusal stops.
 Replies are never read: the thread is closed before any could arrive, and game text is data anyway.
 
     python3 tools/outreach.py plan                          # keyless: every message it would send, the slot budget
@@ -44,7 +46,8 @@ MATCHES = ROOT / "logs" / "matchmaker" / "latest.json"
 MATCHES_MAX_AGE_S = 900
 STATE = ROOT / "logs" / "state" / "outreach.json"
 MAX_THREADS = 6           # kit/RULES.md: a team holds at most six conversations
-MIN_FREE_SLOTS = 2        # never take the last free slots: the dealer bots open threads too
+RESERVE_SLOTS = 3         # free thread slots left for the dealer bots AFTER our thread is open
+NEAR_SILENCE_TICKS = 2    # no thread is opened within this many ticks of a Market Test silence
 THREAD_VENUE = "rastro"   # the thread is only a message channel; nothing is traded in it
 GAP_S = 20                # run: seconds between two teams (more than one Sunday tick)
 NAME = "Open Bazaar · who needs which card"
@@ -84,13 +87,16 @@ def message(m: dict, to: str) -> str:
                     f"POST /api/offers/{a['offer']}/accept." + tail)
         what = (f"{maker} bids {a['price']} P for {card}" if a.get("side") == "bid"
                 else f"{maker} gives {a.get('gives')} for any {card} (a swap: accept it directly)")
-        return (head + f"{what} on {where}: offer #{a['offer']}{until}. Public trades show you hold a copy. To take it: "
+        held = next((h.get("as_of") for h in m.get("holders") or [] if isinstance(h, dict) and h.get("team") == to), None)
+        seen = (f"Public trades showed you holding a copy at tick {held} (reconstructed, may have changed)."
+                if isinstance(held, int) else "If you hold a copy:")
+        return (head + f"{what} on {where}: offer #{a['offer']}{until}. {seen} To take it: "
                 f"POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}." + tail)
     bid = ((m.get("proposal") or {}).get("buyer") or {}).get("post") or {}
     order = json.dumps({k: v for k, v in bid.items() if k != "expires_in_ticks"})
+    from announce import BROKER_TERMS
     return (head + f"you appear to be missing {card} for the {page} page (inferred from public trades, may be wrong). "
-            f"A bid on La Celestina (v20, 0 % fee), which our broker crosses with any ask for that card at the midpoint "
-            f"the tick they meet: POST /api/offers {order}." + tail)
+            f"A bid on La Celestina (v20, 0 % fee): POST /api/offers {order}; there {BROKER_TERMS}." + tail)
 
 
 def key_of(m: dict) -> str:
@@ -124,6 +130,8 @@ def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=()) -> lis
     for m in (doc or {}).get("matches") or []:
         if not isinstance(m, dict) or not isinstance(m.get("card"), str) or m["card"] in skip:
             continue
+        if len(out) >= max_teams:
+            break
         to = recipient(m)
         if to is None or to in done_teams or to in seen or key_of(m) in done_keys:
             continue
@@ -131,8 +139,6 @@ def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=()) -> lis
             continue
         seen.add(to)
         out.append((to, m, message(m, to)))
-        if len(out) >= max_teams:
-            break
     return out
 
 
@@ -165,17 +171,32 @@ def open_count(client) -> int:
     return len([t for t in rows or [] if isinstance(t, dict) and t.get("status", "open") == "open"])
 
 
+def close_thread_safely(client, tid, log, gate=None) -> bool:
+    """Close one of our threads, never inside a Market Test silence. True when it is closed."""
+    if gate is not None and gate.quiet_end() is not None:
+        log.event("close_deferred", thread=tid, reason="Market Test silence")
+        return False
+    try:
+        client.close_thread(tid)
+        log.event("close", thread=tid)
+        return True
+    except Exception as e:  # noqa: BLE001
+        log.event("close_failed", thread=tid, reason=type(e).__name__)
+        return False
+
+
 def send_one(client, to: str, text: str, venue: str, log, gate=None) -> dict:
-    """Open one thread with `to`, send one message, close it. Returns {"thread", "sent", "closed", "error"}. Any
-    refusal stops here; a thread that was opened is always closed."""
+    """Open one thread with `to`, send one message, close it. Returns {"thread", "sent", "closed", "error"}. It opens
+    only while RESERVE_SLOTS slots stay free once our thread is open. Any refusal stops here; the thread it opened is
+    closed, except inside a Market Test silence (no write then): the caller records it and closes it first next time."""
     from bazaar_sdk import BazaarError
     out = {"thread": None, "sent": False, "closed": False, "error": None}
     try:
         if gate is not None:
             gate.check()
-        free = MAX_THREADS - open_count(client)
-        if free < MIN_FREE_SLOTS + 1:
-            out["error"] = f"only {free} thread slots free: left for the dealer bots"
+        free_after = MAX_THREADS - open_count(client) - 1
+        if free_after < RESERVE_SLOTS:
+            out["error"] = f"{free_after} thread slots would stay free: {RESERVE_SLOTS} are kept for the dealer bots"
             return out
         if gate is not None:
             gate.check()
@@ -195,13 +216,39 @@ def send_one(client, to: str, text: str, venue: str, log, gate=None) -> dict:
         log.event("stopped", to=to, thread=out["thread"], reason=type(e).__name__)
     finally:
         if out["thread"] is not None:
-            try:
-                client.close_thread(out["thread"])
-                out["closed"] = True
-                log.event("close", to=to, thread=out["thread"])
-            except Exception as e:  # noqa: BLE001
-                log.event("close_failed", to=to, thread=out["thread"], reason=type(e).__name__)
+            out["closed"] = close_thread_safely(client, out["thread"], log, gate)
+            if not out["closed"] and not out["error"]:
+                out["error"] = "the thread could not be closed"
     return out
+
+
+def status_fresh(gate) -> bool:
+    """A Market Test status read less than STATUS_MAX_AGE_S ago (announce.Gate.known), refreshed when it is not."""
+    import announce
+    if not gate.known():
+        gate.refresh(announce.get_json)
+    return gate.known()
+
+
+def near_silence(gate, now: float, tick_s: float) -> bool:
+    """A Market Test silence now or starting within NEAR_SILENCE_TICKS ticks."""
+    return any(start - NEAR_SILENCE_TICKS * tick_s <= now < end for start, end in gate.windows)
+
+
+def offer_stands(m: dict, get) -> bool:
+    """The named live offer, re-read in its venue's current book (announce.still_live), or True for a match that names
+    no offer (an inferred need: the message carries a v20 bid, nothing to re-read)."""
+    import announce
+    a = m.get("action")
+    if not isinstance(a, dict):
+        return True
+    try:
+        venue = a.get("venue") or "rastro"
+        book = [dict(o, venue=venue) for o in get(f"{URL}/api/venues/{venue}/offers").get("offers") or []]
+        tick = get(f"{URL}/api/clock").get("tick")
+    except Exception:  # noqa: BLE001
+        return False
+    return announce.still_live(a, m["card"], {venue: book}, tick if isinstance(tick, int) else None)
 
 
 def main(argv=None) -> None:
@@ -229,8 +276,9 @@ def main(argv=None) -> None:
     plan = targets(doc, state, day, max(0, args.max_teams), exclude)
     print(f"{NAME} outreach, matchmaker tick {doc.get('tick')}: {len(plan)} message(s), one thread at a time.")
     print(f"slot budget: {MAX_THREADS} threads per team; each send holds 1 for a few seconds (open, one message, "
-          f"close); run refuses while fewer than {MIN_FREE_SLOTS + 1} are free. Already messaged today: "
-          f"{', '.join((state.get('teams') or {}).get(day, [])) or 'nobody'}.")
+          f"close); run opens only while {RESERVE_SLOTS} stay free for the dealer bots once it is open. Already "
+          f"messaged today: {', '.join((state.get('teams') or {}).get(day, [])) or 'nobody'}. Threads left open by an "
+          f"earlier run: {', '.join(map(str, state.get('unclosed') or [])) or 'none'}.")
     for to, m, text in plan:
         print(f"\n-> {to} (tier {m.get('tier')}, {m.get('card')}, {len(text)} chars)")
         print(f"   POST {URL}/api/threads {json.dumps({'with': to, 'venue': args.venue})}")
@@ -244,15 +292,38 @@ def main(argv=None) -> None:
     log.start(plan=[{"to": to, "card": m.get("card"), "tier": m.get("tier"), "key": key_of(m)} for to, m, _ in plan])
     client = Bazaar(URL, team_key(), timeout=10, wait_on_tick=False, retries=0)
     gate = announce.Gate()
-    if not gate.refresh(announce.get_json) or gate.quiet_end() is not None:
-        log.event("silence", reason="Market Test now or status unknown: nothing sent")
-        log.end(sent=0)
-        return
     sent = 0
+
+    def stop(reason: str) -> None:
+        print(f"stopped: {reason}")
+        log.event("stopped", reason=reason)
+        log.end(sent=sent)
+
+    if not status_fresh(gate) or gate.quiet_end() is not None:
+        return stop("Market Test now or status unknown: nothing sent")
+    for tid in list(state.get("unclosed") or []):   # a thread left open last time is closed before anything else
+        if not close_thread_safely(client, tid, log, gate):
+            return stop(f"thread {tid} from an earlier run is still open: nothing sent")
+        state["unclosed"].remove(tid)
+        save_state(state, Path(args.state))
+    try:
+        tick_s = float(announce.get_json(f"{URL}/api/clock").get("tick_seconds") or 60.0)
+    except Exception:  # noqa: BLE001
+        tick_s = 60.0
     for i, (to, m, text) in enumerate(plan):
         if i:
             time.sleep(GAP_S)
+        if not status_fresh(gate):
+            return stop("Market Test status unknown or stale")
+        if near_silence(gate, time.time(), tick_s):
+            return stop(f"a Market Test silence is on or starts within {NEAR_SILENCE_TICKS} ticks")
+        if not offer_stands(m, announce.get_json):
+            log.event("skipped", to=to, key=key_of(m), reason="the named offer no longer stands as it was")
+            continue
         res = send_one(client, to, text, args.venue, log, gate)
+        if res["thread"] is not None and not res["closed"]:
+            state.setdefault("unclosed", []).append(res["thread"])
+            save_state(state, Path(args.state))
         if res["sent"]:
             sent += 1
             state.setdefault("teams", {}).setdefault(day, []).append(to)

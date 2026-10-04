@@ -120,28 +120,62 @@ class Send(unittest.TestCase):
         self.assertEqual([x[0] for x in c.calls], ["my_threads", "open", "say", "close"])
         self.assertEqual((res["sent"], res["closed"], res["error"]), (False, True, "429 wait_for_tick"))
 
-    def test_the_last_free_slots_stay_for_the_dealer_bots(self):
-        c = FakeClient(open_threads=out.MAX_THREADS - out.MIN_FREE_SLOTS)
+    def test_three_slots_stay_free_for_the_dealer_bots_after_ours_opens(self):
+        c = FakeClient(open_threads=out.MAX_THREADS - out.RESERVE_SLOTS)          # 3 open: ours would leave 2
         res = out.send_one(c, "t05", "hello", "rastro", Log())
         self.assertEqual([x[0] for x in c.calls], ["my_threads"])
-        self.assertIn("slots free", res["error"])
-        c = FakeClient(open_threads=out.MAX_THREADS - out.MIN_FREE_SLOTS - 1)
+        self.assertIn("kept for the dealer bots", res["error"])
+        c = FakeClient(open_threads=out.MAX_THREADS - out.RESERVE_SLOTS - 1)      # 2 open: ours leaves 3
         self.assertTrue(out.send_one(c, "t05", "hello", "rastro", Log())["sent"])
 
-    def test_nothing_is_called_inside_a_market_test_silence(self):
+    def test_a_failed_close_is_an_error(self):
+        c = FakeClient(fail={"close": BazaarError("network", "", 0)})
+        res = out.send_one(c, "t05", "hello", "rastro", Log())
+        self.assertEqual((res["sent"], res["closed"], res["error"]), (True, False, "the thread could not be closed"))
+
+    def test_nothing_is_called_inside_a_market_test_silence_not_even_a_close(self):
         sys.path.insert(0, str(ROOT / "agent"))
         import announce
         gate = announce.Gate(manual=[(0, 10 ** 12)])
         c = FakeClient()
         res = out.send_one(c, "t05", "hello", "rastro", Log(), gate)
         self.assertEqual((c.calls, res["sent"]), ([], False))
+        self.assertFalse(out.close_thread_safely(c, 77, Log(), gate))
+        self.assertEqual(c.calls, [])
+
+
+class FakeGate:
+    def __init__(self, known=True, windows=(), refresh_ok=True):
+        self._known, self.windows, self.refresh_ok, self.refreshes = known, list(windows), refresh_ok, 0
+
+    def refresh(self, get, *a):
+        self.refreshes += 1
+        self._known = self.refresh_ok
+        return self.refresh_ok
+
+    def known(self):
+        return self._known
+
+    def quiet_end(self):
+        return next((e for s, e in self.windows if s <= time.time() < e), None)
+
+    def check(self):
+        if self.quiet_end() is not None:
+            raise RuntimeError("silenced")
 
 
 class Cli(unittest.TestCase):
-    def run_main(self, argv, client=None, gate_ok=True):
+    BOOK = {"rastro": [{"id": 20259, "status": "open", "expires_tick": 1505,
+                        "give": {"cash": 20, "assets": [], "types": []}, "want": {"cash": 0, "assets": [],
+                                                                                  "types": ["card:SAL-06"]}},
+                       {"id": 20218, "status": "open", "expires_tick": 1505,
+                        "give": {"cash": 0, "assets": [{"id": 1, "kind": "card", "ref": "LAT-07"}], "types": []},
+                        "want": {"cash": 30, "assets": [], "types": []}}]}
+
+    def run_main(self, argv, client=None, gate=None, state=None, book=None):
         import announce
-        buf = io.StringIO()
-        logged = []
+        buf, logged = io.StringIO(), []
+        book = self.BOOK if book is None else book
 
         class RL:
             def __init__(self, *_): pass
@@ -149,18 +183,21 @@ class Cli(unittest.TestCase):
             def event(self, e, **d): logged.append((e, d))
             def end(self, **d): logged.append(("end", d))
 
-        class G:
-            def __init__(self, *a, **k): pass
-            def refresh(self, get, *a): return gate_ok
-            def quiet_end(self): return None
-            def check(self): pass
+        def get_json(url):
+            if url.endswith("/api/clock"):
+                return {"tick": 1440, "tick_seconds": 15.0}
+            venue = url.split("/api/venues/")[1].split("/")[0] if "/api/venues/" in url else None
+            return {"offers": book.get(venue, [])}
 
         with tempfile.TemporaryDirectory() as d:
             mpath = Path(d) / "m.json"
             mpath.write_text(json.dumps(dict(DOC, generated_at=time.time())))
             spath = Path(d) / "s.json"
+            if state is not None:
+                spath.write_text(json.dumps(state))
             with contextlib.redirect_stdout(buf), um.patch("runlog.RunLog", RL), \
-                    um.patch.object(announce, "Gate", G), um.patch.object(out.time, "sleep", lambda s: None), \
+                    um.patch.object(announce, "Gate", lambda *a, **k: gate or FakeGate()), \
+                    um.patch.object(announce, "get_json", get_json), um.patch.object(out.time, "sleep", lambda s: None), \
                     um.patch.dict("os.environ", {"BAZAAR_KEY": "tk-AbCd-EfGh"}), \
                     um.patch("bazaar_sdk.Bazaar", lambda *a, **k: client):
                 out.main(argv + ["--matches", str(mpath), "--state", str(spath), "--exclude", ""])
@@ -170,9 +207,15 @@ class Cli(unittest.TestCase):
     def test_plan_is_keyless_and_shows_the_slot_budget(self):
         with um.patch.object(out, "team_key", side_effect=AssertionError("plan read the key")):
             text, logged, state = self.run_main(["plan", "--max-teams", "2"])
-        self.assertIn("slot budget: 6 threads per team", text)
+        self.assertIn("run opens only while 3 stay free for the dealer bots", text)
         self.assertIn('{"with": "t05", "venue": "rastro"}', text)
         self.assertEqual((logged, state), ([], {}))
+
+    def test_max_teams_zero_sends_nothing(self):
+        c = FakeClient()
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "0"], client=c)
+        self.assertEqual((c.calls, state), ([], {}))
+        self.assertEqual(out.targets(DOC, {}, "d", 0), [])
 
     def test_run_needs_yes(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
@@ -185,6 +228,13 @@ class Cli(unittest.TestCase):
         self.assertEqual(state["keys"], ["t09:SAL-06:20259", "t14:LAT-07:20218"])
         self.assertNotIn("tk-AbCd-EfGh", text + json.dumps(logged))
 
+    def test_an_offer_that_no_longer_stands_is_not_sent(self):
+        c = FakeClient()
+        book = {"rastro": [dict(self.BOOK["rastro"][0], give={"cash": 12, "assets": [], "types": []})]}
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "1"], client=c, book=book)
+        self.assertEqual(c.calls, [])
+        self.assertIn("skipped", [e for e, _ in logged])
+
     def test_run_stops_at_the_first_refusal_and_records_nothing_unsent(self):
         c = FakeClient(fail={"open": BazaarError("forbidden", "", 403)})
         text, logged, state = self.run_main(["run", "--yes", "--max-teams", "3"], client=c)
@@ -192,10 +242,49 @@ class Cli(unittest.TestCase):
         self.assertEqual(state, {})
         self.assertIn("stopped: 403 forbidden", text)
 
-    def test_run_sends_nothing_when_the_market_test_status_is_unknown(self):
+    def test_a_thread_that_could_not_be_closed_stops_the_run_and_is_closed_first_next_time(self):
+        c = FakeClient(fail={"close": BazaarError("network", "", 0)})
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "3"], client=c)
+        self.assertEqual(len([x for x in c.calls if x[0] == "open"]), 1)
+        self.assertEqual(state["unclosed"], [77])
+        c2 = FakeClient(fail={"close": BazaarError("network", "", 0)})
+        text, logged, state2 = self.run_main(["run", "--yes", "--max-teams", "3"], client=c2, state=state)
+        self.assertEqual([x[0] for x in c2.calls], ["close"])              # nothing else until it closes
+        c3 = FakeClient()
+        text, logged, state3 = self.run_main(["run", "--yes", "--max-teams", "1"], client=c3, state=state)
+        self.assertEqual([x[0] for x in c3.calls][:1], ["close"])
+        self.assertEqual(state3["unclosed"], [])
+
+    def test_run_sends_nothing_when_the_market_test_status_is_unknown_or_stale(self):
         c = FakeClient()
-        text, logged, state = self.run_main(["run", "--yes"], client=c, gate_ok=False)
+        text, logged, state = self.run_main(["run", "--yes"], client=c, gate=FakeGate(known=False, refresh_ok=False))
         self.assertEqual((c.calls, state), ([], {}))
+        text, logged, state = self.run_main(["run", "--yes"], client=c, gate=FakeGate(known=False, refresh_ok=False),
+                                            state={"unclosed": [77]})
+        self.assertEqual((c.calls, state["unclosed"]), ([], [77]))          # not even the close of an old thread
+
+    def test_the_status_is_rechecked_before_every_send(self):
+        class Stale(FakeGate):              # fresh for the start and the first send, stale after, and the read fails
+            n = 0
+
+            def known(self):                # two reads at the start, two before the first send
+                self.n += 1
+                return self.n <= 4
+        c = FakeClient()
+        gate = Stale(refresh_ok=False)
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "2"], client=c, gate=gate)
+        self.assertEqual(len([x for x in c.calls if x[0] == "open"]), 1)
+        self.assertIn("status unknown or stale", text)
+
+    def test_no_thread_is_opened_within_two_ticks_of_a_silence(self):
+        c = FakeClient()
+        soon = FakeGate(windows=[(time.time() + 20, time.time() + 900)])         # starts in 20 s, ticks of 15 s
+        text, logged, state = self.run_main(["run", "--yes"], client=c, gate=soon)
+        self.assertEqual(c.calls, [])
+        self.assertIn("starts within 2 ticks", text)
+        later = FakeGate(windows=[(time.time() + 300, time.time() + 900)])
+        self.assertEqual(self.run_main(["run", "--yes"], client=FakeClient(), gate=later)[2]["keys"],
+                         ["t09:SAL-06:20259"])
 
 
 if __name__ == "__main__":
