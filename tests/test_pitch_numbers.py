@@ -23,35 +23,59 @@ def listed(eid, maker, venue="v20"):
 BOARD_ONE = {"trades": 1, "pairs": 1}
 
 
+BOARD_ONE = {"trades": 1, "pairs": 1}
+BOARD_ZERO = {"trades": 0, "pairs": 0}
+
+
 class VersionFact(unittest.TestCase):
     def test_a_trade_between_two_other_teams_confirmed_by_the_leaderboard_is_version_a(self):
         trades = pn.others_trades([settle(1, ["t05", "t07"])])
         self.assertEqual(pn.version(trades, BOARD_ONE)[0], "A")
         self.assertEqual(trades[0]["cards"], ["SAL-10"])
 
-    def test_feed_and_leaderboard_disagree_is_version_b(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), {"trades": 0})[0], "B")
+    def test_feed_trade_the_leaderboard_denies_is_unconfirmed_never_plain_b(self):
+        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), BOARD_ZERO)[0], "B-UNCONFIRMED")
 
-    def test_no_leaderboard_read_is_version_b(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), None)[0], "B")
+    def test_feed_trade_without_a_leaderboard_read_is_unconfirmed(self):
+        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t07"])]), None)[0], "B-UNCONFIRMED")
+
+    def test_leaderboard_trade_the_feed_lacks_is_unconfirmed(self):
+        self.assertEqual(pn.version([], BOARD_ONE)[0], "B-UNCONFIRMED")
+
+    def test_nothing_in_feed_or_leaderboard_is_b(self):
+        self.assertEqual(pn.version([], BOARD_ZERO)[0], "B")
+        self.assertEqual(pn.version([], None)[0], "B")
 
     def test_a_trade_we_were_part_of_is_not_the_network_working(self):
         trades = pn.others_trades([settle(1, ["t03", "t07"]), settle(2, ["t05", "t03"])])
-        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
+        self.assertEqual(trades, [])
 
     def test_one_team_on_both_sides_is_not_two_teams(self):
-        self.assertEqual(pn.version(pn.others_trades([settle(1, ["t05", "t05"])]), BOARD_ONE)[0], "B")
+        self.assertEqual(pn.others_trades([settle(1, ["t05", "t05"])]), [])
 
     def test_market_test_bench_and_dealer_parties_do_not_count(self):
-        trades = pn.others_trades([settle(1, ["bench", "t07"]), settle(2, ["pilar", "t05"])])
-        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
+        self.assertEqual(pn.others_trades([settle(1, ["bench", "t07"]), settle(2, ["pilar", "t05"])]), [])
 
     def test_other_venues_do_not_count(self):
-        trades = pn.others_trades([settle(1, ["t05", "t07"], venue="v01"), settle(2, ["t05", "t07"], venue=None)])
-        self.assertEqual(pn.version(trades, BOARD_ONE)[0], "B")
+        self.assertEqual(pn.others_trades([settle(1, ["t05", "t07"], venue="v01"),
+                                           settle(2, ["t05", "t07"], venue=None)]), [])
 
-    def test_no_trade_is_version_b(self):
-        self.assertEqual(pn.version(pn.others_trades([listed(1, "t05")]), BOARD_ONE)[0], "B")
+
+class Deadline(unittest.TestCase):
+    def test_a_slow_figure_is_unavailable_and_does_not_hold_the_rest(self):
+        import time
+        t0 = time.monotonic()
+        import contextlib
+        import io
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            got = pn.gather({"fast": lambda t: 7, "slow": lambda t: time.sleep(3) or 9, "boom": lambda t: 1 / 0}, 0.3)
+        self.assertEqual(err.getvalue(), "")  # no traceback reaches the screen
+        self.assertLess(time.monotonic() - t0, 1.5)
+        self.assertEqual(got, {"fast": 7, "slow": None, "boom": None})
+
+    def test_without_a_deadline_every_figure_is_waited_for(self):
+        self.assertEqual(pn.gather({"a": lambda t: 1, "b": lambda t: 2}, None), {"a": 1, "b": 2})
 
 
 class Makers(unittest.TestCase):
