@@ -1,0 +1,129 @@
+{
+  "_about": "Sunday 4 Oct dealer steps for tools/factory_sunday.json (WP5 pastes this): replace the `steps` of abuela, chato and pilar with the arrays below, set chato's `exclude` to [\"pilar\", \"picaros\"], and add the `picaros` process after pilar. Reasons and numbers: docs/plans/ladder-sunday.md. Every --cap sits at or under floor(book x our set multiplier) and every --floor at or over ceil(book x multiplier) of the copy sold (tests/test_ladder_steps.py checks this file against tests/fixtures/me_tick1445.json, a frozen copy of our account at the Saturday close); agent/abuela.py and agent/chato.py now refuse the run otherwise (exit 2, before any thread). Steps run in list order per dealer and a step is done on its first deal or an empty plan, so a later delay never overtakes an earlier one, and a step that must buy two cards is two steps (a cooloff on the second would otherwise leave the step done with one card). Both bots now re-read /api/me before every priced message and every accept and re-price the card from the holdings they read (a buy that became our second copy is worth 25 %, a spare whose kept copy left is a first copy): if the limit no longer allows the deal the thread is closed and the reason logged (limit_dropped, limit_unknown), so the steps may run at the same time on the same RET cards. Residual race, not fixed: an inventory change between that read and the accept POST (seconds) is still possible; on Sunday the writers on RET cards are serialized by design (Picaros one card per step and exits; Abuela one copy per target; Pilar's resales start +16 min after the buys and only sell copies held at that moment; the desk touches SAL-10 only), so no two bots target the same card at the same moment: OPERATOR RULE, never hand-start a second bot on a card a factory step is working. A dealer that refuses an open with cooloff and an until_tick is waited out by the bot (pause-safe, --max-wait-ticks 120, one retry, log cooloff_wait); if it cannot be, the run exits 8 and the factory fails the step visibly. All steps keep the process gates (no duel lock, no duel wave within 12 min), so none starts inside the Duels III window (11:29 to 12:30). Nothing here touches venue v20 or the broker's key: the 10:49 Market Test is not affected. PRIVATE: set multipliers appear in the notes, never copy them into an announcement or a page.",
+  "abuela": {
+    "steps": [
+      {
+        "label": "r3-a1-ret-uncommons",
+        "after_event": {"action": "grant_all", "delay_min": 1},
+        "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-06,RET-07,RET-08", "--cap", "22",
+                "--reserve", "20", "--max-deals", "3"],
+        "note": "RET uncommons are first copies worth 22.5 (book 25 x RET 0.9): cap 22 is the ceiling, strictly inside value. Saturday closes: 22 or less in 20 of 45 deals, 23 or less in 32 of 45. Each one is also the stock for a Pilar resale (L3). Replaces r3-slots-1-3, whose SAL-05 is already ours (plan_empty)."
+      },
+      {
+        "label": "r3-a2-ret-commons",
+        "after_event": {"action": "grant_all", "delay_min": 1},
+        "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-01,RET-02,RET-03,RET-04,RET-05", "--cap", "9",
+                "--reserve", "20", "--max-deals", "2"],
+        "note": "Fills the L1 slots a1 could not (best three count, the 4th earns about 0). RET commons are worth 9.0, so a close at 9 sits ON the gate: if ladder_points does not move after the first one, drop this step. Closes: 9 or less in 30 of 46, 8 or less in 4 of 46."
+      }
+    ]
+  },
+  "chato": {
+    "exclude": ["pilar", "picaros"],
+    "steps": [
+      {
+        "label": "r3-c1-sal10-fallback",
+        "enabled": false,
+        "after_event": {"action": "grant_all", "delay_min": 20},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--only", "SAL-10", "--anchor", "60", "--step", "4", "--cap", "88",
+                "--reserve", "40", "--max-deals", "1", "--max-rounds", "40"],
+        "todo": "Only the one rare Chato sells inside our value (SAL-10 = 70 x 1.3 = 91). Expected credit 0.4 for 86 to 91 P, and it completes the SAL page WITHOUT the page bonus a team trade pays (+3 to +5 points). Enable only if no team has offered SAL-10 by about 11:20 and Hector declines the team buy. Replaces r2-fill-lav09 / r3-slot-1-rare / r3-slots-2-3: LAV-09, SAL-09 and LAV-10 are already ours, so those targets give an empty plan and the factory would mark them done without a trade."
+      },
+      {
+        "label": "r3-c2-sell-cha-uncommons",
+        "enabled": false,
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--only", "sell:CHA-06,sell:CHA-07,sell:CHA-08", "--allow-single", "--floor", "14",
+                "--max-deals", "2"],
+        "todo": "Chamberí only, by hand once a CHA uncommon is ours and no CHA fan has bid for it: CHA uncommon is worth 12.5 to us, Chato bids about 14 (13 to 16). L2 slot at about +0.5 each. Needs the copy to be spare or the last one named (sell:<REF> + --allow-single)."
+      }
+    ]
+  },
+  "pilar": {
+    "steps": [
+      {
+        "label": "r3-l1-resell-ret-rares",
+        "after_event": {"action": "grant_all", "delay_min": 16},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10", "--allow-single",
+                "--floor", "64", "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "2", "--max-rounds", "40"],
+        "note": "Resells the two RET rares bought from Los Picaros (value 63.0, floor 64). She loves RET: a thread on Saturday ran 61, 63, 66, 70, 74, 78. A ref we do not hold yet is skipped; an empty plan counts as done, which is why the retry below exists."
+      },
+      {
+        "label": "r3-l2-resell-ret-uncommon",
+        "after_event": {"action": "grant_all", "delay_min": 30},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-06,sell:RET-07,sell:RET-08", "--allow-single",
+                "--floor", "23", "--sell-anchor", "32", "--sell-step", "1", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "The third L3 slot: one RET uncommon bought from Abuela at 22 or less (value 22.5), sold at 23 or more. Her RET uncommon finals on Saturday were 24 to 26 on long threads."
+      },
+      {
+        "label": "r3-l3-resell-ret-rares-retry",
+        "after_event": {"action": "grant_all", "delay_min": 45},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10", "--allow-single",
+                "--floor", "64", "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "2", "--max-rounds", "40"],
+        "note": "Same line later: picks up rares that Los Picaros delivered after the first Pilar step found nothing to sell. Empty plan = done, harmless."
+      },
+      {
+        "label": "r3-l4-resell-ret-uncommon-retry",
+        "after_event": {"action": "grant_all", "delay_min": 60},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-06,sell:RET-07,sell:RET-08", "--allow-single",
+                "--floor", "23", "--sell-anchor", "32", "--sell-step", "1", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "Same line later (it falls after the Duels III window and waits for the gates). Only worth running while Pilar has fewer than three deals this round."
+      },
+      {
+        "label": "r3-cha-sell-uncommons",
+        "enabled": false,
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:CHA-06,sell:CHA-07,sell:CHA-08", "--allow-single",
+                "--floor", "13", "--max-deals", "2", "--max-rounds", "40"],
+        "todo": "Chamberí, by hand: a CHA uncommon is worth 12.5 to us (book 25 x 0.5); she pays about 16 to 21 for sets she does not love. Use after the CHA fans had their chance (docs/plans/ladder-sunday.md section 5)."
+      },
+      {
+        "label": "r3-cha-sell-rares",
+        "enabled": false,
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:CHA-09,sell:CHA-10", "--allow-single",
+                "--floor", "36", "--max-deals", "2", "--max-rounds", "40"],
+        "todo": "Chamberí, by hand: a CHA rare is worth 35 to us (70 x 0.5); she opens about 47 and ends 50 to 56 for sets she does not love. A CHA fan should pay more: try them first."
+      },
+      {
+        "label": "r3-cha-sell-epic",
+        "enabled": false,
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:CHA-11", "--allow-single",
+                "--floor", "91", "--max-deals", "1", "--max-rounds", "40"],
+        "todo": "Chamberí, by hand: a CHA epic is worth 90 to us (180 x 0.5); she paid 140 to 199 for epics on Saturday."
+      }
+    ]
+  },
+  "picaros": {
+    "name": "picaros",
+    "kind": "steps",
+    "enabled": false,
+    "note": "New dealer: agent/chato.py --dealer picaros buys rares from Los Picaros and never sells him anything. Off like the other dealer bots: needs PR #35 merged and deployed, then set enabled to true and run up --yes. A step counts as done only on a deal or a nothing-to-do line in logs/picaros/<date>.jsonl.",
+    "required": false,
+    "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 12},
+    "match": ["agent/chato.py", "picaros"],
+    "log": "logs/picaros/{date}.jsonl",
+    "stale_ticks": null,
+    "steps": [
+      {
+        "label": "r3-p1a-ret-09",
+        "after_event": {"action": "grant_all", "delay_min": 2},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09", "--cap", "62",
+                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "RET-09 is a first copy worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). The rare is resold to Pilar at 64 or more (L3). One card per step on purpose: a run that fills RET-09 and then meets a cooloff on RET-10 exits 0, and the factory would mark a two-card step done with one card bought; as two steps each is judged on its own card (a no-deal run is retried up to 3 times, then fails loudly)."
+      },
+      {
+        "label": "r3-p1b-ret-10",
+        "after_event": {"action": "grant_all", "delay_min": 2},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-10", "--cap", "62",
+                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "Same as r3-p1a for RET-10 (also worth 63.0, resold to Pilar at 64 or more)."
+      },
+      {
+        "label": "r3-p2-sal10",
+        "enabled": false,
+        "after_event": {"action": "grant_all", "delay_min": 20},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "SAL-10", "--cap", "62",
+                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+        "todo": "The third L4 slot, and the only one: SAL-10 (value 91) at 62 or less is inside value (about +0.6), but it completes the SAL page without the page bonus a team trade pays (+3 to +5 points, Saturday: LAT-09 at 88 gave +3.10). Enable only if no team offers SAL-10 by about 11:20 and Hector declines the team buy."
+      }
+    ]
+  }
+}
