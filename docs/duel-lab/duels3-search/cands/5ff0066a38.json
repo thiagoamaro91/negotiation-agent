@@ -1,0 +1,37 @@
+{
+  "ratios": [
+    1.743,
+    1.42
+  ],
+  "last_r": 1.131,
+  "max_msgs": 4,
+  "last_chance_ticks": 5,
+  "accept_any_ticks": 5,
+  "near_ticks": -1,
+  "stall_ticks": 3,
+  "thin_frac": 0.266,
+  "early_share": 1.0,
+  "early_min_pie": 1.0,
+  "pair_sell": 0.922,
+  "pair_buy": 1.142,
+  "absent_at": 0.148,
+  "absent_share": 0.608,
+  "absent_last": true,
+  "window_wait": true,
+  "days_cheap": 0.174,
+  "days_premium": [
+    2.281,
+    0.253
+  ],
+  "late_poll": 4,
+  "late_ticks": 3,
+  "slot_demand": "acceptable",
+  "last_share": 0.3,
+  "duel_ticks": 12,
+  "days_best": "buyer:0,seller:10",
+  "last_while_moving": false,
+  "silent_last_margin": 0.177,
+  "hold_ticks": 3,
+  "hold_while_conceding": true,
+  "hold_counter": false
+}

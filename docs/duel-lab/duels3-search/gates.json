@@ -18,5 +18,44 @@
    "rival: llmfair (robust)",
    "days: rivals name a random day (robust)"
   ]
+ },
+ "5ff0066a38": {
+  "selftest": "pass",
+  "matrix": "fail: fast, llmfair",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "rival: llmfair (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
+ },
+ "6add6e0f6a": {
+  "selftest": "pass",
+  "matrix": "fail: fast, llmfair",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "rival: llmfair (robust)"
+  ]
+ },
+ "3120905f4b": {
+  "selftest": "pass",
+  "matrix": "fail: cycler, llmfair",
+  "matrix_other_worse": [
+   "rival: cycler (robust)",
+   "rival: llmfair (robust)"
+  ]
+ },
+ "cd50ddd02c": {
+  "selftest": "pass",
+  "matrix": "fail: fast, deadline, llmfair",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "rival: deadline (robust)",
+   "rival: llmfair (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
  }
 }
