@@ -213,6 +213,10 @@ def holdings(deck: dict) -> collections.Counter:
 REF_RE = re.compile(r"^[A-Z]{2,5}-\d{1,3}$")
 CENSUS_MIN_IDS = 1000     # a full walk reads at least this many ids (the feed showed id 1186 by Saturday's close)
 CENSUS_MIN_CARDS = 300    # ...and finds at least this many cards (18 teams x ~35, plus the dealers')
+CENSUS_MIN_TEAMS = 2      # ...owned by at least this many teams other than Team 3 (Sunday 08:41, tick 1445: the server
+                          # answered "a team" for every rival's card, so the census named 31 cards, all ours, and the
+                          # matchmaker gave every rival 0-3 page cards and no inferred need at all)
+REDACTED_OWNERS = {"a team"}   # the owner the server shows for another team's card: not a holder we can name
 
 
 def _int(x) -> bool:
@@ -283,6 +287,13 @@ def census_problem(census) -> str | None:
         seen.add(c["id"])
     if len(cards) < CENSUS_MIN_CARDS:
         return f"{len(cards)} cards < {CENSUS_MIN_CARDS}"
+    redacted = sum(1 for c in cards if c.get("owner") in REDACTED_OWNERS)
+    if redacted:   # the server hides other teams' owners: replacing the decks would leave every rival holding nothing
+        return f"owners redacted on {redacted} cards ({sorted(REDACTED_OWNERS)[0]!r}): the census cannot say which team holds what"
+    rivals = {c["owner"] for c in cards if isinstance(c.get("owner"), str) and c["owner"] != US
+              and c["owner"][:1] == "t" and c["owner"][1:].isdigit()}
+    if len(rivals) < CENSUS_MIN_TEAMS:
+        return f"cards owned by {len(rivals)} teams other than {US} < {CENSUS_MIN_TEAMS}"
     if meta.get("cards_total") is not None and meta.get("cards_total") != len(cards):
         return "cards_total does not match the cards list"
     if meta["mode"] == "run" and max(seen) > meta["ids_walked"]:
