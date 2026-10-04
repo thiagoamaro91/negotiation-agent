@@ -35,7 +35,7 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
 8. **The bus board has no foreign claim on a factory name.** Expect no output. Saturday's `broker` and `duel` rows on `mini` are yours; `up` takes them over.
    ```bash
-   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
+   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
    ```
 9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40).
    ```bash
@@ -58,7 +58,7 @@ Starting before 09:00 is safe: every gate waits for open doors and a running clo
 
 ```
 started feed        started broker      started duel
-started abuela      started chato       skip    pilar: no enabled step left to run today   (or started pilar)
+started abuela      skip    chato: no enabled step left to run today      started pilar      started picaros
 off     rastro_seller: ...              off     market_desk: ...              started watchdog
 ```
 
@@ -71,8 +71,8 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 | feed | `RUNNING`, log a few seconds old |
 | broker | `RUNNING`, log under a minute old; `Market Test bNN: matched N dropped 0` appears once a test has started |
 | duel | `WAITING`, `next duel wave Duels III at 18.650 h` |
-| abuela, chato | `WAITING`, `waiting for grant_all at 16.717 h`; «FILL wp4: any step that starts at 09:00 instead» |
-| pilar | `DONE` (no enabled step) unless WP4 enabled one: «FILL wp4» |
+| abuela, picaros, pilar | `WAITING`, `waiting for grant_all at 16.717 h` (Abuela), `16.733 h` (Pícaros), `16.967 h` (Pilar's first resale) |
+| chato | `DONE` (every step off: nothing a dealer sells is inside our value but SAL-10, and that comes from a team) |
 | rastro_seller, market_desk | `off` |
 | watchdog | `RUNNING` |
 | last line | `ok` (no `PROBLEM` lines) |

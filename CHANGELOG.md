@@ -3,13 +3,13 @@
 ## [2026-10-04] Sunday autopilot and handoff
 
 ### Changed
-- `tools/factory_sunday.json`: the dealer bots are on (#35 and #38 are merged) and their notes no longer say "off"; the duel `todo` is gone (the params path stays: `plan` says `MISSING` until the Duels III file merges); the duel session window is 165 game minutes (was 120) so a crash late in a wave is still relaunched even if the game clock runs two game hours per wall hour (Duels III is 216 ticks, 108 game minutes at that speed), and it closes before the Final's own window opens (21.483 h); dealer gates keep 25 game minutes (was 12) clear of a duel wave, since a run is 40 ticks, 20 game minutes at that speed. The Telegram notifier stays `null`: its one line is in the handoff.
+- `tools/factory_sunday.json`: the dealer bots are on (#35 and #38 are merged) and their notes no longer say "off"; the duel `todo` is gone (the params path stays: `plan` says `MISSING` until the Duels III file merges); the duel session window is 165 game minutes (was 120) so a crash late in a wave is still relaunched even if the game clock runs two game hours per wall hour (Duels III is 216 ticks, 108 game minutes at that speed), and it closes before the Final's own window opens (21.483 h); dealer gates keep 25 game minutes (was 12) clear of a duel wave, since a run is 40 ticks, 20 game minutes at that speed. The ladder lane's value-gated steps are pasted in (Abuela RET uncommons and commons, Pilar's four resales, a new `picaros` dealer for the RET rares; Chato has every step off, its SAL-10 fallback and the Chamberí sales are by-hand notes), `chato.exclude` holds `pilar` and `picaros`, and the broker is on `--policy stall` all day. The Telegram notifier stays `null`: its one line is in the handoff.
 - `docs/plans/sunday-runbook.md` and `README.md` follow the dealers being on.
 
 ### Added
 - `docs/plans/sunday-preflight.md`: ten read-only checks for 08:40 on the Mini, the 08:55 command, the expected 09:01 `status`, a 09:05 clock-speed read, and one action per alert.
 - `docs/plans/sunday-night-handoff.md`: what the night built, what is on the Mini, what needs a yes or a key on Sunday, the timeline with the human-decision moments, and the stop rules.
-- `tests/test_factory.py`: the dealers-on test replaces the dealers-off one, and a new test pins the duel window (outlasts a wave at either clock speed, no overlap with the Final's); 3 mutations caught (window 120, window 180, quiet window 12) plus a dealer switched off again.
+- `tests/test_factory.py`: the dealers-on test replaces the dealers-off one; new tests pin the duel window, that the config has no `todo`, that Chato's match excludes Pilar's and Pícaros' runs, and (when `docs/plans/factory-dealer-steps-sunday.json` is on the checkout, i.e. after #69) that the dealer steps are that fragment; one test pins the duel window (outlasts a wave at either clock speed, no overlap with the Final's). Mutations caught: window 120 and 180, quiet window 12, a dealer switched off, a `todo` back in the config, `picaros` missing from Chato's exclude, a changed cap in the pasted steps.
 
 ## [2026-10-03] Dashboard: Rivals and Market panels
 

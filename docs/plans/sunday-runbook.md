@@ -2,7 +2,7 @@
 
 Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot, the dealer bots and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
 
-**The dealer bots (Abuela, Chato, Pilar) are on** since their safety fixes merged (#35 and #38: duel lock checked before every accept, pause-safe waits, distinct exit statuses). Each runs its enabled steps one after the other, a step starting after its gate (for the Round 3 steps: one minute after the +150 P allowance, never within 25 game minutes of a duel wave). A dealer with no enabled step is skipped by `up`. `rastro_seller` and `market_desk` stay off. The 08:40 checks and the expected 09:01 table are on [`sunday-preflight.md`](sunday-preflight.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+**The dealer bots (Abuela, Pícaros, Pilar; Chato has every step off) are on** since their safety fixes merged (#35 and #38: duel lock checked before every accept, pause-safe waits, distinct exit statuses). Each runs its enabled steps one after the other, a step starting after its gate (for the Round 3 steps: one minute after the +150 P allowance, never within 25 game minutes of a duel wave). A dealer with no enabled step is skipped by `up`. `rastro_seller` and `market_desk` stay off. The 08:40 checks and the expected 09:01 table are on [`sunday-preflight.md`](sunday-preflight.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 ## Saturday night (before you sleep)
 
@@ -40,8 +40,8 @@ Expected at 09:01:
 | feed | `RUNNING`, log a few seconds old |
 | broker | `RUNNING`, log under a minute old |
 | duel | `WAITING`, next duel wave at 18.650 h |
-| abuela, chato | `WAITING`, `waiting for grant_all at 16.717 h` (their Round 3 steps) |
-| pilar | `DONE` while it has no enabled step |
+| abuela, picaros, pilar | `WAITING`, `waiting for grant_all at 16.717 h`, `16.733 h`, `16.967 h` (their Round 3 steps) |
+| chato | `DONE` (every step off) |
 | watchdog | `RUNNING` |
 
 At 09:05 check the leaderboard `rounds` to confirm Saturday's round still counts until Round 3 starts.
@@ -55,7 +55,7 @@ Wall times come from `plan`: the game clock stops during any pause, so every pau
 | doors open (09:00) | Sunday opens, 15 s ticks | broker starts (feed and watchdog run from 08:55); dealers and duels keep waiting. No bot launches or restarts while the clock is paused |
 | 14.65, 15.00 | The hard Market Test and the Market Test (they count in Saturday's round) | broker matches; watchdog checks dropped and matched |
 | 16.65 | Round 3 starts, Chamberí released | nothing yet: the ladder work waits for the cash |
-| 16.70 | 150 P allowance | the dealer steps with `after_event: grant_all` start one minute later (Abuela slots, Chato rare); Pilar only if a step is enabled |
+| 16.70 | 150 P allowance | the dealer steps with `after_event: grant_all` start after their delay in game minutes (Abuela +1, Pícaros +2, Pilar +16, +30, +45, +60) |
 | 17.00 | Market Test (16 ticks) | broker matches; watchdog checks dropped and matched |
 | 18.23 | 25 game min before Duels III | no new dealer run from here (`duel_quiet_min`) |
 | 18.48 | 10 min before Duels III | duel run starts: `--duel-ticks 12` from the schedule, `--late-poll 4`, `--until` closing time + 5 min |
@@ -95,7 +95,7 @@ At `up`, `REFUSE <name>: already running outside the factory (pid N)` means an o
 ## Changing things during the day
 
 - Edit `tools/factory_sunday.json`. Each keeper re-reads it before every start, so a change applies to the next start.
-- To run a step that was off (the Pilar resale once the RET asset ids are known, Chato slots 2-3 once the cash is there): fill in its values, set `"enabled": true`, run `up --yes`. Steps already done today are not rerun.
+- To run a step that was off (the Chato SAL-10 fallback, a Chamberí sale by hand): fill in its values, set `"enabled": true`, run `up --yes`. Steps already done today are not rerun.
 - To stop one bot: `tmux kill-window -t factory:<name>`. Its keeper stops the bot, releases its lock and the bus claim.
 - Bots get no key from the factory's environment, even one exported in the shell: they read `.env`.
 - After 15:00: `tmux kill-session -t factory`.

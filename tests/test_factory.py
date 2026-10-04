@@ -161,10 +161,13 @@ class Rendering(unittest.TestCase):
             if p["kind"] != "steps":
                 continue
             for s in p["steps"]:
-                for flag in ("--only", "--reserve" if "pilar" not in s["cmd"] else "--floor", "--max-deals"):
+                sells = any(str(a).startswith("sell:") for a in s["cmd"])
+                strict = s.get("enabled", True)       # a step that is OFF by design (a by-hand line) needs the basics only
+                for flag in ("--only", "--max-deals", *(("--floor" if sells else "--reserve",) if strict else ())):
                     self.assertIn(flag, s["cmd"], (p["name"], s["label"]))
                 if "agent/chato.py" in s["cmd"]:
-                    self.assertIn("--max-rounds", s["cmd"], s["label"])
+                    if strict:
+                        self.assertIn("--max-rounds", s["cmd"], s["label"])
                     self.assertNotIn("--max-bid", s["cmd"], s["label"])
 
     def test_unknown_placeholder_is_an_error(self):
@@ -580,7 +583,7 @@ class Round3Dealers(Sandbox):
         """PR #35 and #38 are merged: no dealer is switched off, and none still says it waits for #35."""
         cfg = f.load_config(f.CONFIG)
         dealers = [p for p in cfg["processes"] if p["kind"] == "steps"]
-        self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar"})
+        self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar", "picaros"})
         for p in dealers:
             self.assertIsNot(p.get("enabled"), False, p["name"])
             self.assertNotIn("Off:", p.get("note", ""), p["name"])
@@ -594,6 +597,46 @@ class Round3Dealers(Sandbox):
             else:                                       # every step off: up says so instead of starting an idle keeper
                 self.assertRegex(out, rf"skip +{p['name']}: no enabled step")
                 self.assertEqual(keeper, [])
+
+    def test_chato_does_not_count_the_other_dealers_runs_as_its_own(self):
+        """agent/chato.py runs three dealers (--dealer pilar, --dealer picaros, and Chato itself): Chato's match must
+        exclude the other two, or its keeper refuses to start beside their runs and `status` mixes their pids up."""
+        procs = {p["name"]: p for p in f.load_config(f.CONFIG)["processes"]}
+        lines = ["  51 python3 -u agent/chato.py run --dealer pilar --only sell:RET-09",
+                 "  52 python3 -u agent/chato.py run --dealer picaros --only RET-09,RET-10 --cap 62",
+                 "  53 python3 -u agent/chato.py run --only SAL-10 --cap 88"]
+        chato = procs["chato"]
+        self.assertEqual(f.ps_pids(lines, chato["match"], chato["exclude"]), [53])
+        self.assertEqual(f.ps_pids(lines, procs["pilar"]["match"], procs["pilar"].get("exclude", [])), [51])
+        self.assertEqual(f.ps_pids(lines, procs["picaros"]["match"], procs["picaros"].get("exclude", [])), [52])
+
+    def test_the_sunday_config_has_nothing_open(self):
+        """The 08:40 pre-flight greps `plan` for TODO: a `todo` key anywhere in the config prints one."""
+        def todos(node, path=""):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    if k.lower().startswith("todo"):
+                        yield f"{path}/{k}"
+                    yield from todos(v, f"{path}/{k}")
+            elif isinstance(node, list):
+                for i, v in enumerate(node):
+                    yield from todos(v, f"{path}[{i}]")
+        self.assertEqual(list(todos(f.load_config(f.CONFIG))), [])
+
+    FRAGMENT = Path(__file__).resolve().parent.parent / "docs" / "plans" / "factory-dealer-steps-sunday.json"
+
+    @unittest.skipUnless(FRAGMENT.exists(), "docs/plans/factory-dealer-steps-sunday.json comes with the ladder PR (#69)")
+    def test_the_dealer_steps_are_the_ladder_fragment(self):
+        """The ladder lane's value-gated steps are pasted into the config as they are (its own test checks the
+        fragment against our account; this one checks nobody edited the paste)."""
+        frag = json.loads(self.FRAGMENT.read_text())
+        procs = {p["name"]: p for p in f.load_config(f.CONFIG)["processes"]}
+        for name in ("abuela", "chato", "pilar", "picaros"):
+            ours = [(s["label"], s.get("enabled", True), s.get("after_event"), s["cmd"]) for s in procs[name]["steps"]]
+            theirs = [(s["label"], s.get("enabled", True), s.get("after_event"), s["cmd"]) for s in frag[name]["steps"]]
+            self.assertEqual(ours, theirs, name)
+        self.assertEqual(procs["chato"]["exclude"], frag["chato"]["exclude"])
+        self.assertEqual(procs["picaros"]["match"], frag["picaros"]["match"])
 
     def test_exit_zero_without_a_marker_is_retried_then_reported(self):
         cfg = self.config(dict(DEALER, max_attempts=2))
