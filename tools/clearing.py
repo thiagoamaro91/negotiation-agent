@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -257,13 +258,37 @@ class Store:
                 return t
         raise Refused(401, "bad_token", "unknown token: join first")
 
+    def invites(self) -> dict:
+        """{team: invite code} from invites.json next to state.json; re-read on every join so codes can be added
+        without a restart. Empty or missing file: joining is open."""
+        f = self.path.with_name("invites.json")
+        try:
+            d = json.loads(f.read_text()) if f.exists() else {}
+            return {t: str(c) for t, c in d.items() if isinstance(t, str) and TEAM_RE.match(t) and c}
+        except Exception:
+            return {}
+
+    def forget(self, team) -> dict:
+        team = clean_team(team)
+        with self.lock:
+            gone = self.state["teams"].pop(team, None) is not None
+            self.save()
+            return {"team": team, "forgotten": gone}
+
     def join(self, body: dict) -> dict:
         team = clean_team(body.get("team"))
         venue = body.get("venue")
         if venue is not None and (not isinstance(venue, str) or not VENUE_RE.match(venue)):
             raise Refused(400, "bad_venue", "venue must look like v29")
+        inv = self.invites()
         with self.lock:
             rec = self.state["teams"].get(team)
+            if inv and rec is None:
+                code = body.get("invite")
+                if team not in inv:
+                    raise Refused(403, "not_invited", f"{team} has no invitation; ask Team 3 in person")
+                if not (isinstance(code, str) and hmac.compare_digest(code, inv[team])):
+                    raise Refused(403, "bad_invite", f"the invite code is not {team}'s")
             if rec:
                 tok = body.get("token")
                 if not (isinstance(tok, str) and h(tok) == rec["token_hash"]):
@@ -485,18 +510,18 @@ trades. Then each side gets exactly one thing to do:
   can take it), the buyer accepts by id, the game settles next tick. A side that does not post or accept loses only
   that trade and sits out the next round. Every planned price sits inside both sides' own numbers.
 
-## Join in three commands (python3, no dependencies)
+## Join (python3, no dependencies). Invitation only: Team 3 hands each team its own code, in person.
 
     curl -sO {base}/clearing_client.py
     export BAZAAR_KEY=<your team key>                       # used only against the game
-    python3 clearing_client.py --server {base} join --team t07 --venue v29     # your team id and venue id
+    python3 clearing_client.py --server {base} join --team t07 --venue v29 --invite <code Team 3 gave you>
     python3 clearing_client.py --server {base} book --margin 0.15 --dry-run    # look first
     python3 clearing_client.py --server {base} book --margin 0.15              # then send
     python3 clearing_client.py --server {base} execute --until 13:50           # leave it running: posts your sells, accepts your buys
 
 ## Or speak JSON directly
 
-    POST {base}/api/clearing/join    {{"team": "t07", "venue": "v29"}}                 -> {{"token": "..."}}
+    POST {base}/api/clearing/join    {{"team": "t07", "venue": "v29", "invite": "<code>"}}   -> {{"token": "..."}}
     POST {base}/api/clearing/book    {{"token": "...", "haves": [{{"card": "MAL-06", "asset": 123, "min": 9}}],
                                       "wants": [{{"card": "SAL-10", "max": 80, "qty": 1}}]}}
     GET  {base}/api/clearing/plan?token=...     -> your actions: for a sell, the exact body to POST /api/offers;
@@ -578,6 +603,10 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                     self._json(200, store.book(body))
                 elif self.path == "/api/clearing/report":
                     self._json(200, store.report(body))
+                elif self.path == "/api/clearing/forget":
+                    if not admin_token or body.get("admin") != admin_token:
+                        raise Refused(403, "forbidden")
+                    self._json(200, store.forget(body.get("team")))
                 elif self.path == "/api/clearing/run":
                     if not admin_token or body.get("admin") != admin_token:
                         raise Refused(403, "forbidden")
@@ -643,6 +672,29 @@ def cmd_run(a) -> None:
     print(json.dumps(store.run(live_venues(), force=a.force), indent=1))
 
 
+def cmd_invite(a) -> None:
+    """Mint one code per team into <store>/invites.json (existing codes are kept) and print them for the operator."""
+    f = Path(a.store) / "invites.json"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    d = json.loads(f.read_text()) if f.exists() else {}
+    for t in a.teams:
+        t = clean_team(t)
+        d.setdefault(t, secrets.token_urlsafe(9))
+    f.write_text(json.dumps(d, indent=1, sort_keys=True))
+    os.chmod(f, 0o600)
+    for t in sorted(d):
+        print(f"{t}  {d[t]}")
+
+
+def cmd_forget(a) -> None:
+    admin = os.environ.get("CLEARING_ADMIN", "")
+    req = urllib.request.Request(f"http://127.0.0.1:{a.port}/api/clearing/forget", method="POST",
+                                 data=json.dumps({"admin": admin, "team": a.team}).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=5) as r:
+        print(r.read().decode())
+
+
 def cmd_status(a) -> None:
     store = Store(Path(a.store) / "state.json")
     print(json.dumps(store.status(), indent=1))
@@ -705,9 +757,16 @@ def selftest() -> None:
             except urllib.error.HTTPError as e:
                 return e.code, json.loads(e.read())
 
+        (Path(d) / "invites.json").write_text(json.dumps({"t03": "c03", "t07": "c07", "t18": "c18", "t11": "c11"}))
+        st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29"})
+        assert st == 403 and r["error"] == "bad_invite", r
+        st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29", "invite": "c18"})
+        assert st == 403 and r["error"] == "bad_invite", r
+        st, r = call("POST", "/api/clearing/join", {"team": "t09", "venue": "v21", "invite": "c07"})
+        assert st == 403 and r["error"] == "not_invited", r
         toks = {}
         for t, v in parts.items():
-            st, r = call("POST", "/api/clearing/join", {"team": t, "venue": v})
+            st, r = call("POST", "/api/clearing/join", {"team": t, "venue": v, "invite": "c" + t[1:]})
             assert st == 200 and r["token"], r
             toks[t] = r["token"]
             st, r = call("POST", "/api/clearing/book", {"token": toks[t], **books[t]})
@@ -724,8 +783,15 @@ def selftest() -> None:
         assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t03", "t07"], r
         st, r = call("GET", "/api/clearing/status")
         assert r["last_attempt"]["held"] and r["rounds"] == [], r
-        st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13"})
+        st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13", "invite": "c11"})
         toks["t11"] = r["token"]
+        st, r = call("POST", "/api/clearing/join", {"team": "t99", "venue": None, "invite": "x"})
+        assert st == 403, r
+        st, r = call("POST", "/api/clearing/forget", {"admin": "adm", "team": "t18"})
+        assert st == 200 and r["forgotten"], r
+        st, r = call("POST", "/api/clearing/join", {"team": "t18", "venue": "v28", "invite": "c18"})
+        toks["t18"] = r["token"]
+        call("POST", "/api/clearing/book", {"token": toks["t18"], **books["t18"]})
         call("POST", "/api/clearing/book", {"token": toks["t11"], **books3["t11"]})
         call("POST", "/api/clearing/book", {"token": toks["t07"], **books2["t07"]})
         st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
@@ -772,6 +838,14 @@ def main() -> None:
     st = sub.add_parser("status")
     st.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
     st.set_defaults(fn=cmd_status)
+    i = sub.add_parser("invite", help="mint invite codes: invite t07 t17 ...")
+    i.add_argument("teams", nargs="+")
+    i.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    i.set_defaults(fn=cmd_invite)
+    f = sub.add_parser("forget", help="drop a team from the running server (needs CLEARING_ADMIN in the env)")
+    f.add_argument("team")
+    f.add_argument("--port", type=int, default=8790)
+    f.set_defaults(fn=cmd_forget)
     sub.add_parser("selftest").set_defaults(fn=lambda a: selftest())
     a = p.parse_args()
     a.fn(a)

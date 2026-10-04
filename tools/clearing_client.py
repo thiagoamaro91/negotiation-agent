@@ -3,7 +3,7 @@ only to the game (BAZAAR_URL, header X-Team-Key); the clearing server receives c
 reservation prices, nothing else.
 
     export BAZAAR_KEY=<your team key>
-    python3 clearing_client.py --server https://<clearing> join --team t07 [--venue v29]
+    python3 clearing_client.py --server https://<clearing> join --team t07 --venue v29 --invite <code>
     python3 clearing_client.py --server https://<clearing> book [--margin 0.15] [--sell-sets MAL,CHA] [--keep LAV-09]
     python3 clearing_client.py --server https://<clearing> execute [--until 13:50] [--dry-run]
     python3 clearing_client.py --server https://<clearing> plan
@@ -77,6 +77,8 @@ def cmd_join(a) -> None:
     body = {"team": team}
     if a.venue:
         body["venue"] = a.venue
+    if a.invite:
+        body["invite"] = a.invite
     p = cfg_path(team)
     if p.exists():
         body["token"] = json.loads(p.read_text())["token"]
@@ -196,6 +198,7 @@ def main() -> None:
     sub = p.add_subparsers(dest="cmd", required=True)
     j = sub.add_parser("join")
     j.add_argument("--venue", default="", help="your venue id, so trades can be routed onto it")
+    j.add_argument("--invite", default="", help="the invite code Team 3 gave your team")
     j.set_defaults(fn=cmd_join)
     b = sub.add_parser("book")
     b.add_argument("--margin", type=float, default=0.15, help="keep this share of your value on each side")
