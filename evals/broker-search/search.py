@@ -47,6 +47,9 @@ REFERENCES = [
     {"family": "oracle_swap", "params": {"hi": 0.5, "lo": 0.5, "delta": 1.0, "max_swaps": 3, "refill": False,
                                          "sides": "both"}, "ref": "ORACLE: the swap with perfect leave flags"},
     {"family": "oracle_est", "params": {}, "ref": "ORACLE: BenchPolicy with perfect leave flags"},
+    {"family": "oracle_est", "params": {"noise": 0.05}, "ref": "ORACLE: BenchPolicy, 5 % of leave flags flipped"},
+    {"family": "oracle_est", "params": {"noise": 0.15}, "ref": "ORACLE: BenchPolicy, 15 % of leave flags flipped"},
+    {"family": "oracle_est", "params": {"noise": 0.30}, "ref": "ORACLE: BenchPolicy, 30 % of leave flags flipped"},
 ]
 SCREEN_SEEDS, CONFIRM_SEEDS, HOLDOUT_SEEDS, CHUNK = 200, 1000, 2000, 250
 FIRST = ["hard", "standard", "refit all"]

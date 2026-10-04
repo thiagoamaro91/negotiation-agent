@@ -302,7 +302,9 @@ class OracleEstimate(brk.BenchPolicy):
     departures), limits still estimated from quotes."""
 
     def __init__(self, params: dict | None = None):
-        super().__init__({**(params or {}), "blind": "policy", "future": 1.0})
+        p = dict(params or {})
+        self.noise = p.pop("noise", 0.0)  # chance each leave flag is flipped (deterministic per offer and tick)
+        super().__init__({**p, "blind": "policy", "future": 1.0})
         self.last: dict = {}
 
     def start_session(self, traders, t0):
@@ -310,7 +312,10 @@ class OracleEstimate(brk.BenchPolicy):
 
     def estimate(self, tr, tick, known=False):
         e = super().estimate(tr, tick, known)
-        e["leave"] = 1.0 if self.last.get(tr["id"]) == tick else 0.0
+        leave = self.last.get(tr["id"]) == tick
+        if self.noise and random.Random(f"noise:{tr['id']}:{tick}").random() < self.noise:
+            leave = not leave
+        e["leave"] = 1.0 if leave else 0.0
         return e
 
 
