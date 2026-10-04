@@ -64,6 +64,16 @@ The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Add
 - **Duels I (t03, to tick 630):** 31 finished, 25 deals, duel_points 16.24. All 21 of our accepts came with 1-3 ticks left; 5 of the 6 no-deals were rivals who never spoke, while our last offer stayed short of our limit. Summary on the bus (#5968797627).
 - **The clock can pause mid-duel** (`/api/clock` `paused: true` at tick 630, ~13:25). `results/duel.lock` is refreshed per tick, so it goes stale during a pause while duels are still live. A dealer bot gated only on the lock would start inside the duel window: gate on `paused` and on unfinished duels too.
 
+## Sunday 01:30, ladder value measured (ticks 160 to 1445)
+
+Method and tables in [plans/ladder-sunday.md](plans/ladder-sunday.md). From the board and the 470 Saturday dealer settlements, single deals only (no duel result, no other event of that team in the 10-tick interval):
+
+- **Per credited deal, in board points:** Abuela about 1.2, Pilar 0.8, Pícaros 0.6, El Chato 0.3. **The 4th and later deals add about 0** (median 0.00 to 0.07); a 4th only helps when it beats one of the first three.
+- **Level 5 is unmeasured:** the three Ernesto sales (t08 tick 1083, t16 1110, t06 1226, epics at 116 to 120) moved +0.14, -5.54 and -2.45, all below what the card was worth to the seller.
+- **A page completed by a dealer buy pays no page bonus** (-0.17 to +0.83, n=10); one completed by a team trade pays +1.6 to +4.7 (our LAT-09 at 88: +3.10).
+- **The ladder value gate is now enforced in code** (`agent/dealer_client.py`): buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy given up, and a `--cap` or `--floor` on the wrong side is refused.
+- **`tools/value_inference.py teams` shows CHA as the least liked set of 14 of 18 teams because of an artifact:** t07 opened ten threads for CHA-06 at tick 1074 to 1077, so CHA entered the softmax before it was released. Elimination cannot name the CHA fans (its top pick is right 21 % against 17 % for chance); the first CHA buyers on Sunday can.
+
 ## Open questions for the organisers
 
 - The judges' criteria (40 of the 100 points).
