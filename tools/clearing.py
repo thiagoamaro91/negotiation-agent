@@ -136,22 +136,16 @@ def clean_book(body: dict) -> tuple:
 
 # ---------------------------------------------------------------- the matcher (pure)
 
-def match(books: dict, venues: list, participants: dict) -> list:
+def match(books: dict, venues: list, participants: dict, hosted: dict | None = None) -> dict:
     """books: {team: {"haves": [...], "wants": [...]}}; venues: public /api/venues list; participants: {team: venue id
-    or None}. Returns trades [{seller, buyer, card, asset, price, venue, fee, surplus}]. Greedy by surplus."""
+    or None}; hosted: {venue: value hosted so far today}. Returns {"trades": [...], "uncovered": [teams whose venue
+    would host nothing], "hosting": {venue: value}}. Trades are chosen greedily by surplus; venues are then assigned
+    so that every participant's venue hosts at least one trade when that is possible (a matching), and the rest go
+    to the venue with the least value hosted so far (today's total, so later rounds favour whoever hosted less)."""
     by_id = {v["venue"]: v for v in venues if isinstance(v, dict) and v.get("status") == "open"}
-    own = {t: v for t, v in participants.items() if v in by_id}
-    load = {v: 0 for v in set(own.values())}
-
-    def pick_venue(seller: str, buyer: str) -> dict | None:
-        pool = [v for t, v in own.items() if t not in (seller, buyer)]
-        if pool:
-            vid = min(pool, key=lambda v: (load[v], fee_of(by_id[v], 50), v))
-            return by_id[vid]
-        others = [v for v in by_id.values() if v.get("owner") not in (seller, buyer, "world")]
-        if others:
-            return min(others, key=lambda v: (fee_of(v, 50), v["venue"]))
-        return by_id.get("rastro")
+    active = {t for t, b in books.items() if b.get("haves") or b.get("wants")}
+    own = {t: v for t, v in participants.items() if v in by_id and t in active}
+    load = {v: float((hosted or {}).get(v, 0)) for v in set(own.values())}
 
     cands = []
     for s, b in books.items():
@@ -168,14 +162,16 @@ def match(books: dict, venues: list, participants: dict) -> list:
     for surplus, s, hv, t, i, w in cands:
         if hv["asset"] in used_assets:
             continue
-        key = (t, i)
-        left = want_left.get(key, w.get("qty", 1))
+        left = want_left.get((t, i), w.get("qty", 1))
         if left <= 0:
             continue
-        venue = pick_venue(s, t)
-        if venue is None:
-            continue
-        lo, hi = hv["min"], w["max"]
+        used_assets.add(hv["asset"])
+        want_left[(t, i)] = left - 1
+        trades.append({"seller": s, "buyer": t, "card": hv["card"], "asset": hv["asset"], "min": hv["min"],
+                       "max": w["max"], "surplus": surplus})
+
+    def price_on(tr: dict, venue: dict):
+        lo, hi = tr["min"], tr["max"]
         price = (lo + hi) // 2
         for _ in range(4):               # the accepting side pays the fee: split [min, max - fee] in the middle
             nxt = (lo + (hi - fee_of(venue, price))) // 2
@@ -183,14 +179,52 @@ def match(books: dict, venues: list, participants: dict) -> list:
                 break
             price = nxt
         if price < lo or price + fee_of(venue, price) > hi:
+            return None
+        return price
+
+    def can_host(vid: str, tr: dict) -> bool:
+        return by_id[vid].get("owner") not in (tr["seller"], tr["buyer"]) and price_on(tr, by_id[vid]) is not None
+
+    # coverage: one trade per participant venue, by augmenting paths (sizes are tiny)
+    pvenues = sorted(set(own.values()))
+    assigned: dict = {}            # trade index -> venue
+    match_of: dict = {}            # venue -> trade index
+
+    def try_cover(vid: str, seen: set) -> bool:
+        for k, tr in enumerate(trades):
+            if k in seen or not can_host(vid, tr):
+                continue
+            seen.add(k)
+            if k not in assigned or try_cover(assigned[k], seen):
+                assigned[k], match_of[vid] = vid, k
+                return True
+        return False
+
+    for vid in sorted(pvenues, key=lambda v: (load[v], v)):
+        try_cover(vid, set())
+    uncovered = sorted(t for t, v in own.items() if v not in match_of)
+
+    out = []
+    for k, tr in enumerate(trades):
+        vid = assigned.get(k)
+        if vid is None:
+            pool = [v for v in pvenues if can_host(v, tr)]
+            if pool:
+                vid = min(pool, key=lambda v: (load[v], fee_of(by_id[v], 50), v))
+            else:
+                others = [v["venue"] for v in by_id.values() if v.get("owner") != "world" and can_host(v["venue"], tr)]
+                vid = min(others, key=lambda v: (fee_of(by_id[v], 50), v)) if others \
+                    else ("rastro" if "rastro" in by_id and can_host("rastro", tr) else None)
+        if vid is None:
             continue
-        used_assets.add(hv["asset"])
-        want_left[key] = left - 1
-        if venue["venue"] in load:
-            load[venue["venue"]] += 1
-        trades.append({"seller": s, "buyer": t, "card": hv["card"], "asset": hv["asset"], "price": price,
-                       "venue": venue["venue"], "fee": fee_of(venue, price), "surplus": surplus})
-    return trades
+        venue = by_id[vid]
+        price = price_on(tr, venue)
+        if vid in load:
+            load[vid] += price
+        out.append({"seller": tr["seller"], "buyer": tr["buyer"], "card": tr["card"], "asset": tr["asset"],
+                    "price": price, "venue": vid, "host": venue.get("owner"), "fee": fee_of(venue, price),
+                    "surplus": tr["surplus"]})
+    return {"trades": out, "uncovered": uncovered, "hosting": load}
 
 
 # ---------------------------------------------------------------- the store
@@ -259,24 +293,69 @@ class Store:
             rounds = [{"id": r["id"], "at": r["at"], "trades": len(r["trades"]),
                        "done": sum(1 for a in r["trades"] if a.get("status") == "settled"),
                        "venues": sorted({a["venue"] for a in r["trades"]})} for r in self.state["rounds"]]
+            ledger = [{"id": t["id"], "round": r["id"], "seller": t["seller"], "buyer": t["buyer"], "card": t["card"],
+                       "price": t["price"], "venue": t["venue"], "host": t.get("host"), "status": t["status"]}
+                      for r in self.state["rounds"] for t in r["trades"]]
+            hosting = {}
+            for row in ledger:
+                if row["status"] != "failed":
+                    hh = hosting.setdefault(row["venue"], {"host": row["host"], "trades": 0, "value": 0})
+                    hh["trades"] += 1
+                    hh["value"] += row["price"]
             return {"teams": sorted(teams), "venues": {t: v.get("venue") for t, v in teams.items()},
+                    "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
+                            "the venue with the least value hosted today; a side that did not execute sits out the next round",
+                    "hosting": hosting, "ledger": ledger, "last_attempt": self.state.get("last_attempt"),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
                     "cards_offered": sorted({x["card"] for v in teams.values() for x in v["haves"]}),
                     "cards_wanted": sorted({x["card"] for v in teams.values() for x in v["wants"]}),
                     "rounds": rounds, "next_run": next_run, "now": now_iso()}
 
-    def run(self, venues: list) -> dict:
+    def hosted(self) -> dict:
+        out: dict = {}
+        for r in self.state["rounds"]:
+            for t in r["trades"]:
+                if t["status"] != "failed":
+                    out[t["venue"]] = out.get(t["venue"], 0) + t["price"]
+        return out
+
+    def defaulters(self) -> set:
+        """Teams that left a planned trade of an earlier round unexecuted: a seller that never posted, a buyer that
+        never accepted. They sit out the next round (their book stays)."""
+        bad = set()
+        for r in self.state["rounds"]:
+            for t in r["trades"]:
+                if t["status"] == "planned":
+                    bad.add(t["seller"])
+                elif t["status"] == "posted":
+                    bad.add(t["buyer"])
+        return bad
+
+    def run(self, venues: list, force: bool = False) -> dict:
         with self.lock:
-            books = {t: {"haves": v["haves"], "wants": v["wants"]} for t, v in self.state["teams"].items()}
-            parts = {t: v.get("venue") for t, v in self.state["teams"].items()}
-            trades = match(books, venues, parts)
+            bad = self.defaulters()
+            for r in self.state["rounds"]:              # earlier rounds are closed: what was not done is failed
+                for t in r["trades"]:
+                    if t["status"] in ("planned", "posted"):
+                        t["status"], t["error"] = "failed", "not executed before the next round"
+            books = {t: {"haves": v["haves"], "wants": v["wants"]} for t, v in self.state["teams"].items() if t not in bad}
+            parts = {t: v.get("venue") for t, v in self.state["teams"].items() if t not in bad}
+            res = match(books, venues, parts, self.hosted())
+            trades, uncovered = res["trades"], res["uncovered"]
+            attempt = {"at": now_iso(), "trades": len(trades), "uncovered": uncovered, "sat_out": sorted(bad),
+                       "held": bool(uncovered) and not force}
+            if uncovered and not force:
+                attempt["note"] = "round held: every participant's venue must host at least one trade"
+                self.state["last_attempt"] = attempt
+                self.save()
+                return {"round": None, **attempt}
             rid = len(self.state["rounds"]) + 1
             for i, tr in enumerate(trades, 1):
                 tr.update({"id": f"r{rid}-{i}", "offer": None, "status": "planned", "posted": None, "accepted": None,
                            "error": None})
-            self.state["rounds"].append({"id": rid, "at": now_iso(), "trades": trades})
-            # a matched have leaves the book: a second run never sells the same asset twice
+            self.state["rounds"].append({"id": rid, "at": now_iso(), "trades": trades, "sat_out": sorted(bad)})
+            self.state["last_attempt"] = {**attempt, "round": rid}
             sold = {tr["asset"] for tr in trades}
             for t, v in self.state["teams"].items():
                 v["haves"] = [x for x in v["haves"] if x["asset"] not in sold]
@@ -289,7 +368,7 @@ class Store:
                 v["wants"] = [w for w in v["wants"] if w.get("qty", 1) > 0]
             self.save()
             return {"round": rid, "trades": len(trades), "venues": sorted({t["venue"] for t in trades}),
-                    "surplus": sum(t["surplus"] for t in trades)}
+                    "surplus": sum(t["surplus"] for t in trades), "uncovered": uncovered, "sat_out": sorted(bad)}
 
     def plan(self, token) -> dict:
         team = self.team_of(token)
@@ -395,13 +474,16 @@ trades. Then each side gets exactly one thing to do:
   your book, so a second run never sells the same copy twice.
 
 ## Which venue, and what binds
-- Venue rule (deterministic, in `match()` of tools/clearing.py): the open venues of the participants minus the
-  seller's and the buyer's; among them the one with the fewest trades in this round, ties by lower fee then id.
-  None left: the cheapest open venue of a third team; none at all: El Rastro. Team 3's venue is in the pool on the
-  same terms and is excluded whenever Team 3 is a side.
+- Every round is for everyone or it does not run: the matcher first gives every participant's venue one trade
+  (a trade cannot sit on a venue owned by one of its two sides). If some participant's venue would host nothing, the
+  round is held and /api/clearing/status says who would be left out; it is retried every 2 minutes.
+- The remaining trades go to the venue with the least value hosted so far today, so a venue that hosted little in
+  an earlier round comes first in the next. Team 3's venue is in the pool on the same terms.
+- The allocation is public: /api/clearing/status shows per venue the trades and value hosted, and every matched
+  trade with its venue and price (trade prices are public in the game anyway; reservation prices never are).
 - The contract is the game itself: the seller's offer is addressed `to` the buyer (only that team can accept, nobody
   can take it), the buyer accepts by id, the game settles next tick. A side that does not post or accept loses only
-  that trade; it never costs the other side anything. Every planned price sits inside both sides' own numbers.
+  that trade and sits out the next round. Every planned price sits inside both sides' own numbers.
 
 ## Join in three commands (python3, no dependencies)
 
@@ -499,7 +581,7 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                 elif self.path == "/api/clearing/run":
                     if not admin_token or body.get("admin") != admin_token:
                         raise Refused(403, "forbidden")
-                    self._json(200, store.run(venues_fn()))
+                    self._json(200, store.run(venues_fn(), force=bool(body.get("force"))))
                 else:
                     self._json(404, {"error": "no_such_route"})
             except Refused as r:
@@ -527,7 +609,7 @@ def cmd_serve(a) -> None:
     print(f"clearing house on http://{a.host}:{a.port}  store={a.store}  runs={run_at or 'on demand'}", flush=True)
 
     def ticker():
-        fired = set()
+        fired, held_since, last_retry = set(), None, 0.0
         while True:
             try:
                 n = store.watch_books()
@@ -536,7 +618,15 @@ def cmd_serve(a) -> None:
                 hhmm = datetime.now().strftime("%H:%M")
                 if hhmm in run_at and hhmm not in fired:
                     fired.add(hhmm)
-                    print(f"{now_iso()} scheduled run {hhmm}: {store.run(live_venues())}", flush=True)
+                    r = store.run(live_venues())
+                    print(f"{now_iso()} scheduled run {hhmm}: {r}", flush=True)
+                    held_since = time.time() if r.get("held") else None
+                elif held_since and time.time() - last_retry > 120:      # a held round is retried every 2 minutes
+                    last_retry = time.time()
+                    r = store.run(live_venues())
+                    print(f"{now_iso()} retry of the held round: {r}", flush=True)
+                    if not r.get("held"):
+                        held_since = None
             except Exception as e:
                 print(f"{now_iso()} ticker error: {e}", file=sys.stderr, flush=True)
             time.sleep(20)
@@ -550,7 +640,7 @@ def cmd_serve(a) -> None:
 
 def cmd_run(a) -> None:
     store = Store(Path(a.store) / "state.json")
-    print(json.dumps(store.run(live_venues()), indent=1))
+    print(json.dumps(store.run(live_venues(), force=a.force), indent=1))
 
 
 def cmd_status(a) -> None:
@@ -558,7 +648,7 @@ def cmd_status(a) -> None:
     print(json.dumps(store.status(), indent=1))
     for r in store.state["rounds"]:
         for t in r["trades"]:
-            print(f"  {t['id']:<7} {t['seller']} -> {t['buyer']}  {t['card']} #{t['asset']}  {t['price']} P  on {t['venue']}"
+            print(f"  {t['id']:<7} {t['seller']} -> {t['buyer']}  {t['card']} #{t['asset']}  {t['price']} P  on {t['venue']} ({t.get('host')})"
                   f"  fee {t['fee']}  surplus {t['surplus']}  {t['status']}  offer={t['offer']}")
 
 
@@ -573,25 +663,35 @@ def selftest() -> None:
              "t07": {"haves": [{"card": "SAL-10", "asset": 3, "min": 60}], "wants": [{"card": "MAL-06", "max": 21, "qty": 1}]},
              "t18": {"haves": [{"card": "MAL-06", "asset": 4, "min": 15}], "wants": [{"card": "LAV-03", "max": 7, "qty": 1}]}}
     parts = {"t03": "v20", "t07": "v29", "t18": "v28"}
-    trades = match(books, venues, parts)
-    assert len(trades) == 2, trades
+    res = match(books, venues, parts)
+    trades = res["trades"]
+    assert len(trades) == 2 and res["uncovered"] == ["t03", "t07"], res     # both trades are t03<->t07: only v28 can host
     sal = next(t for t in trades if t["card"] == "SAL-10")
     assert sal["seller"] == "t07" and sal["buyer"] == "t03" and sal["price"] == 75 and sal["venue"] == "v28", sal
-    mal = next(t for t in trades if t["card"] == "MAL-06")
-    assert mal["seller"] == "t03" and mal["asset"] == 1 and mal["buyer"] == "t07" and mal["price"] == 15 and mal["venue"] == "v28", mal
-    assert not any(t["card"] == "LAV-03" for t in trades)      # max 7 < min 8
-    # no third participant venue: the cheapest other open venue; none at all: rastro, its fee inside the buyer's max
+    # a third trade t18 -> t07 lets v20 host it, and v29 is still uncovered (t07 is in every trade)
+    books2 = {**books, "t07": {"haves": books["t07"]["haves"], "wants": books["t07"]["wants"] + [{"card": "MAL-06", "max": 30, "qty": 1}]}}
+    res2 = match(books2, venues, parts)
+    assert len(res2["trades"]) == 3 and res2["uncovered"] == ["t07"], res2
+    assert {t["venue"] for t in res2["trades"]} == {"v20", "v28"}, res2["trades"]
+    # four teams, every venue covered: coverage first, then the least hosted value
+    books3 = {**books2, "t11": {"haves": [{"card": "LAV-03", "asset": 9, "min": 5}], "wants": [{"card": "LAV-03", "max": 12, "qty": 1}]}}
+    venues3 = venues + [{"venue": "v13", "owner": "t11", "status": "open", "fee_bps": 0, "fee_per_card": 0}]
+    res3 = match(books3, venues3, {**parts, "t11": "v13"})
+    assert res3["uncovered"] == [], res3
+    assert {t["venue"] for t in res3["trades"]} >= {"v20", "v29", "v28", "v13"}, res3["trades"]
+    # hosted so far today steers the balance: v13 heavy -> the free trade goes elsewhere
+    res4 = match(books3, venues3, {**parts, "t11": "v13"}, hosted={"v13": 500})
+    assert sum(1 for t in res4["trades"] if t["venue"] == "v13") == 1, res4["trades"]
+    # rastro only: fee inside the buyer's max, midpoint of [60, 90 - fee]
     two = {"t03": books["t03"], "t07": books["t07"]}
-    t2 = match(two, venues, {"t03": "v20", "t07": "v29"})
-    assert all(t["venue"] == "v28" for t in t2), t2
-    t3 = match(two, [v for v in venues if v["venue"] != "v28"], {"t03": "v20", "t07": "v29"})
+    t3 = match(two, [v for v in venues if v["venue"] not in ("v28",)], {"t03": "v20", "t07": "v29"})["trades"]
     assert t3 and all(t["venue"] == "rastro" for t in t3) and all(t["price"] + t["fee"] <= 90 for t in t3), t3
-    assert next(t for t in t3 if t["card"] == "SAL-10")["price"] == 72, t3   # midpoint of [60, 90 - fee]
+    assert next(t for t in t3 if t["card"] == "SAL-10")["price"] == 72, t3
     # the server round trip, in process
     import tempfile
     with tempfile.TemporaryDirectory() as d:
         store = Store(Path(d) / "state.json")
-        srv = make_server(store, "127.0.0.1", 0, admin_token="adm", public_url="", run_at=[], venues_fn=lambda: venues)
+        srv = make_server(store, "127.0.0.1", 0, admin_token="adm", public_url="", run_at=[], venues_fn=lambda: venues3)
         port = srv.server_address[1]
         threading.Thread(target=srv.serve_forever, daemon=True).start()
 
@@ -617,30 +717,41 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/book", {"token": "nope-nope-nope", "haves": []})
         assert st == 401, r
         st, r = call("GET", "/api/clearing/status")
-        assert st == 200 and r["haves"] == 4 and "min" not in json.dumps(r), r
+        assert st == 200 and r["haves"] == 4 and '"min"' not in json.dumps(r) and '"max"' not in json.dumps(r), r
         st, r = call("POST", "/api/clearing/run", {"admin": "wrong"})
         assert st == 403
         st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
-        assert st == 200 and r["trades"] == 2, r
+        assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t03", "t07"], r
+        st, r = call("GET", "/api/clearing/status")
+        assert r["last_attempt"]["held"] and r["rounds"] == [], r
+        st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13"})
+        toks["t11"] = r["token"]
+        call("POST", "/api/clearing/book", {"token": toks["t11"], **books3["t11"]})
+        call("POST", "/api/clearing/book", {"token": toks["t07"], **books2["t07"]})
+        st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
+        assert st == 200 and r["round"] == 1 and r["uncovered"] == [], r
         st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
         acts = r["actions"]
-        assert {x["role"] for x in acts} == {"sell", "buy"} and "min" not in json.dumps(r) and "max" not in json.dumps(r), r
+        assert {x["role"] for x in acts} == {"sell", "buy"} and '"min"' not in json.dumps(r), r
         sell = next(x for x in acts if x["role"] == "sell")
-        assert sell["post"] == {"venue": "v28", "to": "t03", "give": {"assets": [3]}, "want": {"cash": 75},
-                                "expires_in_ticks": OFFER_TTL_TICKS}, sell
+        assert sell["post"]["to"] == "t03" and sell["post"]["give"] == {"assets": [3]} and sell["post"]["want"] == {"cash": 75}, sell
         st, r = call("POST", "/api/clearing/report", {"token": toks["t07"], "action": sell["id"], "offer": 4567})
         assert st == 200 and r["status"] == "posted", r
         st, r = call("GET", f"/api/clearing/plan?token={toks['t03']}")
-        buy = next(x for x in r["actions"] if x["role"] == "buy")
+        buy = next(x for x in r["actions"] if x["role"] == "buy" and x["card"] == "SAL-10")
         assert buy["offer"] == 4567 and buy["accept"] == "POST /api/offers/4567/accept", buy
         st, r = call("POST", "/api/clearing/report", {"token": toks["t03"], "action": buy["id"], "status": "accepted"})
         assert r["status"] == "settled", r
-        st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
-        assert r["trades"] == 0, r         # sold assets left the book
+        st, r = call("GET", "/api/clearing/status")
+        assert r["hosting"] and r["ledger"] and '"min"' not in json.dumps(r), r
+        # second run: the unexecuted trades fail, their idle sides sit out, the sold copy is gone
+        st, r = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})
+        assert st == 200 and r["sat_out"], r
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/agents.md", timeout=5) as r:
             assert r.status == 200 and b"clearing_client.py" in r.read()
         srv.shutdown()
-    print("selftest ok: 2 trades, midpoint prices, venues spread, rastro fallback, tokens, plan, report, no prices leak")
+    print("selftest ok: coverage rule holds a round, 4 venues covered, balance by hosted value, rastro fallback, "
+          "tokens, plan, report, ledger, sit-out, no reservation prices leak")
 
 
 def main() -> None:
@@ -656,6 +767,7 @@ def main() -> None:
     s.set_defaults(fn=cmd_serve)
     r = sub.add_parser("run")
     r.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    r.add_argument("--force", action="store_true", help="run even if a participant's venue would host nothing")
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status")
     st.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
