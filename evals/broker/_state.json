@@ -1,0 +1,66 @@
+{
+ "metrics": [
+  {
+   "id": "bench_score",
+   "label": "bench_score",
+   "kind": "float",
+   "scale": 1,
+   "better": "higher"
+  },
+  {
+   "id": "surplus_captured",
+   "label": "surplus_capt",
+   "kind": "float",
+   "scale": 1,
+   "better": "higher"
+  },
+  {
+   "id": "dropped",
+   "label": "dropped",
+   "kind": "float",
+   "scale": 10,
+   "better": "lower"
+  },
+  {
+   "id": "bad_match",
+   "label": "bad_match",
+   "kind": "float",
+   "scale": 1,
+   "better": "lower"
+  },
+  {
+   "id": "live_agree",
+   "label": "live_agree",
+   "kind": "float",
+   "scale": 1,
+   "better": "higher"
+  },
+  {
+   "id": "vs_live",
+   "label": "vs_live",
+   "kind": "float",
+   "scale": 1,
+   "better": "higher"
+  }
+ ],
+ "perf_fields": [
+  {
+   "id": "latency_s",
+   "unit": "s"
+  },
+  {
+   "id": "matches"
+  },
+  {
+   "id": "ticks"
+  },
+  {
+   "id": "guard_dropped"
+  }
+ ],
+ "headline": "bench_score",
+ "groups": [
+  "real",
+  "synthetic"
+ ]
+}

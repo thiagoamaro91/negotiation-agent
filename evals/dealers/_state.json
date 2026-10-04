@@ -1,0 +1,125 @@
+{
+ "metrics": [
+  {
+   "id": "deal_in_limit",
+   "kind": "binary",
+   "label": "deal in limit"
+  },
+  {
+   "id": "over_value",
+   "kind": "binary",
+   "better": "lower",
+   "label": "over value"
+  },
+  {
+   "id": "range_share",
+   "kind": "float",
+   "scale": 1,
+   "label": "range share"
+  },
+  {
+   "id": "limit_share",
+   "kind": "float",
+   "scale": 1,
+   "label": "limit share"
+  },
+  {
+   "id": "limit_breach",
+   "kind": "binary",
+   "better": "lower",
+   "label": "limit breach"
+  },
+  {
+   "id": "missed_ok_offer",
+   "kind": "binary",
+   "better": "lower",
+   "label": "missed offer"
+  },
+  {
+   "id": "real_deal_in_limit",
+   "kind": "binary",
+   "label": "REAL in limit"
+  },
+  {
+   "id": "real_over_value",
+   "kind": "binary",
+   "better": "lower",
+   "label": "REAL over value"
+  },
+  {
+   "id": "real_range_share",
+   "kind": "float",
+   "scale": 1,
+   "label": "REAL share"
+  },
+  {
+   "id": "real_limit_breach",
+   "kind": "binary",
+   "better": "lower",
+   "label": "REAL breach"
+  },
+  {
+   "id": "real_missed_ok_offer",
+   "kind": "binary",
+   "better": "lower",
+   "label": "REAL missed"
+  }
+ ],
+ "perf_fields": [
+  {
+   "id": "rounds",
+   "label": "our offers"
+  },
+  {
+   "id": "ticks",
+   "label": "ticks"
+  },
+  {
+   "id": "real_prefix",
+   "label": "real answers"
+  },
+  {
+   "id": "latency_s",
+   "label": "latency",
+   "unit": "s"
+  }
+ ],
+ "headline": "deal_in_limit",
+ "baseline_config": {
+  "abuela": {
+   "cap": 22,
+   "step": 1,
+   "anchor_frac": 0.4,
+   "max_rounds": 40,
+   "sell_anchor_mult": 2.2,
+   "floor_margin": 2
+  },
+  "chato.rare": {
+   "anchor": 60,
+   "step": 4,
+   "cap": 88,
+   "max_bid": null,
+   "max_rounds": 40
+  },
+  "chato.uncommon": {
+   "anchor": null,
+   "step": 1,
+   "cap": null,
+   "max_bid": null,
+   "max_rounds": 12
+  },
+  "chato.sell": {
+   "sell_anchor": null,
+   "sell_step": null,
+   "max_rounds": null,
+   "floor_margin": 2
+  },
+  "pilar.sell": {
+   "sell_anchor": null,
+   "sell_step": 1,
+   "max_rounds": 40,
+   "floor_margin": 0
+  }
+ },
+ "note": "real_* = audit of the real conversation (same in every variant); the rest = counterfactual replay against the dealer model (modelled numbers)"
+}

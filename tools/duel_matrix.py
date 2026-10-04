@@ -23,11 +23,16 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import duel_arena as arena  # noqa: E402
 
-MIXES = {"Duels I field": "duels1", "likely field": "field"}
+MIXES = {"Duels II field": "duels2", "Duels I field": "duels1", "likely field": "field"}
 
 
 def mix_weights(name: str):
-    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS}[name]
+    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS, "duels2": arena.DUELS2_WEIGHTS}[name]
+
+
+def mix_mods(name: str) -> dict:
+    """Module overrides a mix brings with it: the Duels II field also has its days world (arena.DUELS2_MODS)."""
+    return {k: v for k, v in arena.DUELS2_MODS.items() if k != "PAIR_SEEN"} if name == "duels2" else {}
 
 
 def mix_kinds(name: str) -> list:
@@ -39,12 +44,13 @@ def cell(job: tuple) -> tuple:
     """One cell: (row, column, policy) -> per-seed mean scores and the summary."""
     row, col, pname, params, seeds, session, world = job
     g = vars(arena)
-    saved = {k: g[k] for k in world["mods"]}
+    saved = {k: g[k] for k in set(world["mods"]) | {"PAIR_SEEN", "ARENA_DAYS"}}
     g.update(world["mods"])
     arena.PAIR_SEEN = 0.0
     arena.ARENA_DAYS = world["days_mode"]
     try:
-        res = arena.evaluate(params, seeds, session, kinds=world["kinds"], weights=world["weights"])
+        res = arena.evaluate(params, seeds, session, kinds=world["kinds"], weights=world["weights"],
+                             **world.get("kw", {}))
     finally:
         g.update(saved)
     per_seed = {}
@@ -53,12 +59,32 @@ def cell(job: tuple) -> tuple:
     return row, col, pname, arena.summary(res)["all"], {s: sum(v) / len(v) for s, v in per_seed.items()}
 
 
-def jobs_for(policies: dict, seeds, session: int) -> list:
+def load_mix(path) -> dict:
+    """A --mix file: {arena kind: weight}, every kind known to the arena, weights >= 0, at least one positive."""
+    w = json.loads(Path(path).expanduser().read_text())
+    bad = [k for k in w if k not in arena.KINDS]
+    if bad or not w or any(not isinstance(v, (int, float)) or v < 0 for v in w.values()) or not sum(w.values()):
+        raise SystemExit(f"{path}: bad mix (unknown kinds {bad} or weights not >= 0 with one positive)")
+    return {k: w.get(k, 0) for k in arena.KINDS}
+
+
+def jobs_for(policies: dict, seeds, session: int, mixes: dict | None = None, d1: bool = False) -> list:
+    """Every cell. mixes: extra {label: weights} next to the named MIXES (a field refit from the last session; no
+    module overrides); d1: one more row per mix, robust, where an accept at deadline-1 does not settle
+    (arena d1_settles=False)."""
     out = []
+    all_mixes = {label: (mix_weights(mix), mix_mods(mix)) for label, mix in MIXES.items()}
+    all_mixes.update({label: (w, {}) for label, w in (mixes or {}).items()})
     for mode, days_mode in (("robust", ""), ("confirmed", "confirmed")):
-        for label, mix in MIXES.items():
-            w = {"mods": {}, "days_mode": days_mode, "weights": mix_weights(mix), "kinds": mix_kinds(mix)}
+        for label, (wts, mods) in all_mixes.items():
+            w = {"mods": dict(mods), "days_mode": days_mode, "weights": wts,
+                 "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0]}
             out += [(f"mix: {label}", mode, n, p, seeds, session, w) for n, p in policies.items()]
+    if d1:
+        for label, (wts, mods) in all_mixes.items():
+            w = {"mods": dict(mods), "days_mode": "", "weights": wts,
+                 "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0], "kw": {"d1_settles": False}}
+            out += [(f"d1: {label}", "robust", n, p, seeds, session, w) for n, p in policies.items()]
     for kind in arena.KINDS:
         if kind == "absent":
             continue
@@ -78,12 +104,22 @@ def paired(a: dict, b: dict) -> tuple:
     return m, sd / n ** 0.5
 
 
+def json_cell(row: str, col: str, policy: str, c: dict, delta: float, se: float) -> dict:
+    """One --out-json cell. delta and se stay unrounded: a reader applying the 2 SE rule must decide on full precision
+    (rounding to 4 places can turn 0.01006 +- 0.005049, which fails, into 0.0101 +- 0.0050, which passes)."""
+    return {"world": row, "mode": col, "policy": policy, "mean": c["mean"], "delta": float(delta), "se": float(se),
+            "deal_rate": c["deal_rate"], "rounds": c["rounds"]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--session", type=int, default=2, choices=sorted(arena.SESSIONS))
     ap.add_argument("--sessions", type=int, default=60)
     ap.add_argument("--seed0", type=int, default=970000, help="fresh seeds (the tuner uses 0.. and 500000..)")
     ap.add_argument("--params", action="append", default=[], help="NAME=FILE (repeatable); the first is the baseline")
+    ap.add_argument("--mix", action="append", default=[], help="LABEL=FILE (repeatable): an extra rival mix, "
+                    "{arena kind: weight}, e.g. the field refit by tools/analyst.py duels")
+    ap.add_argument("--d1-stress", action="store_true", help="add a row per mix where a deadline-1 accept does not settle")
     ap.add_argument("--workers", type=int, default=max(1, mp.cpu_count() - 1))
     ap.add_argument("--out-md", default="")
     ap.add_argument("--out-json", default="")
@@ -96,12 +132,17 @@ def main() -> None:
     seeds = list(range(a.seed0, a.seed0 + a.sessions))
     t0 = time.time()
     with mp.Pool(a.workers) as pool:
-        results = pool.map(cell, jobs_for(policies, seeds, a.session))
+        mixes = {}
+        for spec in a.mix:
+            label, _, f = spec.partition("=")
+            mixes[label] = load_mix(f)
+        results = pool.map(cell, jobs_for(policies, seeds, a.session, mixes, a.d1_stress))
     table, per_seed = {}, {}
     for row, col, pname, summ, ps in results:
         table.setdefault((row, col), {})[pname] = summ
         per_seed[(row, col, pname)] = ps
     replay = {n: arena.duels1_line(n, p) for n, p in policies.items()}
+    replay2 = {n: arena.duels2_line(n, p) for n, p in policies.items()}
 
     names = list(policies)
     lines = [f"# Duel matrix: {arena.SESSIONS[a.session]['name']}", "",
@@ -120,21 +161,22 @@ def main() -> None:
                 m, se = paired(per_seed[(row, col, n)], per_seed[(row, col, base)])
                 mark = "**" if m > 2 * se else ("_" if m < -2 * se else "")
                 txt += f" ({mark}{m:+.3f}{mark} ±{se:.3f})"
-                out_json.append({"world": row, "mode": col, "policy": n, "mean": c["mean"], "delta": round(m, 4),
-                                 "se": round(se, 4), "deal_rate": c["deal_rate"], "rounds": c["rounds"]})
+                out_json.append(json_cell(row, col, n, c, m, se))
             else:
-                out_json.append({"world": row, "mode": col, "policy": n, "mean": c["mean"], "delta": 0.0,
-                                 "se": 0.0, "deal_rate": c["deal_rate"], "rounds": c["rounds"]})
+                out_json.append(json_cell(row, col, n, c, 0.0, 0.0))
             parts.append(txt)
         lines.append(f"| {row} | {col} | " + " | ".join(parts) + " |")
     lines += ["", "Duels I replay (real rival price paths; rivals do not react or accept):", ""]
     lines += [f"- {replay[n]}" for n in names]
+    lines += ["", "Duels II replay (real (price, day) paths, 16 ticks, decay 0.08; rivals do not react or accept):", ""]
+    lines += [f"- {replay2[n]}" for n in names]
     md = "\n".join(lines) + "\n"
     print(md)
     if a.out_md:
         Path(a.out_md).expanduser().write_text(md)
     if a.out_json:
-        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay}, indent=1))
+        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay, "replay2": replay2},
+                                                            indent=1))
 
 
 if __name__ == "__main__":

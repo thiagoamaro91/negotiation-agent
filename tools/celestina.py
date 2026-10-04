@@ -24,6 +24,17 @@ The holder map is Team 3's edge, so the output has two sides:
     python3 tools/celestina.py once --json [--public]             # the private (or public) snapshot as JSON
     python3 tools/celestina.py serve --access-log logs/celestina/access.jsonl   # one JSONL line per public request
     python3 tools/celestina.py visits --access-log FILE [--since MINUTES]       # who read /agents.md, called /api/match
+    python3 tools/celestina.py serve --exclude-from <dir>          # never point anyone at a page card WE lack
+
+The public side never names a page card Team 3 lacks (pointing its holders at another buyer works against us):
+--exclude-from (files, or a directory of me*.json: our account as tools/snapshot.py saves it; only a valid one of
+ours counts, the highest game tick wins, re-read at every refresh, aged in game time; only the list of cards we lack
+is kept) gives the list (tools/matchmaker.py exclude_state()). It FAILS CLOSED: without the flag, or with no trusted
+file (missing, foreign, malformed, older than --exclude-max-age-min of play), every page card is hidden and the
+board's `about` says page-card matches are paused. It is applied to the Open Bazaar board and to the public view's
+matches, invitations, our venue's book and demand (the raw per-card books stay: they are every venue's public book).
+The Open Bazaar board shows an inferred need (tier 3-4) only at p_missing >= --min-p (0.8,
+docs/plans/matchmaker-validation.md) and never for a team whose deck contradicts the leaderboard.
 
 The agent API (public side, keyless, read-only, CORS open; built from the public view only, so the holder map cannot
 reach it):
@@ -32,6 +43,12 @@ reach it):
                                               a personal shortlist: fair prices, the market aggregated without venues
                                               or makers, v20 offers with their exact accept calls, a ready bid / ask
                                               for v20 and thread calls to negotiate on v20
+    GET /api/missing?team=tNN                 Open Bazaar (tools/matchmaker.py's last output), built when served:
+                                              a named offer is "live" with its call only while the current snapshot
+                                              is fresh (SNAPSHOT_MAX_AGE, no failed refresh) and shows it unchanged;
+                                              explicit live wants first; needs that are only inferred say so;
+                                              ?team= keeps only that team's own needs (never what anyone holds).
+                                              Also the first key of /api/match and of /api/celestina.json.
     GET /api/v20                              our venue's book: every offer with its exact accept call
     GET /api/fair/REF                         the fair price block of one card
 
@@ -51,6 +68,7 @@ import collections
 import html
 import ipaddress
 import json
+import math
 import re
 import sys
 import threading
@@ -63,6 +81,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fairprice  # noqa: E402  (the fair price rule shared with tools/concierge.py)
+import matchmaker  # noqa: E402  (exclude_from: the cards we lack, the same rule announce.py and outreach.py apply)
 
 BASE = "https://bazaar.causaprima.ai/api/"
 ROOT = Path(__file__).resolve().parent.parent
@@ -771,11 +790,14 @@ def suggested_bid(ref: str, card: dict, vid: str | None) -> dict | None:
             "order": order("bid", ref, price, vid)}
 
 
-def public_view(snap: dict) -> dict:
+def public_view(snap: dict, exclude=()) -> dict:
     """The PUBLIC snapshot, cut out of the private one by whitelisting. Open offers are public in every venue's book,
     so they are shown per card and per team (with the team behind them when the feed says so), each with its source
     and a price verdict; matches built from open offers alone come with ready-to-post orders for our venue. The holder
-    map (who is known to hold which copies), the matches built on it and the announcement drafts never leave here."""
+    map (who is known to hold which copies), the matches built on it and the announcement drafts never leave here.
+    Cards in `exclude` (the page cards we lack) never appear in the matches, invitations, our venue's book or the
+    demand list; the per-card books stay (every venue's public book)."""
+    skip = matchmaker.as_skip(exclude)
     ours = snap.get("our_venue") or None
     vid = ours["venue"] if ours else None
     cards = snap.get("cards") or {}
@@ -784,7 +806,8 @@ def public_view(snap: dict) -> dict:
     def name(ref):
         return (cards.get(ref) or {}).get("name")
 
-    book = sorted((r for r in rows.values() if vid and r["venue"] == vid and not r["to"]),
+    book = sorted((r for r in rows.values() if vid and r["venue"] == vid and not r["to"]
+                   and not excluded((r.get("ref"), r.get("want_ref")), skip)),
                   key=lambda r: ({"bid": 0, "ask": 1, "swap": 2}.get(r["kind"], 3), -(r["price"] or 0), r["id"]))
     our_book, invitations = [], []
     for r in book:
@@ -814,9 +837,11 @@ def public_view(snap: dict) -> dict:
               **{k: [dict(o) for o in t.get(k) or []] for k in ("bids", "asks", "swaps")}} for t in snap.get("teams") or []]
     matches = [{k: m.get(k) for k in ("kind", "ref", "want_ref", "score", "buy", "sell", "stranded", "on_ours", "why",
                                       "gap", "meet", "orders")}
-               for m in snap.get("matches") or [] if m.get("kind") in PUBLIC_MATCHES]
+               for m in snap.get("matches") or [] if m.get("kind") in PUBLIC_MATCHES
+               and not excluded((m.get("ref"), m.get("want_ref")), skip)]
     demand = [{k: d[k] for k in ("ref", "name", "rarity", "bids", "bidders", "best_bid", "asks", "best_ask",
-                                 "swaps_wanting", "swaps_giving", "ref_price", "trades")} for d in snap.get("demand") or []]
+                                 "swaps_wanting", "swaps_giving", "ref_price", "trades")} for d in snap.get("demand") or []
+              if d.get("ref") not in skip]
     m = snap.get("market") or {}
     return {
         "scope": "public",
@@ -847,6 +872,253 @@ def card_view(snap: dict, ref: str) -> dict | None:
         out["our_book"] = [b for b in snap.get("our_book") or [] if ref in (b["ref"], b["want_ref"])]
         out["invitations"] = [i for i in snap.get("invitations") or [] if i["ref"] == ref]
     return out
+
+
+# ---------------------------------------------------------------- the missing-card board (tools/matchmaker.py)
+#
+# The matchmaker writes logs/matchmaker/latest.json (`matchmaker.py json --live --out ... --every 120`). Its output
+# names who holds which copies; the board here never does: each entry keeps the buyer side, the card, the live offer
+# and its accept call, prices, and a COUNT of holders (the holder map stays private, as everywhere on this side).
+
+MATCHES_FILE = ROOT / "logs" / "matchmaker" / "latest.json"
+MATCHES_MAX_AGE = 900.0             # an older file shows an empty board: a stale match names a card already bought
+MISSING_MAX = 12
+INFERRED_NOTE = "appears to be missing (inferred from public trades, not confirmed)"
+MIN_P = 0.8                         # an inferred need is shown only from this p_missing (announce.MIN_P_ANNOUNCE): on our
+                                    # own account p >= 0.8 was really missing 91 % of the time, 0.5-0.8 only 62 %
+
+
+def excluded(refs, exclude) -> bool:
+    """Any of these card refs is one we never show."""
+    skip = exclude or ()
+    return any(isinstance(r, str) and r in skip for r in refs)
+
+
+def min_p_arg(raw: str) -> float:
+    try:
+        v = probability(float(raw))
+    except ValueError:
+        v = None
+    if v is None:
+        raise argparse.ArgumentTypeError(f"--min-p takes a number in [0, 1], not {raw!r}")
+    return v
+
+
+class PublicExclude:
+    """The cards never shown on the public side (matchmaker.exclude_state, a matchmaker.Exclusion). Configured by
+    serve; refresh() at every engine refresh stores the catalog and the game tick, and current() re-reads our holdings
+    at most every RECHECK_S when a page is served, so a newer snapshot counts at once even while the engine fails.
+    FAILS CLOSED: until a trusted snapshot of ours is read against a complete catalog (no --exclude-from, no valid
+    file, too old, no catalog yet), only cards the catalog positively identifies as epic or legendary may be shown
+    and `suppress` is on. Unconfigured (unit tests, `once`): nothing hidden. The log line carries counts, never cards."""
+    RECHECK_S = 5.0
+
+    def __init__(self):
+        self.paths, self.max_age, self.fallback, self.line = None, 60.0, (), None
+        self.cards, self.suppress = frozenset(), False
+        self.catalog, self.tick, self.checked = None, None, 0.0
+
+    def configure(self, paths, max_age_min: float, fallback) -> None:
+        self.paths, self.max_age, self.fallback = list(paths or []), max_age_min, tuple(fallback or ())
+        self.cards, self.suppress = matchmaker.Exclusion(self.fallback, allow=()), True   # nothing until a check
+
+    def _check(self) -> None:
+        st = matchmaker.exclude_state(self.paths, self.catalog, self.fallback, self.max_age, now_tick=self.tick)
+        self.cards, self.suppress, self.checked = st["cards"], not st["trusted"], time.time()
+        if st["line"] != self.line:
+            print(f"[{time.strftime('%H:%M:%S')}] {st['line']}", file=sys.stderr, flush=True)
+            self.line = st["line"]
+
+    def refresh(self, catalog: dict | None, tick=None):
+        if self.paths is None:
+            return self.cards
+        if isinstance(catalog, dict):
+            self.catalog = catalog
+        if isinstance(tick, int) and not isinstance(tick, bool):
+            self.tick = tick if self.tick is None else max(self.tick, tick)   # game time never goes back
+        self._check()
+        return self.cards
+
+    def current(self):
+        """(cards, suppress) as of now: our holdings re-read if the last check is older than RECHECK_S."""
+        if self.paths is not None and time.time() - self.checked >= self.RECHECK_S:
+            self._check()
+        return self.cards, self.suppress
+
+
+EXCLUDE = PublicExclude()
+PUBLIC_MIN_P = [MIN_P]              # serve --min-p
+
+
+def _team_ok(t) -> bool:
+    return isinstance(t, str) and bool(MATCH_TEAM_RE.match(t)) and t != US
+
+
+BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
+                "the ask plus the fee, at the midpoint, as capacity allows")   # tools/matchmaker.py's words
+MIN_TICKS_LEFT = 8                  # a named offer expiring sooner than this is not served as live
+SNAPSHOT_MAX_AGE = 4 * INTERVAL     # a public snapshot older than this (or after a failed refresh) backs no live claim
+
+
+def checkable(snap, updated: float, err, now: float | None = None):
+    """The snapshot a live claim may be checked against: the current one, only while it is fresh and the last
+    refresh did not fail. None otherwise: every named offer is then served as history, without its call."""
+    now = time.time() if now is None else now
+    if snap is None or err or not updated or now - updated > SNAPSHOT_MAX_AGE:
+        return None
+    return snap
+
+
+def live_index(pub: dict | None) -> dict | None:
+    """{(venue, offer id): its row} from the current public snapshot's books, or None before the first refresh."""
+    if not isinstance(pub, dict) or not isinstance(pub.get("cards"), dict):
+        return None
+    return {(r.get("venue"), r.get("offer")): r for c in pub["cards"].values() if isinstance(c, dict)
+            for r in c.get("offers") or [] if isinstance(r, dict)}
+
+
+def still_live(a: dict, ref: str, index: dict | None, tick) -> bool:
+    """The named offer as the current snapshot shows it: in its venue's book, the same side, card, price (what a swap
+    gives), the same addressee, and not expiring within MIN_TICKS_LEFT ticks."""
+    r = (index or {}).get((a.get("venue"), a.get("offer")))
+    if r is None or r.get("to") != a.get("to"):
+        return False
+    exp = r.get("expires_tick")
+    if isinstance(tick, int) and isinstance(exp, int) and exp - tick < MIN_TICKS_LEFT:
+        return False
+    if a.get("side") == "swap":
+        return r.get("kind") == "swap" and r.get("ref") == a.get("gives") and r.get("want_ref") == ref
+    return r.get("kind") == a.get("side") and r.get("ref") == ref and r.get("price") == a.get("price")
+
+
+def missing_entry(m: dict, team: str | None = None, index: dict | None = None, tick=None) -> dict | None:
+    """One matchmaker match, whitelisted for the public side: never who holds what (a count only, no asset ids),
+    never Team 3. A named offer keeps its accept call only while the current snapshot still shows it as the
+    matchmaker saw it (still_live); otherwise it is labelled history and has no call."""
+    if not isinstance(m, dict) or not _team_ok(m.get("team")) or not isinstance(m.get("card"), str) \
+            or not REF_RE.match(m["card"]):
+        return None
+    ref, a = m["card"], m.get("action") if isinstance(m.get("action"), dict) else None
+    if a and (not _team_ok(a.get("maker")) or not isinstance(a.get("offer"), int)):
+        return None
+    holders = [h for h in m.get("holders") or [] if isinstance(h, dict) and _team_ok(h.get("team"))]
+    pr = m.get("prices") if isinstance(m.get("prices"), dict) else {}
+    inferred = bool(m.get("inferred"))
+    e = {"tier": m.get("tier"), "inferred": inferred, "team": m["team"], "team_name": team_name(m["team"]),
+         "card": ref, "card_name": m.get("card_name"), "rarity": m.get("rarity"), "set_name": m.get("set_name"),
+         "need": INFERRED_NOTE if inferred else f"live {(a or {}).get('side', 'want')}",
+         "p_missing": m.get("p_missing") if inferred else None, "holder_count": len(holders),
+         "holders_note": "teams that held a copy in public trades (reconstructed, may have changed)",
+         "dealers": [d.get("name") for d in m.get("dealers") or [] if isinstance(d, dict) and d.get("name")][:2],
+         "price": m.get("price") if isinstance(m.get("price"), int) else None,
+         "fair": pr.get("fair"), "team_range": pr.get("team_range") if isinstance(pr.get("team_range"), dict) else None}
+    if a:
+        e["action"] = {k: a.get(k) for k in ("offer", "venue", "side", "price", "fee", "expires_tick", "maker", "gives",
+                                             "to")}
+        e["action"]["maker_name"] = team_name(a["maker"])
+        owner = a.get("venue_owner") if _team_ok(a.get("venue_owner")) or a.get("venue_owner") == US else None
+        if still_live(a, ref, index, tick):
+            e["action"]["live"] = True
+            e["action"]["call"] = f"POST {GAME}/api/offers/{a['offer']}/accept"
+            who = (f"only {team_name(a['to'])} (it is addressed to that team)" if a.get("to") else "a team with a copy"
+                   + (f", not {team_name(owner)} (a team cannot trade on its own venue)" if owner else ""))
+            e["action"]["how"] = ("the buyer accepts this ask" if a.get("side") == "ask" else
+                                  f"{who} accepts it directly (a swap is never crossed by a broker), body "
+                                  f'{{"assets": ["<your {ref} asset id>"]}}' if a.get("side") == "swap" else
+                                  f'{who} accepts it, body {{"assets": ["<your {ref} asset id>"]}}')
+        else:
+            e["action"]["live"] = False
+            e["action"]["history"] = (f"not in {a.get('venue')}'s current book as the matchmaker saw it"
+                                      + (f" (tick {tick})" if isinstance(tick, int) else "") + ": history, no call")
+    elif e["price"]:
+        e["orders"] = {"bid": {"venue": VENUE, "give": {"cash": e["price"]}, "want": {"cards": [ref]}},
+                       "ask": {"venue": VENUE, "give": {"assets": [f"<your {ref} asset id>"]},
+                               "want": {"cash": e["price"]}},
+                       "how": f"POST {GAME}/api/offers with your key; on {VENUE} (0 % fee) {BROKER_TERMS}"}
+    if team:
+        e["yours"] = m["team"] == team
+    return e
+
+
+def probability(x) -> float | None:
+    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not 0 <= x <= 1:
+        return None
+    return float(x)
+
+
+def confident(m: dict, teams: dict, min_p: float = MIN_P) -> bool:
+    """A live want (tier 1-2, inferred False) always; an inference only at a real p_missing >= min_p and from a deck
+    that fits the leaderboard (the matchmaker's teams[team].consistent). A malformed entry counts as an inference."""
+    if m.get("inferred") is False and (m.get("tier") or 0) < 3:
+        return True
+    pm = probability(m.get("p_missing"))
+    return pm is not None and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+
+
+NON_PAGE = ("epic", "legendary")
+PAUSED_NOTE = (" Page-card matches (commons, uncommons, rares) are paused right now; epic and legendary wants are "
+               "still listed.")
+
+
+def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE,
+                 pub: dict | None = None, exclude=(), min_p: float = MIN_P, suppress_pages: bool = False) -> dict:
+    """GET /api/missing: the board from the matchmaker's output, best first, every named offer re-checked against the
+    current public snapshot `pub`. With `team`, only the matches where that team is the buyer: nothing here says who
+    holds what (anyone can pass any team id). Never a card in `exclude` (the card, or the card a swap gives), never
+    an inferred need below `min_p` or from a deck that contradicts the leaderboard (confident()). With
+    `suppress_pages` (no trusted holdings of ours: fail closed) only epic and legendary wants are listed, and no swap
+    (the card it gives could be one we lack); `about` says page-card matches are paused."""
+    now = time.time() if now is None else now
+    at = doc.get("generated_at") if isinstance(doc, dict) else None
+    stale = not isinstance(at, (int, float)) or now - at > max_age
+    index, tick = live_index(pub), (pub or {}).get("tick") if isinstance(pub, dict) else None
+    rows = []
+    teams = (doc.get("teams") if isinstance(doc, dict) and isinstance(doc.get("teams"), dict) else None) or {}
+    for m in [] if stale else (doc.get("matches") or []):
+        if not isinstance(m, dict) or not confident(m, teams, min_p) or excluded(
+                (m.get("card"), (m.get("action") or {}).get("gives") if isinstance(m.get("action"), dict) else None),
+                exclude):
+            continue
+        if suppress_pages and (m.get("rarity") not in NON_PAGE or (isinstance(m.get("action"), dict)
+                                                                  and m["action"].get("gives") is not None)):
+            continue
+        e = missing_entry(m, team, index, tick)
+        if e is None or (team and not e["yours"]):
+            continue
+        rows.append(e)
+        if len(rows) >= MISSING_MAX:
+            break
+    return {"name": "Open Bazaar · who needs which card",
+            "about": "A free public directory of who needs which card, from public game data only: explicit live wants "
+                     "first, each with the one call that completes it while the offer still stands; a need marked "
+                     f"inferred is a guess from public trades, not a fact. Zero-fee matching on La Celestina ({VENUE})."
+                     + (PAUSED_NOTE if suppress_pages else ""),
+            "tick": doc.get("tick") if isinstance(doc, dict) else None, "checked_at_tick": tick,
+            "live_checked": index is not None,
+            "generated_at": at, "stale": stale, "team": team, "matches": rows}
+
+
+class MissingBoard:
+    """The matchmaker's file, re-read when it changes. A missing or unreadable file is an empty board."""
+
+    def __init__(self, path: Path | None = MATCHES_FILE):
+        self.path, self.key, self.doc = Path(path) if path else None, None, {}
+
+    def load(self) -> dict:
+        if self.path is None:
+            return {}
+        try:
+            st = self.path.stat()
+            if (st.st_mtime_ns, st.st_size) != self.key:
+                self.doc = json.loads(self.path.read_text(encoding="utf-8"))
+                self.key = (st.st_mtime_ns, st.st_size)
+        except (OSError, ValueError):
+            self.doc, self.key = {}, None
+        return self.doc if isinstance(self.doc, dict) else {}
+
+
+MISSING = MissingBoard()
 
 
 # ---------------------------------------------------------------- the agent API (keyless, read-only)
@@ -1182,6 +1454,27 @@ def compact(body) -> str:
     return json.dumps(body, separators=(",", ":"))
 
 
+def bazaar_lines(missing: list, game: str) -> list:
+    """format=text: the Open Bazaar entries where the caller is the buyer, one line each with the one call. An
+    inferred need is said as one; a named offer that no longer stands is left out."""
+    out = []
+    for m in missing:
+        if not isinstance(m, dict) or not m.get("yours"):
+            continue
+        ref, a, o = m["card"], m.get("action"), m.get("orders") or {}
+        need = "you appear to be missing it (inferred)" if m.get("inferred") else "you bid for it"
+        if a:
+            if not a.get("call") or a.get("side") != "ask":
+                continue
+            where = "El Rastro" if a["venue"] == "rastro" else a["venue"]
+            out.append(f"OPEN BAZAAR: {a['maker_name']} sells {ref} for {P(a['price'] or 0)} on {where} (offer "
+                       f"{a['offer']}); {need} -> {a['call']} {{}}")
+        elif o.get("bid"):
+            out.append(f"OPEN BAZAAR: you appear to be missing {ref} (inferred); BUY {ref} at "
+                       f"{P(o['bid']['give']['cash'])} on {o['bid']['venue']} -> POST {game}/api/offers {compact(o['bid'])}")
+    return out
+
+
 def text_view(view: dict) -> str:
     """format=text: short self-contained lines a simple agent follows without parsing JSON, most valuable first
     (an offer on our venue it can accept now, then orders with someone on the other side, then the rest)."""
@@ -1218,12 +1511,15 @@ def text_view(view: dict) -> str:
     for w in view.get("waiting_for_you") or []:
         a = w["accept"]
         first.append(f"ACCEPT offer {w['offer']} on {vid}: {w['text']} -> {a['method']} {game}{a['path']} {compact(a['body'])}")
+    bazaar = bazaar_lines(view.get("missing") or [], game)
     who = f" for {view['team']}" if view.get("team") else ""
     lines = [f"# La Celestina {vid}, tick {view.get('tick')}{who}. For each line: check your own value for the card "
              f"(buy at or below it, sell at or above your floor), replace <your REF asset id> with your copy's id, "
              f"then send it exactly as written to the game with your key (header X-Team-Key). Never send your key here."]
-    lines += first[:TEXT_ACTIONS] + [a[2] for a in acts[:max(0, TEXT_ACTIONS - len(first))]]
-    if not acts and not first:
+    lines += first[:TEXT_ACTIONS]
+    lines += bazaar[:max(0, TEXT_ACTIONS - len(first))]
+    lines += [a[2] for a in acts[:max(0, TEXT_ACTIONS - len(first) - len(bazaar))]]
+    if not acts and not first and not bazaar:
         lines.append(f"NOTHING to accept on {vid} right now. To ask for a card you miss: BUY <REF> at <your price> -> "
                      f"POST {game}/api/offers " + compact({"venue": vid, "give": {"cash": "<your price>"},
                                                           "want": {"cards": ["<REF>"]}, "expires_in_ticks": ORDER_TICKS}))
@@ -1557,22 +1853,24 @@ class Engine:
 
 # ---------------------------------------------------------------- server
 
-STATE = {"private": None, "public": None, "private_bytes": None, "public_bytes": None, "error": None, "updated": 0.0}
+STATE = {"private": None, "public": None, "private_bytes": None, "public_bytes": None, "pub_exclude": None,
+         "error": None, "updated": 0.0}
 LOCK = threading.Lock()
 
 
-def publish(snap: dict) -> None:
-    pub = public_view(snap)
+def publish(snap: dict, catalog: dict | None = None) -> None:
+    ex = EXCLUDE.refresh(catalog, snap.get("tick"))
+    pub = public_view(snap, ex)          # the Open Bazaar board is built when served, with the exclusion of that moment
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
-                     public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
+                     public_bytes=json.dumps(pub).encode(), pub_exclude=ex, error=None, updated=time.time())
 
 
 def worker(engine: Engine, interval: float) -> None:
     while True:
         t0 = time.time()
         try:
-            publish(engine.refresh())
+            publish(engine.refresh(), engine.catalog)
         except Exception:  # noqa: BLE001  keep serving the last good snapshot
             with LOCK:
                 STATE["error"] = traceback.format_exc(limit=2)[-400:]
@@ -1683,6 +1981,11 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                                         f"{GAME}."}, agentish)
             with LOCK:
                 snap, body, err, updated = STATE[scope], STATE[scope + "_bytes"], STATE["error"], STATE["updated"]
+                private, pub_ex = STATE["private"], STATE.get("pub_exclude")
+            ex, sup = EXCLUDE.current() if scope == "public" else (frozenset(), False)   # our holdings as of now
+            if scope == "public" and private is not None and pub_ex is not None and ex != pub_ex:
+                snap = public_view(private, ex)          # holdings changed since the last refresh: re-cut it now
+                body = json.dumps(snap).encode()
             if path in ("/", "/index.html"):
                 if scope == "public":
                     return self._send(200, page_bytes(public_url), "text/html; charset=utf-8")
@@ -1697,9 +2000,23 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 if board is not None:
                     health["concierge_board"] = board.health()  # counts only
                 return self._send(200, json.dumps(health).encode(), "application/json")
+            live = checkable(snap, updated, err) if scope == "public" else None   # backs live claims, or None
+            if scope == "public" and path == "/api/missing":
+                q = urllib.parse.parse_qs(u.query)
+                team = (q.get("team") or [None])[0]
+                if team is not None and not MATCH_TEAM_RE.match(team):
+                    return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
+                return self._json(200, missing_view(MISSING.load(), team, pub=live, exclude=ex,
+                                                    min_p=PUBLIC_MIN_P[0], suppress_pages=sup))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
+                if scope == "public":    # the board first, recomputed now: no cached live claim outlives its snapshot
+                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live, exclude=ex,
+                                                     min_p=PUBLIC_MIN_P[0], suppress_pages=sup))
+                    rest = body.decode()
+                    merged = '{"missing": ' + bazaar + (", " + rest[1:] if rest.strip() not in ("{}", "") else "}")
+                    return self._send(200, merged.encode(), "application/json", True)
                 return self._send(200, body, "application/json", True)
             m = re.match(r"^/api/card/([A-Za-z0-9-]{1,12})\.json$", path)
             if m and REF_RE.match(m.group(1).upper()):
@@ -1714,6 +2031,8 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
+                        view = {"missing": missing_view(MISSING.load(), team, pub=live, exclude=ex,
+                                                        min_p=PUBLIC_MIN_P[0], suppress_pages=sup)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
@@ -1799,6 +2118,16 @@ def main() -> None:
                                                        "from, e.g. http://100.116.189.106:8780 (default: off)")
     s.add_argument("--concierge-public-url", default="", help="the concierge's public address, shown in /agents.md "
                                                               "(default: --concierge-url)")
+    s.add_argument("--matches", type=Path, default=MATCHES_FILE, help="tools/matchmaker.py's json output, read for "
+                                                                      "the missing-card board (/api/missing)")
+    s.add_argument("--exclude-from", default=None,
+                   help="comma list of our account snapshots (tools/snapshot.py), or a directory of me*.json (the highest tick "
+                        "wins, re-read every refresh): the page cards we lack are never shown publicly. Without it, "
+                        "or when it is missing/foreign: announce.MISSING; stale: both")
+    s.add_argument("--exclude-max-age-min", type=float, default=matchmaker.EXCLUDE_MAX_AGE_MIN,
+                   help="--exclude-from: older than this (game time) is stale")
+    s.add_argument("--min-p", type=min_p_arg, default=MIN_P, help="Open Bazaar: lowest p_missing at which an inferred "
+                                                             "need is shown")
     s.add_argument("--access-log", type=Path, default=None, help="append one JSONL line per public request (no "
                                                                   "bodies, no keys; /healthz skipped) to this file")
     o = sub.choices["once"]
@@ -1817,6 +2146,10 @@ def main() -> None:
         guess = Path(args.feed_file).with_name("snapshots.jsonl")
         args.snapshots_file = guess if guess.exists() else None
     if args.cmd == "serve":
+        MISSING.path = args.matches
+        EXCLUDE.configure(args.exclude_from.split(",") if args.exclude_from else [], args.exclude_max_age_min,
+                          matchmaker.announce_missing())   # no flag or no trusted file: page cards suppressed
+        PUBLIC_MIN_P[0] = args.min_p
         args.private_port = args.port + 1 if args.private_port is None else args.private_port
         serve(args)
         return

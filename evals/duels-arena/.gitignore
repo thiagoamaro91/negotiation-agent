@@ -1,0 +1,7 @@
+# Result dumps of the climb: about 5 MB of results.jsonl per variant (31 MB with traces). Deterministic: rerun
+# `tools/eval_duels.py --flow duels-arena` to rebuild them. change.md of each variant is kept.
+baseline/
+v*/*
+!v*/change.md
+# 7.7 MB with embedded data: committed gzipped as report.html.gz
+report.html

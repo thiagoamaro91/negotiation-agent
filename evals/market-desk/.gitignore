@@ -1,0 +1,7 @@
+# Per-run outputs hold our private values (or let them be derived from surplus + price): never commit them.
+# change.md of each variant (flags and cash only) is kept.
+baseline/
+v*/*
+!v*/change.md
+report.html
+trajectory/

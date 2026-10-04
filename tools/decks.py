@@ -42,7 +42,8 @@ def pack_sizes(cat: dict) -> dict:
 
 
 def build(events: list, cat: dict, upto: int | None = None) -> dict:
-    """team -> {known: {ref: n}, unknown_ids: n, floating: {ref: n}, unplaced: n, burned: n, total: n, ids: [...]}"""
+    """team -> {known: {ref: n}, unknown_ids: n, floating: {ref: n}, unplaced: n, burned: n, total: n, ids: [...],
+    assets: {ref: [asset ids]}}"""
     names = {c["name"]: c["id"] for s in cat["sets"] for c in s["cards"]}
     sizes = pack_sizes(cat)
     order = [e["payload"]["team"] for e in events if e["type"] == "team.joined"]
@@ -112,9 +113,13 @@ def build(events: list, cat: dict, upto: int | None = None) -> dict:
         unknown = sum(1 for a in mine if a not in ref_of)
         fl = {r: n for r, n in floating[team].items() if n > 0}
         total = sum(known.values()) + unknown + sum(fl.values()) + unplaced[team] - burned[team]
+        assets = collections.defaultdict(list)   # ref -> the asset ids we can name (tools/matchmaker.py posts them)
+        for a in sorted(mine):
+            if a in ref_of:
+                assets[ref_of[a]].append(a)
         out[team] = {"known": dict(sorted(known.items())), "unknown_ids": unknown, "floating": fl,
                      "unplaced": unplaced[team], "burned": burned[team], "packs": packs[team], "total": total,
-                     "ids": sorted(mine)}
+                     "ids": sorted(mine), "assets": dict(sorted(assets.items()))}
     return out
 
 
@@ -130,6 +135,7 @@ def check(deck: dict, assets: list) -> dict:
 
 
 MINT_MARGIN = 40      # ids above the highest one the feed has shown, for mints it never names
+PACK_SIZES = {"sobre_barrio": 3, "sobre_bienvenida": 3, "sobre_plata": 5, "sobre_oro": 5}  # catalog slots, offline
 
 
 def snapshot_bounds(snap: dict) -> tuple:
@@ -140,16 +146,19 @@ def snapshot_bounds(snap: dict) -> tuple:
     return tick, max(ids, default=0)
 
 
-def moved(events: list, cat: dict, snap: dict, since: int | None = None, margin: int = MINT_MARGIN,
-          conversions: list | None = None) -> tuple:
+def moved(events: list, snap: dict, since: int | None = None, margin: int = MINT_MARGIN,
+          conversions: list | None = None, sizes: dict | None = None) -> tuple:
     """The ids a census top-up must re-read, and why. `since` defaults to the census's start tick (cards could move
-    while it walked)."""
+    while it walked). New ids run from the census's highest to whichever is higher: the highest the feed has shown, or
+    the census's highest plus every mint the feed counts (pack cards, gifts, eggs, crafts, new dealer copies); then
+    `margin` more."""
     start, base_max = snapshot_bounds(snap)
     since = since if since is not None else start
     if since is None:
         raise ValueError("the census snapshot has no tick: pass --since")
+    sizes = {**PACK_SIZES, **(sizes or {})}
     ids, why = set(), collections.Counter()
-    seen_max, crafters = base_max, set()
+    seen_max, crafters, minted, dealer_new = base_max, set(), 0, set()
     for e in events:
         if e["tick"] < since:
             continue
@@ -160,17 +169,24 @@ def moved(events: list, cat: dict, snap: dict, since: int | None = None, margin:
                     ids.add(it["id"])
                     why["settled"] += 1
                     seen_max = max(seen_max, it["id"])
+                    if it["id"] > base_max:
+                        dealer_new.add(it["id"])
         elif kind == "offer.listed":
             for a in ((p.get("offer") or {}).get("give") or {}).get("assets") or []:
                 if isinstance(a, dict) and isinstance(a.get("id"), int):
                     seen_max = max(seen_max, a["id"])
         elif kind == "pack.opened":  # a pack's cards are minted above the census: its best card raises the range
+            minted += sizes.get(p.get("pack"), max(sizes.values()))
             best = p.get("best") if isinstance(p.get("best"), dict) else None
             if best and isinstance(best.get("id"), int):
                 seen_max = max(seen_max, best["id"])
+        elif kind in ("gift.given", "egg.given"):
+            minted += len(p.get("cards") or [])
         elif kind == "taller.crafted" and p.get("team"):
             crafters.add(p["team"])
-    new = set(range(base_max + 1, seen_max + margin + 1))
+            minted += 1
+    top = max(seen_max, base_max + minted + len(dealer_new))
+    new = set(range(base_max + 1, top + margin + 1))
     ids |= new
     why["above the census"] = len(new)
     for c in conversions or []:
@@ -184,7 +200,8 @@ def moved(events: list, cat: dict, snap: dict, since: int | None = None, margin:
         if card.get("owner") in crafters and card.get("rarity") == "common" and isinstance(card.get("id"), int):
             ids.add(card["id"])
             why["commons of crafters"] += 1
-    return sorted(ids), {"since": since, "census_max_id": base_max, "feed_max_id": seen_max,
+    return sorted(ids), {"since": since, "census_max_id": base_max, "feed_max_id": seen_max, "mints_counted": minted
+                         + len(dealer_new), "top_id": top + margin,
                          "crafters": sorted(crafters), "why": dict(why)}
 
 
@@ -201,7 +218,11 @@ def cmd_moved(argv: list) -> None:
         convs = json.loads(vi.CONVERSIONS.read_text(encoding="utf-8"))
     except (OSError, ValueError, AttributeError):
         convs = []
-    ids, info = moved(vi.rows("feed.jsonl"), vi.catalog(), snap, args.since, args.margin, convs)
+    try:  # pack sizes from the cached catalog when there is one; never a network call
+        sizes = pack_sizes(json.loads((vi.PUBLIC / "catalog.json").read_text(encoding="utf-8")))
+    except (OSError, ValueError, AttributeError):
+        sizes = {}
+    ids, info = moved(vi.rows("feed.jsonl"), snap, args.since, args.margin, convs, sizes)
     text = "".join(f"{i}\n" for i in ids)
     if args.out:
         args.out.expanduser().parent.mkdir(parents=True, exist_ok=True)
@@ -209,7 +230,7 @@ def cmd_moved(argv: list) -> None:
     else:
         sys.stdout.write(text)
     print(f"moved: {len(ids)} ids since tick {info['since']} (census max id {info['census_max_id']}, feed max id "
-          f"{info['feed_max_id']}); {info['why']}; crafters since: {', '.join(info['crafters']) or 'none'}"
+          f"{info['feed_max_id']}, {info['mints_counted']} mints counted, up to id {info['top_id']}); {info['why']}; crafters since: {', '.join(info['crafters']) or 'none'}"
           + (f" -> {args.out}" if args.out else ""), file=sys.stderr)
 
 

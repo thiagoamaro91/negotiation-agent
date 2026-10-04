@@ -3,6 +3,8 @@ machine: every conversation (dealers and teams) with full transcripts, every due
 one score line per run. Safe to re-run at any time; then commit logs/.
 
     python3 tools/snapshot.py
+    python3 tools/snapshot.py --me-only   # one request (GET /api/me) -> logs/state/me.json: our holdings for
+                                          # matchmaker.py / announce.py --exclude-from, cheap enough to run hourly
 """
 from __future__ import annotations
 
@@ -28,10 +30,25 @@ def load_env() -> None:
                 os.environ.setdefault(k.strip(), v.strip())
 
 
-def main() -> None:
+def save_me(me: dict) -> Path:
+    """Our account to logs/state/me.json, atomically (keyless readers poll it), key fields redacted."""
+    path = LOGS / "state" / "me.json"
+    tmp = path.with_name(".me.json.tmp")
+    write_json(tmp, me)
+    os.replace(tmp, path)
+    return path
+
+
+def main(argv: list | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
     load_env()
     b = Bazaar(os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai"), os.environ["BAZAAR_KEY"])
     me = b.me()
+    if "--me-only" in argv:   # one keyed read, nothing else: threads, duels, offers and score.jsonl untouched
+        save_me(me)
+        print(f"saved holdings: {sum(1 for a in me.get('assets') or [] if a.get('kind') == 'card')} cards, tick "
+              f"{me.get('tick')}")
+        return
     ts = time.strftime("%Y-%m-%dT%H:%M:%S")
 
     threads = b.my_threads().get("threads", [])
@@ -43,7 +60,7 @@ def main() -> None:
         write_json(LOGS / "duels" / f"duel-{int(d.get('duel') or d.get('id')):05d}.json", d)
 
     write_json(LOGS / "state" / "offers.json", b.my_offers())
-    write_json(LOGS / "state" / "me.json", me)
+    save_me(me)
 
     s = me.get("score") or {}
     line = {"ts": ts, "tick": me.get("tick"), "cash": me.get("cash"), "level": me.get("level"),

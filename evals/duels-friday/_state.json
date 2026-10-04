@@ -1,0 +1,76 @@
+{
+ "metrics": [
+  {
+   "id": "score",
+   "label": "score",
+   "kind": "float",
+   "scale": 1
+  },
+  {
+   "id": "deal",
+   "label": "deal",
+   "kind": "float",
+   "scale": 1,
+   "rate": true
+  },
+  {
+   "id": "missed_ok_offer",
+   "label": "missed ok",
+   "kind": "float",
+   "scale": 1,
+   "rate": true,
+   "better": "lower"
+  },
+  {
+   "id": "limit_breach",
+   "label": "breach",
+   "kind": "float",
+   "scale": 1,
+   "rate": true,
+   "better": "lower"
+  },
+  {
+   "id": "vs_real",
+   "label": "vs real",
+   "kind": "float",
+   "scale": 1
+  }
+ ],
+ "perf_fields": [
+  {
+   "id": "surplus_P",
+   "label": "surplus",
+   "unit": "P"
+  },
+  {
+   "id": "rounds",
+   "label": "rounds"
+  },
+  {
+   "id": "deal_tick",
+   "label": "deal tick",
+   "unit": "ticks from start"
+  },
+  {
+   "id": "msgs_sent",
+   "label": "msgs sent"
+  },
+  {
+   "id": "best_offer_score",
+   "label": "best offer score"
+  },
+  {
+   "id": "real_result_P",
+   "label": "real result",
+   "unit": "P"
+  },
+  {
+   "id": "vs_real_P",
+   "label": "vs real",
+   "unit": "P"
+  }
+ ],
+ "headline": "score",
+ "baseline_params": "docs/duel-lab/duel-params-duels2-final.json",
+ "runner": "tools/eval_duels.py"
+}
