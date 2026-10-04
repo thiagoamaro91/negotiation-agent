@@ -1,0 +1,50 @@
+{
+ "duel": 16103,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 8.56,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 84,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 2677,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 18419,
+  "price": 72,
+  "tick": 2673,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 18330,
+  "price": 67,
+  "tick": 2667,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2667,
+   "from": "Rival Rojo",
+   "text": "I can move to 67 P. Delivery on day 10.",
+   "price": 67,
+   "days": 10
+  },
+  {
+   "tick": 2673,
+   "from": "you",
+   "text": "Last word from me: 72 P, delivery day 0.",
+   "price": 72,
+   "days": 0
+  }
+ ],
+ "result": 10.8,
+ "price": 72,
+ "days": 0
+}

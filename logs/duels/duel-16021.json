@@ -1,0 +1,87 @@
+{
+ "duel": 16021,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Castañera",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.24,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 109,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 2642,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17717,
+  "price": 95,
+  "tick": 2640,
+  "days": 2
+ },
+ "messages": [
+  {
+   "tick": 2632,
+   "from": "Rival Noche",
+   "text": "Hello. My number is 118.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2633,
+   "from": "Rival Noche",
+   "text": "Hi! After running the numbers, 116 is where I land.",
+   "price": 116,
+   "days": 10
+  },
+  {
+   "tick": 2634,
+   "from": "Rival Noche",
+   "text": "Hello. My number is 112.",
+   "price": 112,
+   "days": 10
+  },
+  {
+   "tick": 2636,
+   "from": "Rival Noche",
+   "text": "Hi! After running the numbers, 106 is where I land.",
+   "price": 106,
+   "days": 10
+  },
+  {
+   "tick": 2637,
+   "from": "Rival Noche",
+   "text": "Hi! After running the numbers, 94 is where I land.",
+   "price": 94,
+   "days": 9
+  },
+  {
+   "tick": 2638,
+   "from": "Rival Noche",
+   "text": "Hello. My number is 94.",
+   "price": 94,
+   "days": 7
+  },
+  {
+   "tick": 2639,
+   "from": "Rival Noche",
+   "text": "Hi! After running the numbers, 97 is where I land.",
+   "price": 97,
+   "days": 4
+  },
+  {
+   "tick": 2640,
+   "from": "Rival Noche",
+   "text": "Hi! After running the numbers, 95 is where I land.",
+   "price": 95,
+   "days": 2
+  }
+ ],
+ "result": 7.5,
+ "price": 95,
+ "days": 2
+}
