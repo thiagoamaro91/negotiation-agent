@@ -1,6 +1,6 @@
 # Broker overnight search: leaderboard
 
-Updated 06:18 Madrid (6600 candidates screened, 75 confirmed runs). Search running (round 1).
+Updated 06:21 Madrid (6672 candidates screened, 75 confirmed runs).
 
 **Acceptance rule (fixed at 02:30 Madrid, before the first search run at 02:36).** A candidate is *recommendable for the hard
 test* only if it beats `stall` on `hard` by more than 2 SE, AND is not worse than `stall` beyond noise (diff + 1.96 SE
@@ -40,13 +40,13 @@ Cells: candidate − stall in efficiency (share of the best possible gains), 95 
 
 ## Best members (parameters, and why the rule says what it says)
 
-- **1 blind estimates (BenchPolicy, BLIND=policy)**: 1650 screened, 428 passed the first screen step, 20 confirmed.
+- **1 blind estimates (BenchPolicy, BLIND=policy)**: 1668 screened, 432 passed the first screen step, 20 confirmed.
   best `8cfbaa8061` {"expiry_margin": 1, "firm_shade": 0.028, "first_shade": 0.053, "future": 0.483, "imp": [2, 4], "imp_share": 0.982, "min_edge": 0.5, "pat": [7, 14], "slope": "prior", "smax": 0.112}: not recommended (hard +0.0005 is not > 2 SE (0.0010); worse beyond noise on arrive_late, refit b36, refit b53, refit b70; drops pairs the stall crossed on hard, standard, firm_50, all_impatient, short_patience, thin_overlap, wide_overlap, arrive_all0, arrive_late, refit b36, refit b53, refit b70, refit b88, refit b104)
-- **2 timing rules without expiries**: 1650 screened, 607 passed the first screen step, 12 confirmed.
+- **2 timing rules without expiries**: 1668 screened, 615 passed the first screen step, 12 confirmed.
   best `79977000b8` {"delta": 0.099, "end_margin": 1, "hi": 0.5, "lo": 0.0, "max_swaps": 1, "mech": "second", "refill": false, "rho_fast": 0.09, "rho_slow": 0.09, "sides": "buy", "u_firm": 1.0, "u_first": 1.0}: not recommended (hard +0.0005 is not > 2 SE (0.0006))
-- **3 hybrid: stall + leave classifier swap**: 1650 screened, 516 passed the first screen step, 18 confirmed.
+- **3 hybrid: stall + leave classifier swap**: 1668 screened, 522 passed the first screen step, 18 confirmed.
   best `23548db80f` {"delta": 0.149, "hi": 0.86, "lo": 0.163, "max_swaps": 3, "model": "sim", "refill": true, "sides": "sell"}: not recommended (hard +0.0000 is not > 2 SE (0.0000))
-- **3b hybrid: leave classifier inside BenchPolicy**: 1650 screened, 280 passed the first screen step, 13 confirmed.
+- **3b hybrid: leave classifier inside BenchPolicy**: 1668 screened, 282 passed the first screen step, 13 confirmed.
   best `59f17ee96d` {"firm_shade": 0.034, "first_shade": 0.03, "future": 1.105, "leave_scale": 2.083, "min_edge": 0.0, "model": "sim_hard", "smax": 0.156}: not recommended (hard +0.0006 is not > 2 SE (0.0009); worse beyond noise on arrive_late, refit b36, refit b53, refit b70, refit b88, refit b104; drops pairs the stall crossed on standard, all_impatient, short_patience, thin_overlap, arrive_all0, refit b36, refit b53, refit b70, refit b88, refit b104)
 
 ## Every confirmed run
