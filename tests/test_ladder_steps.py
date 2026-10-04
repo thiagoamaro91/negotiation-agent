@@ -32,7 +32,7 @@ ME = json.loads((ROOT / "tests" / "fixtures" / "me_tick1445.json").read_text())
 CATALOG = json.loads((ROOT / "logs" / "public" / "catalog.json").read_text())
 BOOK = {c["id"]: c["book"] for s in CATALOG["sets"] for c in s["cards"]}
 HELD = {a["ref"] for a in ME["assets"] if a["kind"] == "card"}
-ABUELA_FLAGS = {"--only", "--cap", "--reserve", "--max-deals", "--resume", "--max-defer-ticks"}
+ABUELA_FLAGS = {"--only", "--cap", "--reserve", "--max-deals", "--resume", "--max-defer-ticks", "--max-wait-ticks", "--until"}
 
 
 def ceiling(ref):

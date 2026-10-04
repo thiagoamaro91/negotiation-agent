@@ -43,12 +43,14 @@ MAX_DEFER_TICKS = 60    # default for --max-defer-ticks: ticks an accept may wai
 
 ACCEPTED, DEFERRED, REFUSED = "accepted", "deferred", "refused"
 
-# exit statuses of `run`: 0 ok, 1 crash, 2 usage or --floor refusal, and these five
+# exit statuses of `run`: 0 ok, 1 crash, 2 usage or --floor refusal, and these six
 EXIT_RESERVE = 3        # every buy was skipped because cash is under the reserve
 EXIT_CLOSE_FAILED = 4   # a thread could not be closed: it still holds the dealer's only conversation slot
 EXIT_LOCK_TIMEOUT = 5   # the duel lock stayed fresh for --max-defer-ticks: the thread was closed without a deal
 EXIT_UNSETTLED = 6      # an accept went out but its settlement could not be confirmed: the plan stopped
 EXIT_CLOCK_LOST = 7     # the game clock could not be confirmed for MAX_FAILED_WAITS waits: the thread was closed
+EXIT_COOLOFF = 8        # a dealer is cooling off and the wait to its until_tick was refused or ran out: nothing was bought
+MAX_WAIT_TICKS = 120    # default for --max-wait-ticks: longest cooloff (in confirmed ticks) a run waits out before retrying
 
 
 def clock_running(c: dict) -> bool:
@@ -427,4 +429,78 @@ def exact_offer(o: dict, side: str, item: str, asset_id) -> bool:
     ids = [a.get("id") if isinstance(a, dict) else a for a in w_assets]
     return (ids == [asset_id] and not w_types and not want.get("cash") and bool(give.get("cash"))
             and not g_assets and not g_types)
+
+
+# ---------------------------------------------------------------- a cooloff is waited out, not given up on
+
+def until_tick_of(e) -> int | None:
+    """The until_tick a cooloff refusal carries (top level of the error body, or inside a details object)."""
+    extra = getattr(e, "extra", None) or {}
+    for src in (extra, extra.get("details") if isinstance(extra.get("details"), dict) else {}):
+        v = src.get("until_tick")
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return int(v)
+    return None
+
+
+def until_epoch(hhmm: str | None, now: float | None = None) -> float | None:
+    """--until HH:MM (local wall time, as agent/duel.py reads it) as epoch seconds of today; None when not given."""
+    if not hhmm:
+        return None
+    h, m = (int(x) for x in hhmm.split(":"))
+    t = time.localtime(time.time() if now is None else now)
+    return time.mktime((t.tm_year, t.tm_mon, t.tm_mday, h, m, 0, 0, 0, -1))
+
+
+def cooloff_line(item: str, until_tick, tick, why: str, max_wait_ticks: int) -> str:
+    """The one line run prints when a cooloff could not be waited out (it then exits with EXIT_COOLOFF)."""
+    left = "unknown" if until_tick is None or tick is None else str(int(until_tick) - int(tick) + 1)
+    return (f"{item}: the dealer is cooling off until tick {until_tick} (now {tick}, {left} ticks to go) and the wait was "
+            f"not possible ({why}; --max-wait-ticks {max_wait_ticks}). Nothing was bought for this target: run it again "
+            f"once the cooloff is over, or raise --max-wait-ticks.")
+
+
+def wait_out_cooloff(b, r: dict, retry, log, max_wait_ticks: int = MAX_WAIT_TICKS, until_wall: float | None = None,
+                     item: str = "") -> tuple:
+    """`r` is a refused-open result with code cooloff (carrying until_tick). Wait, pause-safe (a pause or closed doors
+    spends no tick), until the game tick has passed until_tick, then call `retry()` ONCE for a fresh result.
+    Returns (result, stop): stop is None, or (EXIT_COOLOFF, the one line) when the cooloff has no until_tick, is longer
+    than max_wait_ticks, would pass --until (a wall time, checked between ticks), the clock is lost, or the retry meets a
+    cooloff again. `cooloff_wait` is logged with the ticks and how it ended."""
+    until_tick = r.get("until_tick")
+    clock = b.read_clock() or {}
+    tick = clock.get("tick")
+
+    def end(result: str, waited: int, res: dict):
+        log("cooloff_wait", item=item, until_tick=until_tick, tick=tick, waited=waited, result=result,
+            max_wait_ticks=max_wait_ticks)
+        return res, (EXIT_COOLOFF, cooloff_line(item, until_tick, tick, result, max_wait_ticks))
+
+    if until_tick is None or tick is None:
+        return end("until_tick_unknown", 0, r)
+    if int(until_tick) - int(tick) + 1 > max_wait_ticks:
+        return end("too_long", 0, r)
+    waited = failed = 0
+    while True:
+        if until_wall is not None and time.time() >= until_wall:
+            return end("past_until", waited, r)
+        c = b.wait_tick() or {}
+        if c.get("tick") is None:
+            failed += 1
+            if failed >= MAX_FAILED_WAITS:
+                return end("clock_lost", waited, r)
+            continue
+        failed = 0
+        waited += 1
+        if c["tick"] > int(until_tick):
+            break
+        if waited > max_wait_ticks:
+            return end("too_long", waited, r)
+    log("cooloff_wait", item=item, until_tick=until_tick, tick=tick, waited=waited, result="waited",
+        max_wait_ticks=max_wait_ticks)
+    r2 = retry()
+    if r2.get("code") == "cooloff":   # once is enough: a second refusal is the operator's call, not a loop
+        until_tick, tick = r2.get("until_tick"), c.get("tick")
+        return end("cooloff_again", waited, r2)
+    return r2, None
 

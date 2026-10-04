@@ -297,8 +297,8 @@ class FakeServer:
             self._turn(self.processed)
 
     # ---- HTTP
-    def _err(self, status, code, msg=""):
-        return status, {"error": code, "message": msg or code}
+    def _err(self, status, code, msg="", extra=None):
+        return status, dict({"error": code, "message": msg or code}, **(extra or {}))
 
     def _injected(self, kind):
         if self.inject.get(kind):

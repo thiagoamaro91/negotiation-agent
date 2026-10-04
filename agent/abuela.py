@@ -42,7 +42,10 @@ re-checks the lock before every accept: while it is fresh the accept waits a tic
 her only slot may still be held); 5 when the duel lock stayed fresh for --max-defer-ticks (default 60) and the
 thread was closed without a deal; 6 when an accept went out but its settlement could not be confirmed (the plan
 stops: the trade may have happened); 7 when the game clock could not be confirmed for 5 waits in a row (the thread
-was closed). The status line is printed before the final account read, which is best effort.
+was closed); 8 when a dealer is cooling off (the open was refused with cooloff and its until_tick) and the wait
+for it was impossible or too long (--max-wait-ticks, default 120, pause-safe; --until HH:MM): inside the bound the run waits
+until the tick has passed, logs cooloff_wait with the ticks, and retries the open once, so a second card of a step is not
+lost to a cooloff after the first deal. The status line is printed before the final account read, which is best effort.
 `--resume` skips the cash check for a new conversation: the thread is read and resolved inside its limit (a resumed
 buy whose earlier bid is above what may be spent now, or with nothing spendable, is closed).
 The client never lets the SDK resend a write, counts a round only for a confirmed new tick, and waits through a paused
@@ -54,6 +57,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -64,10 +68,12 @@ from bazaar_sdk import BazaarError  # noqa: E402
 # the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
 from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOCK_LOST,  # noqa: E402,F401
-                           EXIT_CLOSE_FAILED, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS, MAX_FAILED_WAITS,
+                           EXIT_CLOSE_FAILED, EXIT_COOLOFF, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS,
+                           MAX_FAILED_WAITS, MAX_WAIT_TICKS,
                            Rounds, buy_ceiling, clock_lost_line, close_failed_line, command, exact_offer, flag_value,
                            guarded_accept, limit_dropped, live_limit, lock_timeout_line, refuse_caps, refuse_unpriced,
-                           reserve_line, sell_ladder_floor, settle_trade, try_close, unsettled_line)
+                           reserve_line, sell_ladder_floor, settle_trade, try_close, unsettled_line, until_epoch, until_tick_of,
+                           wait_out_cooloff)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("abuela")      # logs/abuela/<date>.jsonl, committed; keys are redacted
@@ -182,8 +188,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         try:
             th = b.open_thread(DEALER, topic=topic)
         except BazaarError as e:
-            log("open_refused", item=item, side=side, code=e.code, msg=e.message)
-            return {"result": "refused", "code": e.code}
+            log("open_refused", item=item, side=side, code=e.code, msg=e.message, until_tick=until_tick_of(e))
+            return {"result": "refused", "code": e.code, "until_tick": until_tick_of(e)}
         tid = th["id"]
         log("open", thread=tid, side=side, item=item, value=value, welcome=first_deal, **gate_numbers(target))
 
@@ -445,9 +451,19 @@ def main() -> None:
     ap.add_argument("--max-defer-ticks", type=int, default=MAX_DEFER_TICKS,
                     help="ticks an accept may wait on the duel lock in one thread before the thread is closed "
                          f"(exit {EXIT_LOCK_TIMEOUT}; default {MAX_DEFER_TICKS})")
+    ap.add_argument("--max-wait-ticks", type=int, default=MAX_WAIT_TICKS,
+                    help="a dealer that refuses to open a thread because it is cooling off (cooloff, until_tick) is waited "
+                         "out, pause-safe, up to this many confirmed ticks, then the open is retried once; longer, or "
+                         f"unknown, ends the run with exit {EXIT_COOLOFF} (default {MAX_WAIT_TICKS})")
+    ap.add_argument("--until", default="",
+                    help="HH:MM local wall time: a cooloff wait does not go past it (default: no limit)")
     args = ap.parse_args()
     if args.max_defer_ticks < 1:
         ap.error("--max-defer-ticks must be >= 1")
+    if args.max_wait_ticks < 1:
+        ap.error("--max-wait-ticks must be >= 1")
+    if args.until and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", args.until):
+        ap.error("--until must be HH:MM")
     MAX_DEFER_TICKS = args.max_defer_ticks
     if args.cmd == "run" and duel_lock_fresh():
         print(f"WARNING: {DUEL_LOCK.relative_to(ROOT)} is fresh: the duel bot holds the team's accept slot. "
@@ -508,6 +524,14 @@ def main() -> None:
                 continue
         first = (me["score"].get("deals") or 0) == 0
         r = negotiate(b, target, first, resume=args.resume if resuming else None)
+        if r.get("code") == "cooloff" and not resuming:   # the dealer is cooling off: wait for its until_tick, retry once
+            r, cooloff_stop = wait_out_cooloff(
+                b, r, lambda: negotiate(b, target, first), log, args.max_wait_ticks, until_epoch(args.until or None),
+                item=target["item"])
+            if cooloff_stop:
+                stop = cooloff_stop
+                log("stop", code="cooloff_timeout", item=target["item"], until_tick=r.get("until_tick"))
+                break
         if r.get("thread"):
             try:
                 save_thread(b, r["thread"])  # full transcript, her words included
