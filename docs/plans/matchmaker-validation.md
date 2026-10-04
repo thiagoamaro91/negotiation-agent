@@ -119,23 +119,43 @@ private report.
 
 ## Our cards never shown: `--exclude-from`
 
-`announce.MISSING` is a hard-coded list from Saturday tick 556; at tick 1445 it hides LAV-09, LAV-10, LAT-03, LAT-09,
-SAL-02, SAL-05, SAL-09 (all held now) and misses 18 cards we lack (MAL-01/04/06/07/08/10, RET-02/06, the
-10 of CHA). New flag on
-`matchmaker.py` and `announce.py`: `--exclude-from logs/state/me_live.json,logs/state/me.json` excludes every page card
-in the catalog we do not hold (every card of every page we have not completed), from the freshest of those files.
-At tick 1445 that is 30 cards (SAL-10, 9 MAL, 10 RET, 10 CHA). Missing, unreadable or another team's file: the
-built-in list, with a WARNING line. Older than `--exclude-max-age-min` (default 60) of game time (snapshot tick
-against the feed's tick; mtime only without a tick): its cards plus the built-in list, with a WARNING. Logged as a
-count and the file name, never the cards; `announce.py` re-reads it before every post. Cheap keyed refresh for the
-Mini: `python3 tools/snapshot.py --me-only` (one `GET /api/me`, writes only `logs/state/me.json`, atomically).
+`announce.MISSING` is a hard-coded list from Saturday tick 556. At tick 1445 it hides 7 cards we now hold
+(LAV-09, LAV-10, LAT-03, LAT-09, SAL-02, SAL-05, SAL-09) and misses 18 cards we lack (MAL-01/04/06/07/08/10,
+RET-02/06, and the 10 CHA cards).
+
+New flag on `matchmaker.py` and `announce.py`: `--exclude-from logs/state/me_live.json,logs/state/me.json`. A
+directory stands for its `me*.json` files.
+
+- **Trusted holdings.** Only a valid snapshot of OUR account counts: `id` equal to `t03`, an integer `tick`, a finite
+  positive `tick_seconds`, and well-formed assets. Among valid snapshots, the highest game tick wins; file times are
+  never used.
+- **Age.** A snapshot is aged in game time against the feed's tick, using its own tick length. It must be at most
+  `--exclude-max-age-min` (default 60) minutes of play old.
+- **Exclusion.** With trusted holdings, every catalog page card we do not hold is excluded. At tick 1445 that is 30
+  cards: SAL-10, 9 MAL, 10 RET and 10 CHA.
+- **Fail closed (Sol, round 1).** No valid snapshot, no game tick to age it, or a snapshot too old means EVERY page
+  card is excluded, plus MISSING. The log line reads `exclude: no trusted holdings, page cards suppressed (<reason>)`.
+  Tier 1-2 live wants for epics and legendaries are still shown. MISSING never replaces a valid list.
+- **Never raises.** A bad file is rejected; it never throws. `announce.py` re-reads the snapshot before every post,
+  and if its catalog cannot be read, that post is skipped ("nothing to post"), never a crash.
+- **Logging.** The log line carries counts and the file name, never the cards.
+
+Cheap keyed refresh for the Mini: `python3 tools/snapshot.py --me-only` makes one `GET /api/me` and writes only
+`logs/state/me.json`, atomically.
 
 ## Exact holdings: the census (PR #57)
 
 Decision: **(b)**. PR #57 (`feat/card-census`, head 1d2a6e1) merges cleanly into main and its 39 tests pass, but it is
 a 1,568-line keyed tool with its own review history; copying it into this keyless PR would duplicate that review.
 This PR only reads its documented snapshot format: `matchmaker.py --census PATH` (a `cards-<date>-t<tick>.json` file,
-or a directory: the snapshot or top-up with the highest tick). Census holdings replace the rebuilt decks for every team
+or a directory: the snapshot or top-up with the highest tick). The census replaces the rebuilt decks only when it is complete and clean (`census_problem`, Sol, round 1):
+- `meta` is an object, `mode` is run or topup, and the walk finished (`tick_end`).
+- There are no errors and no unparsed ids.
+- A run ended on its run of 404s with at least 1,000 ids walked; a top-up names its base tick.
+- Every card record is `{int id, ref, owner}` with unique ids, there are at least 300 cards, and `cards_total` matches.
+
+Anything else is logged and the feed inference is used instead. An id the census does not hold, or lists as
+`removed`, is a tombstone up to the walk's end: no earlier settlement brings it back. Census holdings replace the rebuilt decks for every team
 (holders `"seen": "census tick N"`, matches `"basis": "census tick N"`, real asset ids), brought forward by every
 public settlement since the walk started. `album_filled` still bounds it (cards minted after the census are unseen),
 and an unusable census is a WARNING and the feed inference, never an empty board. `--census` needs #57 merged (or its

@@ -210,40 +210,105 @@ def holdings(deck: dict) -> collections.Counter:
     return c
 
 
+REF_RE = re.compile(r"^[A-Z]{2,5}-\d{1,3}$")
+CENSUS_MIN_IDS = 1000     # a full walk reads at least this many ids (the feed showed id 1186 by Saturday's close)
+CENSUS_MIN_CARDS = 300    # ...and finds at least this many cards (18 teams x ~35, plus the dealers')
+
+
+def _int(x) -> bool:
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _pos_number(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and x > 0
+
+
 def census_tick(census: dict) -> int | None:
-    meta = (census or {}).get("meta") or {}
+    meta = (census or {}).get("meta") if isinstance(census, dict) else None
+    if not isinstance(meta, dict):
+        return None
     for k in ("tick_end", "tick_start"):
-        if isinstance(meta.get(k), int):
+        if _int(meta.get(k)):
             return meta[k]
+    return None
+
+
+def census_problem(census) -> str | None:
+    """Why this is not a complete, clean tools/census.py snapshot, or None. A rejected census never replaces the
+    rebuilt decks: a partial or broken one would turn every team it misses into a team holding nothing."""
+    if not isinstance(census, dict):
+        return "not a JSON object"
+    meta, cards = census.get("meta"), census.get("cards")
+    if not isinstance(meta, dict):
+        return "no meta object"
+    if not isinstance(cards, list):
+        return "no cards list"
+    if meta.get("mode") not in ("run", "topup"):
+        return f"mode {meta.get('mode')!r} is neither run nor topup"
+    if not _int(meta.get("tick_end")) or meta["tick_end"] < 0:
+        return "no tick_end (the walk did not finish)"
+    if meta.get("tick_start") is not None and (not _int(meta["tick_start"]) or meta["tick_start"] > meta["tick_end"]):
+        return "bad tick_start"
+    if meta.get("errors") != [] or (meta.get("unparsed_ids") or []) != []:
+        return "the walk had errors or unparsed ids"
+    if meta["mode"] == "run":
+        if meta.get("end") != "404_run":
+            return f"the walk ended by {meta.get('end')!r}, not a run of 404s"
+        if not _int(meta.get("ids_walked")) or meta["ids_walked"] < CENSUS_MIN_IDS:
+            return f"ids_walked {meta.get('ids_walked')!r} < {CENSUS_MIN_IDS}"
+    elif not _int(meta.get("base_tick")):
+        return "a top-up without its base tick"
+    seen = set()
+    for c in cards:
+        if not isinstance(c, dict) or not _int(c.get("id")) or c["id"] <= 0 or not isinstance(c.get("ref"), str) \
+                or not REF_RE.match(c["ref"]) or not (c.get("owner") is None or isinstance(c.get("owner"), str)):
+            return "a malformed card record"
+        if c["id"] in seen:
+            return f"card id {c['id']} twice"
+        seen.add(c["id"])
+    if len(cards) < CENSUS_MIN_CARDS:
+        return f"{len(cards)} cards < {CENSUS_MIN_CARDS}"
+    if meta.get("cards_total") is not None and meta.get("cards_total") != len(cards):
+        return "cards_total does not match the cards list"
+    if meta["mode"] == "run" and max(seen) > meta["ids_walked"]:
+        return "a card above the ids walked"
     return None
 
 
 def census_holdings(census: dict, events: list) -> tuple:
     """(census tick, {team: {"held": Counter(ref), "assets": {ref: [asset ids]}}}) from a tools/census.py snapshot
     (`cards` [{id, ref, owner}], every copy read from the server: who owns what is a fact at its tick), brought
-    forward by every public settlement after that tick (each moves an asset id to its new holder). Cards minted after
-    the census (packs, gifts, the Workshop) are not here: album_filled still counts them as unseen. Settlements are
-    replayed from the tick the walk STARTED (a card read before it moved mid-walk is fixed; one read after is set to
-    the same holder again), in order."""
+    forward by the public settlements since. Cards minted after the census (packs, gifts, the Workshop) are not here:
+    album_filled still counts them as unseen. Replay: an id the census holds is replayed from the tick the walk
+    STARTED (a card read before it moved mid-walk is fixed; one read after is set to the same holder again), in order;
+    an id the census does not hold, or lists as removed, is a tombstone up to the walk's end (its last observation):
+    no settlement at or before tick_end brings it back (it was burned or never minted when last read)."""
     tick = census_tick(census)
-    meta = (census or {}).get("meta") or {}
-    since = meta["tick_start"] if isinstance(meta.get("tick_start"), int) else tick
+    meta = census.get("meta") if isinstance(census.get("meta"), dict) else {}
+    since = meta["tick_start"] if _int(meta.get("tick_start")) else tick
     owner, ref_of = {}, {}
-    for c in (census or {}).get("cards") or []:
-        if isinstance(c, dict) and isinstance(c.get("id"), int) and isinstance(c.get("ref"), str):
+    for c in census.get("cards") or []:
+        if isinstance(c, dict) and _int(c.get("id")) and isinstance(c.get("ref"), str):
             owner[c["id"]], ref_of[c["id"]] = c.get("owner"), c["ref"]
+    removed = {x for x in meta.get("removed") or [] if _int(x)}
     for e in events:
-        if e.get("type") != "settlement" or not isinstance(since, int) or e["tick"] < since:
+        if e.get("type") != "settlement" or not _int(since) or e["tick"] < since:
             continue
         for it in (e.get("payload") or {}).get("items") or []:
-            if isinstance(it, dict) and it.get("kind", "card") == "card" and isinstance(it.get("id"), int):
-                owner[it["id"]] = it.get("to")
-                if isinstance(it.get("ref"), str):
-                    ref_of.setdefault(it["id"], it["ref"])
+            if not (isinstance(it, dict) and it.get("kind", "card") == "card" and _int(it.get("id"))):
+                continue
+            aid = it["id"]
+            if (aid not in owner or aid in removed) and e["tick"] <= tick:
+                continue        # a tombstone: never resurrected by a move that precedes its last observation
+            if aid not in owner and not isinstance(it.get("ref"), str):
+                continue
+            owner[aid] = it.get("to")
+            if isinstance(it.get("ref"), str):
+                ref_of.setdefault(aid, it["ref"])
     out = collections.defaultdict(lambda: {"held": collections.Counter(), "assets": collections.defaultdict(list)})
     for aid in sorted(owner):
         t = owner[aid]
-        if isinstance(t, str) and t[:1] == "t" and t[1:].isdigit():
+        if isinstance(t, str) and t[:1] == "t" and t[1:].isdigit() and aid in ref_of:
             out[t]["held"][ref_of[aid]] += 1
             out[t]["assets"][ref_of[aid]].append(aid)
     return tick, {t: {"held": v["held"], "assets": dict(v["assets"])} for t, v in out.items()}
@@ -251,7 +316,7 @@ def census_holdings(census: dict, events: list) -> tuple:
 
 def load_census(path) -> dict:
     """A tools/census.py snapshot: the file itself, or in a directory the cards-*-t<tick>.json with the highest tick
-    (history and partial files are never read)."""
+    (history and partial files are never read). ValueError when it is not a complete, clean one (census_problem)."""
     path = Path(path).expanduser()
     if path.is_dir():
         files = [f for f in path.glob("cards-*-t*.json") if not f.name.endswith("-history.json")]
@@ -263,8 +328,9 @@ def load_census(path) -> dict:
             return int(m.group(1)) if m else -1
         path = max(files, key=lambda f: (tick_of(f), f.stat().st_mtime))
     snap = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(snap, dict) or not isinstance(snap.get("cards"), list):
-        raise ValueError(f"{path} is not a census snapshot (no cards list)")
+    why = census_problem(snap)
+    if why:
+        raise ValueError(f"{path.name}: {why}")
     return snap
 
 
@@ -272,56 +338,92 @@ def lacking_cards(me: dict, cat: dict) -> set:
     """Every page card in the catalog that our account does not hold: every card of every page we have not
     completed that we lack (CHA's page included before its release: nobody holds those yet)."""
     held = {a.get("ref") for a in (me or {}).get("assets") or [] if isinstance(a, dict) and a.get("kind", "card") == "card"}
-    return {c["id"] for st in cat.get("sets") or [] for c in st.get("cards") or []
-            if c.get("page", c.get("rarity") in PAGE_RARITIES) and c["id"] not in held}
+    return {c["id"] for c in all_page_cards(cat) if c["id"] not in held}
+
+
+def all_page_cards(cat: dict) -> list:
+    return [c for st in (cat or {}).get("sets") or [] if isinstance(st, dict) for c in st.get("cards") or []
+            if isinstance(c, dict) and isinstance(c.get("id"), str) and c.get("page", c.get("rarity") in PAGE_RARITIES)]
+
+
+def account_problem(me) -> str | None:
+    """Why this is not a trustworthy snapshot of OUR account (GET /api/me as tools/snapshot.py or me_relay saves it),
+    or None: our id, an integer game tick, a finite positive tick length, and a list of well-formed assets."""
+    if not isinstance(me, dict):
+        return "not a JSON object"
+    if me.get("id") != US:
+        return f"the account is {me.get('id')!r}, not {US}"
+    if not _int(me.get("tick")) or me["tick"] < 0:
+        return "no integer tick"
+    if not _pos_number(me.get("tick_seconds")):
+        return "no finite positive tick_seconds"
+    assets = me.get("assets")
+    if not isinstance(assets, list):
+        return "no assets list"
+    for a in assets:
+        if not isinstance(a, dict):
+            return "a malformed asset"
+        if a.get("kind", "card") == "card" and not (isinstance(a.get("ref"), str) and REF_RE.match(a["ref"])):
+            return "a card asset without a valid ref"
+    return None
+
+
+SUPPRESSED = "exclude: no trusted holdings, page cards suppressed"
+
+
+def exclude_state(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MAX_AGE_MIN,
+                  now_tick: int | None = None) -> dict:
+    """{"cards", "trusted", "line", "source"}: the cards never shown. Trusted holdings = the valid snapshot of OUR
+    account (account_problem) with the highest game tick among `paths` (files, or a directory standing for its
+    me*.json), aged against the game's `now_tick` with its own tick length: at most `max_age_min` minutes of play.
+    Then the cards are every page card we lack. Otherwise (no valid snapshot, no game tick to age it, too old) it FAILS
+    CLOSED: every page card in the catalog plus `fallback` (announce.MISSING only ever adds), so no page card is
+    recommended until trusted holdings exist. Never raises on a bad file. The line carries counts, never the cards."""
+    files = []
+    for raw in paths or []:
+        try:
+            f = Path(raw).expanduser()
+            files += sorted(f.glob("me*.json")) if f.is_dir() else [f]
+        except OSError:
+            continue
+    valid, rejected = [], []
+    for f in files:
+        try:
+            me = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError, UnicodeDecodeError) as e:
+            rejected.append(f"{f.name}: {type(e).__name__}")
+            continue
+        why = account_problem(me)
+        if why:
+            rejected.append(f"{f.name}: {why}")
+        else:
+            valid.append((me["tick"], str(f), me))
+    every = {c["id"] for c in all_page_cards(cat)} | set(fallback or ())
+
+    def closed(reason: str) -> dict:
+        return {"cards": every, "trusted": False, "source": None,
+                "line": f"{SUPPRESSED} ({reason}; {len(every)} cards hidden)"}
+    if not valid:
+        return closed("no valid account snapshot at " + (", ".join(map(str, paths or [])) or "(none)")
+                      + (f"; rejected {'; '.join(rejected)}" if rejected else ""))
+    tick, name, me = max(valid, key=lambda x: x[0])
+    if not _int(now_tick):
+        return closed(f"no game tick to age {name}")
+    age = max(0, now_tick - tick) * float(me["tick_seconds"]) / 60
+    if not math.isfinite(age) or age > max_age_min:
+        return closed(f"{name} is {age:.0f} min of play old (> {max_age_min:g})")
+    lack = lacking_cards(me, cat)
+    return {"cards": lack, "trusted": True, "source": name,
+            "line": f"exclude-from: {len(lack)} cards we lack, from {name} (tick {tick}, {age:.0f} min of play old)"}
 
 
 def exclude_from(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MAX_AGE_MIN, now: float | None = None,
                  say=None, now_tick: int | None = None) -> tuple:
-    """(cards never shown, one line saying where they came from). The cards we lack come from the freshest of
-    `paths` (an /api/me-shaped snapshot of OUR account: logs/state/me.json from tools/snapshot.py, me_live.json from
-    tools/me_relay.py). A missing, unreadable or foreign file means `fallback` (announce.MISSING); a file older than
-    `max_age_min` means its cards AND `fallback` (stale holdings: hide more, never less). Every fallback is said
-    through `say` (stderr by default). The line carries counts and the file, never the cards. Age is game time when
-    `now_tick` is known (the snapshot's tick against the game's: a paused clock ages nothing, and a file's mtime after
-    a git pull says nothing), else the file's mtime."""
-    say = say or (lambda m: print(m, file=sys.stderr))
-    now = time.time() if now is None else now
-    found = []
-    for raw in paths or []:
-        f = Path(raw).expanduser()
-        try:
-            found.append((f.stat().st_mtime, f))
-        except OSError:
-            continue
-    if not found:
-        line = f"exclude-from: WARNING no holdings snapshot at {', '.join(map(str, paths or [])) or '(none)'}; " \
-               f"using the built-in list ({len(fallback)} cards)"
-        say(line)
-        return set(fallback), line
-    mtime, f = max(found)
-    try:
-        me = json.loads(f.read_text(encoding="utf-8"))
-        if not isinstance(me, dict) or not isinstance(me.get("assets"), list):
-            raise ValueError("no assets list")
-        if me.get("id") not in (None, US):
-            raise ValueError(f"the account is {me.get('id')}, not {US}")
-    except (OSError, ValueError) as e:
-        line = f"exclude-from: WARNING {f} unreadable ({type(e).__name__}: {e}); using the built-in list " \
-               f"({len(fallback)} cards)"
-        say(line)
-        return set(fallback), line
-    lack = lacking_cards(me, cat)
-    if isinstance(now_tick, int) and isinstance(me.get("tick"), int):
-        age = max(0, now_tick - me["tick"]) * float(me.get("tick_seconds") or 15) / 60
-    else:
-        age = (now - mtime) / 60
-    if age > max_age_min:
-        line = f"exclude-from: WARNING {f} is {age:.0f} min old (> {max_age_min:g}); its {len(lack)} cards plus the " \
-               f"built-in list ({len(fallback)} cards)"
-        say(line)
-        return lack | set(fallback), line
-    return lack, f"exclude-from: {len(lack)} cards we lack, from {f} (tick {me.get('tick')}, {age:.0f} min old)"
+    """(cards never shown, one line): exclude_state(); an untrusted result is also said through `say` (stderr)."""
+    st = exclude_state(paths, cat, fallback, max_age_min, now_tick)
+    if not st["trusted"]:
+        (say or (lambda m: print(m, file=sys.stderr)))(st["line"])
+    return set(st["cards"]), st["line"]
 
 
 def last_moves(events: list) -> dict:
@@ -682,8 +784,8 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
     held = {t: holdings(d) for t, d in deck.items()}
     assets_of = {t: d.get("assets") or {} for t, d in deck.items()}
     basis = {t: "feed" for t in deck}
-    c_tick = None
-    if census:
+    c_tick, c_rejected = None, census_problem(census) if census is not None else None
+    if census is not None and c_rejected is None:
         c_tick, by_team = census_holdings(census, events)
         for t in set(deck) | set(by_team):
             row = by_team.get(t) or {"held": collections.Counter(), "assets": {}}
@@ -768,7 +870,8 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
         if r_ in page_refs and h.get(r_, 0) <= 0:   # the leaderboard shows it holds its rarest card: never "missing"
             h = h.copy()
             h[r_] = 1
-            facts.append(r_)
+            if r_ not in skip:
+                facts.append(r_)
         odds = missing_odds(h, pages, alb.get(team), rarity_of)
         near = near_pages(h, pages)
         why = consistency(odds, alb.get(team))
@@ -859,7 +962,8 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
     for i, m in enumerate(matches, 1):
         m["rank"] = i
     return {"generated_at": round(time.time()), "tick": now_tick, "venue": VENUE, "matches": matches, "teams": teams,
-            "withheld": withheld, "withheld_inconsistent": inconsistent, "census_tick": c_tick, "tiers": TIERS,
+            "withheld": withheld, "withheld_inconsistent": inconsistent, "census_tick": c_tick, "census_rejected": c_rejected,
+            "tiers": TIERS,
             "rules": {"max_missing": MAX_MISSING, "spare_min": SPARE_MIN, "min_p": MIN_P, "active_ticks": ACTIVE_TICKS,
                       "order_ticks": ORDER_TICKS}}
 

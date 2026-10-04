@@ -488,6 +488,24 @@ def still_live(a: dict, card: str, books: dict, tick=None) -> bool:
     return sh is not None and sh[0] == a.get("side") and sh[1] == card and sh[2] == a.get("price")
 
 
+def probability(x) -> float | None:
+    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not 0 <= x <= 1:
+        return None
+    return float(x)
+
+
+def min_p_arg(raw: str) -> float:
+    """--min-p: a probability, or argparse refuses it."""
+    try:
+        v = probability(float(raw))
+    except ValueError:
+        v = None
+    if v is None:
+        raise argparse.ArgumentTypeError(f"--min-p takes a number in [0, 1], not {raw!r}")
+    return v
+
+
 def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False, tick=None,
                min_p: float = MIN_P_ANNOUNCE):
     """The one match a post names, in the matchmaker's order (explicit live wants first): never Team 3, never a card
@@ -502,8 +520,8 @@ def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool
         if not isinstance(m, dict) or _public(m.get("team_name"), m.get("team")) is None:
             continue
         if m.get("inferred") is not False or (m.get("tier") or 0) >= 3:   # an inference: fail closed below min_p
-            pm = m.get("p_missing")
-            if not isinstance(pm, (int, float)) or pm < min_p or (teams.get(m.get("team")) or {}).get("consistent") is False:
+            pm = probability(m.get("p_missing"))
+            if pm is None or pm < min_p or (teams.get(m.get("team")) or {}).get("consistent") is False:
                 continue
         if not isinstance(m.get("card"), str) or m["card"] in skip or match_key(m) in recent:
             continue
@@ -1139,7 +1157,7 @@ def main(argv: list[str] | None = None) -> None:
                          "every post): every page card we lack is never advertised; missing/unreadable -> MISSING, "
                          "stale -> both. Logged as counts, never the cards")
     ap.add_argument("--exclude-max-age-min", type=float, default=60.0)
-    ap.add_argument("--min-p", type=float, default=MIN_P_ANNOUNCE,
+    ap.add_argument("--min-p", type=min_p_arg, default=MIN_P_ANNOUNCE,
                     help="--variant missing: lowest p_missing at which an inferred need is named")
     ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between scheduled messages")
     ap.add_argument("--count", type=int, default=1, help="run only: how many messages at most")
@@ -1186,10 +1204,13 @@ def main(argv: list[str] | None = None) -> None:
         every post (our holdings change during the day). Logged as a count, never the cards."""
         if not args.exclude_from:
             return fixed
-        import matchmaker   # noqa: E402  (keyless; the same rule the matchmaker applies)
-        import value_inference
-        lack, line = matchmaker.exclude_from(args.exclude_from.split(","), value_inference.catalog(), MISSING,
-                                             args.exclude_max_age_min, now_tick=now_tick)
+        try:   # fails closed inside (every page card) on a bad snapshot; a missing catalog means no post at all
+            import matchmaker   # noqa: E402  (keyless; the same rule the matchmaker applies)
+            import value_inference
+            lack, line = matchmaker.exclude_from(args.exclude_from.split(","), value_inference.catalog(), MISSING,
+                                                 args.exclude_max_age_min, now_tick=now_tick, say=lambda m: None)
+        except Exception as e:  # noqa: BLE001 — never out of the posting loop: nothing is posted instead
+            raise LookupError(f"exclude: {type(e).__name__}, no post without the list of cards we lack")
         print(f"[{time.strftime('%H:%M:%S')}] {line}", flush=True)
         if args.cmd == "run":
             log.event("exclude", line=line, count=len(lack | set(fixed)))
@@ -1258,7 +1279,10 @@ def main(argv: list[str] | None = None) -> None:
         print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
         return
 
-    current_exclude()
+    try:
+        current_exclude()
+    except LookupError as e:
+        print(f"[{time.strftime('%H:%M:%S')}] {e}", flush=True)
     ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
                     eligible=lambda o: describe(o) is not None and not refs(o) & set(last_exclude[0]))
     minutes = args.deadline_min if args.deadline_min is not None else max(1, args.count) * max(1.0, args.every_min) + 60

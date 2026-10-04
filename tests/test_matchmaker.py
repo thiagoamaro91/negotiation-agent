@@ -1,5 +1,6 @@
 """La Celestina's matchmaker (tools/matchmaker.py). Run: python3 -m unittest discover tests"""
 import collections
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -347,15 +348,30 @@ class LeaderboardFacts(unittest.TestCase):
         self.assertTrue(res["teams"]["t01"]["consistent"])
 
 
-def census(tick=10, cards=()):
-    return {"meta": {"tick_start": tick - 2, "tick_end": tick},
-            "cards": [{"id": i, "ref": r, "owner": o} for i, r, o in cards]}
+def census(tick=10, cards=(), mode="run", **meta):
+    """A complete, clean tools/census.py snapshot (the minimum sizes are lowered per test class)."""
+    m = {"tool": "tools/census.py", "mode": mode, "tick_start": tick - 2, "tick_end": tick, "errors": [],
+         "unparsed_ids": [], "end": "404_run", "ids_walked": 200}
+    if mode == "topup":
+        m.update(base_tick=tick - 50, end=None, ids_walked=3)
+    m.update(meta)
+    return {"meta": m, "cards": [{"id": i, "ref": r, "owner": o} for i, r, o in cards]}
 
 
 class Census(unittest.TestCase):
-    """--census: holdings read from the server replace the rebuilt decks."""
+    """--census: holdings read from the server replace the rebuilt decks, only when the census is complete and clean."""
     CARDS = [(1, "LAV-01", "t01"), (2, "LAV-02", "t01"), (3, "LAV-03", "t01"), (100, "LAV-04", "t02"),
              (101, "LAV-04", "t02"), (102, "LAV-04", "abuela")]
+
+    def setUp(self):
+        import unittest.mock as um
+        self.p = [um.patch.object(mm, "CENSUS_MIN_IDS", 100), um.patch.object(mm, "CENSUS_MIN_CARDS", 3)]
+        for x in self.p:
+            x.start()
+
+    def tearDown(self):
+        for x in self.p:
+            x.stop()
 
     def test_census_holders_are_facts_dated_by_the_census_tick_with_their_asset_ids(self):
         # the feed names nothing at all: only the census can say who holds what
@@ -365,7 +381,7 @@ class Census(unittest.TestCase):
         self.assertEqual(m["basis"], "census tick 10")
         h = m["holders"][0]
         self.assertEqual((h["team"], h["seen"], h["asset"], h["copies"]), ("t02", "census tick 10", 101, 2))
-        self.assertEqual(res["census_tick"], 10)
+        self.assertEqual((res["census_tick"], res["census_rejected"]), (10, None))
         self.assertEqual(m["p_missing"], 1.0)    # album_filled 3 = the three the census names: nothing unseen
 
     def test_a_settlement_after_the_census_moves_the_card(self):
@@ -375,18 +391,7 @@ class Census(unittest.TestCase):
         self.assertIsNone(need(res, "t01", "LAV-04"))
         self.assertEqual(res["teams"]["t01"]["named_page_cards"], 4)      # the moved copy is t01's now
         before = build(moved, values={}, lb=lb(t01=(4, 1), t02=(1, 0)), census=census(20, self.CARDS))
-        self.assertEqual(before["teams"]["t01"]["named_page_cards"], 3)   # a settlement before the census is in it
-
-    def test_load_census_picks_the_newest_snapshot_in_a_directory(self):
-        import json
-        import tempfile
-        with tempfile.TemporaryDirectory() as d:
-            for t in (900, 1450):
-                (Path(d) / f"cards-2026-10-04-t{t}.json").write_text(json.dumps(census(t, self.CARDS)))
-            (Path(d) / "cards-2026-10-04-t9999-history.json").write_text("{}")
-            self.assertEqual(mm.census_tick(mm.load_census(d)), 1450)
-            (Path(d) / "cards-2026-10-04-t1500-topup.json").write_text(json.dumps(census(1500, self.CARDS)))
-            self.assertEqual(mm.census_tick(mm.load_census(d)), 1500)
+        self.assertEqual(before["teams"]["t01"]["named_page_cards"], 3)   # a settlement before the walk is in it
 
     def test_a_card_that_moved_during_the_walk_ends_with_its_last_holder(self):
         # the walk ran from tick 8 to 10; id 100 was read at t02 before it settled to t01 at tick 9
@@ -395,6 +400,59 @@ class Census(unittest.TestCase):
         _, by_team = mm.census_holdings(census(10, self.CARDS), moved)
         self.assertEqual(by_team["t01"]["held"]["LAV-04"], 1)
         self.assertEqual(by_team["t02"]["held"]["LAV-04"], 1)
+
+    def test_a_burned_asset_is_never_resurrected_by_a_settlement_before_its_last_observation(self):
+        # Sol's counterexample: 102 settles to t02 during the walk (tick 9), is burned before the walk ends; the census
+        # does not hold it (or a top-up lists it as removed). Replaying the tick-9 settlement must not bring it back.
+        cards = [c for c in self.CARDS if c[0] != 102]
+        burned = [ev(30, 9, "settlement", parties=["abuela", "t02"], venue=None, persona="abuela", price=30,
+                     items=[{"id": 102, "kind": "card", "ref": "LAV-04", "frm": "abuela", "to": "t02"}])]
+        for snap in (census(10, cards), census(10, cards, mode="topup", removed=[102])):
+            _, by_team = mm.census_holdings(snap, burned)
+            self.assertEqual(by_team["t02"]["held"]["LAV-04"], 2)
+            self.assertNotIn(102, by_team["t02"]["assets"]["LAV-04"])
+        removed_but_listed = census(10, self.CARDS, mode="topup", removed=[102])   # a stale record next to its tombstone
+        _, by_team = mm.census_holdings(removed_but_listed, burned)
+        self.assertNotIn(102, by_team["t02"]["assets"]["LAV-04"])
+        later = [ev(31, 11, "settlement", parties=["t05", "t02"], venue="rastro", persona=None, price=30,
+                    items=[{"id": 500, "kind": "card", "ref": "LAV-04", "frm": "t05", "to": "t02"}])]
+        _, by_team = mm.census_holdings(census(10, cards), later)              # a card minted after the census: kept
+        self.assertIn(500, by_team["t02"]["assets"]["LAV-04"])
+
+    def test_an_unusable_census_never_replaces_the_rebuilt_decks(self):
+        base = build(T01 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)))
+        self.assertIsNotNone(need(base, "t01", "LAV-04"))
+        bad = {"empty": {"cards": []}, "null card": {"meta": census(10)["meta"], "cards": [None]},
+               "meta not a dict": {"meta": [1], "cards": []},
+               "partial (one card)": census(10, self.CARDS[:1]),
+               "walk errors": census(10, self.CARDS, errors=[{"id": 7}]),
+               "stopped at max_id": census(10, self.CARDS, end="max_id"),
+               "too few ids": census(10, self.CARDS, ids_walked=50),
+               "unfinished": census(10, self.CARDS, tick_end=None),
+               "bad ref": census(10, self.CARDS + [(103, "nope", "t02")]),
+               "id not an int": census(10, self.CARDS + [("104", "LAV-04", "t02")]),
+               "owner not a string": census(10, self.CARDS + [(105, "LAV-04", 7)])}
+        for why, snap in bad.items():
+            with self.subTest(why):
+                res = build(T01 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)), census=snap)
+                self.assertIsNotNone(res["census_rejected"])
+                self.assertIsNone(res["census_tick"])
+                self.assertIsNotNone(need(res, "t01", "LAV-04"))            # the feed's board, unchanged
+                self.assertIsNotNone(mm.census_problem(snap))
+
+    def test_load_census_picks_the_newest_snapshot_in_a_directory_and_rejects_a_partial_one(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for t in (900, 1450):
+                (Path(d) / f"cards-2026-10-04-t{t}.json").write_text(json.dumps(census(t, self.CARDS)))
+            (Path(d) / "cards-2026-10-04-t9999-history.json").write_text("{}")
+            self.assertEqual(mm.census_tick(mm.load_census(d)), 1450)
+            (Path(d) / "cards-2026-10-04-t1500-topup.json").write_text(json.dumps(census(1500, self.CARDS, mode="topup")))
+            self.assertEqual(mm.census_tick(mm.load_census(d)), 1500)
+            (Path(d) / "cards-2026-10-04-t1600.json").write_text(json.dumps(census(1600, self.CARDS[:1])))
+            with self.assertRaises(ValueError):
+                mm.load_census(d)
 
 
 class RunOnce(unittest.TestCase):
@@ -413,78 +471,136 @@ class RunOnce(unittest.TestCase):
         self.assertIn("census: WARNING", err.getvalue())
 
 
-class ExcludeFrom(unittest.TestCase):
-    """--exclude-from: the cards we lack, from our freshest holdings snapshot; the built-in list when it is not."""
-    FALLBACK = ("SAL-01", "SAL-02")
+class SolRound1(unittest.TestCase):
+    """End to end through run_once, as the factory runs it."""
 
-    def write(self, d, name, assets, age_min=0, account="t03"):
+    def run_once(self, **kw):
+        import argparse
+        import io
+        import unittest.mock as um
+        bid = {"id": 77, "maker": "mB", "status": "open", "to": None, "expires_tick": 500,
+               "give": {"cash": 15, "assets": [], "types": []}, "want": {"cash": 0, "assets": [], "types": ["card:LAV-02"]}}
+        data = {"events": JOIN + T01 + T02 + [named(77, "t02")], "catalog": cat(), "leaderboard": LB, "venues": [],
+                "books": {"rastro": [dict(bid, venue="rastro")]}}
+        args = argparse.Namespace(feed="/nonexistent", live=False, exclude="", no_values=True, census=None,
+                                  exclude_from=None, exclude_max_age_min=60)
+        for k, v in kw.items():
+            setattr(args, k, v)
+        err = io.StringIO()
+        with um.patch.object(mm, "offline_inputs", return_value=data), um.patch("sys.stderr", err):
+            return mm.run_once(args), err.getvalue()
+
+    def test_without_trusted_holdings_no_page_card_is_recommended_not_even_a_live_bid(self):
+        res, _ = self.run_once()
+        self.assertIn(("t02", "LAV-02", 2), [(m["team"], m["card"], m["tier"]) for m in res["matches"]])
+        res, err = self.run_once(exclude_from="/nonexistent/me.json")
+        self.assertEqual(res["matches"], [])
+        self.assertIn("exclude: no trusted holdings, page cards suppressed", err)
+
+    def test_a_partial_census_file_is_logged_and_the_feed_board_stays(self):
         import json
-        import os
-        import time as _t
-        f = Path(d) / name
-        f.write_text(json.dumps({"id": account, "tick": 1500, "assets": [{"id": i, "kind": "card", "ref": r}
-                                                                          for i, r in enumerate(assets)]
-                                 + [{"id": 99, "kind": "pack", "ref": "sobre_oro"}]}))
-        t = _t.time() - age_min * 60
-        os.utime(f, (t, t))
-        return str(f)
-
-    def run_(self, paths, **kw):
-        said = []
-        cards, line = mm.exclude_from(paths, two_pages(), self.FALLBACK, say=said.append, **kw)
-        return cards, line, said
-
-    def test_a_fresh_snapshot_excludes_exactly_the_page_cards_we_lack(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
-            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-03", "LAV-11"])
-            cards, line, said = self.run_([f])
+            f = Path(d) / "cards-2026-10-04-t1500.json"
+            f.write_text(json.dumps(census(1500, [(1, "LAV-01", "t01")])))
+            res, err = self.run_once(census=str(f))
+        self.assertIsNone(res["census_tick"])
+        self.assertIn("census: WARNING", err)
+        self.assertTrue(any(m["card"] == "LAV-04" for m in res["matches"]))
+
+    def test_held_by_leaderboard_never_names_an_excluded_card(self):
+        res = build(T01_LAV2 + T02, values={}, lb=lb(t01=(3, 0, "LAV-04"), t02=(1, 0)), exclude=("LAV-04",))
+        self.assertEqual(res["teams"]["t01"]["held_by_leaderboard"], [])
+        self.assertNotIn("LAV-04", json.dumps(res["teams"]))
+
+
+class ExcludeFrom(unittest.TestCase):
+    """--exclude-from: the cards we lack from a TRUSTED snapshot of our account; otherwise every page card (fail
+    closed). Sol's round-1 counterexamples are the cases below."""
+    FALLBACK = ("RET-01",)
+    EVERY = {"LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02", "SAL-03", "SAL-04", "RET-01"}
+
+    def write(self, d, name, cards, tick=1500, account="t03", **extra):
+        import json
+        f = Path(d) / name
+        body = {"id": account, "tick": tick, "tick_seconds": 15.0,
+                "assets": [{"id": i, "kind": "card", "ref": r} for i, r in enumerate(cards)]
+                + [{"id": 99, "kind": "pack", "ref": "sobre_oro"}]}
+        body.update(extra)
+        if account is None:
+            body.pop("id")
+        f.write_text(json.dumps(body))
+        return str(f)
+
+    def run_(self, paths, now_tick=1510, **kw):
+        said = []
+        cards, line = mm.exclude_from(paths, two_pages(), self.FALLBACK, say=said.append, now_tick=now_tick, **kw)
+        return cards, line, said
+
+    HOLD = ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-03", "LAV-11"]
+
+    def test_a_fresh_valid_snapshot_excludes_exactly_the_page_cards_we_lack(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            cards, line, said = self.run_([self.write(d, "me.json", self.HOLD)])
         self.assertEqual(cards, {"SAL-02", "SAL-04"})     # every lacking page card; no epic, nothing we hold
         self.assertEqual(said, [])
         self.assertIn("2 cards we lack", line)
         self.assertNotIn("SAL-02", line)                   # the line is counts only, never the cards
 
-    def test_a_missing_file_falls_back_to_the_built_in_list_and_says_so(self):
-        cards, line, said = self.run_(["/nonexistent/me.json"])
-        self.assertEqual(cards, set(self.FALLBACK))
-        self.assertEqual(len(said), 1)
-        self.assertIn("WARNING", said[0])
-
-    def test_a_stale_file_adds_the_built_in_list_and_says_so(self):
+    def test_no_trusted_snapshot_fails_closed_never_to_the_built_in_list_alone(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
-            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02", "SAL-03"],
-                           age_min=90)
-            cards, line, said = self.run_([f], max_age_min=60)
-        self.assertEqual(cards, {"SAL-04"} | set(self.FALLBACK))
-        self.assertEqual(len(said), 1)
-        self.assertIn("min old", said[0])
+            bad = Path(d) / "bad.json"
+            bad.write_text("{not json")
+            cases = {"missing file": ["/nonexistent/me.json"], "malformed": [str(bad)],
+                     "foreign account": [self.write(d, "t05.json", self.HOLD, account="t05")],
+                     "no account id": [self.write(d, "noid.json", self.HOLD, account=None)],
+                     "bad tick_seconds": [self.write(d, "ts.json", self.HOLD, tick_seconds="bad")],
+                     "infinite tick_seconds": [self.write(d, "inf.json", self.HOLD, tick_seconds=float("inf"))],
+                     "bool tick": [self.write(d, "bt.json", self.HOLD, tick=True)],
+                     "asset not a dict": [self.write(d, "ad.json", self.HOLD, assets=[None])]}
+            
+            for why, paths in cases.items():
+                with self.subTest(why):
+                    cards, line, said = self.run_(paths)
+                    self.assertEqual(cards, self.EVERY)          # every page card + the built-in list: nothing shown
+                    self.assertEqual(len(said), 1)
+                    self.assertIn(mm.SUPPRESSED, said[0])
 
-    def test_age_is_game_time_when_the_tick_is_known(self):
+    def test_a_stale_or_unageable_snapshot_fails_closed(self):
         import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            f = self.write(d, "me.json", self.HOLD, tick=1500)
+            self.assertEqual(self.run_([f], now_tick=1500 + 241, max_age_min=60)[0], self.EVERY)   # 60.25 min of play
+            self.assertEqual(self.run_([f], now_tick=1500 + 240, max_age_min=60)[0], {"SAL-02", "SAL-04"})
+            self.assertEqual(self.run_([f], now_tick=None)[0], self.EVERY)                         # no game tick
+
+    def test_age_is_game_time_not_the_file_time(self):
+        import os
+        import tempfile
+        import time as _t
         with tempfile.TemporaryDirectory() as d:   # an old file (git pull overnight) but the clock was paused: fresh
-            f = self.write(d, "me.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02", "SAL-03"],
-                           age_min=600)
-            self.assertEqual(self.run_([f], now_tick=1510)[0], {"SAL-04"})          # 10 ticks x 15 s
-            self.assertEqual(self.run_([f], now_tick=1800)[0], {"SAL-04"} | set(self.FALLBACK))   # 75 min of play
+            f = self.write(d, "me.json", self.HOLD)
+            os.utime(f, (_t.time() - 36000, _t.time() - 36000))
+            self.assertEqual(self.run_([f], now_tick=1510)[0], {"SAL-02", "SAL-04"})
 
-    def test_another_teams_account_or_garbage_falls_back(self):
+    def test_the_highest_game_tick_wins_whatever_the_file_times(self):
+        import os
         import tempfile
+        import time as _t
         with tempfile.TemporaryDirectory() as d:
-            f = self.write(d, "me.json", ["LAV-01"], account="t05")
-            g = Path(d) / "bad.json"
-            g.write_text("{not json")
-            self.assertEqual(self.run_([f])[0], set(self.FALLBACK))
-            self.assertEqual(self.run_([str(g)])[0], set(self.FALLBACK))
-
-    def test_the_freshest_of_several_snapshots_is_used(self):
-        import tempfile
-        with tempfile.TemporaryDirectory() as d:
-            old = self.write(d, "me.json", [], age_min=30)
-            new = self.write(d, "me_live.json", ["LAV-01", "LAV-02", "LAV-03", "LAV-04", "SAL-01", "SAL-02",
-                                                 "SAL-03"], age_min=1)
-            cards, _, _ = self.run_([old, new])
-        self.assertEqual(cards, {"SAL-04"})
+            new = self.write(d, "me_live.json", self.HOLD, tick=1500)
+            old = self.write(d, "me.json", [], tick=1445)                        # newest mtime, older game tick
+            os.utime(new, (_t.time() - 600, _t.time() - 600))
+            (Path(d) / "offers.json").write_text("{}")                           # not an account file: never read
+            cards, line, said = self.run_([d])
+            self.assertEqual(cards, {"SAL-02", "SAL-04"})
+            self.assertIn("me_live.json", line)
+            for order in ([old, new], [new, old]):
+                self.assertEqual(self.run_(order)[0], {"SAL-02", "SAL-04"})
+            self.write(d, "me_live.json", self.HOLD, tick=1500, account="t05")   # the newest is invalid: skipped
+            self.assertEqual(self.run_([d], now_tick=1450)[0], self.EVERY - {"RET-01"})   # me.json: we hold nothing
 
 
 class Validate(unittest.TestCase):
