@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 239,
+ "cash": 306,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -473,20 +473,9 @@
    "print_run": 30,
    "name": "Museo Lázaro Galdiano",
    "your_value": 177.1
-  },
-  {
-   "id": 1244,
-   "kind": "card",
-   "ref": "RET-10",
-   "serial": 12,
-   "rarity": "rare",
-   "set": "RET",
-   "print_run": 30,
-   "name": "Monumento a Alfonso XII",
-   "your_value": 63.0
   }
  ],
- "collection_value": 1777.4,
+ "collection_value": 1714.4,
  "album": {
   "pages": [
    {
@@ -524,7 +513,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 4,
+    "have": 3,
     "of": 10,
     "complete": false,
     "master": false
@@ -538,26 +527,26 @@
     "master": false
    }
   ],
-  "filled": 37,
+  "filled": 36,
   "slots": 60
  },
- "tick": 1585,
+ "tick": 1625,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 27.92,
-  "negotiating": 22.71,
-  "market": 5.22,
+  "score": 28.09,
+  "negotiating": 23.02,
+  "market": 5.07,
   "neg_points": 50.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.145,
+  "ladder_points": 0.165,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 5,
-  "album_filled": 37,
+  "album_filled": 36,
   "album_slots": 60,
   "pages_complete": 3,
   "rarest": {
@@ -568,7 +557,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 37,
+  "deals": 38,
   "badges": [
    "Sharp ear"
   ],
@@ -603,7 +592,5 @@
   "description": "Zero fees. Our broker crosses every matching bid and ask, card by card, every tick.",
   "opened_tick": 269
  },
- "open_threads": [
-  2398
- ]
+ "open_threads": []
 }

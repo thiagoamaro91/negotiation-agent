@@ -1,0 +1,280 @@
+{
+ "id": 2398,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1244
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 1583,
+ "messages": [
+  {
+   "id": 13789,
+   "tick": 1584,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 85 P.",
+   "offer": {
+    "id": 21402,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 85,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1592,
+    "created_tick": 1584,
+    "final": false
+   }
+  },
+  {
+   "id": 13787,
+   "tick": 1584,
+   "sender": "pilar",
+   "text": "Buenas tardes. How delightful — the Monumento a Alfonso XII, the jewel of El Retiro. I have waited years for that one. I offer you 61 P, señor. A serious price, from a serious collector.",
+   "offer": {
+    "id": 21401,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 61,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1592,
+    "created_tick": 1584,
+    "final": false
+   }
+  },
+  {
+   "id": 13792,
+   "tick": 1585,
+   "sender": "pilar",
+   "text": "Let us be civilised: 63 P.",
+   "offer": {
+    "id": 21412,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 63,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1593,
+    "created_tick": 1585,
+    "final": false
+   }
+  },
+  {
+   "id": 13793,
+   "tick": 1585,
+   "sender": "t03",
+   "text": "I move, you move. 83 P.",
+   "offer": {
+    "id": 21413,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 83,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1593,
+    "created_tick": 1585,
+    "final": false
+   }
+  },
+  {
+   "id": 13797,
+   "tick": 1586,
+   "sender": "t03",
+   "text": "Coming down: 81 P.",
+   "offer": {
+    "id": 21421,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 81,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1594,
+    "created_tick": 1586,
+    "final": false
+   }
+  },
+  {
+   "id": 13795,
+   "tick": 1586,
+   "sender": "pilar",
+   "text": "Very well, señor, I move as promised: 65 P. Your card deserves an album, not a pocket. I know precisely what it is worth, and I am being generous. Shall we conclude this like gentlefolk?",
+   "offer": {
+    "id": 21419,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2398,
+    "status": "cancelled",
+    "give": {
+     "cash": 65,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1594,
+    "created_tick": 1586,
+    "final": false
+   }
+  },
+  {
+   "id": 13798,
+   "tick": 1587,
+   "sender": "pilar",
+   "text": "I think 67 P is more appropriate. That is my final word on the matter.",
+   "offer": {
+    "id": 21428,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2398,
+    "status": "settled",
+    "give": {
+     "cash": 67,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1244,
+       "kind": "card",
+       "ref": "RET-10",
+       "serial": 12,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1595,
+    "created_tick": 1587,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Monumento a Alfonso XII",
+ "closed_reason": null
+}

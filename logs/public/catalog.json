@@ -47,7 +47,7 @@
      "flavour": "Balconies that gossip across the courtyard.",
      "book": 10,
      "print_run": 300,
-     "minted": 26,
+     "minted": 27,
      "hidden": false,
      "page": true
     },
@@ -331,7 +331,7 @@
      "flavour": "The first one is always small.",
      "book": 10,
      "print_run": 300,
-     "minted": 25,
+     "minted": 26,
      "hidden": false,
      "page": true
     },
@@ -386,7 +386,7 @@
      "flavour": "Carnation behind the ear, opinion on everything.",
      "book": 25,
      "print_run": 90,
-     "minted": 17,
+     "minted": 18,
      "hidden": false,
      "page": true
     },
@@ -539,7 +539,7 @@
      "flavour": "Price on request.",
      "book": 25,
      "print_run": 90,
-     "minted": 17,
+     "minted": 18,
      "hidden": false,
      "page": true
     },
@@ -779,7 +779,7 @@
      "flavour": "Every headline, one opinion.",
      "book": 10,
      "print_run": 300,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -790,7 +790,7 @@
      "flavour": "Chocolate thick enough to stand a spoon.",
      "book": 10,
      "print_run": 300,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -801,7 +801,7 @@
      "flavour": "The stalls became restaurants.",
      "book": 10,
      "print_run": 300,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": true
     },
@@ -812,7 +812,7 @@
      "flavour": "An octagon of terraces.",
      "book": 10,
      "print_run": 300,
-     "minted": 2,
+     "minted": 4,
      "hidden": false,
      "page": true
     },
@@ -845,7 +845,7 @@
      "flavour": "Latin on the walls, football in the yard.",
      "book": 25,
      "print_run": 90,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -878,7 +878,7 @@
      "flavour": "The station time forgot.",
      "book": 180,
      "print_run": 9,
-     "minted": 1,
+     "minted": 2,
      "hidden": false,
      "page": false
     },
