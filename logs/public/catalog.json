@@ -637,7 +637,7 @@
      "flavour": "Warm hands, warmer gossip.",
      "book": 10,
      "print_run": 300,
-     "minted": 13,
+     "minted": 14,
      "hidden": false,
      "page": true
     },
@@ -659,7 +659,7 @@
      "flavour": "No cars, many skaters.",
      "book": 10,
      "print_run": 300,
-     "minted": 21,
+     "minted": 22,
      "hidden": false,
      "page": true
     },
@@ -714,7 +714,7 @@
      "flavour": "Exactly 666 metres above the sea.",
      "book": 70,
      "print_run": 30,
-     "minted": 16,
+     "minted": 17,
      "hidden": false,
      "page": true
     },
@@ -725,7 +725,7 @@
      "flavour": "A king, a lake, a lot of steps.",
      "book": 70,
      "print_run": 30,
-     "minted": 16,
+     "minted": 17,
      "hidden": false,
      "page": true
     },
@@ -845,7 +845,7 @@
      "flavour": "Latin on the walls, football in the yard.",
      "book": 25,
      "print_run": 90,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 9,
+     "minted": 10,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
@@ -878,7 +878,7 @@
      "flavour": "The station time forgot.",
      "book": 180,
      "print_run": 9,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": false
     },
