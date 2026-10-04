@@ -160,6 +160,8 @@ The three dealers run at once, so a card's worth can change under an open thread
 
 If our own standing number is already on the wrong side of the new limit the thread is closed (`limit_dropped`: a bid the dealer could still accept); if the read has no holdings, the copy is gone, or the set has no multiplier, the thread is closed (`limit_unknown`, with the reason); an offer that is not exactly the deal (an extra asset or type of ours, a second card, cash coming back) is refused as a `mismatch`. A thread is not even opened when the limit cannot be priced. Nothing is hidden: each close names the planned and the live number in `logs/<dealer>/<date>.jsonl`.
 
+The offline eval (`tools/eval_dealers.py`) answers that `/api/me` read in the live shape (`account_view`: affinity, and our holdings built from what each case says, never kinder than its own value), so the replays run the bots' real decision code. Its `--validate` now reads 13 of 16 conversations replayed exactly instead of 15 of 16: chato-253 and chato-275, Friday's LAT-06 and LAT-07 buys at 28 and 29 against a value of 27.5, are now walked from. That is the clip working, not a harness drift (`evals/dealers/metrics.md` still shows the pre-clip 15 of 16).
+
 ## 5. Chamberí (set CHA, released about 10:39; we value it x0.5, the worst)
 
 ### 5.1 What we do with every CHA card
