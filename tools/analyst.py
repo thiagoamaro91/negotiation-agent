@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import contextlib
 import json
 import math
 import statistics
@@ -246,6 +247,63 @@ OURS_SWITCH = [  # what a human runs on the Mini, BETWEEN two Market Tests (neve
 ]
 
 
+MAX_TICK_GAP = 2   # the broker logs a book row every tick it runs (book_state carries the tick): a longer gap = blind
+
+
+def coverage(book_ticks: list, start, end) -> tuple:
+    """(ok, why): the broker's book rows cover the feed session [start, end] tick by tick (no gap over MAX_TICK_GAP)
+    and reach its end. A tracker's bench_run_end is not proof the whole test was pushed."""
+    if start is None or end is None:
+        return False, "no bench.started in the feed for this session (cannot tell when it ends)"
+    ts = sorted({t for t in book_ticks if start - MAX_TICK_GAP <= t <= end + 50})
+    if not ts or ts[-1] < end:
+        return False, f"the broker log stops at tick {ts[-1] if ts else '-'}, before the session's end at {end}"
+    if ts[0] > start + MAX_TICK_GAP:
+        return False, f"the broker log starts at tick {ts[0]}, after the session's start at {start}"
+    gaps = [(x, y) for x, y in zip(ts, ts[1:]) if y - x > MAX_TICK_GAP and x <= end]
+    if gaps:
+        return False, f"the broker log has a gap {gaps[0][0]}->{gaps[0][1]} inside the session ({start}-{end})"
+    return True, f"broker log covers ticks {start}-{end}"
+
+
+def paired_mean_se(deltas: list) -> tuple:
+    n = len(deltas)
+    if n < 2:
+        return (deltas[0] if deltas else 0.0), float("inf")
+    m = sum(deltas) / n
+    return m, (sum((x - m) ** 2 for x in deltas) / (n - 1)) ** 0.5 / n ** 0.5
+
+
+def ours_decision(stall_gain: float, ours_gain: float, synth: list) -> tuple:
+    """(switch, why). Differing expiries only make the comparison eligible. Switch to `ours` only when it does not
+    lose on this session's replay AND the paired synthetic deltas (ours - stall bench_score, the day's refit with
+    per-offer expiries) are above 0 by more than SE_RULE standard errors AND ours drops no more crossable pairs.
+    synth: [(delta, dropped_ours, dropped_stall)]."""
+    if ours_gain < stall_gain:
+        return False, f"ours replays worse than the stall on this session ({ours_gain:.0f} P vs {stall_gain:.0f} P)"
+    m, se = paired_mean_se([d for d, *_ in synth])
+    if not synth or not m > SE_RULE * se:
+        return False, (f"ours is not more than 2 SE ahead on the refit with per-offer expiries "
+                       f"({m:+.3f} ± {se:.3f} bench_score over {len(synth)} paired seeds)")
+    d_ours, d_stall = sum(x[1] for x in synth), sum(x[2] for x in synth)
+    if d_ours > d_stall:
+        return False, f"ours drops more crossable pairs than the stall on the refit ({d_ours} vs {d_stall})"
+    return True, f"ours {m:+.3f} ± {se:.3f} bench_score over {len(synth)} paired seeds, dropped {d_ours} vs {d_stall}"
+
+
+def synth_ours_vs_stall(log: Path, seeds: int) -> list:
+    """[(ours - stall bench_score, dropped ours, dropped stall)] on eval_broker's fitted_expiry_exact scenario."""
+    import eval_broker as ebr
+    scs, _note = ebr.fitted_scenarios(log)
+    sc = {**ebr.bs.BASE, **scs["fitted_expiry_exact"]}
+    out = []
+    for seed in range(seeds):
+        g_s = ebr.run_synth("fitted_expiry_exact", sc, seed, "stall")[0]
+        g_o = ebr.run_synth("fitted_expiry_exact", sc, seed, "ours")[0]
+        out.append((g_o["bench_score"] - g_s["bench_score"], g_o["dropped"], g_s["dropped"]))
+    return out
+
+
 def cmd_bench(a, events) -> tuple:
     import broker as brk
     import eval_broker as ebr
@@ -265,6 +323,11 @@ def cmd_bench(a, events) -> tuple:
     tr = sess["traders"]
     t_first, t_last = sess["states"][0][0], sess["states"][-1][0]
     start, end, no = session_window(t_first, bench_starts(events))
+    book_ticks = [r["tick"] for r in rows if r.get("event") == "book" and isinstance(r.get("tick"), int)]
+    covered, cwhy = coverage(book_ticks, start, end)
+    if not covered:
+        return (f"bench {name}: pending / insufficient data: {cwhy}", ["no verdict and no recommendation until the "
+                "log covers the whole session; rerun after the Mini pushes"], t_last, {"session": name})
     best, ceil, _ = ebr.real_denominators(sess)
     live_pairs = [(t, s, b, p) for t, s, b, p in sess["live"]]
     live_gain = sum(tr[b]["limit"] - tr[s]["limit"] for _t, s, b, _p in live_pairs if s in tr and b in tr)
@@ -311,13 +374,19 @@ def cmd_bench(a, events) -> tuple:
         f"{exp['distinct']}, session end {exp['ref_end']}, {exp['early']} earlier than the end",
     ]
     if exp["differs"]:
-        lines.append("=> RECOMMENDATION (needs a human yes): per-offer expiries differ from the session end, so "
-                     "`--policy ours` (agent/broker.py BenchPolicy: the stall's rule when blind, timing-aware when "
-                     "expiries are shown and confirmed by departures) is worth switching to for the next tests. "
-                     f"Its replay here: {ours_gain:.0f} P vs stall {replay_gain:.0f} P. Risk: {ours_risk_note()}. "
-                     "Switch only BETWEEN tests (after this one ends, at least 5 minutes before the next; Sunday "
-                     "09:55-10:45, 10:55-11:45, 11:55-13:45), never during one. Default stays stall.")
-        lines += [f"  {c}" for c in OURS_SWITCH]
+        synth = synth_ours_vs_stall(path, a.ours_seeds) if a.ours_seeds > 0 else []
+        switch, swhy = ours_decision(replay_gain, ours_gain, synth)
+        lines.append(f"per-offer expiries differ from the session end: `ours` vs `stall` compared ({cwhy}): {swhy}")
+        if switch:
+            lines.append("=> RECOMMENDATION (needs a human yes): switch to `--policy ours` (agent/broker.py "
+                         "BenchPolicy: the stall's rule when blind, timing-aware when expiries are shown and confirmed "
+                         f"by departures) for the next tests. Replay here: ours {ours_gain:.0f} P vs stall "
+                         f"{replay_gain:.0f} P. Risk: {ours_risk_note()}. Switch only BETWEEN tests (after this one "
+                         "ends, at least 5 minutes before the next; Sunday 09:55-10:45, 10:55-11:45, 11:55-13:45), "
+                         "never during one.")
+            lines += [f"  {c}" for c in OURS_SWITCH]
+        else:
+            lines.append(f"=> stall stays (ours {ours_gain:.0f} P vs stall {replay_gain:.0f} P on this session).")
     else:
         lines.append("=> per-offer expiries all at the session end (as on Saturday): keep `--policy stall`.")
     if after:
@@ -593,15 +662,75 @@ EXPECTED_DUELS = {1: 34, 2: 68, 3: 68, 4: 34}   # per team: duel_arena.SESSIONS[
 SESSION_TICKS = {1: 16, 2: 16, 3: 12, 4: 12}
 
 
-def completeness(rows: list, log_ids: set, expected: int) -> tuple:
-    """(complete, why): every expected duel finished (deal or no_deal) and each one seen in our duel bot's log."""
+def terminal_records(log_rows: list) -> dict:
+    """{duel id: status} of our duel bot's `result` events."""
+    return {r["duel"]: r.get("status") for r in log_rows if r.get("event") == "result" and r.get("duel") is not None}
+
+
+def completeness(rows: list, terminal: dict, expected: int) -> tuple:
+    """(complete, why): every expected duel finished (deal or no_deal) in its final server file, AND our duel bot's
+    log holds a matching terminal record (`result` with the same status) for each. An id that merely appears in the
+    log (a duel_new line) is not a completed observation."""
     done = [r for r in rows if r["status"] in ("deal", "no_deal")]
     if len(done) < expected:
         return False, f"{len(done)}/{expected} duels completed ({len(rows) - len(done)} still live)"
-    missing = [r["duel"] for r in done if r["duel"] not in log_ids]
+    missing = [r["duel"] for r in done if terminal.get(r["duel"]) != r["status"]]
     if missing:
-        return False, f"the duel log covers {len(done) - len(missing)}/{len(done)} completed duels (missing {missing[:5]})"
-    return True, f"{len(done)}/{expected} duels completed, all in the duel log"
+        return False, (f"our duel log has a matching result record for {len(done) - len(missing)}/{len(done)} "
+                       f"completed duels (missing {missing[:5]})")
+    return True, f"{len(done)}/{expected} duels completed, each with a matching result record in the duel log"
+
+
+def transcript_history(d: dict) -> dict:
+    """A duel's price paths rebuilt from its FINAL server transcript (duel_field_read's shape input): the rival's
+    priced messages (consecutive repeats of one offer collapsed) and ours. Complete by construction, unlike the bot
+    log, which can miss lines."""
+    import duel as dl
+    rival = []
+    for m in _priced(dl.rival_msgs(d)):
+        key = (m.get("tick"), m.get("price"), m.get("days"))
+        if not rival or rival[-1][:3] != key:
+            rival.append((*key, ""))
+    ours = [(m.get("tick"), m.get("price"), m.get("days")) for m in _priced(
+        [m for m in d.get("messages") or [] if isinstance(m, dict) and m.get("from") == "you"])]
+    return {"rival": rival, "ours": ours}
+
+
+FACTORY_FLAGS = {"duel_ticks", "late_poll"}   # the factory's command line sets these; flags win over the JSON
+
+
+def _same(x, y) -> bool:
+    if isinstance(x, (list, tuple)) and isinstance(y, (list, tuple)):
+        return len(x) == len(y) and all(_same(a, b) for a, b in zip(x, y))
+    if _finite(x) and _finite(y):
+        return abs(float(x) - float(y)) <= 1e-9
+    return x == y
+
+
+def deployed_check(base: dict, log_rows: list, ids: set) -> tuple:
+    """(ok, why): the baseline file's values equal what the duel bot actually ran in this wave: every run_start of
+    the runs that logged events for these duels. Keys the factory sets on the command line are skipped."""
+    runs = {r.get("run") for r in log_rows if r.get("duel") in ids and r.get("run")}
+    starts = [r for r in log_rows if r.get("event") == "run_start" and r.get("run") in runs]
+    if not starts:
+        return False, "no run_start line for the runs that played this wave: cannot tell what the bot ran"
+    diffs, compared, unlogged = [], set(), set()
+    for st in starts:
+        for k, v in base.items():
+            if k in FACTORY_FLAGS:
+                continue
+            if k not in st:
+                unlogged.add(k)
+                continue
+            compared.add(k)
+            if not _same(st[k], v):
+                diffs.append(f"{k}: file {v} vs run {st[k]} (run {st.get('run')})")
+    if diffs:
+        return False, "the baseline file is not what the bot ran: " + "; ".join(diffs[:6])
+    if not compared:
+        return False, "no baseline value appears in the run_start lines"
+    return True, (f"{len(compared)} baseline values match the run_start of {len(starts)} run(s)"
+                  + (f"; not logged: {sorted(unlogged)}" if unlogged else ""))
 
 
 AFTER_MARGIN = 60   # ticks: a score snapshot later than this after the wave may already hold the next wave's points
@@ -657,7 +786,6 @@ def predicted_per_duel(a, base_path: Path | None) -> tuple:
 
 
 def cmd_duels(a, events) -> tuple:
-    import duel_field_read as dfr
     logs = Path(a.logs)
     files = duel_files(logs / "duels", a.session)
     rows = [classify_duel(d) for d in files]
@@ -666,9 +794,9 @@ def cmd_duels(a, events) -> tuple:
                 f"{a.session + DUEL_SESSION_OFFSET})"), [], 0, {}
     ids = {r["duel"] for r in rows}
     log = logs / "duel" / f"{a.date or time.strftime('%Y-%m-%d')}.jsonl"
-    log_rows = {k: v for k, v in dfr.load(log, "").items() if k in ids} if log.exists() else {}
+    raw_log = read_jsonl(log)
     expected = EXPECTED_DUELS.get(a.session, len(rows))
-    complete, cwhy = completeness(rows, set(log_rows), expected)
+    complete, cwhy = completeness(rows, terminal_records(raw_log), expected)
     s = duel_summary(rows)
     doc = ROOT / "docs/duel-lab/duels3-params.md"
     doc_text = doc.read_text() if doc.exists() else ""
@@ -699,14 +827,15 @@ def cmd_duels(a, events) -> tuple:
                      + ("" if len(h) < 6 else (" (named in the WP1 doc)" if h[5] else " (not in the WP1 doc)")))
     if not hits:
         lines.append("  none: every no-deal was outside our limit (no lever would have changed an outcome)")
-    weights = field_weights(log_rows, {r["duel"]: r["status"] for r in rows}) if log_rows else {}
-    lines.append("field refit (duel_field_read shapes -> arena kinds): " + (json.dumps(weights) if weights
-                                                                               else "no duel log for this session"))
-    extra = {"summary": s, "weights": weights, "hits": [list(h[:5]) for h in hits], "complete": complete}
+    extra = {"summary": s, "weights": {}, "hits": [list(h[:5]) for h in hits], "complete": complete}
     if not complete:
-        lines.append("=> no prediction check and no params recommendation on a partial wave: rerun when it is complete")
+        lines.append("=> no field refit, no prediction check and no params recommendation on a partial wave "
+                     f"(missing: {cwhy}): rerun when it is complete")
         return (f"duels session {a.session}: PARTIAL ({cwhy}): {s['deals']} deals so far; no params recommendation",
                 lines, tick, extra)
+    weights = field_weights({d["duel"]: transcript_history(d) for d in files}, {r["duel"]: r["status"] for r in rows})
+    extra["weights"] = weights
+    lines.append("field refit (duel_field_read shapes of the final transcripts -> arena kinds): " + json.dumps(weights))
     verdict = f"duels session {a.session}: {s['deals']}/{s['n']} deals, {s['surplus']} P"
     # the pitch line: what the lab predicted per duel against what the live wave gave
     base_path = None
@@ -731,42 +860,53 @@ def cmd_duels(a, events) -> tuple:
             lines.append("matrix skipped: no deployed baseline params")
             verdict += "; Final params: no verdict (baseline missing)"
         else:
-            out_dir = Path(a.out) / f"matrix-s{a.session}" if a.write else Path(tempfile.mkdtemp(prefix="analyst-"))
-            out_dir.mkdir(parents=True, exist_ok=True)
-            mix_file = out_dir / "field.json"
-            mix_file.write_text(json.dumps(weights, indent=1) + "\n")
             base = json.loads(base_path.read_text())
-            extra_c = {}
-            for spec in a.candidate:
-                n, _, f = spec.partition("=")
-                extra_c[n] = json.loads(Path(f).expanduser().read_text())
-            cands = candidates_from(base, hits, extra_c)
-            if not cands:
-                lines.append("matrix: no candidate (no lever has hits, no --candidate): keep")
-                verdict += "; Final params: keep"
+            ok, dwhy = deployed_check(base, raw_log, ids)
+            lines.append(f"baseline {base_path.name} vs what the bot ran: {dwhy}")
+            if not ok:
+                lines.append("=> matrix stopped: the baseline is not proven to be what the duel bot runs")
+                verdict += "; Final params: no verdict (baseline does not match the bot's run_start)"
             else:
-                import duel_matrix as dm
-                mix_name = f"Duels {'I' * a.session} refit"     # never a named mix's label (main has "Duels II field")
-                cells = run_matrix(a, base_path, cands, mix_file, mix_name, out_dir)
-                guards = [f"mix: {mix_name}", f"d1: {mix_name}"] + [f"mix: {m}" for m in dm.MIXES]
-                win, why = pick_winner(cells, "base", f"mix: {mix_name}", guards)
-                lines.append(f"matrix (arena session {a.matrix_session}, {a.sessions} sessions, base {base_path.name}"
-                             f"): {out_dir / 'matrix.md'}")
-                lines += [f"  {w}" for w in why]
-                if win:
-                    new = cands[win]
-                    target = ROOT / "docs/duel-lab/duel-params-final.json"
-                    if a.write:
-                        target.write_text(json.dumps(new, indent=2) + "\n")
-                    lines.append(f"=> Final params delta {params_delta(base, new)}: "
-                                 + (f"written to {target.relative_to(ROOT)}" if a.write else "not written (--no-write)")
-                                 + " (applied only by a human: docs/plans/sunday-analyst.md, 'Applying a change')")
-                    verdict += f"; Final params: CHANGE {params_delta(base, new)}"
-                else:
-                    lines.append("=> keep the Duels III params for the Final")
-                    verdict += "; Final params: keep"
-                extra["matrix_why"] = why
+                keep = contextlib.nullcontext(str(Path(a.out) / f"matrix-s{a.session}"))
+                with (keep if a.write else tempfile.TemporaryDirectory(prefix="analyst-")) as out_dir:
+                    verdict = run_and_pick(a, base_path, base, hits, weights, Path(out_dir), lines, verdict, extra)
     return verdict, lines, tick, extra
+
+
+def run_and_pick(a, base_path: Path, base: dict, hits: list, weights: dict, out_dir: Path, lines: list, verdict: str,
+                 extra: dict) -> str:
+    """Candidates, matrix, 2 SE pick; writes docs/duel-lab/duel-params-final.json only with --write and a winner."""
+    import duel_matrix as dm
+    out_dir.mkdir(parents=True, exist_ok=True)
+    mix_file = out_dir / "field.json"
+    mix_file.write_text(json.dumps(weights, indent=1) + "\n")
+    extra_c = {}
+    for spec in a.candidate:
+        n, _, f = spec.partition("=")
+        extra_c[n] = json.loads(Path(f).expanduser().read_text())
+    cands = candidates_from(base, hits, extra_c)
+    if not cands:
+        lines.append("matrix: no candidate (no lever has hits, no --candidate): keep")
+        return verdict + "; Final params: keep"
+    mix_name = f"Duels {'I' * a.session} refit"     # never a named mix's label (main has "Duels II field")
+    cells = run_matrix(a, base_path, cands, mix_file, mix_name, out_dir)
+    guards = [f"mix: {mix_name}", f"d1: {mix_name}"] + [f"mix: {m}" for m in dm.MIXES]
+    win, why = pick_winner(cells, "base", f"mix: {mix_name}", guards)
+    lines.append(f"matrix (arena session {a.matrix_session}, {a.sessions} sessions, base {base_path.name}): "
+                 + (str(out_dir / "matrix.md") if a.write else "not kept (--no-write)"))
+    lines += [f"  {w}" for w in why]
+    extra["matrix_why"] = why
+    if not win:
+        lines.append("=> keep the Duels III params for the Final")
+        return verdict + "; Final params: keep"
+    new = cands[win]
+    target = ROOT / "docs/duel-lab/duel-params-final.json"
+    if a.write:
+        target.write_text(json.dumps(new, indent=2) + "\n")
+    lines.append(f"=> Final params delta {params_delta(base, new)}: "
+                 + (f"written to {target.relative_to(ROOT)}" if a.write else "not written (--no-write)")
+                 + " (applied only by a human: docs/plans/sunday-analyst.md, 'Applying a change')")
+    return verdict + f"; Final params: CHANGE {params_delta(base, new)}"
 
 
 def _f(x) -> str:
@@ -786,36 +926,54 @@ def round_start(events: list) -> tuple:
 
 
 def our_values(logs: Path) -> dict:
-    """{"bot": {ref: [(ts, side, value)]}, "held": {ref: value}}: what our dealer bots valued each card at when they
-    opened a thread or planned a trade (logs/<dealer>/*.jsonl), and the value of the copy we still hold
-    (logs/state/me.json, which may be worth more than a spare we sold)."""
-    bot, held = collections.defaultdict(list), {}
+    """{"held": {ref: value}} from logs/state/me.json: the value of the copy we hold NOW (display only: it is not the
+    value in force at an earlier settlement)."""
+    held = {}
     try:
-        for a in json.loads((logs / "state" / "me.json").read_text()).get("assets") or []:
-            if a.get("ref") and isinstance(a.get("your_value"), (int, float)):
-                held.setdefault(a["ref"], a["your_value"])
+        for x in json.loads((logs / "state" / "me.json").read_text()).get("assets") or []:
+            if x.get("ref") and isinstance(x.get("your_value"), (int, float)):
+                held.setdefault(x["ref"], x["your_value"])
     except (OSError, ValueError):
         pass
-    for agent in DEALER_LEVEL:
-        for f in sorted((logs / agent).glob("*.jsonl")) if (logs / agent).exists() else []:
+    return {"held": held}
+
+
+def bot_threads(logs: Path) -> list:
+    """Our dealer bots' finished deals, one per thread: {dealer, thread, ref, side, value, price, ts}. The value is
+    the one the bot opened THAT thread with (its valuation in force for that trade); the price is the thread's result."""
+    out = []
+    for dealer in DEALER_LEVEL:
+        d = logs / dealer
+        opened, done = {}, {}
+        for f in sorted(d.glob("*.jsonl")) if d.exists() else []:
             for r in read_jsonl(f):
-                ev = r.get("event")
-                for p in ([r] if ev == "open" else (r.get("plan") or []) if ev == "run_start" else []):
-                    if isinstance(p, dict) and p.get("item") and isinstance(p.get("value"), (int, float)):
-                        bot[p["item"]].append((str(r.get("ts", ""))[:19], p.get("side"), p["value"]))
-    return {"bot": {k: sorted(v) for k, v in bot.items()}, "held": held}
+                th = r.get("thread")
+                if r.get("event") == "open" and th is not None and r.get("item") and \
+                        isinstance(r.get("value"), (int, float)):
+                    opened[th] = r
+                elif r.get("event") == "result" and th is not None and r.get("status") == "deal":
+                    done[th] = r
+        for th, res in done.items():
+            o = opened.get(th)
+            if o is not None:
+                out.append({"dealer": dealer, "thread": th, "ref": o["item"], "side": o.get("side"),
+                            "value": o["value"], "price": res.get("price"), "ts": str(res.get("ts", ""))})
+    return sorted(out, key=lambda t: t["ts"])
 
 
-def value_at(values: dict, ref: str, side: str, ts: str) -> tuple:
-    """(value, source) for a deal: the newest bot value for this card and side logged at or before the deal ("bot"),
-    else the held copy's value ("held"), else (None, None). A buy-side value is never used for a sale: a card we
-    needed for the album is worth more than the spare we later sell."""
-    ts = str(ts or "")[:19]
-    rows = [r for r in (values.get("bot") or {}).get(ref, []) if r[1] == side and (not ts or r[0] <= ts)]
-    if rows:
-        return rows[-1][2], "bot"
-    v = (values.get("held") or {}).get(ref)
-    return (v, "held") if v is not None else (None, None)
+def bind_values(deals: list, threads: list) -> list:
+    """Each settlement gets the value of the bot thread that made it: same dealer, card, side and price, matched one
+    to one in order (the n-th such settlement to the n-th such thread result). No matching thread: value None and
+    provenance None (a hand trade, an old valuation of another copy, or a log not pushed): unverified."""
+    pool = collections.defaultdict(list)
+    for t in threads:
+        pool[(t["dealer"], t["ref"], t["side"], t["price"])].append(t)
+    out = []
+    for d in sorted(deals, key=lambda x: (x.get("tick") or 0)):
+        q = pool.get((d["dealer"], d["ref"], d["side"], d["price"]))
+        t = q.pop(0) if q else None
+        out.append(dict(d, value=t["value"] if t else None, provenance=f"thread {t['thread']}" if t else None))
+    return out
 
 
 def dealer_deals(events: list, since: int, team: str = US) -> list:
@@ -835,20 +993,21 @@ def dealer_deals(events: list, since: int, team: str = US) -> list:
     return out
 
 
-def ladder_slots(deals: list, values: dict) -> dict:
-    """{level: {"deals", "best", "zero", "unverified"}}. A deal's gain at our private value: buy = value - price,
-    sell = price - value. Only a value our bot logged for that card and side at or before the settlement ("bot") is a
-    settlement-time value: such a deal with gain >= 0 is a CONFIRMED slot ("best", top 3 by gain), below 0 it scored 0
-    (the value gate, "zero"). A deal valued only by the copy we hold now ("held") or not at all is "unverified": it
-    never counts as a filled slot, and its level stays on the to-do list until someone checks its value."""
+def ladder_slots(deals: list, held: dict | None = None) -> dict:
+    """{level: {"deals", "best", "zero", "unverified"}} over deals from bind_values. A deal's gain at our private value:
+    buy = value - price, sell = price - value. Only a deal bound to the bot thread that made it has a value in force at
+    its settlement: with gain >= 0 it is a CONFIRMED slot ("best", top 3 by gain), below 0 it scored 0 (the value gate,
+    "zero"). Anything else is "unverified": never counted as filled, its level stays on the to-do list. held: the
+    value of the copy we hold now, shown for unverified deals only."""
+    held = held or {}
     out = {lv: {"deals": [], "best": [], "zero": [], "unverified": []} for lv in sorted(set(DEALER_LEVEL.values()))}
     for d in deals:
-        v, src = value_at(values, d["ref"], d["side"], d.get("ts"))
-        d = dict(d, value=v, source=src, gain=None if v is None or d["price"] is None
+        v = d.get("value") if d.get("provenance") else None
+        d = dict(d, value=v, held=held.get(d["ref"]), gain=None if v is None or d["price"] is None
                  else round((v - d["price"]) if d["side"] == "buy" else (d["price"] - v), 1))
         s = out[d["level"]]
         s["deals"].append(d)
-        if src != "bot" or d["gain"] is None:
+        if d["gain"] is None:
             s["unverified"].append(d)
         elif d["gain"] < 0:
             s["zero"].append(d)
@@ -861,7 +1020,7 @@ def ladder_slots(deals: list, values: dict) -> dict:
 def cmd_ladder(a, events) -> tuple:
     start, no, name = round_start(events)
     deals = dealer_deals(events, start)
-    slots = ladder_slots(deals, our_values(Path(a.logs)))
+    slots = ladder_slots(bind_values(deals, bot_threads(Path(a.logs))), our_values(Path(a.logs))["held"])
     filled = sum(len(s["best"]) for s in slots.values())
     unver = sum(len(s["unverified"]) for s in slots.values())
     lines = [f"round {no} {name!s} since tick {start}: {len(deals)} dealer deals of ours"]
@@ -870,14 +1029,15 @@ def cmd_ladder(a, events) -> tuple:
     for lv, s in slots.items():
         got = len(s["best"])
         lines.append(f"  L{lv} {names[lv]}: {got}/{SLOTS_PER_LEVEL} confirmed slots"
-                     + ("".join(f"; {d['side']} {d['ref']} @ {d['price']} (value {_f(d['value'])}, gain "
-                                f"{_f(d['gain'])})" for d in s["best"])))
+                     + ("".join(f"; {d['side']} {d['ref']} @ {d['price']} (value {_f(d['value'])} from "
+                                f"{d['provenance']}, gain {_f(d['gain'])})" for d in s["best"])))
         for d in s["zero"]:
             lines.append(f"    scored 0 (wrong side of value): tick {d['tick']} {d['side']} {d['ref']} @ {d['price']}"
                          f" vs value {_f(d['value'])}")
         for d in s["unverified"]:
-            lines.append(f"    unverified: tick {d['tick']} {d['side']} {d['ref']} @ {d['price']} (no settlement-time "
-                         f"value; the copy we hold is worth {_f(d['value'])}): not counted")
+            lines.append(f"    unverified: tick {d['tick']} {d['side']} {d['ref']} @ {d['price']} (no bot thread made "
+                         f"this trade, so no value in force at the settlement; the copy we hold now is worth "
+                         f"{_f(d['held'])}): not counted")
         if got < SLOTS_PER_LEVEL:
             todo.append(f"{SLOTS_PER_LEVEL - got} x L{lv} {names[lv]}"
                         + (f" ({len(s['unverified'])} unverified deal(s) to check)" if s["unverified"] else ""))
@@ -1027,11 +1187,31 @@ def cmd_score(a, events, boards) -> tuple:
 
 # ---------------------------------------------------------------- reports
 
-def write_report(out: Path, trigger: str, tick: int, verdict: str, lines: list) -> Path:
+DATA_BRANCHES = ("origin/mini/logs", "origin/main")   # where the Mini pushes bot logs (tools/logs_push.py), then main
+
+
+def _git(path: Path, *args) -> str:
+    import subprocess
+    r = subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True, timeout=10)
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def data_source(logs: Path) -> str:
+    """Which branch and commit the --logs checkout holds: "origin/mini/logs, commit 2026-10-04 10:02:11 +0200
+    (abc1234)". Read-only git queries; a directory outside git says so."""
+    logs = Path(logs).expanduser()
+    if not logs.exists() or not _git(logs, "rev-parse", "--is-inside-work-tree"):
+        return f"not a git checkout ({logs})"
+    refs = _git(logs, "branch", "-r", "--points-at", "HEAD").split()
+    branch = next((b for b in DATA_BRANCHES if b in refs), refs[0] if refs else "detached, no remote branch at HEAD")
+    return f"{branch}, commit {_git(logs, 'log', '-1', '--format=%ci')} ({_git(logs, 'rev-parse', '--short', 'HEAD')})"
+
+
+def write_report(out: Path, trigger: str, tick: int, verdict: str, lines: list, source: str = "") -> Path:
     out.mkdir(parents=True, exist_ok=True)
     f = out / f"{trigger}-{tick}.md"
     body = [f"# {trigger} at tick {tick}", "", f"_{time.strftime('%Y-%m-%d %H:%M:%S')} local, tools/analyst.py_", "",
-            f"**{verdict}**", ""] + [f"- {l}" if not l.startswith("  ") else f"  - {l.strip()}" for l in lines]
+            f"_data: {source or 'unknown'}_", "", f"**{verdict}**", ""] + [f"- {l}" if not l.startswith("  ") else f"  - {l.strip()}" for l in lines]
     f.write_text("\n".join(body) + "\n")
     rebuild_latest(out, f)
     return f
@@ -1049,10 +1229,15 @@ def rebuild_latest(out: Path, newest: Path | None = None, write: bool = True) ->
     rows = ["# Analyst on duty: latest", ""]
     if (out / "HANDOFF.md").exists():
         rows += ["```", (out / "HANDOFF.md").read_text().strip(), "```", ""]
-    rows += ["| trigger | report | verdict |", "|---|---|---|"]
+    if newest is not None:
+        src = next((l.strip("_")[6:] for l in newest.read_text().splitlines() if l.startswith("_data: ")), "unknown")
+        rows += [f"Logs from: {src} (newest report {newest.name})", ""]
+    rows += ["| trigger | report | data | verdict |", "|---|---|---|---|"]
     for trig, f in sorted(per.items()):
-        verdict = next((l.strip("*") for l in f.read_text().splitlines() if l.startswith("**")), "")
-        rows.append(f"| {trig} | {f.name} | {verdict.replace('|', '/')} |")
+        text = f.read_text().splitlines()
+        verdict = next((l.strip("*") for l in text if l.startswith("**")), "")
+        src = next((l.strip("_")[6:] for l in text if l.startswith("_data: ")), "unknown")
+        rows.append(f"| {trig} | {f.name} | {src.replace('|', '/')} | {verdict.replace('|', '/')} |")
     if newest is not None:
         rows += ["", "---", "", newest.read_text()]
     text = "\n".join(rows) + "\n"
@@ -1077,6 +1262,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--sessions", type=int, default=60, help="duels: arena sessions per matrix cell")
     ap.add_argument("--base-params", default=None, help="duels: baseline params (default duel-params-duels3.json)")
     ap.add_argument("--candidate", action="append", default=[], help="duels: NAME=FILE extra candidate")
+    ap.add_argument("--ours-seeds", type=int, default=50, help="bench: paired synthetic seeds for ours vs stall "
+                    "when expiries differ (0: none, so never a switch)")
     ap.add_argument("--predict-sessions", type=int, default=60, help="duels: arena sessions for the predicted "
                     "per-duel score when docs/duel-lab/duels3-matrix.md is absent (0: skip)")
     ap.add_argument("--window", type=int, default=40, help="market: ticks an announcement/outreach counts before")
@@ -1114,7 +1301,7 @@ def main(argv=None) -> int:
         print(("  " if not l.startswith("  ") else "    ") + l.strip())
     if a.write:
         trig = a.cmd + (f"-{a.session}" if a.cmd in ("bench", "duels") and a.session else "")
-        print(f"-> {write_report(Path(a.out), trig, tick, verdict, lines)}")
+        print(f"-> {write_report(Path(a.out), trig, tick, verdict, lines, data_source(Path(a.logs)))}")
     return 0
 
 

@@ -112,6 +112,117 @@ class OursPath(unittest.TestCase):
             self.assertIn(part, cmds)
 
 
+class Coverage(unittest.TestCase):
+    def test_full_session(self):
+        self.assertTrue(an.coverage(list(range(100, 120)), 100, 116)[0])
+
+    def test_stops_before_the_end(self):
+        ok, why = an.coverage([100, 101, 102, 103, 104], 100, 116)
+        self.assertFalse(ok)
+        self.assertIn("stops at tick 104", why)
+
+    def test_gap_inside(self):
+        ok, why = an.coverage([100, 101, 102, 110, 111, 112, 113, 114, 115, 116], 100, 116)
+        self.assertFalse(ok)
+        self.assertIn("102->110", why)
+
+    def test_unknown_session(self):
+        self.assertFalse(an.coverage(list(range(100, 120)), None, None)[0])
+
+    def test_reviewer_case_tracker_end_is_not_coverage(self):
+        # a test 100-116; the pushed log: one offer-bearing book at 100 (expiries differ), an empty book and
+        # bench_run_end at 104; the feed has reached 116
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "broker").mkdir()
+            offers = [{"id": "b9-1", "give": {"cash": 0}, "want": {"cash": 30}, "expires_tick": 108},
+                      {"id": "b9-2", "give": {"cash": 40}, "want": {"cash": 0}, "expires_tick": 116}]
+            rows = [{"ts": "2026-10-04T09:40:00", "event": "book", "tick": 100,
+                     "book": {"fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": offers}},
+                    {"ts": "2026-10-04T09:41:00", "event": "book", "tick": 104,
+                     "book": {"fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": []}},
+                    {"ts": "2026-10-04T09:41:00", "event": "bench_run_end", "tick": 104, "bench_run": "b9",
+                     "traders": [{"id": "b9-1", "expires": 108}, {"id": "b9-2", "expires": 116}]}]
+            (Path(tmp) / "broker" / "2026-10-04.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+            events = [{"id": 1, "tick": 100, "type": "bench.started", "payload": {"session": 7, "start_tick": 100,
+                                                                                    "ticks": 16}},
+                      {"id": 2, "tick": 116, "type": "clock.changed", "payload": {}}]
+            a = an.build_parser().parse_args(["bench", "--session", "latest", "--date", "2026-10-04", "--logs", tmp,
+                                              "--out", tmp + "/out"])
+            verdict, lines, _t, _x = an.cmd_bench(a, events)
+        self.assertIn("pending", verdict)
+        self.assertNotIn("RECOMMENDATION", " ".join(lines))
+
+
+class BenchOursWiring(unittest.TestCase):
+    def test_differing_expiries_on_a_covered_session_without_evidence_keep_the_stall(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "broker").mkdir()
+            offers = [{"id": "b9-1", "give": {"cash": 0}, "want": {"cash": 30}, "expires_tick": 108},
+                      {"id": "b9-2", "give": {"cash": 40}, "want": {"cash": 0}, "expires_tick": 116}]
+            rows = [{"ts": "x", "event": "book", "tick": t, "book": {"fee_bps": 0, "fee_per_card": 0, "offers": [],
+                                                                    "bench_offers": offers if t <= 105 else []}}
+                    for t in range(100, 121)]
+            rows.append({"ts": "x", "event": "bench_run_end", "tick": 110, "bench_run": "b9", "traders": []})
+            (Path(tmp) / "broker" / "2026-10-04.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+            events = [{"id": 1, "tick": 100, "type": "bench.started", "payload": {"session": 7, "start_tick": 100,
+                                                                                    "ticks": 16}}]
+            a = an.build_parser().parse_args(["bench", "--session", "latest", "--date", "2026-10-04", "--logs", tmp,
+                                              "--out", tmp + "/out", "--ours-seeds", "0"])
+            verdict, lines, _t, _x = an.cmd_bench(a, events)
+        text = " ".join(lines)
+        self.assertIn("per-offer expiries differ", text)
+        self.assertIn("stall stays", text)
+        self.assertNotIn("RECOMMENDATION", text)
+
+
+class OursDecision(unittest.TestCase):
+    GOOD = [(0.05 + 0.01 * (i % 3), 0, 0) for i in range(20)]
+
+    def test_reviewer_case_ours_loses_on_the_replay(self):
+        # bench_sim HARD + expiry exact, random.Random(2), stall-generated records: stall 30 P, ours 10 P
+        ok, why = an.ours_decision(30.0, 10.0, self.GOOD)
+        self.assertFalse(ok)
+        self.assertIn("worse", why)
+
+    def test_not_two_se_ahead(self):
+        noisy = [(0.04 if i % 2 else -0.03, 0, 0) for i in range(20)]
+        self.assertFalse(an.ours_decision(30.0, 30.0, noisy)[0])
+        self.assertFalse(an.ours_decision(30.0, 30.0, [])[0])
+        self.assertFalse(an.ours_decision(30.0, 30.0, [(0.5, 0, 0)])[0])      # one seed has no SE
+
+    def test_more_drops_veto(self):
+        self.assertFalse(an.ours_decision(30.0, 31.0, [(0.05, 1, 0)] + self.GOOD[1:])[0])
+
+    def test_clear_win(self):
+        self.assertTrue(an.ours_decision(30.0, 31.0, self.GOOD)[0])
+
+    def test_on_the_saturday_refit_ours_is_not_two_se_ahead(self):
+        synth = an.synth_ours_vs_stall(ROOT / "logs/broker/2026-10-03.jsonl", 20)
+        self.assertEqual(len(synth), 20)
+        self.assertFalse(an.ours_decision(30.0, 30.0, synth)[0])
+
+
+class DeployedCheck(unittest.TestCase):
+    LOG = [{"event": "run_start", "run": "r1", "accept_any_ticks": 6, "ratios": [1.624, 1.306], "duel_ticks": 16},
+           {"event": "say", "run": "r1", "duel": 5}, {"event": "run_start", "run": "r0", "accept_any_ticks": 2}]
+
+    def test_values_the_bot_ran_match(self):
+        ok, why = an.deployed_check({"accept_any_ticks": 6, "ratios": [1.624, 1.306], "duel_ticks": 12,
+                                     "late_poll": 8, "new_knob": 1}, self.LOG, {5})
+        self.assertTrue(ok, why)
+        self.assertIn("new_knob", why)                       # reported as not logged
+
+    def test_a_differing_value_stops(self):
+        ok, why = an.deployed_check({"accept_any_ticks": 2}, self.LOG, {5})   # r0 did not play duel 5
+        self.assertFalse(ok)
+        self.assertIn("file 2 vs run 6", why)
+        self.assertFalse(an.deployed_check({"ratios": [1.55, 1.306]}, self.LOG, {5})[0])
+
+    def test_no_run_start_or_nothing_compared(self):
+        self.assertFalse(an.deployed_check({"accept_any_ticks": 6}, self.LOG, {99})[0])
+        self.assertFalse(an.deployed_check({"duel_ticks": 12}, self.LOG, {5})[0])
+
+
 class BenchVerdict(unittest.TestCase):
     def ok(self, **kw):
         r = {"dropped_live": 0, "dropped_why": [], "refused": 0, "read_errors": 0, "best": 100.0, "live_gain": 90.0,
@@ -333,18 +444,60 @@ class Completeness(unittest.TestCase):
         return [{"duel": i, "status": "deal" if i % 2 else "no_deal"} for i in range(n)] + \
             [{"duel": 1000 + i, "status": "live"} for i in range(live)]
 
-    def test_all_expected_duels_finished_and_logged(self):
-        self.assertTrue(an.completeness(self.rows(68), set(range(68)), 68)[0])
+    def term(self, n):
+        return {i: "deal" if i % 2 else "no_deal" for i in range(n)}
+
+    def test_all_expected_duels_finished_with_matching_results(self):
+        self.assertTrue(an.completeness(self.rows(68), self.term(68), 68)[0])
 
     def test_too_few_finished(self):
-        ok, why = an.completeness(self.rows(4, live=4), set(range(4)), 68)
+        ok, why = an.completeness(self.rows(4, live=4), self.term(4), 68)
         self.assertFalse(ok)
         self.assertIn("4/68", why)
 
-    def test_log_must_cover_every_duel(self):
-        ok, why = an.completeness(self.rows(68), set(range(67)), 68)
+    def test_every_duel_needs_a_matching_result_record(self):
+        ok, why = an.completeness(self.rows(68), self.term(67), 68)
         self.assertFalse(ok)
         self.assertIn("67/68", why)
+        t = self.term(68)
+        t[3] = "no_deal"                                     # the log's status disagrees with the server's
+        self.assertFalse(an.completeness(self.rows(68), t, 68)[0])
+
+    def test_terminal_records_are_result_events_only(self):
+        rows = [{"event": "duel_new", "duel": 1}, {"event": "rival", "duel": 1}, {"event": "result", "duel": 2,
+                                                                                    "status": "deal"}]
+        self.assertEqual(an.terminal_records(rows), {2: "deal"})
+
+    def test_reviewer_log_with_only_duel_new_lines_is_partial_and_has_no_refit(self):
+        # all 68 final Duels II files kept, the bot log reduced to their duel_new entries
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = Path(tmp)
+            (logs / "duels").mkdir()
+            (logs / "duel").mkdir()
+            for f in (ROOT / "logs" / "duels").glob("duel-*.json"):
+                if not f.stem.endswith("-first") and json.loads(f.read_text()).get("session") == 3:
+                    (logs / "duels" / f.name).write_text(f.read_text())
+            kept = [l for l in (ROOT / "logs/duel/2026-10-03.jsonl").read_text().splitlines()
+                    if '"event": "duel_new"' in l]
+            (logs / "duel" / "2026-10-03.jsonl").write_text("\n".join(kept) + "\n")
+            a = an.build_parser().parse_args(["duels", "--session", "2", "--date", "2026-10-03", "--matrix",
+                                              "--logs", tmp, "--out", tmp + "/out"])
+            a.session = 2
+            with um.patch.object(an, "run_matrix", side_effect=AssertionError("matrix on an incomplete read")):
+                verdict, lines, _t, extra = an.cmd_duels(a, [])
+        self.assertIn("PARTIAL", verdict)
+        self.assertIn("0/68", verdict)
+        self.assertEqual(extra["weights"], {})
+        self.assertFalse(any(l.startswith("field refit") for l in lines))
+
+    def test_the_refit_comes_from_the_final_transcripts(self):
+        d = json.loads((ROOT / "logs/duels/duel-05644.json").read_text())
+        h = an.transcript_history(d)
+        self.assertEqual([x[1] for x in h["rival"]], [110, 110, 110, 110, 110, 110, 84, 84, 72, 72, 72, 72])
+        self.assertEqual(h["ours"], [(1251, 74, 10)])
+        twice = {"rival": "R", "messages": [{"tick": 5, "from": "R", "price": 9, "days": 0}] * 2
+                 + [{"tick": 6, "from": "R", "price": 9, "days": 0}]}
+        self.assertEqual([x[0] for x in an.transcript_history(twice)["rival"]], [5, 6])   # same-tick repeat collapsed
 
     def test_a_partial_wave_gives_no_params_recommendation(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -404,38 +557,63 @@ class FieldRefit(unittest.TestCase):
 # ---------------------------------------------------------------- ladder, market, score
 
 class Values(unittest.TestCase):
-    V = {"bot": {"LAV-06": [("2026-10-02T20:45:54", "buy", 40.0)],
-                 "MAL-06": [("2026-10-03T10:00:00", "sell", 6.0), ("2026-10-03T19:00:00", "sell", 9.0)]},
-         "held": {"LAV-06": 146.0}}
+    def deal(self, tick, dealer, side, ref, price, **kw):
+        return {"tick": tick, "dealer": dealer, "level": an.DEALER_LEVEL[dealer], "side": side, "ref": ref,
+                "price": price, **kw}
 
-    def test_a_buy_value_is_never_used_for_a_sale(self):
-        self.assertEqual(an.value_at(self.V, "LAV-06", "sell", "2026-10-03T18:14:59"), (146.0, "held"))
-        self.assertEqual(an.value_at(self.V, "LAV-06", "buy", "2026-10-03T18:14:59"), (40.0, "bot"))
+    def logs(self, tmp, dealer, rows):
+        d = Path(tmp) / dealer
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "2026-10-04.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
-    def test_the_value_logged_before_the_deal(self):
-        self.assertEqual(an.value_at(self.V, "MAL-06", "sell", "2026-10-03T12:00:00"), (6.0, "bot"))
-        self.assertEqual(an.value_at(self.V, "MAL-06", "sell", "2026-10-03T20:00:00"), (9.0, "bot"))
-        self.assertEqual(an.value_at(self.V, "XX-01", "sell", ""), (None, None))
+    def test_reviewer_case_the_value_of_the_thread_that_sold_not_a_later_one(self):
+        # sell valuation 80 at 10:00, the sale at 30 at 11:00, a later valuation 20 at 12:00; the settlement event has
+        # no seen_at (raw live) or a recorder backfill time after 12:00: either way the sale is bound to its thread
+        with tempfile.TemporaryDirectory() as tmp:
+            self.logs(tmp, "chato", [
+                {"ts": "2026-10-04T10:00:00", "event": "open", "thread": 7, "side": "sell", "item": "MAL-06",
+                 "value": 80.0},
+                {"ts": "2026-10-04T11:00:00", "event": "result", "thread": 7, "status": "deal", "price": 30},
+                {"ts": "2026-10-04T12:00:00", "event": "open", "thread": 9, "side": "sell", "item": "MAL-06",
+                 "value": 20.0}])
+            th = an.bot_threads(Path(tmp))
+        for seen in (None, "2026-10-04T12:10:00+0200"):
+            d = an.bind_values([self.deal(500, "chato", "sell", "MAL-06", 30, ts=seen)], th)
+            self.assertEqual((d[0]["value"], d[0]["provenance"]), (80.0, "thread 7"))
+            s = an.ladder_slots(d)
+            self.assertEqual([x["ref"] for x in s[2]["zero"]], ["MAL-06"])   # 30 < 80: scored 0, not confirmed
+            self.assertEqual(s[2]["best"], [])
 
-    def test_only_settlement_time_values_fill_slots(self):
-        deals = [{"tick": 1, "dealer": "chato", "level": 2, "side": "sell", "ref": "MAL-06", "price": 5,
-                  "ts": "2026-10-03T12:00:00"},
-                 {"tick": 2, "dealer": "picaros", "level": 4, "side": "sell", "ref": "LAV-06", "price": 11,
-                  "ts": "2026-10-03T18:00:00"},
-                 {"tick": 3, "dealer": "picaros", "level": 4, "side": "buy", "ref": "LAV-06", "price": 1,
-                  "ts": "2026-10-01T18:00:00"},
-                 {"tick": 4, "dealer": "banco", "level": 5, "side": "sell", "ref": "ZZ-01", "price": 50, "ts": ""}]
-        deals += [{"tick": 3 + i, "dealer": "abuela", "level": 1, "side": "buy", "ref": "LAV-06", "price": 30 + i,
-                   "ts": "2026-10-03T09:00:00"} for i in range(4)]
-        s = an.ladder_slots(deals, self.V)
-        self.assertEqual([d["ref"] for d in s[2]["zero"]], ["MAL-06"])      # below the value the bot sold on
-        self.assertEqual(s[2]["best"], [])
-        # valued only by the copy we hold (sale), or before any bot value (buy): unverified, not a slot
-        self.assertEqual([d["tick"] for d in s[4]["unverified"]], [2, 3])
-        self.assertEqual(s[4]["best"], [])
-        self.assertEqual([d["ref"] for d in s[5]["unverified"]], ["ZZ-01"])  # no value at all
-        self.assertEqual(s[5]["best"], [])
-        self.assertEqual([d["price"] for d in s[1]["best"]], [30, 31, 32])  # best 3 of 4 by gain
+    def test_reviewer_case_an_old_first_copy_valuation_does_not_validate_a_duplicate(self):
+        th = [{"dealer": "abuela", "thread": 49, "ref": "LAV-06", "side": "buy", "value": 40.0, "price": 17,
+               "ts": "2026-10-02T20:50:00"}]
+        deals = [self.deal(28, "abuela", "buy", "LAV-06", 17), self.deal(900, "abuela", "buy", "LAV-06", 30),
+                 self.deal(950, "abuela", "buy", "LAV-06", 17)]
+        b = an.bind_values(deals, th)
+        self.assertEqual([x["provenance"] for x in b], ["thread 49", None, None])
+        s = an.ladder_slots(b, {"LAV-06": 146.0})
+        self.assertEqual([x["tick"] for x in s[1]["best"]], [28])
+        self.assertEqual([x["tick"] for x in s[1]["unverified"]], [900, 950])
+
+    def test_a_thread_without_a_deal_result_binds_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.logs(tmp, "pilar", [
+                {"ts": "t1", "event": "open", "thread": 3, "side": "sell", "item": "A", "value": 5.0},
+                {"ts": "t2", "event": "result", "thread": 3, "status": "no_deal", "price": None}])
+            self.assertEqual(an.bot_threads(Path(tmp)), [])
+
+    def test_only_bound_deals_fill_slots(self):
+        deals = [dict(self.deal(1, "chato", "sell", "MAL-06", 5), value=6.0, provenance="thread 1"),
+                 dict(self.deal(2, "picaros", "sell", "LAV-06", 11), value=None, provenance=None),
+                 dict(self.deal(4, "banco", "sell", "ZZ-01", 50), value=9.0, provenance=None)]
+        deals += [dict(self.deal(3 + i, "abuela", "buy", "LAV-06", 30 + i), value=40.0, provenance=f"thread {i}")
+                  for i in range(4)]
+        s = an.ladder_slots(deals, {"LAV-06": 146.0})
+        self.assertEqual([d["ref"] for d in s[2]["zero"]], ["MAL-06"])
+        self.assertEqual([d["tick"] for d in s[4]["unverified"]], [2])
+        self.assertEqual(s[4]["unverified"][0]["held"], 146.0)
+        self.assertEqual([d["ref"] for d in s[5]["unverified"]], ["ZZ-01"])   # a value without provenance: not used
+        self.assertEqual([d["price"] for d in s[1]["best"]], [30, 31, 32])
 
     def test_dealer_deals_only_ours_since_the_round(self):
         ev = [{"id": 1, "tick": 5, "type": "settlement", "payload": {"persona": "chato", "parties": ["chato", "t03"],
@@ -491,7 +669,7 @@ class Reports(unittest.TestCase):
             an.write_report(out, "score", 700, "score: 30 rank 5", ["y"])
             f = an.write_report(out, "score", 710, "score: 31 rank 4", ["z"])
             latest = (out / "LATEST.md").read_text()
-            self.assertIn("| score | score-710.md | score: 31 rank 4 |", latest)
+            self.assertIn("| score | score-710.md | unknown | score: 31 rank 4 |", latest)
             self.assertIn("| bench-b53 | bench-b53-683.md |", latest)
             self.assertNotIn("score-700.md", latest)
             self.assertTrue(latest.endswith(f.read_text() + "\n"))
@@ -501,11 +679,39 @@ class Reports(unittest.TestCase):
                 an.main(["latest", "--out", tmp])
             latest = (out / "LATEST.md").read_text()
             self.assertTrue(latest.startswith("# Analyst on duty: latest\n\n```\nTRIGGER 12:35\nVERDICT keep\n```"))
-            self.assertIn("| score | score-710.md |", latest)
+            self.assertIn("| score | score-710.md | unknown |", latest)
             self.assertNotIn("notes", latest)
 
 
 # ---------------------------------------------------------------- duel_matrix flags
+
+class DataSource(unittest.TestCase):
+    def git(self, cwd, *args):
+        import subprocess
+        subprocess.run(["git", "-C", cwd, *args], check=True, capture_output=True)
+
+    def test_the_branch_and_commit_time_the_logs_came_from(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.git(tmp, "init", "-q")
+            (Path(tmp) / "x").write_text("1")
+            self.git(tmp, "add", "x")
+            self.git(tmp, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "logs",
+                     "--date", "2026-10-04T10:02:11+0200")
+            self.git(tmp, "update-ref", "refs/remotes/origin/main", "HEAD")
+            self.assertTrue(an.data_source(Path(tmp)).startswith("origin/main, commit "))
+            self.git(tmp, "update-ref", "refs/remotes/origin/mini/logs", "HEAD")
+            src = an.data_source(Path(tmp))
+            self.assertTrue(src.startswith("origin/mini/logs, commit "), src)    # mini/logs preferred
+            out = Path(tmp) / "out"
+            an.write_report(out, "score", 700, "score: 30", ["y"], src)
+            latest = (out / "LATEST.md").read_text()
+            self.assertIn(f"Logs from: {src}", latest)
+            self.assertIn(f"| score | score-700.md | {src} |", latest)
+
+    def test_not_a_git_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(an.data_source(Path(tmp)).startswith("not a git checkout"))
+
 
 class NoWrite(unittest.TestCase):
     def test_latest_no_write_writes_nothing(self):
@@ -523,14 +729,17 @@ class NoWrite(unittest.TestCase):
             seen["out"] = out_dir
             return []
         with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "ran.json"                     # exactly what the Duels II run logged
+            base.write_text(json.dumps({"accept_any_ticks": 6, "last_chance_ticks": 4, "stall_ticks": 3}))
             a = an.build_parser().parse_args(["duels", "--session", "2", "--date", "2026-10-03", "--matrix",
                                               "--no-write", "--out", tmp + "/out", "--predict-sessions", "0",
-                                              "--base-params", str(ROOT / "docs/duel-lab/duel-params-duels2-final.json")])
+                                              "--base-params", str(base)])
             a.session = 2
             with um.patch.object(an, "run_matrix", fake_matrix), um.patch("sys.stdout"):
                 an.cmd_duels(a, [])
             self.assertFalse((Path(tmp) / "out").exists())
             self.assertFalse(str(seen["out"]).startswith(tmp))
+            self.assertFalse(Path(seen["out"]).exists())       # the temporary matrix dir is removed
 
 
 class MatrixFlags(unittest.TestCase):
@@ -620,10 +829,20 @@ class SaturdayLogs(unittest.TestCase):
         self.assertEqual(sum(s["losses"].values()), 11)
         self.assertEqual(sum(extra["weights"].values()), 68)
 
-    def test_duels_i_refit_is_close_to_the_hand_read(self):
+    def test_duels_i_two_duels_without_a_result_record_are_partial(self):
         verdict, lines, tick, extra = self.run_cmd("duels", "--session", "1", "--date", "2026-10-03")
-        self.assertEqual(extra["weights"]["absent"], dm.arena.DUELS1_WEIGHTS["absent"])
-        self.assertEqual(extra["weights"]["silent"], dm.arena.DUELS1_WEIGHTS["silent"])
+        self.assertIn("PARTIAL", verdict)
+        self.assertIn("32/34", verdict)
+
+    def test_duels_ii_refit_from_transcripts_and_the_baseline_check(self):
+        verdict, lines, tick, extra = self.run_cmd(
+            "duels", "--session", "2", "--date", "2026-10-03", "--matrix", "--predict-sessions", "0",
+            "--base-params", str(ROOT / "docs/duel-lab/duel-params-duels2-final.json"))
+        self.assertEqual(sum(extra["weights"].values()), 68)
+        self.assertEqual(extra["weights"]["linear"], 28)
+        # duel-params-duels2-final.json is not what the Duels II bot ran (accept_any_ticks 6, not 2): stop
+        self.assertIn("no verdict (baseline does not match", verdict)
+        self.assertTrue(any("accept_any_ticks: file 2 vs run 6" in l for l in lines))
 
 
 if __name__ == "__main__":
