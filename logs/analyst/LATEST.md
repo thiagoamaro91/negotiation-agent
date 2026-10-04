@@ -13,24 +13,28 @@ ORGANISERS: news#14 tick 1482 [Radio Rastro] "Bonus pay: the Bazaar gives everyo
 ORGANISERS: news#12,13,15,16 [El Tablón/rumours] "Someone lost a red umbrella next to Abuela's stall" / "Tomorrow common cards will be worth double" / "El Rastro closes at midnight for roadworks" / "Anyone want to swap a Cine Doré for two roast chestnuts?"
 ```
 
-Logs from: origin/mini/logs, commit 2026-10-04 10:22:44 +0200 (3111129) (newest report score-1702.md)
+Logs from: origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d) (newest report score-1802.md)
 
 | trigger | report | data | verdict |
 |---|---|---|---|
 | bench-b121 | bench-b121-1705.md | origin/mini/logs, commit 2026-10-04 10:22:44 +0200 (3111129) | bench b121: stall behaved |
-| score | score-1702.md | origin/mini/logs, commit 2026-10-04 10:22:44 +0200 (3111129) | score: 27.71 rank 5 |
+| bench-b138 | bench-b138-1788.md | origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d) | bench b138: something is wrong: 1 read errors during the session |
+| ladder | ladder-1809.md | origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d) | ladder: 5/15 slots confirmed, 0 unverified, 0 deal(s) scored 0 |
+| market | market-1807.md | origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d) | market: 0 trade(s) between other teams on v20, 29 listings (0 within 40 ticks of an announcement/outreach) |
+| score | score-1802.md | origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d) | score: 29.29 rank 5 (+1.58 since tick 1702) |
 
 ---
 
-# score at tick 1702
+# score at tick 1802
 
-_2026-10-04 10:24:06 local, tools/analyst.py_
+_2026-10-04 10:46:17 local, tools/analyst.py_
 
-_data: origin/mini/logs, commit 2026-10-04 10:22:44 +0200 (3111129)_
+_data: origin/mini/logs, commit 2026-10-04 10:44:32 +0200 (2ee165d)_
 
-**score: 27.71 rank 5**
+**score: 29.29 rank 5 (+1.58 since tick 1702)**
 
-- tick 1702: score 27.71 = negotiating 22.92 + market 4.8 (+ judges later); rank 5; cash 253
-- inside: duel_points 43.37, ladder_points 0.409, bench_points 0.406, mm_points 0.0 (score.jsonl at tick 1445)
-- leader t10 31.68 (market 9.85); next above us t05 29.58 (gap 1.87)
+- tick 1802: score 29.29 = negotiating 21.86 + market 7.43 (+ judges later); rank 5; cash 355
+- inside: duel_points 0.0, ladder_points 0.165, bench_points 0.5, mm_points 0.0 (score.jsonl at tick 1783)
+- leader t12 34.41 (market 11.54); next above us t05 32.43 (gap 3.14)
+- since tick 1702: score +1.58, negotiating -1.06, market +2.63, duel_points -43.37, ladder_points -0.244, bench_points +0.094
 

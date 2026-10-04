@@ -1,10 +1,6 @@
-TRIGGER 10:23 hard Market Test read-out (b121, ticks 1690-1706; tick 1720, logs from origin/mini/logs at 10:22)
-VERDICT stall behaved: 7 matches, 178 P = 85% of best 209 P, 100% of quote ceiling; ours replay identical; 24/24 expiries = session end -> keep stall. Score 27.71 rank 5 (leader t10 31.68, t05 29.58 just above, gap 1.87); score.jsonl stale since tick 1445
-PROPOSE nothing for the bots; findings: clock ran 09:20 (late start), 1 game h = 1 wall h, schedule re-timed: MT ~10:37, Duels III ~10:59, MT ~12:37, stalls close + Final ~13:59, scores freeze ~14:59
-NEEDS YES none (heads-up: dealer stalls close ~13:59 and only 2 Market Tests remain; Mini score reader has no row after tick 1445)
+TRIGGER 10:46 Market Test + Round 3 read-out (b138, ticks 1774-1790; tick 1809, logs from origin/mini/logs at 10:44)
+VERDICT stall fine: 4 matches, 97 P = 73% of best 133 P, 92% of quote ceiling, ours replay identical, 20/20 expiries = session end -> keep stall; the 1 "read error" is a GET /api/clock timeout at 10:39:39 (server slow, 5 slow_reads), no match lost. Ladder R3 5/15 (L1 1, L2 0, L3 2, L4 2, L5 0), 0 unverified. Score 29.29 rank 5 (+1.58; leader t12 34.41, t05 32.43 above, gap 3.14); duel_points read 0.0 in score.jsonl at 1783 (was 43.37 at 1445)
+PROPOSE nothing for the bots. Ladder to-do for Thiago (after Duels III, before stalls close ~13:59, never during a duel wave): 3 x L2 Chato and 1 x L3 Pilar / 1 x L4 Picaros are the cheapest open slots; L5 Banco 0/3 is unmeasured (Saturday's 3 Ernesto sales went below value) - only with a deal that clears our value
+NEEDS YES none now (dealer steps are Thiago's call, from `python3 tools/factory.py plan` manual lines)
 PR https://github.com/thiagoamaro91/negotiation-agent/pull/91
-ORGANISERS: feed#73309 tick 1445 announcement "Good morning! The Bazaar is open again: Sunday until 15:00, one tick every 15 s."
-ORGANISERS: feed#73355 tick 1448 schedule.fired grant_all "The Sunday allowance: 150 primas for everyone"
-ORGANISERS: feed#76432 tick 1553 announcement "Bug bounty: thank you, Team 12! You found and documented a real scoring bug, fixed overnight. A silver pack is on its way to you."
-ORGANISERS: news#14 tick 1482 [Radio Rastro] "Bonus pay: the Bazaar gives everyone 60 primas in one hour" (no grant event seen by tick 1720)
-ORGANISERS: news#12,13,15,16 [El Tablón/rumours] "Someone lost a red umbrella next to Abuela's stall" / "Tomorrow common cards will be worth double" / "El Rastro closes at midnight for roadworks" / "Anyone want to swap a Cine Doré for two roast chestnuts?"
+ORGANISERS: nothing new since 10:23 (the Market Test fired at tick 1774 ~10:37 as re-timed; Duels III due ~10:59)
