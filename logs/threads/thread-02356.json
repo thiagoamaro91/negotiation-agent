@@ -1,0 +1,164 @@
+{
+ "id": 2356,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-09"
+  }
+ },
+ "status": "deal",
+ "created_tick": 1546,
+ "messages": [
+  {
+   "id": 13452,
+   "tick": 1547,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 40 P.",
+   "offer": {
+    "id": 21054,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2356,
+    "status": "cancelled",
+    "give": {
+     "cash": 40,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 1555,
+    "created_tick": 1547,
+    "final": false
+   }
+  },
+  {
+   "id": 13449,
+   "tick": 1547,
+   "sender": "picaros",
+   "text": "¡Eh, amigo, amigo! Come, come, look here — Paco, open the case! El Ángel Caído, the real one, foil wings, corners like glass. Nando sold one last week to a collector who cried,真 tears. For you, friend, because your face I like: 73 P. Only now, eh?",
+   "offer": {
+    "id": 21051,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2356,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1555,
+    "created_tick": 1547,
+    "final": false
+   }
+  },
+  {
+   "id": 13465,
+   "tick": 1548,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 64 P.",
+   "offer": {
+    "id": 21063,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2356,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 64,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1556,
+    "created_tick": 1548,
+    "final": false
+   }
+  },
+  {
+   "id": 13467,
+   "tick": 1548,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 42 P.",
+   "offer": {
+    "id": 21065,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 2356,
+    "status": "cancelled",
+    "give": {
+     "cash": 42,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "expires_tick": 1556,
+    "created_tick": 1548,
+    "final": false
+   }
+  },
+  {
+   "id": 13476,
+   "tick": 1549,
+   "sender": "picaros",
+   "text": "¡Ay, amigo! Paco, close the case — the taxi outside, the engine running, the police— eh, the driver, he honks like a madman. No more dancing: 59 P. That is the last word, our final one. Yes or no, right now, or we vanish and El Ángel flies away with us.",
+   "offer": {
+    "id": 21073,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2356,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-09"
+     ]
+    },
+    "want": {
+     "cash": 59,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1557,
+    "created_tick": 1549,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Ángel Caído",
+ "closed_reason": null
+}

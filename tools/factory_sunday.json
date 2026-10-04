@@ -69,7 +69,7 @@
           "note": "RET uncommons are first copies worth 22.5 (book 25 x RET 0.9): cap 22 is the ceiling, strictly inside value. Saturday closes: 22 or less in 20 of 45 deals, 23 or less in 32 of 45. Each one is also the stock for a Pilar resale (L3). Replaces r3-slots-1-3, whose SAL-05 is already ours (plan_empty)."
         },
         {
-          "label": "r3-a2-ret-commons",
+          "label": "r3-a2-ret-commons", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 1},
           "cmd": ["{python}", "-u", "agent/abuela.py", "run", "--only", "RET-01,RET-02,RET-03,RET-04,RET-05", "--cap",
                   "9", "--reserve", "20", "--max-deals", "2"],
@@ -118,7 +118,7 @@
       "stale_ticks": null,
       "steps": [
         {
-          "label": "r3-l1-resell-ret-rares",
+          "label": "r3-l1-resell-ret-rares", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 16},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10",
                   "--allow-single", "--floor", "64", "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "2",
@@ -126,7 +126,7 @@
           "note": "Resells the two RET rares bought from Los Picaros (value 63.0, floor 64). She loves RET: a thread on Saturday ran 61, 63, 66, 70, 74, 78. A ref we do not hold yet is skipped; an empty plan counts as done, which is why the retry below exists."
         },
         {
-          "label": "r3-l2-resell-ret-uncommon",
+          "label": "r3-l2-resell-ret-uncommon", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 30},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only",
                   "sell:RET-06,sell:RET-07,sell:RET-08", "--allow-single", "--floor", "23", "--sell-anchor", "32",
@@ -134,7 +134,7 @@
           "note": "The third L3 slot: one RET uncommon bought from Abuela at 22 or less (value 22.5), sold at 23 or more. Her RET uncommon finals on Saturday were 24 to 26 on long threads."
         },
         {
-          "label": "r3-l3-resell-ret-rares-retry",
+          "label": "r3-l3-resell-ret-rares-retry", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 45},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only", "sell:RET-09,sell:RET-10",
                   "--allow-single", "--floor", "64", "--sell-anchor", "85", "--sell-step", "2", "--max-deals", "2",
@@ -142,7 +142,7 @@
           "note": "Same line later: picks up rares that Los Picaros delivered after the first Pilar step found nothing to sell. Empty plan = done, harmless."
         },
         {
-          "label": "r3-l4-resell-ret-uncommon-retry",
+          "label": "r3-l4-resell-ret-uncommon-retry", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 60},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "pilar", "--only",
                   "sell:RET-06,sell:RET-07,sell:RET-08", "--allow-single", "--floor", "23", "--sell-anchor", "32",
@@ -185,14 +185,14 @@
       "stale_ticks": null,
       "steps": [
         {
-          "label": "r3-p1a-ret-09",
+          "label": "r3-p1a-ret-09", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 2},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09", "--cap", "62",
                   "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
           "note": "RET-09 is a first copy worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). The rare is resold to Pilar at 64 or more (L3). One card per step on purpose: a run that fills RET-09 and then meets a cooloff on RET-10 exits 0, and the factory would mark a two-card step done with one card bought; as two steps each is judged on its own card (a no-deal run is retried up to 3 times, then fails loudly)."
         },
         {
-          "label": "r3-p1b-ret-10",
+          "label": "r3-p1b-ret-10", "enabled": false, "disabled_note": "12:15 final conductor: RET buys run by hand (queue A/B); RET rares are kept, RET-01 is the closer",
           "after_event": {"action": "grant_all", "delay_min": 2},
           "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-10", "--cap", "62",
                   "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
@@ -246,9 +246,7 @@
       "kind": "service",
       "required": false,
       "gates": {"doors_open": true, "clock_running": true},
-      "cmd": ["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--no-bids", "--page", "SAL-10:110:80",
-              "--page-step", "4", "--page-step-ticks", "8", "--min-cash", "40", "--cap-hour", "150", "--cap-day", "250",
-              "--until", "{until}"],
+      "cmd": ["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--page", "SAL-11:228:216", "--page-step", "4", "--page-step-ticks", "8", "--min-cash", "0", "--cap-hour", "250", "--cap-day", "600", "--margin-min", "2", "--margin-frac", "0.05", "--bid-min-value", "5", "--bid-max", "10", "--sell-margin-min", "2", "--sell-margin-frac", "0.05", "--protect", "LAV,LAT,SAL,RET,MAL", "--duel-guard-ticks", "2", "--until", "{until}"],
       "match": ["agent/market_desk.py", "run"],
       "log": "logs/market/{date}.jsonl",
       "stale_ticks": null,

@@ -1,0 +1,4 @@
+config ok
+14:20:13 kill desk 97097
+14:20:20 desk now 3754
+14:20:19 [factory] start /opt/homebrew/opt/python@3.14/bin/python3.14 -u agent/market_desk.py run --no-team-venues --page SAL-11:215:192 --page-step 4 --page-st

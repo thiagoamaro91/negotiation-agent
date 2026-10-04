@@ -1,0 +1,338 @@
+{
+ "id": 3110,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "MAL-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 2144,
+ "messages": [
+  {
+   "id": 16147,
+   "tick": 2145,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 8 P.",
+   "offer": {
+    "id": 25084,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2153,
+    "created_tick": 2145,
+    "final": false
+   }
+  },
+  {
+   "id": 16145,
+   "tick": 2145,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo, come close! Paco, show him — ¡sí! La Heroína del Dos de Mayo, the lady with the cannon, rare as rain in August. My brother found her in a dead man's trunk in Cádiz, true story. For you, today only — 73 P. ¿Sí?",
+   "offer": {
+    "id": 25082,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2153,
+    "created_tick": 2145,
+    "final": false
+   }
+  },
+  {
+   "id": 16154,
+   "tick": 2146,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 64 P. The police... I mean, our taxi is waiting. Decide now!",
+   "offer": {
+    "id": 25089,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 64,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2154,
+    "created_tick": 2146,
+    "final": false
+   }
+  },
+  {
+   "id": 16161,
+   "tick": 2146,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 9 P.",
+   "offer": {
+    "id": 25096,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2154,
+    "created_tick": 2146,
+    "final": false
+   }
+  },
+  {
+   "id": 16178,
+   "tick": 2147,
+   "sender": "t03",
+   "text": "Fair is fair. 10 P, paid on the spot.",
+   "offer": {
+    "id": 25110,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2155,
+    "created_tick": 2147,
+    "final": false
+   }
+  },
+  {
+   "id": 16170,
+   "tick": 2147,
+   "sender": "picaros",
+   "text": "¡Nueve! Nando, hold me, I feel faint. Amigo, nine pesetas buys a coffee, not la Heroína with the cannon! Look at her face — she's insulted. But we like you, truly. Fifty-nine. Fifty-nine and she's yours before the taxi leaves without us. ¡Venga, decide!",
+   "offer": {
+    "id": 25101,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-07"
+     ]
+    },
+    "want": {
+     "cash": 59,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2155,
+    "created_tick": 2147,
+    "final": false
+   }
+  },
+  {
+   "id": 16185,
+   "tick": 2148,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 54 P.",
+   "offer": {
+    "id": 25118,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 54,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2156,
+    "created_tick": 2148,
+    "final": false
+   }
+  },
+  {
+   "id": 16192,
+   "tick": 2148,
+   "sender": "t03",
+   "text": "One more step from me: 11 P.",
+   "offer": {
+    "id": 25125,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2156,
+    "created_tick": 2148,
+    "final": false
+   }
+  },
+  {
+   "id": 16204,
+   "tick": 2149,
+   "sender": "t03",
+   "text": "No theatre. 12 P.",
+   "offer": {
+    "id": 25138,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2157,
+    "created_tick": 2149,
+    "final": false
+   }
+  },
+  {
+   "id": 16197,
+   "tick": 2149,
+   "sender": "picaros",
+   "text": "¡Once! Paco, cover your ears, he's breaking our hearts in two. Amigo, eleven buys you the frame, not la dama con el cañón. But we love you, truly — cincuenta. Fifty pesetas, and she walks home with you tonight. The taxi's engine is running. ¡Venga!",
+   "offer": {
+    "id": 25130,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-06"
+     ]
+    },
+    "want": {
+     "cash": 50,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2157,
+    "created_tick": 2149,
+    "final": false
+   }
+  },
+  {
+   "id": 16210,
+   "tick": 2150,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 47 P. Last offer, amigo! Then we are gone, eh? Quick, quick, we leave in one minute!",
+   "offer": {
+    "id": 25142,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3110,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 47,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2158,
+    "created_tick": 2150,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Heroína del Dos de Mayo",
+ "closed_reason": null
+}

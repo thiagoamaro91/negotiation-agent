@@ -1,0 +1,38 @@
+{
+ "duel": 11312,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.96,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 81,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1915,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12653,
+  "price": 121,
+  "tick": 1903,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1903,
+   "from": "Rival Rojo",
+   "text": "Offering 121 with 0 days: a fair price for a quick close.",
+   "price": 121,
+   "days": 0
+  }
+ ],
+ "result": 40.0,
+ "price": 121,
+ "days": 0
+}

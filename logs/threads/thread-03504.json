@@ -1,0 +1,396 @@
+{
+ "id": 3504,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-06"
+  }
+ },
+ "status": "deal",
+ "created_tick": 2300,
+ "messages": [
+  {
+   "id": 17348,
+   "tick": 2301,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 11 P for it?",
+   "offer": {
+    "id": 26392,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2309,
+    "created_tick": 2301,
+    "final": false
+   }
+  },
+  {
+   "id": 17347,
+   "tick": 2301,
+   "sender": "abuela",
+   "text": "¡Hola, cariño! Come, sit a moment, the sun is strong today. Have you eaten? Look — this one is La Rosaleda, very pretty page, my favourite since years. For you, 29 P. Take your time, hijo, no hurry here. Never any hurry at my table.",
+   "offer": {
+    "id": 26391,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2309,
+    "created_tick": 2301,
+    "final": false
+   }
+  },
+  {
+   "id": 17352,
+   "tick": 2302,
+   "sender": "abuela",
+   "text": "Oh, oh... 25 P, and only because you have a kind face. A little advice, cariño: a full page is worth much more than the loose cards. Swap your duplicates!",
+   "offer": {
+    "id": 26395,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2310,
+    "created_tick": 2302,
+    "final": false
+   }
+  },
+  {
+   "id": 17355,
+   "tick": 2302,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 12 P?",
+   "offer": {
+    "id": 26398,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2310,
+    "created_tick": 2302,
+    "final": false
+   }
+  },
+  {
+   "id": 17358,
+   "tick": 2303,
+   "sender": "abuela",
+   "text": "Ay, hijo, twelve... my heart says yes, my table says no. 24 P, and I put in a little story for free. And listen — Doña Pilar from Salamanca comes Saturday at eleven, she pays very well for her favourites. Bring your duplicates, cariño. Eat something first.",
+   "offer": {
+    "id": 26405,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2311,
+    "created_tick": 2303,
+    "final": false
+   }
+  },
+  {
+   "id": 17368,
+   "tick": 2303,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 13 P.",
+   "offer": {
+    "id": 26411,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2311,
+    "created_tick": 2303,
+    "final": false
+   }
+  },
+  {
+   "id": 17379,
+   "tick": 2304,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 14 P, por favor?",
+   "offer": {
+    "id": 26422,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2312,
+    "created_tick": 2304,
+    "final": false
+   }
+  },
+  {
+   "id": 17375,
+   "tick": 2304,
+   "sender": "abuela",
+   "text": "Ay, cariño, thirteen... you make me laugh like my nieto. 23 P, and I wrap it nice in paper so the corners stay perfect. You know, this page I kept forty Sundays. Go slow, hijo, and please — eat something, you look thin.",
+   "offer": {
+    "id": 26417,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2312,
+    "created_tick": 2304,
+    "final": false
+   }
+  },
+  {
+   "id": 17383,
+   "tick": 2305,
+   "sender": "abuela",
+   "text": "Oh, oh... 22 P, and only because you have a kind face. A little advice, cariño: a full page is worth much more than the loose cards. Swap your duplicates!",
+   "offer": {
+    "id": 26432,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2313,
+    "created_tick": 2305,
+    "final": false
+   }
+  },
+  {
+   "id": 17387,
+   "tick": 2305,
+   "sender": "t03",
+   "text": "I would treasure it, Abuela. 15 P is what I can manage today.",
+   "offer": {
+    "id": 26436,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2313,
+    "created_tick": 2305,
+    "final": false
+   }
+  },
+  {
+   "id": 17393,
+   "tick": 2306,
+   "sender": "t03",
+   "text": "Que amable! Let me add a little: 16 P.",
+   "offer": {
+    "id": 26443,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "expires_tick": 2314,
+    "created_tick": 2306,
+    "final": false
+   }
+  },
+  {
+   "id": 17390,
+   "tick": 2306,
+   "sender": "abuela",
+   "text": "¡Ay, hijo, your grandmother's album! That warms me. Fifteen, no... but 21 P, and I throw in two duplicates from my box, maybe you need them. Go see El Chato after, he has good packs. And eat something, cariño, por favor.",
+   "offer": {
+    "id": 26440,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2314,
+    "created_tick": 2306,
+    "final": false
+   }
+  },
+  {
+   "id": 17399,
+   "tick": 2307,
+   "sender": "abuela",
+   "text": "Oh, oh... 21 P, and only because you have a kind face. Look, cariño, I can't go lower. This is my last offer.",
+   "offer": {
+    "id": 26449,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3504,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2315,
+    "created_tick": 2307,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Rosaleda",
+ "closed_reason": null
+}

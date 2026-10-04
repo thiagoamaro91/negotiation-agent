@@ -1,0 +1,251 @@
+{
+ "id": 2222,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-08"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1468,
+ "messages": [
+  {
+   "id": 12751,
+   "tick": 1469,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 11 P for it?",
+   "offer": {
+    "id": 20308,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "expires_tick": 1477,
+    "created_tick": 1469,
+    "final": false
+   }
+  },
+  {
+   "id": 12750,
+   "tick": 1469,
+   "sender": "abuela",
+   "text": "Ay, hola cariño! Come, sit a moment. Have you eaten? Look here — Palacio de Velázquez, one of my favourites, the glass one in the Retiro. Twenty-nine P and it is yours, hijo. My grandson started his album with that very card.",
+   "offer": {
+    "id": 20307,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "want": {
+     "cash": 29,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1477,
+    "created_tick": 1469,
+    "final": false
+   }
+  },
+  {
+   "id": 12764,
+   "tick": 1470,
+   "sender": "abuela",
+   "text": "Oh, oh... 26 P, and only because you have a kind face.",
+   "offer": {
+    "id": 20327,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "want": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1478,
+    "created_tick": 1470,
+    "final": false
+   }
+  },
+  {
+   "id": 12765,
+   "tick": 1470,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 12 P?",
+   "offer": {
+    "id": 20328,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "expires_tick": 1478,
+    "created_tick": 1470,
+    "final": false
+   }
+  },
+  {
+   "id": 12778,
+   "tick": 1471,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 13 P.",
+   "offer": {
+    "id": 20342,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "expires_tick": 1479,
+    "created_tick": 1471,
+    "final": false
+   }
+  },
+  {
+   "id": 12777,
+   "tick": 1471,
+   "sender": "abuela",
+   "text": "Ay, hijo, twelve... that buys you a bocadillo, not the Palacio! Look, twenty-four P, and I will throw in a story for free. Doña Pilar from Salamanca comes Saturdays at eleven and pays very well for her favourites — a card like this one, cariño.",
+   "offer": {
+    "id": 20341,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1479,
+    "created_tick": 1471,
+    "final": false
+   }
+  },
+  {
+   "id": 12783,
+   "tick": 1472,
+   "sender": "abuela",
+   "text": "Oh, oh... 24 P, and only because you have a kind face.",
+   "offer": {
+    "id": 20350,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1480,
+    "created_tick": 1472,
+    "final": false
+   }
+  },
+  {
+   "id": 12785,
+   "tick": 1472,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 14 P, por favor?",
+   "offer": {
+    "id": 20352,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 2222,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "expires_tick": 1480,
+    "created_tick": 1472,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Palacio de Velázquez",
+ "closed_reason": null
+}

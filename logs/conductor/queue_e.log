@@ -1,0 +1,88 @@
+12:45:05 START --only RET-02 --cap 9 --max-deals 1 (RET 6/10)
+Team 3 cash=288 level=5 deals=44
+  buy  RET-02  value=   9.0 private=   9.0 ladder=9  La Castañera
+reserve=40 (spendable 248 P) cap=9.0
+[12:45:07] run_start operator=thiago argv=['run', '--reserve', '40', '--until', '13:50', '--only', 'RET-02', '--cap', '9', '--max-deals', '1'] cash=288 level=5 deals=44 reserve=40 cap=9.0 plan=[{'side': 'buy', 'item': 'RET-02', 'asset_id': None, 'value': 9.0, 'private': 9.0, 'ladder_value': 9, 'ladder_floor': None}]
+[12:45:08] open thread=3436 side=buy item=RET-02 value=9.0 welcome=False private=9.0 ladder_value=9
+[12:45:15] her thread=3436 price=12 final=False round=1
+[12:45:15] say thread=3436 price=4 her=12
+[12:45:26] her thread=3436 price=10 final=False round=2
+[12:45:26] say thread=3436 price=5 her=10
+[12:45:41] her thread=3436 price=9 final=False round=3
+[12:45:41] say thread=3436 price=6 her=9
+[12:45:57] say thread=3436 price=7 her=9
+[12:46:11] her thread=3436 price=8 final=True round=5
+[12:46:12] accept thread=3436 price=8 why=final ours=7 round=5
+[12:46:27] result thread=3436 status=deal price=8 reason=None
+[12:46:27] run_end cash=280 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=45 ladder_points=0.334 score=32.23 rank=5
+12:46:27 EXIT 0
+{'score': 32.23, 'rank': 5, 'negotiating': 24.08, 'neg_points': 86.5, 'ladder_points': 0.334, 'market': 8.15, 'duel_points': 27.94} cash 280
+12:46:29 START --only RET-06,RET-07 --cap 22 --max-deals 1 (RET 7/10)
+Team 3 cash=280 level=5 deals=45
+  buy  RET-06  value=  22.0 private=  22.5 ladder=22  La Rosaleda
+  buy  RET-07  value=  22.0 private=  22.5 ladder=22  Fuente de la Alcachofa
+reserve=40 (spendable 240 P) cap=22.0
+[12:46:33] run_start operator=thiago argv=['run', '--reserve', '40', '--until', '13:50', '--only', 'RET-06,RET-07', '--cap', '22', '--max-deals', '1'] cash=280 level=5 deals=45 reserve=40 cap=22.0 plan=[{'side': 'buy', 'item': 'RET-06', 'asset_id': None, 'value': 22, 'private': 22.5, 'ladder_value': 22, 'ladder_floor': None}, {'side': 'buy', 'item': 'RET-07', 'asset_id': None, 'value': 22, 'private': 22.5, 'ladder_value': 22, 'ladder_floor': None}]
+[12:46:34] open thread=3455 side=buy item=RET-06 value=22 welcome=False private=22.5 ladder_value=22
+[12:46:41] her thread=3455 price=29 final=False round=1
+[12:46:42] say thread=3455 price=11 her=29
+[12:46:57] her thread=3455 price=26 final=False round=2
+[12:46:58] say thread=3455 price=12 her=26
+[12:47:12] her thread=3455 price=25 final=False round=3
+[12:47:12] say thread=3455 price=13 her=25
+[12:47:32] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:47:35] her thread=3455 price=24 final=False round=4
+[12:47:35] say thread=3455 price=14 her=24
+[12:47:42] walk thread=3455 price=24 reservation=22
+[12:47:44] open thread=3475 side=buy item=RET-07 value=22 welcome=False private=22.5 ladder_value=22
+[12:48:02] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:48:05] her thread=3475 price=29 final=False round=1
+[12:48:06] say thread=3475 price=11 her=29
+[12:48:17] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:48:21] her thread=3475 price=27 final=False round=2
+[12:48:21] say thread=3475 price=12 her=27
+[12:48:32] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:48:36] her thread=3475 price=26 final=False round=3
+[12:48:36] say thread=3475 price=13 her=26
+[12:48:43] her thread=3475 price=25 final=False round=4
+[12:48:44] say thread=3475 price=14 her=25
+[12:48:58] say thread=3475 price=15 her=25
+[12:49:17] her thread=3475 price=24 final=False round=6
+[12:49:18] say thread=3475 price=16 her=24
+[12:49:33] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:49:37] walk thread=3475 price=24 reservation=22
+[12:49:38] run_end cash=280 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=45 ladder_points=0.334 score=32.23 rank=5
+12:49:38 EXIT 0
+{'score': 32.23, 'rank': 5, 'negotiating': 24.08, 'neg_points': 86.5, 'ladder_points': 0.334, 'market': 8.15, 'duel_points': 27.94} cash 280
+12:49:39 START --only RET-07,RET-06 --cap 22 --max-deals 1 (RET 7/10)
+Team 3 cash=280 level=5 deals=45
+  buy  RET-06  value=  22.0 private=  22.5 ladder=22  La Rosaleda
+  buy  RET-07  value=  22.0 private=  22.5 ladder=22  Fuente de la Alcachofa
+reserve=40 (spendable 240 P) cap=22.0
+[12:49:53] run_start operator=thiago argv=['run', '--reserve', '40', '--until', '13:50', '--only', 'RET-07,RET-06', '--cap', '22', '--max-deals', '1'] cash=280 level=5 deals=45 reserve=40 cap=22.0 plan=[{'side': 'buy', 'item': 'RET-06', 'asset_id': None, 'value': 22, 'private': 22.5, 'ladder_value': 22, 'ladder_floor': None}, {'side': 'buy', 'item': 'RET-07', 'asset_id': None, 'value': 22, 'private': 22.5, 'ladder_value': 22, 'ladder_floor': None}]
+[12:49:53] open thread=3504 side=buy item=RET-06 value=22 welcome=False private=22.5 ladder_value=22
+[12:49:59] her thread=3504 price=29 final=False round=1
+[12:49:59] say thread=3504 price=11 her=29
+[12:50:18] her thread=3504 price=25 final=False round=2
+[12:50:18] say thread=3504 price=12 her=25
+[12:50:34] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:50:37] her thread=3504 price=24 final=False round=3
+[12:50:38] say thread=3504 price=13 her=24
+[12:50:44] her thread=3504 price=23 final=False round=4
+[12:50:45] say thread=3504 price=14 her=23
+[12:51:03] her thread=3504 price=22 final=False round=5
+[12:51:03] say thread=3504 price=15 her=22
+[12:51:14] her thread=3504 price=21 final=False round=6
+[12:51:15] say thread=3504 price=16 her=21
+[12:51:33] accept thread=3504 price=21 why=final ours=16 round=7
+[12:51:45] result thread=3504 status=deal price=21 reason=None
+[12:51:46] run_end cash=259 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=46 ladder_points=0.336 score=32.38 rank=5
+12:51:46 EXIT 0
+{'score': 32.38, 'rank': 5, 'negotiating': 24.23, 'neg_points': 86.5, 'ladder_points': 0.336, 'market': 8.15, 'duel_points': 27.94} cash 259
+12:51:47 QUEUE E DONE

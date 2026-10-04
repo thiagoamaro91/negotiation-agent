@@ -1,0 +1,57 @@
+{
+ "duel": 15878,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.94,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 69,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 2606,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 16581,
+  "price": 113,
+  "tick": 2599,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 16585,
+  "price": 90,
+  "tick": 2600,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2595,
+   "from": "Rival Oro",
+   "text": "Rápido y justo: 76 P, día 0. ¿Qué día de entrega te va mejor? / Quick and fair: 76 P, day 0. Which delivery day suits you best?",
+   "price": 76,
+   "days": 0
+  },
+  {
+   "tick": 2599,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 113 P, delivery day 10.",
+   "price": 113,
+   "days": 10
+  },
+  {
+   "tick": 2600,
+   "from": "Rival Oro",
+   "text": "Parece que el día te importa: 90 P con día 0. / It seems the day matters to you: 90 P, day 0.",
+   "price": 90,
+   "days": 0
+  }
+ ],
+ "result": 18.9,
+ "price": 90,
+ "days": 0
+}

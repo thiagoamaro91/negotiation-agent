@@ -1,0 +1,52 @@
+{
+ "duel": 11494,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.6,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 76,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 2028,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15489,
+  "price": 155,
+  "tick": 2025,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2019,
+   "from": "Rival Noche",
+   "text": "108 P con entrega el día 0 y cerramos ahora.",
+   "price": 108,
+   "days": 0
+  },
+  {
+   "tick": 2022,
+   "from": "Rival Noche",
+   "text": "124 P con entrega el día 0 y cerramos ahora.",
+   "price": 124,
+   "days": 0
+  },
+  {
+   "tick": 2025,
+   "from": "Rival Noche",
+   "text": "155 P con entrega el día 0 y cerramos ahora.",
+   "price": 155,
+   "days": 0
+  }
+ ],
+ "result": 79.0,
+ "price": 155,
+ "days": 0
+}

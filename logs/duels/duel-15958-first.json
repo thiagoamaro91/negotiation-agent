@@ -1,0 +1,38 @@
+{
+ "duel": 15958,
+ "session": 5,
+ "status": "live",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 9.04,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 101,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 2630,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17098,
+  "price": 77,
+  "tick": 2618,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2618,
+   "from": "Rival Oro",
+   "text": "Let's open at 77 P, delivery day 0.",
+   "price": 77,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,73 @@
+{
+ "duel": 15900,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.97,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 136,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 2608,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 16757,
+  "price": 156,
+  "tick": 2605,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2598,
+   "from": "Rival Luna",
+   "text": "We can do 122 P, delivery on day 0. Thank you for the talk.",
+   "price": 122,
+   "days": 0
+  },
+  {
+   "tick": 2600,
+   "from": "Rival Luna",
+   "text": "137 P, delivery on day 0 works well for us.",
+   "price": 137,
+   "days": 0
+  },
+  {
+   "tick": 2601,
+   "from": "Rival Luna",
+   "text": "Our offer is 143 P, delivery on day 0.",
+   "price": 143,
+   "days": 0
+  },
+  {
+   "tick": 2603,
+   "from": "Rival Luna",
+   "text": "Let's meet at 148 P, delivery on day 0, fair for both.",
+   "price": 148,
+   "days": 0
+  },
+  {
+   "tick": 2604,
+   "from": "Rival Luna",
+   "text": "152 P, delivery on day 0, and we close now.",
+   "price": 152,
+   "days": 0
+  },
+  {
+   "tick": 2605,
+   "from": "Rival Luna",
+   "text": "We move to 156 P, delivery on day 0.",
+   "price": 156,
+   "days": 0
+  }
+ ],
+ "result": 20.0,
+ "price": 156,
+ "days": 0
+}

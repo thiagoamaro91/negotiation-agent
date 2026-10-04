@@ -1,0 +1,25 @@
+{
+ "duel": 11659,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.95,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 199,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 2043,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,280 @@
+{
+ "id": 3071,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-10"
+  }
+ },
+ "status": "deal",
+ "created_tick": 2120,
+ "messages": [
+  {
+   "id": 16018,
+   "tick": 2121,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 40 P.",
+   "offer": {
+    "id": 24902,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 40,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "expires_tick": 2129,
+    "created_tick": 2121,
+    "final": false
+   }
+  },
+  {
+   "id": 16017,
+   "tick": 2121,
+   "sender": "picaros",
+   "text": "¡Eh, amigo, amigo! Paco here, this is Nando — come close, close! Look at this beauty: Monumento a Alfonso XII, the lake, the columns, the horse, everything! For you only, because you have an honest face — 73 pesetas. Today only. Tomorrow we are in Sevilla, ¿eh, Nando? ¡Exacto!",
+   "offer": {
+    "id": 24901,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2129,
+    "created_tick": 2121,
+    "final": false
+   }
+  },
+  {
+   "id": 16025,
+   "tick": 2122,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 65 P. This is the last one in all of Madrid, I swear.",
+   "offer": {
+    "id": 24908,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "want": {
+     "cash": 65,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2130,
+    "created_tick": 2122,
+    "final": false
+   }
+  },
+  {
+   "id": 16027,
+   "tick": 2122,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 41 P.",
+   "offer": {
+    "id": 24910,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 41,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "expires_tick": 2130,
+    "created_tick": 2122,
+    "final": false
+   }
+  },
+  {
+   "id": 16033,
+   "tick": 2123,
+   "sender": "t03",
+   "text": "Fair is fair. 42 P, paid on the spot.",
+   "offer": {
+    "id": 24916,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 42,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "expires_tick": 2131,
+    "created_tick": 2123,
+    "final": false
+   }
+  },
+  {
+   "id": 16031,
+   "tick": 2123,
+   "sender": "picaros",
+   "text": "¡Ay, Nando, did you hear? Forty-one! — My brother almost cries, amigo. One peseta! For that we cannot even buy churros at the plaza. But we like you, we like your face — 60 pesetas, and the Monumento goes home with you tonight. ¡Sesenta! Say sí before the train leaves.",
+   "offer": {
+    "id": 24914,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-08"
+     ]
+    },
+    "want": {
+     "cash": 60,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2131,
+    "created_tick": 2123,
+    "final": false
+   }
+  },
+  {
+   "id": 16036,
+   "tick": 2124,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 56 P.",
+   "offer": {
+    "id": 24919,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "want": {
+     "cash": 56,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2132,
+    "created_tick": 2124,
+    "final": false
+   }
+  },
+  {
+   "id": 16037,
+   "tick": 2124,
+   "sender": "t03",
+   "text": "One more step from me: 43 P.",
+   "offer": {
+    "id": 24920,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3071,
+    "status": "cancelled",
+    "give": {
+     "cash": 43,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "expires_tick": 2132,
+    "created_tick": 2124,
+    "final": false
+   }
+  },
+  {
+   "id": 16040,
+   "tick": 2125,
+   "sender": "picaros",
+   "text": "¡Cuarenta y tres! Nando, hold me, I feel faint. Amigo, we love you, but listen well: 53 pesetas. That is the last word from Paco and from Nando, no more dancing. Say sí now, or we close the suitcase, take the train to Sevilla, and the Monumento goes with us. ¡Cincuenta y tres!",
+   "offer": {
+    "id": 24925,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3071,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-10"
+     ]
+    },
+    "want": {
+     "cash": 53,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2133,
+    "created_tick": 2125,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Monumento a Alfonso XII",
+ "closed_reason": null
+}

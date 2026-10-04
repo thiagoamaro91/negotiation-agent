@@ -1,0 +1,94 @@
+{
+ "duel": 11334,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.66,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 116,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1930,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13227,
+  "price": 191,
+  "tick": 1927,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1918,
+   "from": "Rival Plata",
+   "text": "Propuesta justa para cerrar pronto: 126 P y 0 días.",
+   "price": 126,
+   "days": 0
+  },
+  {
+   "tick": 1920,
+   "from": "Rival Plata",
+   "text": "Me muevo para acercarnos: 142 P con 0 días.",
+   "price": 142,
+   "days": 0
+  },
+  {
+   "tick": 1921,
+   "from": "Rival Plata",
+   "text": "Yo ya me he movido. Propongo 151 P y 0 días.",
+   "price": 151,
+   "days": 0
+  },
+  {
+   "tick": 1922,
+   "from": "Rival Plata",
+   "text": "Propuesta justa para cerrar pronto: 159 P y 0 días.",
+   "price": 159,
+   "days": 0
+  },
+  {
+   "tick": 1923,
+   "from": "Rival Plata",
+   "text": "Me muevo para acercarnos: 167 P con 0 días.",
+   "price": 167,
+   "days": 0
+  },
+  {
+   "tick": 1924,
+   "from": "Rival Plata",
+   "text": "Yo ya me he movido. Propongo 176 P y 0 días.",
+   "price": 176,
+   "days": 0
+  },
+  {
+   "tick": 1925,
+   "from": "Rival Plata",
+   "text": "Propuesta justa para cerrar pronto: 184 P y 0 días.",
+   "price": 184,
+   "days": 0
+  },
+  {
+   "tick": 1926,
+   "from": "Rival Plata",
+   "text": "Me muevo para acercarnos: 190 P con 0 días.",
+   "price": 190,
+   "days": 0
+  },
+  {
+   "tick": 1927,
+   "from": "Rival Plata",
+   "text": "Yo ya me he movido. Propongo 191 P y 0 días.",
+   "price": 191,
+   "days": 0
+  }
+ ],
+ "result": 75.0,
+ "price": 191,
+ "days": 0
+}

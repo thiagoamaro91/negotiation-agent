@@ -1,0 +1,66 @@
+{
+ "duel": 11469,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.5,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 115,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1986,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14502,
+  "price": 89,
+  "tick": 1983,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1975,
+   "from": "Rival Luna",
+   "text": "Hello! I can let it go for 105 P. Delivery on day 10.",
+   "price": 105,
+   "days": 10
+  },
+  {
+   "tick": 1978,
+   "from": "Rival Luna",
+   "text": "100 P, then. Delivery on day 10.",
+   "price": 100,
+   "days": 10
+  },
+  {
+   "tick": 1980,
+   "from": "Rival Luna",
+   "text": "Meeting you partway: 99 P. Delivery on day 4.",
+   "price": 99,
+   "days": 4
+  },
+  {
+   "tick": 1982,
+   "from": "Rival Luna",
+   "text": "Meeting you partway: 88 P. Delivery on day 5.",
+   "price": 88,
+   "days": 5
+  },
+  {
+   "tick": 1983,
+   "from": "Rival Luna",
+   "text": "I can move to 89 P. Delivery on day 0.",
+   "price": 89,
+   "days": 0
+  }
+ ],
+ "result": 26.0,
+ "price": 89,
+ "days": 0
+}

@@ -1,0 +1,396 @@
+{
+ "id": 3136,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "MAL-10"
+  }
+ },
+ "status": "closed",
+ "created_tick": 2152,
+ "messages": [
+  {
+   "id": 16232,
+   "tick": 2153,
+   "sender": "picaros",
+   "text": "¡Eh, amigo, over here! Paco, show him — the Noche de Movida, mint, barely breathed on. My brother found it in a shoebox in Sevilla, long story, no time. Seventy-three pesos and it's yours. Nando's already packing the case, so... ¿sí o no?",
+   "offer": {
+    "id": 25158,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-08"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2161,
+    "created_tick": 2153,
+    "final": false
+   }
+  },
+  {
+   "id": 16234,
+   "tick": 2153,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 8 P.",
+   "offer": {
+    "id": 25160,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2161,
+    "created_tick": 2153,
+    "final": false
+   }
+  },
+  {
+   "id": 16237,
+   "tick": 2154,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 9 P.",
+   "offer": {
+    "id": 25163,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2162,
+    "created_tick": 2154,
+    "final": false
+   }
+  },
+  {
+   "id": 16236,
+   "tick": 2154,
+   "sender": "picaros",
+   "text": "¡Ocho! Nando, did you hear — ocho! Amigo, another crew just waved real money at us for this very card, five minutes ago, we almost said sí. But I like your face. Sesenta y seis pesos, cash in hand, and the Noche is yours before Nando shuts the case. ¿Vale?",
+   "offer": {
+    "id": 25162,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "want": {
+     "cash": 66,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2162,
+    "created_tick": 2154,
+    "final": false
+   }
+  },
+  {
+   "id": 16238,
+   "tick": 2155,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 62 P.",
+   "offer": {
+    "id": 25165,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-07"
+     ]
+    },
+    "want": {
+     "cash": 62,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2163,
+    "created_tick": 2155,
+    "final": false
+   }
+  },
+  {
+   "id": 16240,
+   "tick": 2155,
+   "sender": "t03",
+   "text": "Fair is fair. 10 P, paid on the spot.",
+   "offer": {
+    "id": 25167,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2163,
+    "created_tick": 2155,
+    "final": false
+   }
+  },
+  {
+   "id": 16244,
+   "tick": 2156,
+   "sender": "t03",
+   "text": "One more step from me: 11 P.",
+   "offer": {
+    "id": 25171,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 11,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2164,
+    "created_tick": 2156,
+    "final": false
+   }
+  },
+  {
+   "id": 16243,
+   "tick": 2156,
+   "sender": "picaros",
+   "text": "¡Diez! Paco, hand me my heart, it fell out. Amigo, you're a charmer, but the Noche doesn't move for pocket lint. Fifty-eight pesos — cincuenta y ocho — and we're done. Quick, quick, the case is closing, we're gone in one minute, truly. ¿Sí?",
+   "offer": {
+    "id": 25170,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "want": {
+     "cash": 58,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2164,
+    "created_tick": 2156,
+    "final": false
+   }
+  },
+  {
+   "id": 16251,
+   "tick": 2157,
+   "sender": "picaros",
+   "text": "Nando, he's robbing us! Fine, 55 P. The team next door wants it, but we like you better.",
+   "offer": {
+    "id": 25176,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "want": {
+     "cash": 55,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2165,
+    "created_tick": 2157,
+    "final": false
+   }
+  },
+  {
+   "id": 16254,
+   "tick": 2157,
+   "sender": "t03",
+   "text": "No theatre. 12 P.",
+   "offer": {
+    "id": 25179,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2165,
+    "created_tick": 2157,
+    "final": false
+   }
+  },
+  {
+   "id": 16262,
+   "tick": 2158,
+   "sender": "t03",
+   "text": "I am still here and still serious: 13 P.",
+   "offer": {
+    "id": 25190,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "expires_tick": 2166,
+    "created_tick": 2158,
+    "final": false
+   }
+  },
+  {
+   "id": 16258,
+   "tick": 2158,
+   "sender": "picaros",
+   "text": "¡Doce! Paco, sit down before you faint. Amigo, twelve buys you a coffee and half a churro, not the Noche. Cincuenta y dos — fifty-two — and my brother will even throw in the shoebox story for free. Case closes in one minute. ¿Vale, amigo? Say sí.",
+   "offer": {
+    "id": 25186,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "want": {
+     "cash": 52,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2166,
+    "created_tick": 2158,
+    "final": false
+   }
+  },
+  {
+   "id": 16266,
+   "tick": 2159,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 52 P. Last offer, amigo! Then we are gone, eh? The police... I mean, our taxi is waiting. Decide now!",
+   "offer": {
+    "id": 25197,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3136,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-10"
+     ]
+    },
+    "want": {
+     "cash": 52,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2167,
+    "created_tick": 2159,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Noche de Movida",
+ "closed_reason": null
+}

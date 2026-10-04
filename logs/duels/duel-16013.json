@@ -1,0 +1,85 @@
+{
+ "duel": 16013,
+ "session": 5,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "La Castañera",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.25,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 75,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 2665,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 18111,
+  "price": 98,
+  "tick": 2656,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 18261,
+  "price": 74,
+  "tick": 2663,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2656,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 98 P, delivery day 10.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2656,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 45,
+   "days": 0
+  },
+  {
+   "tick": 2659,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 57,
+   "days": 0
+  },
+  {
+   "tick": 2660,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 61,
+   "days": 0
+  },
+  {
+   "tick": 2661,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 2662,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 2663,
+   "from": "Rival Plata",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 74,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

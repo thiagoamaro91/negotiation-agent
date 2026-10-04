@@ -1,0 +1,66 @@
+{
+ "duel": 11150,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.25,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 96,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 1886,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12054,
+  "price": 135,
+  "tick": 1878,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1874,
+   "from": "Rival Verde",
+   "text": "I can do 48 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 48,
+   "days": 0
+  },
+  {
+   "tick": 1875,
+   "from": "Rival Verde",
+   "text": "I can do 61 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 61,
+   "days": 0
+  },
+  {
+   "tick": 1876,
+   "from": "Rival Verde",
+   "text": "I can do 84 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 84,
+   "days": 0
+  },
+  {
+   "tick": 1877,
+   "from": "Rival Verde",
+   "text": "I can do 106 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 106,
+   "days": 0
+  },
+  {
+   "tick": 1878,
+   "from": "Rival Verde",
+   "text": "I can do 135 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 135,
+   "days": 0
+  }
+ ],
+ "result": 39.0,
+ "price": 135,
+ "days": 0
+}

@@ -1,0 +1,80 @@
+{
+ "duel": 16083,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.68,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 92,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2594,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 16287,
+  "price": 70,
+  "tick": 2588,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2582,
+   "from": "Rival Azul",
+   "text": "Hello! I can do 102 with delivery on day 10.",
+   "price": 102,
+   "days": 10
+  },
+  {
+   "tick": 2583,
+   "from": "Rival Azul",
+   "text": "Thanks for the reply. 79, delivery day 10.",
+   "price": 79,
+   "days": 10
+  },
+  {
+   "tick": 2584,
+   "from": "Rival Azul",
+   "text": "Let me move closer: 70, day 10.",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 2585,
+   "from": "Rival Azul",
+   "text": "I'd like to close this: 70 with day 10.",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 2586,
+   "from": "Rival Azul",
+   "text": "Meeting you halfway: 70, delivered day 10.",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 2587,
+   "from": "Rival Azul",
+   "text": "Final stretch from me: 70, day 10.",
+   "price": 70,
+   "days": 10
+  },
+  {
+   "tick": 2588,
+   "from": "Rival Azul",
+   "text": "Hello! I can do 70 with delivery on day 10.",
+   "price": 70,
+   "days": 10
+  }
+ ],
+ "result": 5.2,
+ "price": 70,
+ "days": 10
+}

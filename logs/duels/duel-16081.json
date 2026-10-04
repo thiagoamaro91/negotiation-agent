@@ -1,0 +1,66 @@
+{
+ "duel": 16081,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.71,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 112,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 2672,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18350,
+  "price": 133,
+  "tick": 2669,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2660,
+   "from": "Rival Sol",
+   "text": "Hello, and thank you for meeting me. I would propose 104 P with delivery on day 0.",
+   "price": 104,
+   "days": 0
+  },
+  {
+   "tick": 2662,
+   "from": "Rival Sol",
+   "text": "I appreciate it, thank you. Could we close at 117 P, delivery on day 0, please?",
+   "price": 117,
+   "days": 0
+  },
+  {
+   "tick": 2664,
+   "from": "Rival Sol",
+   "text": "Fair enough, thank you. I will meet you partway: 122 P with delivery on day 0.",
+   "price": 122,
+   "days": 0
+  },
+  {
+   "tick": 2666,
+   "from": "Rival Sol",
+   "text": "Thank you, we are getting close. 126 P and delivery on day 0 works for me.",
+   "price": 126,
+   "days": 0
+  },
+  {
+   "tick": 2669,
+   "from": "Rival Sol",
+   "text": "Thank you for your offer. I can do 133 P with delivery on day 0.",
+   "price": 133,
+   "days": 0
+  }
+ ],
+ "result": 21.0,
+ "price": 133,
+ "days": 0
+}

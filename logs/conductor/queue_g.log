@@ -1,0 +1,26 @@
+13:01:05 START --only RET-01 --cap 9 (RET 8/10)
+Team 3 cash=259 level=5 deals=46
+  buy  RET-01  value=   9.0 private=   9.0 ladder=9  Barca del Estanque
+reserve=40 (spendable 219 P) cap=9.0
+[13:01:13] run_start operator=thiago argv=['run', '--reserve', '40', '--max-deals', '1', '--until', '13:50', '--only', 'RET-01', '--cap', '9'] cash=259 level=5 deals=46 reserve=40 cap=9.0 plan=[{'side': 'buy', 'item': 'RET-01', 'asset_id': None, 'value': 9.0, 'private': 9.0, 'ladder_value': 9, 'ladder_floor': None}]
+[13:01:14] open thread=3645 side=buy item=RET-01 value=9.0 welcome=False private=9.0 ladder_value=9
+[13:01:24] her thread=3645 price=12 final=False round=1
+[13:01:24] say thread=3645 price=4 her=12
+[13:01:40] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[13:01:44] her thread=3645 price=10 final=False round=2
+[13:01:44] say thread=3645 price=5 her=10
+[13:01:55] her thread=3645 price=9 final=False round=3
+[13:01:56] say thread=3645 price=6 her=9
+[13:02:11] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[13:02:15] say thread=3645 price=7 her=9
+[13:02:22] her thread=3645 price=8 final=False round=5
+[13:02:22] accept thread=3645 price=8 why=crossed ours=7 round=5
+[13:02:41] result thread=3645 status=deal price=8 reason=None
+[13:02:41] run_end cash=251 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=47 ladder_points=0.336 score=32.39 rank=5
+13:02:41 EXIT 0
+{'score': 32.39, 'rank': 5, 'negotiating': 24.24, 'neg_points': 86.5, 'ladder_points': 0.336, 'market': 8.15, 'duel_points': 27.94} cash 251
+13:02:43 RET at 9/10: stop
+13:02:43 RET now 9/10
+13:02:43 QUEUE G DONE

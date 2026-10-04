@@ -1,0 +1,108 @@
+{
+ "duel": 11368,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.84,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 56,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1944,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13578,
+  "price": 79,
+  "tick": 1942,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1932,
+   "from": "Rival Noche",
+   "text": "Te ofrezco 31 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 31,
+   "days": 0
+  },
+  {
+   "tick": 1933,
+   "from": "Rival Noche",
+   "text": "32 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 32,
+   "days": 0
+  },
+  {
+   "tick": 1934,
+   "from": "Rival Noche",
+   "text": "Mi propuesta: 35 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 35,
+   "days": 0
+  },
+  {
+   "tick": 1935,
+   "from": "Rival Noche",
+   "text": "Puedo llegar a 38 primas y entrega en 10 días. Dime si cerramos.",
+   "price": 38,
+   "days": 10
+  },
+  {
+   "tick": 1936,
+   "from": "Rival Noche",
+   "text": "Te ofrezco 40 primas y entrega en 10 días; me cuesta subir más.",
+   "price": 40,
+   "days": 10
+  },
+  {
+   "tick": 1937,
+   "from": "Rival Noche",
+   "text": "44 primas y entrega en 10 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 44,
+   "days": 10
+  },
+  {
+   "tick": 1938,
+   "from": "Rival Noche",
+   "text": "Mi propuesta: 50 primas y entrega en 10 días. Dame una cifra concreta y la miro.",
+   "price": 50,
+   "days": 10
+  },
+  {
+   "tick": 1939,
+   "from": "Rival Noche",
+   "text": "Puedo llegar a 54 primas y entrega en 10 días. Dime si cerramos.",
+   "price": 54,
+   "days": 10
+  },
+  {
+   "tick": 1940,
+   "from": "Rival Noche",
+   "text": "Te ofrezco 59 primas y entrega en 10 días; me cuesta subir más.",
+   "price": 59,
+   "days": 10
+  },
+  {
+   "tick": 1941,
+   "from": "Rival Noche",
+   "text": "64 primas y entrega en 10 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 64,
+   "days": 10
+  },
+  {
+   "tick": 1942,
+   "from": "Rival Noche",
+   "text": "Mi propuesta: 79 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 79,
+   "days": 0
+  }
+ ],
+ "result": 23.0,
+ "price": 79,
+ "days": 0
+}

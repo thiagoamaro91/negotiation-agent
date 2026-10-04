@@ -1,0 +1,25 @@
+{
+ "duel": 16084,
+ "session": 5,
+ "status": "live",
+ "role": "seller",
+ "item": "Mural de la Esquina",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.86,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 54,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 2664,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,52 @@
+{
+ "duel": 11495,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.61,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 113,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 2039,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15620,
+  "price": 72,
+  "tick": 2036,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2030,
+   "from": "Rival Verde",
+   "text": "94 P con entrega el día 10 y cerramos ahora.",
+   "price": 94,
+   "days": 10
+  },
+  {
+   "tick": 2033,
+   "from": "Rival Verde",
+   "text": "86 P con entrega el día 10 y cerramos ahora.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 2036,
+   "from": "Rival Verde",
+   "text": "72 P con entrega el día 10 y cerramos ahora.",
+   "price": 72,
+   "days": 10
+  }
+ ],
+ "result": 24.9,
+ "price": 72,
+ "days": 10
+}

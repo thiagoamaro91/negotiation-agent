@@ -1,0 +1,59 @@
+{
+ "duel": 11110,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.68,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 157,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1874,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 11924,
+  "price": 120,
+  "tick": 1872,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1864,
+   "from": "Rival Verde",
+   "text": "Hello, and thank you for meeting me. I would propose 162 P with delivery on day 10.",
+   "price": 162,
+   "days": 10
+  },
+  {
+   "tick": 1868,
+   "from": "Rival Verde",
+   "text": "I appreciate it, thank you. Could we close at 144 P, delivery on day 10, please?",
+   "price": 144,
+   "days": 10
+  },
+  {
+   "tick": 1870,
+   "from": "Rival Verde",
+   "text": "Fair enough, thank you. I will meet you partway: 136 P with delivery on day 10.",
+   "price": 136,
+   "days": 10
+  },
+  {
+   "tick": 1872,
+   "from": "Rival Verde",
+   "text": "Thank you, we are getting close. 120 P and delivery on day 10 works for me.",
+   "price": 120,
+   "days": 10
+  }
+ ],
+ "result": 30.2,
+ "price": 120,
+ "days": 10
+}

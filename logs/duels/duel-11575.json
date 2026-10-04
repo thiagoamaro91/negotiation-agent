@@ -1,0 +1,115 @@
+{
+ "duel": 11575,
+ "session": 4,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.52,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 111,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2021,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15420,
+  "price": 98,
+  "tick": 2020,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2009,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 118 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2010,
+   "from": "Rival Azul",
+   "text": "113 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 113,
+   "days": 10
+  },
+  {
+   "tick": 2011,
+   "from": "Rival Azul",
+   "text": "Mi propuesta: 109 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 109,
+   "days": 10
+  },
+  {
+   "tick": 2012,
+   "from": "Rival Azul",
+   "text": "Es una pieza que merece su precio: 105 primas y entrega en 10 días.",
+   "price": 105,
+   "days": 10
+  },
+  {
+   "tick": 2013,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 102 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 102,
+   "days": 10
+  },
+  {
+   "tick": 2014,
+   "from": "Rival Azul",
+   "text": "99 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 99,
+   "days": 10
+  },
+  {
+   "tick": 2015,
+   "from": "Rival Azul",
+   "text": "Mi propuesta: 99 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 99,
+   "days": 10
+  },
+  {
+   "tick": 2016,
+   "from": "Rival Azul",
+   "text": "Es una pieza que merece su precio: 99 primas y entrega en 10 días.",
+   "price": 99,
+   "days": 10
+  },
+  {
+   "tick": 2017,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 98 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2018,
+   "from": "Rival Azul",
+   "text": "98 primas y entrega en 10 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2019,
+   "from": "Rival Azul",
+   "text": "Mi propuesta: 98 primas y entrega en 10 días. Dime una cifra concreta y la miro.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2020,
+   "from": "Rival Azul",
+   "text": "Es una pieza que merece su precio: 98 primas y entrega en 10 días.",
+   "price": 98,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

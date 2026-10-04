@@ -1,0 +1,66 @@
+{
+ "duel": 11474,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.03,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 98,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1928,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13066,
+  "price": 125,
+  "tick": 1920,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1916,
+   "from": "Rival Plata",
+   "text": "I can do 45 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 45,
+   "days": 0
+  },
+  {
+   "tick": 1917,
+   "from": "Rival Plata",
+   "text": "I can do 57 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 57,
+   "days": 0
+  },
+  {
+   "tick": 1918,
+   "from": "Rival Plata",
+   "text": "I can do 78 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 78,
+   "days": 0
+  },
+  {
+   "tick": 1919,
+   "from": "Rival Plata",
+   "text": "I can do 98 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 98,
+   "days": 0
+  },
+  {
+   "tick": 1920,
+   "from": "Rival Plata",
+   "text": "I can do 125 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 125,
+   "days": 0
+  }
+ ],
+ "result": 27.0,
+ "price": 125,
+ "days": 0
+}

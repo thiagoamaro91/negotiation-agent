@@ -1,0 +1,50 @@
+{
+ "duel": 11534,
+ "session": 4,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.36,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 108,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1998,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 14793,
+  "price": 125,
+  "tick": 1994,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 14653,
+  "price": 76,
+  "tick": 1989,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1989,
+   "from": "Rival Azul",
+   "text": "I can do 76 P with delivery in 10 days.",
+   "price": 76,
+   "days": 10
+  },
+  {
+   "tick": 1994,
+   "from": "you",
+   "text": "Last word from me: 125 P, delivery day 10.",
+   "price": 125,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

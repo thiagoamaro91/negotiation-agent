@@ -1,0 +1,38 @@
+{
+ "duel": 11679,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.15,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 86,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 2006,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14792,
+  "price": 73,
+  "tick": 1994,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1994,
+   "from": "Rival Plata",
+   "text": "73 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 73,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

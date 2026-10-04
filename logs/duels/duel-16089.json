@@ -1,0 +1,71 @@
+{
+ "duel": 16089,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Mural de la Esquina",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.85,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 77,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 2594,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 16373,
+  "price": 53,
+  "tick": 2592,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 16399,
+  "price": 94,
+  "tick": 2592,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2582,
+   "from": "Rival Verde",
+   "text": "Hola, Rival Sol, voy con prisa: Mural de la Esquina por 127 y cerramos ya. Entrega en 10 días.",
+   "price": 127,
+   "days": 10
+  },
+  {
+   "tick": 2586,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 27 P, delivery day 10.",
+   "price": 27,
+   "days": 10
+  },
+  {
+   "tick": 2587,
+   "from": "Rival Verde",
+   "text": "Venga, 109. Entrega en 10 días.",
+   "price": 109,
+   "days": 10
+  },
+  {
+   "tick": 2592,
+   "from": "you",
+   "text": "Last word from me: 53 P, delivery day 10.",
+   "price": 53,
+   "days": 10
+  },
+  {
+   "tick": 2592,
+   "from": "Rival Verde",
+   "text": "94 y lo cerramos ahora. Entrega en 10 días.",
+   "price": 94,
+   "days": 10
+  }
+ ],
+ "result": 12.5,
+ "price": 53,
+ "days": 10
+}

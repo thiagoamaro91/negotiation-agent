@@ -1,0 +1,87 @@
+{
+ "duel": 11132,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.59,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 120,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1885,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12115,
+  "price": 149,
+  "tick": 1882,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1875,
+   "from": "Rival Sol",
+   "text": "Before we start: which Madrid barrio would you pick for a Sunday walk? I can do 88.",
+   "price": 88,
+   "days": 0
+  },
+  {
+   "tick": 1876,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 90.",
+   "price": 90,
+   "days": 0
+  },
+  {
+   "tick": 1877,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 95 is where I land.",
+   "price": 95,
+   "days": 0
+  },
+  {
+   "tick": 1878,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 102.",
+   "price": 102,
+   "days": 0
+  },
+  {
+   "tick": 1879,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 112 is where I land.",
+   "price": 112,
+   "days": 0
+  },
+  {
+   "tick": 1880,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 122 is where I land.",
+   "price": 122,
+   "days": 0
+  },
+  {
+   "tick": 1881,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 135.",
+   "price": 135,
+   "days": 0
+  },
+  {
+   "tick": 1882,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 149.",
+   "price": 149,
+   "days": 0
+  }
+ ],
+ "result": 29.0,
+ "price": 149,
+ "days": 0
+}
