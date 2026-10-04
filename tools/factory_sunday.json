@@ -177,12 +177,18 @@
       "stale_ticks": null,
       "steps": [
         {
-          "label": "r3-p1-ret-rares",
+          "label": "r3-p1a-ret-09",
           "after_event": {"action": "grant_all", "delay_min": 2},
-          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09,RET-10",
-                  "--cap", "62", "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "2",
-                  "--max-rounds", "40"],
-          "note": "RET rares are first copies worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). Each rare is resold to Pilar at 64 or more (L3)."
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09", "--cap", "62",
+                  "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+          "note": "RET-09 is a first copy worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). The rare is resold to Pilar at 64 or more (L3). One card per step on purpose: a run that fills RET-09 and then meets a cooloff on RET-10 exits 0, and the factory would mark a two-card step done with one card bought; as two steps each is judged on its own card (a no-deal run is retried up to 3 times, then fails loudly)."
+        },
+        {
+          "label": "r3-p1b-ret-10",
+          "after_event": {"action": "grant_all", "delay_min": 2},
+          "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-10", "--cap", "62",
+                  "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+          "note": "Same as r3-p1a for RET-10 (also worth 63.0, resold to Pilar at 64 or more)."
         },
         {
           "label": "r3-p2-sal10",

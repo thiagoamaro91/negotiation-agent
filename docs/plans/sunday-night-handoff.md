@@ -5,21 +5,21 @@
 ## Thiago's priorities, confirmed tonight
 
 1. **Market Test first.** 5 left, the first 2 count for Saturday; broker live at 09:00.
-2. **Money into deals.** About 20 P surplus per deal, 40 P in reserve, spread over teams, dealer slots filled.
-3. **Duels: keep it.** Duels II got 29 of 33 deals, none below our limit.
+2. **Money into deals.** About 20 P surplus per deal, 40 P in reserve, many teams, dealer slots filled.
+3. **Duels: keep it.** Duels II: 29 of 33 deals, none below our limit.
 
 ## What the night built, and why (with PR state)
 
-- **Duels III params** (WP1, «FILL: PR, state»): `--params` for the new wave (price and delivery day, 12 ticks, decay 0.10). «FILL wp1: gain, file».
+- **Duels III params** (WP1, «FILL: PR, state»): `--params` for the new wave (price and day, 12 ticks, decay 0.10). «FILL wp1: gain, file».
 - **Broker** (WP2, #63 and #65 merged): `--policy stall` all day; `maxpairs` lost everywhere.
-- **Matchmaker, outreach** (WP3, «FILL: PR, state»): finds the card another team is missing and says so on the feed. «FILL wp3».
-- **Ladder steps** (WP4, #69 under review, 387c176): Abuela buys RET uncommons (cap 22), Pícaros the two RET rares (cap 62), Pilar resells them (64+, 23+). No Ernesto level-5 play (decided).
-- **Page buy** (WP8, #70 under review, 361be93): the desk bids for SAL-10, the last card of our Salamanca page, from a team on El Rastro: 80 rising to 110 over 64 ticks, from 09:00. A team copy pays the page bonus, a dealer copy does not, so dealer SAL-10 steps stay off. #70 also fixed the desk's price tape and bid churn.
+- **Matchmaker, outreach** (WP3, «FILL: PR, state»): finds the card another team misses and says so on the feed. «FILL wp3».
+- **Ladder steps** (WP4, #69 under review, 4fa627b): Abuela buys RET uncommons, Pícaros the two RET rares, Pilar resells them. No Ernesto level-5 play (decided).
+- **Page buy** (WP8, #70 under review, 361be93): the desk bids for SAL-10, the last card of our Salamanca page, from a team on El Rastro: 80 rising to 110 over 64 ticks, from 09:00. A team copy pays the page bonus, a dealer copy does not, so dealer SAL-10 steps stay off. #70 also fixed the desk's tape and bid churn.
 - **Evals** (WP7, #62 merged); **factory** (WP5, #66): dealers on, pre-flight page. #66 merges after #69 and #70 (it runs `--dealer picaros` and `--page`).
 
 ## On the Mini
 
-**Pulling.** Your Sunday doc says no auto-pull; Hector says you enabled one tonight. Rely on neither: pre-flight check 1 compares `~/bazaar` with `origin/main` and pulls if behind. A pull restarts nothing. The factory starts feed, watchdog, broker, market desk, then the duel bot (10 game minutes before each wave) and the dealers (after the +150 P): your "broker first, then the duel bot". Start nothing by hand beside it. `~/bazaar-dashboard` is a separate copy, updated only by `tools/deploy_mini.sh` from a Mac «FILL: stale or not». `plan` says `MISSING` for the duel params until WP1 merges.
+**Pulling.** Your Sunday doc says no auto-pull; Hector says you enabled one. Rely on neither: pre-flight check 1 compares `~/bazaar` with `origin/main` and pulls if behind. A pull restarts nothing. The factory starts feed, watchdog, broker, market desk, then the duel bot (10 game minutes before each wave) and the dealers (after the +150 P): your "broker first, then the duel bot". Start nothing by hand. `~/bazaar-dashboard` is a separate copy, updated only by `tools/deploy_mini.sh` from a Mac «FILL: stale or not». `plan` says `MISSING` for the duel params until WP1 merges.
 
 ## What needs you (or Hector)
 
@@ -31,23 +31,23 @@
 3. **Matchmaker test thread, 09:05, your yes**: one real message to one team. «FILL wp3: command».
 4. **Push `logs/` to `main` about every 15 minutes** from the Mini session all day: the VM analyst reads them.
 5. **Chamberí cards we pull**: uncommons and rares go to Pilar (WP4's `r3-cha-*` steps) unless a team bids 18+ / 55+.
-6. **Swarm view public link, your yes**: `python3 tools/swarm.py serve --public --port 8778`, then `tailscale funnel --bg 8778` (never funnel 8777).
-7. **By hand, not a service:** `tools/announce.py` (its silence fix `fix/announce-gate-memory` is not on `main`; its missing-cards list is Saturday's).
+6. **Swarm view public link, your yes**: `python3 tools/swarm.py serve --public --port 8778`, then `tailscale funnel --bg 8778`.
+7. **By hand, not a service:** `tools/announce.py` (its silence fix is not on `main`; its missing-cards list is Saturday's).
 
-Known broker gaps (#63 review; pre-existing, documented, not fixed): a batch of slow matches can consume a tick; a book can be filed under the next tick.
+Known gaps (documented, not fixed). Broker, from #63's review: a batch of slow matches can consume a tick; a book can be filed under the next tick. Four dealer bots plus the desk share the key's 5 requests/s (each dealer now reads `/api/me` once per decision): if `rate_limited` shows in a dealer log, stagger the steps.
 
 ## Sunday timeline (Madrid, organisers' table)
 
-- **08:55** `up --yes`. **09:00** doors, 15 s ticks; 09:01 `status`; 09:05 clock-speed read, then item 3.
+- **08:55** `up --yes`. **09:00** doors; 09:01 `status`; 09:05 clock-speed read, then item 3.
 - **Market Tests, hands off:** 09:39 (hard), 09:49, 10:49, 11:49, 13:49. The first two count for Saturday.
 - **10:39** Round 3 Chamberí, ladder resets. **10:40** +150 P; the dealers start by themselves (Pilar's resales after 16 game minutes). Read their results by 10:55.
 - **11:29** duel bot starts by itself. **11:39** Duels III (2 rounds of 34, 12 ticks each): hands off until it ends.
 - **12:30** read-out of Duels III.
 - **13:30 decision:** if no team has sold us SAL-10, buy it from Los Pícaros by hand (about 56): `python3 agent/chato.py run --dealer picaros --only SAL-10 --cap 88`. Check the structured `give` first (at tick 1385 they named SAL-09 in a SAL-10 thread). It fills a Pícaros slot but pays no page bonus.
 - **14:03** finale warning: last moment to change anything. **14:09** Final, NPC stalls close: hands off.
-- **14:39** scores freeze. **14:50** Hector refreshes the pitch numbers. **15:00** close and pitch; `tmux kill-session -t factory`.
+- **14:39** scores freeze. **14:50** Hector refreshes the pitch numbers. **15:00** pitch; `tmux kill-session -t factory`.
 
-These times assume a game clock at two game hours per wall hour; `plan`'s wall column assumes one and may read twice too far (the bots gate on game hours, so they are right either way). The pre-flight measures it at 09:05.
+These times assume a game clock at two game hours per wall hour; `plan`'s wall column assumes one and may read twice too far (bots gate on game hours: right either way). The pre-flight measures it at 09:05.
 
 ## Stop rules
 

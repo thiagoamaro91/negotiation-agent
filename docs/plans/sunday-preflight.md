@@ -113,6 +113,7 @@ The watchdog window sends one message when its set of problems changes, and "all
 | `Market Test at H not on our book after N ticks` | check the broker window and that v20 is open; if it appears in the first two ticks of a test and clears, ignore it (the wall-time estimate is rough at double speed) |
 | `broker dropped N matches in Market Test bXX` | read the `why` of the last `dropped` line in `logs/broker/<date>.jsonl` and post it on the bus; a restart does not fix a policy bug |
 | `broker has no match in Market Test bXX after N ticks` | look at the broker window for `refused` or `send_error`; post it on the bus |
+| `rate_limited` in a dealer log (`logs/<dealer>/<date>.jsonl`) | four dealer bots and the desk share the key's 5 requests per second: stagger the steps (raise `after_event.delay_min` of the later ones in `tools/factory_sunday.json`; a keeper re-reads it before its next start) |
 | `clock unreachable` | `curl -s https://bazaar.causaprima.ai/api/clock`; the keepers wait on their own |
 
 Nothing changes during a duel wave or a Market Test: no restart, no edit, no hand-started bot. Restart one bot between them with `tmux kill-window -t factory:<name>` and `up --yes`. After 15:00: `tmux kill-session -t factory`.
