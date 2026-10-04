@@ -50,7 +50,7 @@ def sal10_tape():
 
 def run(boards=None, config=None, bidbook=None, tape=None, holdings=None, ledger=None, page_bonus=True, **kw):
     h = SAL9 if holdings is None else holdings
-    extra = {k: kw.pop(k) for k in ("duel_lock", "duel_live") if k in kw}
+    extra = {k: kw.pop(k) for k in ("duel_lock", "duel_live", "duels_unread", "page_yield") if k in kw}
     s = snap(boards or {}, h, **kw)
     s.update(extra)
     valuer = md.Valuer(CAT, AFFINITY, {r: len(a) for r, a in h.items()}, page_bonus=page_bonus)
@@ -80,10 +80,11 @@ class PageAsks(unittest.TestCase):
         r = run({"rastro": [listing(1, "SAL-10", 81)]})
         self.assertEqual(r["accept"]["offer"], 1)                       # with it, the page cap governs
 
-    def test_never_on_a_team_venue(self):
+    def test_team_venue_only_when_board_mechanism(self):
+        # the snap() helper's v02 has no mechanism: not a plain board, so skipped (board venues: page_gaps tests)
         r = run({"v02": [listing(1, "SAL-10", 60, venue="v02")]}, config=pcfg(team_venues=True))
         self.assertIsNone(r["accept"])
-        self.assertEqual(rec(r, 1)["reason"], "page card: bought on rastro only")
+        self.assertEqual(rec(r, 1)["reason"], "page card on v02: mechanism None, board only")
 
     def test_min_cash(self):
         self.assertEqual(run({"rastro": [listing(1, "SAL-10", 103)]}, cash=150)["accept"]["offer"], 1)   # 40 left
@@ -172,15 +173,17 @@ class PageGuards(unittest.TestCase):
         others = [b for b in r["bids"] if not b.get("page") and b["action"] in ("post", "keep", "replace")]
         self.assertLessEqual(sum(b["price"] for b in others), 150 - 40 - 72)
 
-    def test_duel_lock_holds_every_post_and_step(self):
+    def test_duels_no_longer_hold_page_posts_and_steps_only_an_unread_duel_list(self):
+        # a fill of our page bid is the seller's accept, not ours: duel.lock / a live duel no longer hold it
         r = run(tape=sal10_tape(), duel_lock=True)
-        self.assertEqual([b["action"] for b in page(r)], ["skip"])
-        self.assertIn("hold: results/duel.lock is fresh", page(r)[0]["record"]["reason"])
+        self.assertEqual([b["action"] for b in page(r)], ["post"])
         b = page(run(bidbook=live(72), tick=200, duel_lock=True))[0]
-        self.assertEqual((b["action"], b["price"]), ("keep", 72))         # due a step, but not while a duel runs
+        self.assertEqual(b["action"], "replace")                           # the due step goes during a duel
         b = page(run(bidbook=live(72), tick=200, duel_live="duel_live: duel 30 is live"))[0]
-        self.assertEqual((b["action"], b["price"]), ("keep", 72))
-        self.assertIn("duel 30", b["record"]["reason"])
+        self.assertEqual(b["action"], "replace")
+        b = page(run(bidbook=live(72), tick=200, duels_unread="duel_live: /api/duels unread (network)"))[0]
+        self.assertEqual((b["action"], b["price"]), ("keep", 72))         # an unread duel list holds it
+        self.assertIn("/api/duels unread", b["record"]["reason"])
         r = run(holdings={**SAL9, "SAL-10": [card(5, "SAL-10")]}, bidbook=live(72), duel_lock=True)
         self.assertEqual([b["action"] for b in page(r)], ["cancel"])      # cancels still go
 
@@ -280,11 +283,12 @@ class PageDeskRun(unittest.TestCase):
         logged = [r for r in d.log.rows if r["event"] == "decision" and r.get("page")]
         self.assertTrue(logged and all("value" in r and "ceiling" in r for r in logged))
 
-    def test_nothing_posted_while_the_duel_lock_is_fresh(self):
+    def test_page_bid_posted_while_the_duel_lock_is_fresh(self):
+        # a real Lease and a fresh lock file: claim_listings is not refused under the lock, the bid goes up
         (self.dir / "duel.lock").write_text(f"{self.now + 90:.1f}\n")
         d, k = self.desk()
         d.tick(d.public.clock())
-        self.assertEqual(k.writes, [])
+        self.assertEqual(k.writes, [("list", {"cash": 72}, {"cards": ["SAL-10"]}, "rastro", None, 30)])
 
 
 class Cli(unittest.TestCase):
@@ -403,19 +407,14 @@ class ReviewRun(unittest.TestCase):
         d.tick(d.public.clock())
         self.assertEqual(self.accepts(k), [])
 
-    def test_blocker3_lock_fresh_after_planning_posts_nothing(self):
+    def test_blocker3_lock_fresh_after_planning_still_posts(self):
+        # reversed on Sunday: the lock guards our accept only; a page bid post spends no accept of ours
         d, k = self.desk()
-        reads = {"n": 0}
-
-        def lock():           # free when the tick is planned, fresh by the time the post goes out
-            reads["n"] += 1
-            return reads["n"] > 1
-        d.duel_lock_fresh = lock
+        d.duel_lock_fresh = lambda: True
         d.tick(d.public.clock())
-        self.assertEqual([w for w in k.writes if w[0] == "list"], [])
-        self.assertTrue([r for r in d.log.rows if r["event"] == "page_hold"])
+        self.assertEqual(len([w for w in k.writes if w[0] == "list"]), 1)
 
-    def test_blocker3_server_duel_live_after_planning_posts_nothing(self):
+    def test_blocker3_server_duel_live_after_planning_still_posts(self):
         d, k = self.desk()
         calls = {"n": 0}
 
@@ -424,17 +423,19 @@ class ReviewRun(unittest.TestCase):
             return {"duels": [] if calls["n"] == 1 else [{"duel": 30, "status": "live", "deadline_tick": 110}]}
         k.duels = duels
         d.tick(d.public.clock())
-        self.assertEqual([w for w in k.writes if w[0] == "list"], [])
+        self.assertEqual(len([w for w in k.writes if w[0] == "list"]), 1)
 
-    def test_blocker3_a_replace_under_a_fresh_lock_neither_cancels_nor_posts(self):
+    def test_blocker3_a_replace_under_an_unread_duel_list_neither_cancels_nor_posts(self):
         d, k = self.desk(offers=[our_bid(55, "SAL-10", 80)])
         d.bidbook = {"SAL-10": {"offer": 55, "price": 80, "to": None, "since": 0, "anchor": 80}}   # a step is due
-        reads = {"n": 0}
+        calls = {"n": 0}
 
-        def lock():
-            reads["n"] += 1
-            return reads["n"] > 1
-        d.duel_lock_fresh = lock
+        def duels(done=False):   # read when planned, unreadable by the time the replacement goes out
+            calls["n"] += 1
+            if calls["n"] > 1:
+                raise md.BazaarError("network", "down", 0)
+            return {"duels": []}
+        k.duels = duels
         d.tick(d.public.clock())
         self.assertEqual(k.writes, [])
 
@@ -590,12 +591,12 @@ class Review2Run(unittest.TestCase):
         self.assertEqual(self.lists(k), [])
         self.assertTrue([r for r in d.log.rows if r["event"] == "posts_deferred"])
 
-    def test_b4_page_writes_wait_for_every_live_duel(self):
+    def test_b4_page_accepts_wait_for_every_live_duel(self):
         # tick 100, a live duel ending at 110, --duel-guard-ticks 1, no local lock
         d, k = self.desk([listing(1, "SAL-10", 90)], duel_guard_ticks=1)
         k.duel_list = [{"duel": 30, "status": "live", "deadline_tick": 110}]
         res = d.tick(d.public.clock())
-        self.assertEqual((self.lists(k), self.accepts(k)), ([], []))
+        self.assertEqual((len(self.lists(k)), self.accepts(k)), (1, []))   # the page bid goes up, the accept waits
         self.assertEqual(rec(res, 1)["action"], "defer")
         self.assertIn("duel 30", rec(res, 1)["reason"])
         d, k = self.desk([listing(1, "MAL-09", 30)], duel_guard_ticks=1)   # an ordinary accept: the window applies
@@ -603,7 +604,7 @@ class Review2Run(unittest.TestCase):
         d.tick(d.public.clock())
         self.assertEqual(self.accepts(k), [("accept", 1, None)])
 
-    def test_b4_the_post_time_recheck_ignores_the_window_too(self):
+    def test_b4_a_duel_at_the_post_time_recheck_no_longer_holds(self):
         d, k = self.desk(duel_guard_ticks=1)
         calls = {"n": 0}
 
@@ -612,16 +613,18 @@ class Review2Run(unittest.TestCase):
             return {"duels": [] if calls["n"] == 1 else [{"duel": 31, "status": "live", "deadline_tick": 110}]}
         k.duels = duels
         d.tick(d.public.clock())
-        self.assertEqual(self.lists(k), [])
+        self.assertEqual(len(self.lists(k)), 1)   # reversed on Sunday: a live duel no longer holds the page bid
 
-    def test_b3_lock_fresh_only_at_the_post(self):
+    def test_b3_unread_duel_list_only_at_the_post(self):
         d, k = self.desk()
-        reads = {"n": 0}
+        calls = {"n": 0}
 
-        def lock():           # 1: the snapshot, 2: before the cancels, 3: right before the post
-            reads["n"] += 1
-            return reads["n"] >= 3
-        d.duel_lock_fresh = lock
+        def duels(done=False):   # 1: the snapshot, 2: before the cancels, 3: right before the post
+            calls["n"] += 1
+            if calls["n"] >= 3:
+                raise md.BazaarError("network", "down", 0)
+            return {"duels": []}
+        k.duels = duels
         d.tick(d.public.clock())
         self.assertEqual(self.lists(k), [])
         self.assertTrue([r for r in d.log.rows if r["event"] == "page_hold" and r["when"] == "at the post"])
@@ -688,15 +691,17 @@ class Review2Decide(unittest.TestCase):
         self.assertIsNone(r["accept"])
         self.assertEqual(run({"rastro": [listing(1, "MAL-09", 30)]}, config=cfg, cash=200)["accept"]["card"], "MAL-09")
 
-    def test_b4_planning_holds_page_bids_for_any_live_duel(self):
+    def test_b4_planning_holds_page_bids_only_for_an_unread_duel_list(self):
         r = run(tape=sal10_tape(), duel_live=None)
         self.assertEqual(page(r)[0]["action"], "post")
+        valuer = md.Valuer(CAT, AFFINITY, {r: 1 for r in SAL9}, page_bonus=True)
         s = snap({}, SAL9)
         s.update(duel_live=None, duel_any="duel_live: duel 30 is live, deadline tick 110")
-        valuer = md.Valuer(CAT, AFFINITY, {r: 1 for r in SAL9}, page_bonus=True)
+        self.assertEqual(page(md.decide(s, valuer, sal10_tape(), md.Ledger(), pcfg(), {}, {}))[0]["action"], "post")
+        s.update(duels_unread="duel_live: /api/duels unread (network)")
         r = md.decide(s, valuer, sal10_tape(), md.Ledger(), pcfg(), {}, {})
         self.assertEqual(page(r)[0]["action"], "skip")
-        self.assertIn("duel 30", page(r)[0]["record"]["reason"])
+        self.assertIn("/api/duels unread", page(r)[0]["record"]["reason"])
 
     def test_m6_held_page_card_ask_records_carry_the_page_numbers(self):
         r = run({"rastro": [listing(1, "SAL-10", 90)]}, holdings={**SAL9, "SAL-10": [card(5, "SAL-10")]},
