@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 253,
+ "cash": 403,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -495,29 +495,37 @@
     "of": 10,
     "complete": false,
     "master": false
+   },
+   {
+    "set": "CHA",
+    "name": "Chamberí",
+    "have": 0,
+    "of": 10,
+    "complete": false,
+    "master": false
    }
   ],
   "filled": 34,
-  "slots": 50
+  "slots": 60
  },
- "tick": 1445,
- "tick_seconds": 15.0,
+ "tick": 1457,
+ "tick_seconds": 60.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 29.67,
-  "negotiating": 23.59,
-  "market": 6.08,
-  "neg_points": 168.3,
+  "score": 28.6,
+  "negotiating": 22.74,
+  "market": 5.87,
+  "neg_points": 0.0,
   "mm_points": 0.0,
-  "duel_points": 43.37,
-  "ladder_points": 0.409,
-  "bench_efficiency": 0.693,
-  "bench_points": 0.406,
-  "bench_venue": "v20",
+  "duel_points": 0.0,
+  "ladder_points": 0.0,
+  "bench_efficiency": null,
+  "bench_points": null,
+  "bench_venue": null,
   "level": 5,
   "album_filled": 34,
-  "album_slots": 50,
+  "album_slots": 60,
   "pages_complete": 2,
   "rarest": {
    "ref": "LAV-11",

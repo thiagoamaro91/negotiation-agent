@@ -113,7 +113,7 @@
      "flavour": "Two for one if you know the cook.",
      "book": 25,
      "print_run": 90,
-     "minted": 17,
+     "minted": 18,
      "hidden": false,
      "page": true
     },
@@ -124,7 +124,7 @@
      "flavour": "Curtain at eight, argument at eleven.",
      "book": 25,
      "print_run": 90,
-     "minted": 25,
+     "minted": 26,
      "hidden": false,
      "page": true
     },
@@ -331,7 +331,7 @@
      "flavour": "The first one is always small.",
      "book": 10,
      "print_run": 300,
-     "minted": 24,
+     "minted": 25,
      "hidden": false,
      "page": true
     },
@@ -386,7 +386,7 @@
      "flavour": "Carnation behind the ear, opinion on everything.",
      "book": 25,
      "print_run": 90,
-     "minted": 16,
+     "minted": 17,
      "hidden": false,
      "page": true
     },
@@ -517,7 +517,7 @@
      "flavour": "Seven euros and a view.",
      "book": 10,
      "print_run": 300,
-     "minted": 28,
+     "minted": 29,
      "hidden": false,
      "page": true
     },
@@ -583,7 +583,7 @@
      "flavour": "One man's collection, everyone's afternoon.",
      "book": 70,
      "print_run": 30,
-     "minted": 20,
+     "minted": 21,
      "hidden": false,
      "page": true
     },
@@ -659,7 +659,7 @@
      "flavour": "No cars, many skaters.",
      "book": 10,
      "print_run": 300,
-     "minted": 17,
+     "minted": 18,
      "hidden": false,
      "page": true
     },
@@ -758,7 +758,7 @@
    "name": "Chamberí",
    "theme": "Sunday expansion: ghost stations and hidden gardens",
    "color": "#C1666B",
-   "released": false,
+   "released": true,
    "release": "sun+0h",
    "cards": [
     {
@@ -768,7 +768,7 @@
      "flavour": "Mind the gap.",
      "book": 10,
      "print_run": 300,
-     "minted": 0,
+     "minted": 2,
      "hidden": false,
      "page": true
     },
@@ -779,7 +779,7 @@
      "flavour": "Every headline, one opinion.",
      "book": 10,
      "print_run": 300,
-     "minted": 0,
+     "minted": 2,
      "hidden": false,
      "page": true
     },
@@ -790,7 +790,7 @@
      "flavour": "Chocolate thick enough to stand a spoon.",
      "book": 10,
      "print_run": 300,
-     "minted": 0,
+     "minted": 1,
      "hidden": false,
      "page": true
     },
@@ -823,7 +823,7 @@
      "flavour": "Closed in 1966, opened again for you.",
      "book": 25,
      "print_run": 90,
-     "minted": 0,
+     "minted": 2,
      "hidden": false,
      "page": true
     },
@@ -834,7 +834,7 @@
      "flavour": "Last set at three.",
      "book": 25,
      "print_run": 90,
-     "minted": 0,
+     "minted": 4,
      "hidden": false,
      "page": true
     },
@@ -845,7 +845,7 @@
      "flavour": "Latin on the walls, football in the yard.",
      "book": 25,
      "print_run": 90,
-     "minted": 0,
+     "minted": 1,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 0,
+     "minted": 2,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 0,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -878,7 +878,7 @@
      "flavour": "The station time forgot.",
      "book": 180,
      "print_run": 9,
-     "minted": 0,
+     "minted": 1,
      "hidden": false,
      "page": false
     },
