@@ -1217,14 +1217,14 @@ def plan_page_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, ac
     and never goes above the cap, value - margin, the cost of a live El Rastro ask for the card (that one is taken
     instead), the cash above --min-cash or the spend caps. A live bid never steps down (no churn); when its next step
     does not fit it stays at its live price if that fits, else it is cancelled. During our duels it is still posted
-    and raised (a fill uses the seller's accept, not ours); only a live duel in which we BUY holds it (a live bid stays
+    and raised (a fill uses the seller's accept, not ours); only an unread /api/duels holds it (a live bid stays
     as it is; cancels still go). A page-yield file for the card cancels the bid and stops it. Page bids take the
     cash first; plan_bids never touches a page card."""
     tick, th, me = snap["tick"], float(snap.get("t_hours") or 0.0), snap["me_id"]
     # a page bid is posted and raised during our duels too: a holder filling it spends THEIR accept, not ours, so the
-    # duel bot keeps the team's one accept per tick (duel.lock / the lease are about accepts only). Held: a live duel
-    # in which we buy (a fill could take the cash that duel settles with), an unread feed or a torn snapshot.
-    hold = snap.get("duel_buyer") or snap.get("feed_down") or snap.get("spans_ticks")
+    # duel bot keeps the team's one accept per tick (duel.lock / the lease are about accepts only), and a duel moves
+    # no cash (kit/RULES.md "Duels": points on the pie share). Held: /api/duels unread, an unread feed, a torn snapshot.
+    hold = snap.get("duels_unread") or snap.get("feed_down") or snap.get("spans_ticks")
     home_fee = tuple(((snap.get("venues") or {}).get(HOME) or {}).get("fee") or DEFAULT_FEE)
     ours = {b.get("offer") for b in bidbook.values() if b.get("offer") is not None}
     ours |= {o.get("id") for o in snap.get("mine") or [] if isinstance(o, dict) and o.get("maker") == me}
@@ -1732,6 +1732,8 @@ class Desk:
         self.said: dict = {}              # last logged decision per offer/card (log on change only)
         self.ticks = 0
         self.yield_dir = YIELD_DIR
+        self.page_seen: set = set()   # team board venues whose last read showed a listing of a page card we lack
+        self._swept = None            # the tick of the last full sweep of the team boards (page mode)
         self.last = None
         self.last_snap = None
         self.start_tick = None            # trades from the tape count toward the caps from here on
@@ -1807,7 +1809,7 @@ class Desk:
         self.maker_trades(acct["id"], tick, float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR))
         vt = venue_table(self.public.venues(), tick)
         boards = {}
-        page_boards = set(self.page_boards(vt, acct["id"]))
+        page_boards = set(self.page_boards(vt, acct["id"], tick))
         for vid in vt:
             if vid != HOME and not self.cfg.team_venues and vid not in page_boards:
                 continue
@@ -1815,6 +1817,10 @@ class Desk:
                 boards[vid] = self.public.board(vid).get("offers", [])
             except BazaarError as e:
                 self._say_once(("board", vid, tick), f"tick {tick} board {vid} unread ({e.code})")
+        if page_boards:   # keep reading a team board while it still shows a listing of a page card
+            self.page_seen = {vid for vid in page_boards if any(
+                (chk := check_listing(o, acct["id"], tick))["ok"] and chk["ref"] in self.cfg.page_targets
+                for o in boards.get(vid) or [])}
         holdings = holdings_of([a for a in acct["assets"] if not (isinstance(a, dict) and a.get("id") in self.shadow_gone)])
         for ref, n in self.shadow_counts.items():   # watch: what our would-be buys brought in
             holdings.setdefault(ref, []).extend({"id": -i - 1, "ref": ref, "serial": 10 ** 6} for i in range(n))
@@ -1835,7 +1841,7 @@ class Desk:
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
                 "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": set(self.reserved),
                 "duel_live": self.duel_guard(tick), "duel_any": self.duel_guard(tick, any_live=True),
-                "duel_buyer": self.duel_guard(tick, buyer=True), "page_yield": self.page_yields(),
+                "duels_unread": self.duel_guard(tick, unread=True), "page_yield": self.page_yields(),
                 "feed_down": feed_down}
         # the reads above take time: if the tick moved while they ran, the account and the offers may disagree
         # (a bid of ours that settled between /api/me and /api/me/offers), so the snapshot is not used for writes
@@ -1847,7 +1853,7 @@ class Desk:
             snap["spans_ticks"] = f"snapshot_spans_ticks: reads began at tick {tick}, clock now {after}"
         return snap
 
-    def duel_guard(self, tick: int, fresh: bool = False, any_live: bool = False, buyer: bool = False) -> str | None:
+    def duel_guard(self, tick: int, fresh: bool = False, any_live: bool = False, unread: bool = False) -> str | None:
         """Server-side duel guard (keyed modes): results/duel.lock is a file on the machine that runs duel.py, which
         need not be the desk's, so the desk also reads GET /api/duels, once per tick (cached: take()'s re-read
         reuses it). While any of our duels is live (--duel-guard-ticks N: only while one is within N ticks of its
@@ -1859,19 +1865,19 @@ class Desk:
         if self._duels_tick != tick or fresh or self._duels_why is None:
             self._duels_why = self._read_duels(tick)
             self._duels_tick = tick
-        return self._duels_why[2 if buyer else 1 if any_live else 0]
+        return self._duels_why[2 if unread else 1 if any_live else 0]
 
     def _read_duels(self, tick: int) -> tuple:
         """(why for ordinary accepts, within --duel-guard-ticks; why for every live duel; why for page bid writes:
-        a live duel of ours in which we BUY, or one whose role is unknown) from one read."""
-        why, why_any, why_buyer = None, None, None
+        only an unread /api/duels) from one read."""
+        why, why_any, why_unread = None, None, None
         try:
             body = self.keyed.duels()
             duels = body.get("duels") if isinstance(body, dict) else None
             if not isinstance(duels, list):
                 raise BazaarError("bad_response", "no duels list", 0)
             n = self.cfg.duel_guard_ticks
-            live, every, buyers = [], [], []
+            live, every = [], []
             for d in duels:
                 if not isinstance(d, dict) or d.get("status") != "live":
                     continue
@@ -1879,8 +1885,6 @@ class Desk:
                 left = dl - tick if isinstance(dl, int) and not isinstance(dl, bool) else None
                 row = (left if left is not None else -1, d.get("duel"), dl)
                 every.append(row)
-                if d.get("role") != "seller":   # buyer, or no role read: our cash may be needed to settle it
-                    buyers.append(row)
                 if n is None or left is None or left <= n:   # no deadline: count it, to be safe
                     live.append(row)
 
@@ -1891,12 +1895,10 @@ class Desk:
                         f"holds the team's accept slot")
             why = say(live) if live else None
             why_any = say(every) if every else None
-            why_buyer = (say(buyers).replace("holds the team's accept slot", "may need our cash (we buy)")
-                         if buyers else None)
         except Exception as e:   # unread (network, 429, a client without the route): defer, never guess
             why = f"duel_live: /api/duels unread ({getattr(e, 'code', type(e).__name__)}); accepts deferred to be safe"
-            why_any = why_buyer = why
-        return why, why_any, why_buyer
+            why_any = why_unread = why
+        return why, why_any, why_unread
 
     def page_yields(self) -> set:
         """The --page cards a fallback step has taken over: logs/state/page-yield-<REF> exists."""
@@ -1928,7 +1930,7 @@ class Desk:
             if self.log is not None:
                 self.log.event("page_yield_ack", tick=snap["tick"], card=ref, held=body["held"])
 
-    def page_boards(self, vt: dict, me: str) -> list:
+    def page_boards(self, vt: dict, me: str, tick: int | None = None) -> list:
         """Page mode under --no-team-venues: the team boards to read for a page card we lack. Only plain `board`
         venues of other teams; those the feed shows a live listing of the card on, and all of them on the first
         tick and every PAGE_SWEEP_TICKS (a listing older than the feed window)."""
@@ -1940,10 +1942,11 @@ class Desk:
         if not lacking:
             return []
         ok = [vid for vid in vt if vid != HOME and page_venue_ok(vt, vid, me) is None]
-        if self.ticks % PAGE_SWEEP_TICKS == 0:
+        if self.ticks % PAGE_SWEEP_TICKS == 0 and (tick is None or self._swept != tick):
+            self._swept = tick   # once per tick: take()'s fresh snapshot reads only the venues found
             return ok
         hinted = {ven for oid, (ven, ref) in self.tape.listed_on.items() if ref in lacking and oid not in self.tape.cancelled}
-        return [vid for vid in ok if vid in hinted]
+        return [vid for vid in ok if vid in hinted | self.page_seen]
 
     def duel_lock_fresh(self) -> bool:
         """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
@@ -2332,12 +2335,12 @@ class Desk:
 
     def page_hold(self, tick: int, ref: str | None = None) -> str | None:
         """Why a page bid may not be posted or raised right now: a page-yield file for the card, or GET /api/duels
-        (read again, not the tick's cached answer) shows a live duel in which we buy, or cannot be read. A duel in
-        which we sell does not hold it, nor does results/duel.lock: a fill of our bid is the seller's accept, and
-        the lock and the lease guard only OUR accept (agent/lease.py _accept_check)."""
+        (read again, not the tick's cached answer) cannot be read. A live duel does not hold it, nor does
+        results/duel.lock: a fill of our bid is the seller's accept, the lock and the lease guard only OUR accept
+        (agent/lease.py _accept_check), and a duel moves no cash."""
         if ref is not None and ref in self.page_yields():
             return f"page-yield file for {ref}: the fallback step buys it"
-        return self.duel_guard(tick, fresh=True, buyer=True)
+        return self.duel_guard(tick, fresh=True, unread=True)
 
     # ------------------------------------------------ heartbeat
     def beat(self, snap: dict, res: dict) -> None:

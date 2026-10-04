@@ -119,8 +119,14 @@ class DuelPageRun(unittest.TestCase):
         self.assertEqual(len(lists), 1)
         self.assertGreater(lists[0][1]["cash"], 80)
 
-    def test_buyer_duel_holds_the_page_bid(self):
+    def test_buyer_duel_does_not_hold_the_page_bid(self):
         d, k = self.desk(duels=[{"duel": 31, "status": "live", "role": "buyer", "deadline_tick": 110}])
+        d.tick(d.public.clock())
+        self.assertEqual(len([w for w in k.writes if w[0] == "list"]), 1)
+
+    def test_unread_duel_list_holds_the_page_bid(self):
+        d, k = self.desk()
+        k.duel_list = md.BazaarError("network", "down", 0)
         d.tick(d.public.clock())
         self.assertEqual([w for w in k.writes if w[0] == "list"], [])
 
@@ -194,6 +200,32 @@ class TeamBoardFetch(unittest.TestCase):
         self.assertEqual(d.page_boards(vt, "t03"), ["v11"])
         d.tape.ingest([{"id": 2, "tick": 6, "type": "offer.cancelled", "payload": {"offer": 77}}])
         self.assertEqual(d.page_boards(vt, "t03"), [])
+
+    def test_a_swept_listing_stays_read_and_the_sweep_runs_once_per_tick(self):
+        # T10's Saturday case: a listing older than the feed window, found by the first sweep, read every tick after
+        class Pub(base.FakePublic):
+            def venues(self):
+                return {"venues": [{"venue": "rastro", "fee_bps": 500, "fee_per_card": 1, "house": True,
+                                    "status": "open"},
+                                   {"venue": "v10", "owner": "t10", "fee_bps": 0, "status": "open",
+                                    "rules": {"mechanism": "board"}},
+                                   {"venue": "v11", "owner": "t11", "fee_bps": 0, "status": "open",
+                                    "rules": {"mechanism": "board"}}]}
+
+            def board(self, vid):
+                self.reads.append(vid)
+                return {"offers": [listing(1, "SAL-10", 100, venue="v10", maker="t10")] if vid == "v10" else []}
+        pub = Pub([])
+        pub.reads = []
+        d = md.Desk("plan", pcfg(team_venues=False), pub, keyed=None, out=lambda *_: None, heartbeat=None)
+        d.yield_dir = Path("/nonexistent")
+        vt = md.venue_table(pub.venues(), 100)
+        d.snapshot(pub.clock())
+        self.assertEqual(sorted(pub.reads), ["rastro", "v10", "v11"])          # the sweep
+        self.assertEqual(d.page_seen, {"v10"})
+        self.assertEqual(d.page_boards(vt, "t03", 100), ["v10"])               # same tick: no second sweep
+        d.ticks = 1
+        self.assertEqual(d.page_boards(vt, "t03", 101), ["v10"])               # no feed hint: still read
 
 
 if __name__ == "__main__":
