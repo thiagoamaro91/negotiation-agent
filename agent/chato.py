@@ -30,7 +30,10 @@ re-checks the lock before every accept: while it is fresh the accept waits a tic
 the dealer's only slot may still be held); 5 when the duel lock stayed fresh for --max-defer-ticks (default 60) and the
 thread was closed without a deal; 6 when an accept went out but its settlement could not be confirmed (the plan
 stops: the trade may have happened); 7 when the game clock could not be confirmed for 5 waits in a row (the thread
-was closed). The status line is printed before the final account read, which is best effort.
+was closed); 8 when a dealer is cooling off (the open was refused with cooloff and its until_tick) and the wait
+for it was impossible or too long (--max-wait-ticks, default 120, pause-safe; --until HH:MM): inside the bound the run waits
+until the tick has passed, logs cooloff_wait with the ticks, and retries the open once, so a second card of a step is not
+lost to a cooloff after the first deal. The status line is printed before the final account read, which is best effort.
 `--resume` skips the cash check for a new conversation: the thread is read and resolved inside its limit (a resumed
 buy whose earlier bid is above what may be spent now, or with nothing spendable, is closed).
 The client never lets the SDK resend a write, counts a round only for a confirmed new tick, and waits through a paused
@@ -46,11 +49,29 @@ floor. Logs go to logs/pilar/<date>.jsonl.
     python3 agent/chato.py plan --dealer pilar --only sell:42,sell:44 --allow-single
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --max-deals 2
 --allow-single lets an explicitly listed `sell:<asset_id>` go even when it is our last copy (or the copy we keep);
-nothing is ever auto-selected that way: without an explicit id the agent sells spares only.
+nothing is ever auto-selected that way: without an explicit id the agent sells spares only. `sell:<REF>` (sell:RET-09)
+names the copy we hold of that card (the highest serial) when its asset id is not known yet, e.g. a card bought a
+minute ago; a ref we hold no copy of is skipped with a reason.
+--dealer picaros (L4, tricksters): buys RARES from him (`--only SAL-10,RET-09 --cap 62 --anchor 40 --step 2`); nothing is
+ever sold to him (his bids are below every value of ours), named ids included. Feed: he opens at 73, then 64, 59, 54 and
+a final at 52-63; steps of 1-2 P ended at 52-57.
 --sell-anchor N (absolute first ask), --sell-step N and --max-rounds N override the dealer's defaults; the floor
 still holds.
 --floor P replaces the default sell floor (private value + 2) with P for this run; a copy whose private value is above
 P (hard minimum ceil(private value)) is refused: plan shows it, run stops before opening any thread.
+Ladder value gate (agent/dealer_client.py): a deal on the wrong side of our private value earns no ladder credit, and the
+API value can sit above that gate (a page-completing card carries the page bonus). So a buy's limit is clipped to
+floor(book x our set multiplier), the multiplier read from /api/me, and `plan` prints it next to the API value as
+ladder=N; a --cap above it is refused (plan prints REFUSED, run stops before any thread opens, exit 2). Sells are
+graded against the copy we give up (100 % / 25 % / 10 %): the default floor is never below ceil(book x multiplier x
+marginal), and --floor below it is refused like one below the API value.
+`open` logs the API value and the gate next to the limit.
+The gate is re-priced while a thread runs: other bots trade the same cards, so before every priced message and every
+accept the bot re-reads /api/me and takes live_limit() (a buy that became our second copy is worth 25 %; a spare whose kept
+copy left is a first copy). A limit that no longer allows the deal closes the thread (limit_dropped when our own standing
+number is on the wrong side, limit_unknown when the holdings, the copy or the set multiplier cannot be read), and an offer
+must be exactly the deal: no extra asset or type of ours, no second card, no cash coming back. A card whose set has no
+multiplier is refused (REFUSED, exit 2), never priced on a guess.
     python3 agent/chato.py run --dealer pilar --only sell:42,sell:44 --allow-single --floor 18 --max-deals 2
 """
 from __future__ import annotations
@@ -59,6 +80,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -69,9 +91,12 @@ from bazaar_sdk import BazaarError  # noqa: E402
 # the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
 from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOCK_LOST,  # noqa: E402,F401
-                           EXIT_CLOSE_FAILED, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS, MAX_FAILED_WAITS,
-                           Rounds, clock_lost_line, close_failed_line, command, flag_value, guarded_accept,
-                           lock_timeout_line, reserve_line, settle_trade, try_close, unsettled_line)
+                           EXIT_CLOSE_FAILED, EXIT_COOLOFF, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS,
+                           MAX_FAILED_WAITS, MAX_WAIT_TICKS,
+                           Rounds, buy_ceiling, clock_lost_line, close_failed_line, command, exact_offer, flag_value,
+                           guarded_accept, limit_dropped, live_limit, lock_timeout_line, refuse_caps, refuse_unpriced,
+                           reserve_line, sell_ladder_floor, settle_trade, try_close, unsettled_line, until_epoch, until_tick_of,
+                           wait_out_cooloff)
 from runlog import RunLog, save_thread  # noqa: E402
 
 RUN = RunLog("chato")       # logs/chato/<date>.jsonl, committed; keys are redacted (main() swaps it per --dealer)
@@ -91,7 +116,7 @@ DUEL_LOCK = ROOT / "results" / "duel.lock"   # written by agent/duel.py run whil
 
 # Per-dealer table. Chato's row is exactly the constants above, so no --dealer flag means no change.
 DEALERS = {
-    "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True,
+    "chato": {"name": "El Chato", "buys": ("uncommon", "rare"), "sells_cards": True, "sells": ("uncommon", "rare"),
               "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 2, "example_bid": 13,
               "max_rounds": 12},
     # L3 collector: buys uncommon/rare/epic (loves SAL, RET), sells gold packs only. Opened 16, held 16 (feed).
@@ -101,22 +126,32 @@ DEALERS = {
     "pilar": {"name": "Doña Pilar", "buys": ("uncommon", "rare", "epic"), "sells_cards": False,
               "sell_anchor_mult": 1.25, "sell_anchor_over_floor": 9, "sell_step": 1, "example_bid": 16,
               "max_rounds": 40},
+    # L4 tricksters: they SELL rares (opening 73, then 64, 59, 54 and a final at 52-63 as we move; 52-57 when our
+    # steps are 1-2 P) and epics (128-167), and buy only commons (4-5) and uncommons (10-12), always below our values.
+    # So `buys` is empty: nothing is ever sold to them (not even a named sell:<id>), and only rares are bought. Offers
+    # that switch the card (the topic LAV-09, the offer LAV-07 at 64) are refused by offer_matches() as for any dealer.
+    "picaros": {"name": "Los Pícaros", "buys": (), "sells_cards": True, "sells": ("rare",),
+                "sell_anchor_mult": 1.6, "sell_anchor_over_floor": 0, "sell_step": 1, "example_bid": 5,
+                "max_rounds": 40},
 }
 DEFAULT_DEALER = "chato"
 DEALER_NAME = DEALERS[DEFAULT_DEALER]["name"]
 SELL_RARITIES = DEALERS[DEFAULT_DEALER]["buys"]       # what the dealer buys from us
 DEALER_SELLS_CARDS = DEALERS[DEFAULT_DEALER]["sells_cards"]
+SELL_CARD_RARITIES = DEALERS[DEFAULT_DEALER]["sells"]   # the rarities of card the dealer sells us (buy targets)
 
 
 def apply_dealer(dealer: str, sell_anchor: int | None = None, sell_step: int | None = None,
                  max_rounds: int | None = None) -> None:
     """Point every dealer-specific global at one row of DEALERS (plus the --sell-anchor/--sell-step/--max-rounds
     overrides: an explicit flag always wins over the dealer's default)."""
-    global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR
+    global DEALER, DEALER_NAME, SELL_RARITIES, DEALER_SELLS_CARDS, SELL_CARD_RARITIES, SELL_ANCHOR_MULT
+    global SELL_ANCHOR_OVER_FLOOR
     global SELL_ANCHOR_ABS, SELL_STEP, MAX_ROUNDS
     d = DEALERS[dealer]
     DEALER, DEALER_NAME = dealer, d["name"]
     SELL_RARITIES, DEALER_SELLS_CARDS = d["buys"], d["sells_cards"]
+    SELL_CARD_RARITIES = d.get("sells", ("uncommon", "rare"))
     SELL_ANCHOR_MULT, SELL_ANCHOR_OVER_FLOOR = d["sell_anchor_mult"], d["sell_anchor_over_floor"]
     SELL_ANCHOR_ABS = sell_anchor
     SELL_STEP = d["sell_step"] if sell_step is None else int(sell_step)
@@ -190,13 +225,10 @@ def offer_price(o: dict) -> int:
 
 
 def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
-    """Read the structure, not the words: the offer must move the item we negotiated."""
-    give, want = o.get("give") or {}, o.get("want") or {}
-    if side == "buy":
-        refs = [a.get("ref") for a in give.get("assets") or []] + [t.split(":", 1)[-1] for t in give.get("types") or []]
-        return item in refs and bool(want.get("cash"))
-    ids = [a.get("id") if isinstance(a, dict) else a for a in want.get("assets") or []]
-    return asset_id in ids and bool(give.get("cash"))
+    """Read the structure, not the words: the offer must be exactly the deal we negotiated (agent/dealer_client.py
+    exact_offer): the one card for cash only, or our one copy for cash only. An extra card of ours riding on an offer for
+    the right card is refused."""
+    return exact_offer(o, side, item, asset_id)
 
 
 def sell_anchor(her: int, floor: int) -> int:
@@ -218,6 +250,15 @@ def sell_ladder(her: int, floor: int) -> list:
 
 # ---------------------------------------------------------------- one negotiation
 
+def gate_numbers(target: dict) -> dict:
+    """The two numbers a thread is judged by, logged at open: the limit the bot will trade at, and the ladder gate
+    (buy: floor(book x multiplier); sell: ceil(book x multiplier x copy marginal)) next to our API value."""
+    out = {"private": target.get("private")}
+    out["ladder_value" if target["side"] == "buy" else "ladder_floor"] = target.get(
+        "ladder_value" if target["side"] == "buy" else "ladder_floor")
+    return out
+
+
 def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = None) -> dict:
     side, item, value = target["side"], target["item"], target["value"]
     asset_id = target.get("asset_id")
@@ -234,13 +275,21 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
         tid = resume
     resumed = bool(resume)  # a resumed buy never goes on above what it may spend now (see below)
     if not resume:
-        try:
-            th = b.open_thread(DEALER, topic=topic)
+        try:   # priced from the holdings of this moment, before a thread takes the dealer's only slot
+            live0, why0 = live_limit(b.me(), target)
         except BazaarError as e:
             log("open_refused", item=item, side=side, code=e.code, msg=e.message)
             return {"result": "refused", "code": e.code}
+        if live0 is None:
+            log("open_refused", item=item, side=side, code=why0, msg="no limit can be computed from /api/me")
+            return {"result": "refused", "code": why0}
+        try:
+            th = b.open_thread(DEALER, topic=topic)
+        except BazaarError as e:
+            log("open_refused", item=item, side=side, code=e.code, msg=e.message, until_tick=until_tick_of(e))
+            return {"result": "refused", "code": e.code, "until_tick": until_tick_of(e)}
         tid = th["id"]
-        log("open", thread=tid, side=side, item=item, value=value)
+        log("open", thread=tid, side=side, item=item, value=value, **gate_numbers(target))
 
     rounds = Rounds(b, MAX_ROUNDS, MAX_DEFER_TICKS)  # a round is a confirmed tick; deferrals and pauses are free
     stall = 0  # reads since his price last improved or we last moved (the --max-bid pin listens meanwhile)
@@ -282,7 +331,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
                 if msgs[-1].get("sender") != DEALER:  # our number is the latest word: wait for his answer
                     o = her_open_offer(t)
                     answered = o["id"] if o else None
-            log("resume", thread=tid, side=side, item=item, value=value, ours=ours, answered=answered)
+            log("resume", thread=tid, side=side, item=item, value=value, ours=ours, answered=answered,
+                **gate_numbers(target))
             resume = None
         status = t.get("status")
         if status != "open":
@@ -308,7 +358,8 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             log("her", thread=tid, price=her, final=final, round=rounds.used)
         last_her = her
         try:
-            cash = b.me()["cash"] if side == "buy" else None
+            me_now = b.me()   # holdings and cash as of this decision: other bots trade the same cards while we talk
+            cash = me_now["cash"] if side == "buy" else None
         except BazaarError as e:
             log("read_refused", thread=tid, code=e.code, msg=e.message, round=rounds.used)
             if spent:
@@ -318,7 +369,18 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
                 continue
             rounds.wait()
             continue
-        reservation = (min(value, cash - CASH_RESERVE) if side == "buy" else value)
+        value_now, why_live = live_limit(me_now, target)   # the gate re-priced from the holdings just read
+        if value_now is None:   # no holdings in the read, the copy is gone, or no multiplier: decide nothing, close
+            r = close("limit_unknown", "walked_by_us", reason=why_live, ours=ours, her=her)
+            if r:
+                return r
+            continue
+        if limit_dropped(side, ours, value_now):   # our standing number is now on the wrong side: it could be accepted
+            r = close("limit_dropped", "walked_by_us", ours=ours, limit=value_now, planned=value, her=her)
+            if r:
+                return r
+            continue
+        reservation = (min(value_now, cash - CASH_RESERVE) if side == "buy" else value_now)
         reservation = int(reservation) if side == "buy" else int(-(-reservation // 1))  # sells: floor rounded UP
 
         def good(p: int) -> bool:
@@ -427,14 +489,27 @@ def settle(b: Bazaar, tid: int, price: int) -> dict:
 
 # ---------------------------------------------------------------- what to trade
 
-def listed_sell_ids(only: list[str] | None) -> list[int]:
-    """The asset ids named as sell:<asset_id> in --only, in order."""
+def listed_sell_ids(only: list[str] | None, assets: list[dict] | None = None) -> list[int]:
+    """The asset ids named as sell:<asset_id> in --only, in order. With `assets` (our cards), a sell:<REF> entry
+    (sell:RET-09: a card bought a minute ago, whose asset id nobody knows yet) names the copy we would give up of
+    that card: the highest serial, as the default spare rule does (it is the only copy when we hold one)."""
     out = []
     for x in only or []:
         k, _, v = x.partition(":")
-        if k == "sell" and v.isdigit():
+        if k != "sell":
+            continue
+        if v.isdigit():
             out.append(int(v))
+        elif v and assets is not None:
+            copies = [a for a in assets if a.get("kind") == "card" and a.get("ref") == v]
+            if copies:
+                out.append(max(copies, key=lambda a: a["serial"])["id"])
     return out
+
+
+def listed_sell_entries(only: list[str] | None) -> list[str]:
+    """Every sell:<something> entry of --only: an asset id or a card ref."""
+    return [x for x in only or [] if x.partition(":")[0] == "sell" and x.partition(":")[2]]
 
 
 def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, allow_single: bool = False) -> list[dict]:
@@ -455,50 +530,69 @@ def build_plan(b: Bazaar, me: dict, only: list[str] | None, cap: float | None, a
             if s["id"] not in released:
                 continue
             for c in s["cards"]:
-                if c["rarity"] not in ("uncommon", "rare") or c["id"] in held:
+                if c["rarity"] not in SELL_CARD_RARITIES or c["id"] in held:
                     continue
                 if only and c["id"] not in only:
                     continue
+                top = buy_ceiling(me, c["id"], c["book"])   # floor(book x our set multiplier): the ladder gate
+                if top is None:   # no multiplier for this set in /api/me: flagged, refused by main(), never priced
+                    buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"], "value": 0,
+                                 "private": 0, "ladder_value": None})
+                    continue
                 v = b.value(c["id"])["your_value"]
+                limit = min(v, top)   # the API value can sit above the gate (page bonus); --cap only lowers further
                 buys.append({"side": "buy", "item": c["id"], "name": c["name"], "book": c["book"],
-                             "value": min(v, cap) if cap else v, "private": v})
+                             "value": min(limit, cap) if cap else limit, "private": v, "ladder_value": top})
         buys.sort(key=lambda x: -x["private"])
     sells = []
     for ref, copies in held.items():
         if len(copies) > 1 and copies[0]["rarity"] in SELL_RARITIES:
             spare = max(copies, key=lambda a: a["serial"])  # keep the lowest serial
+            gate = sell_ladder_floor(me, spare, len(copies))   # the copy we give up: 2nd 25 %, 3rd 10 % of a first
             sells.append({"side": "sell", "item": ref, "name": spare["name"], "asset_id": spare["id"],
-                          "value": spare["your_value"] + 2, "private": spare["your_value"]})
+                          "value": max(spare["your_value"] + 2, gate or 0), "private": spare["your_value"],
+                          "ladder_floor": gate})
     if allow_single:  # only explicitly named ids; the floor is still that copy's private value + 2
         by_id = {a["id"]: a for copies in held.values() for a in copies}
         planned = {s["asset_id"] for s in sells}
-        for aid in listed_sell_ids(only):
+        for aid in listed_sell_ids(only, me["assets"]):
             a = by_id.get(aid)
             if a is None or aid in planned or a["rarity"] not in SELL_RARITIES:
                 continue
+            gate = sell_ladder_floor(me, a, len(held[a["ref"]]))
             sells.append({"side": "sell", "item": a["ref"], "name": a["name"], "asset_id": aid,
-                          "value": a["your_value"] + 2, "private": a["your_value"], "single": True,
-                          "last": len(held[a["ref"]]) == 1})
+                          "value": max(a["your_value"] + 2, gate or 0), "private": a["your_value"], "single": True,
+                          "last": len(held[a["ref"]]) == 1, "ladder_floor": gate})
             planned.add(aid)
     plan = sells + buys  # sells first: they bring cash in
     if only:
         keys = set(only)
-        plan = [p for p in plan if (p["side"] == "buy" and p["item"] in keys) or f"sell:{p.get('asset_id')}" in keys]
+        plan = [p for p in plan if (p["side"] == "buy" and p["item"] in keys) or f"sell:{p.get('asset_id')}" in keys
+                or (p["side"] == "sell" and f"sell:{p['item']}" in keys)]
     return plan
 
 
 def apply_floor(plan: list[dict], floor: int | None) -> tuple[list[dict], list[dict]]:
     """--floor P replaces the default sell floor (private value + 2) with P for this run. P below our private value of
-    a copy (hard minimum ceil(private)) is refused for that copy: it comes back in the second list and is never sold."""
+    a copy (hard minimum ceil(private)), or below its ladder floor (ceil(book x multiplier x copy marginal): a sale
+    under it earns no ladder credit), is refused for that copy: it comes back in the second list and is never sold."""
     if floor is None:
         return plan, []
     kept, refused = [], []
     for p in plan:
+        gate = p.get("ladder_floor")
         if p["side"] != "sell":
             kept.append(p)
+        elif gate is None:   # no multiplier for the card's set: the ladder floor is unknown, so no floor is good enough
+            refused.append(dict(p, why=f"--floor {floor}: /api/me has no multiplier for the {p['item'].split('-')[0]} "
+                                       f"set, so the ladder floor cannot be computed"))
         elif int(floor) < math.ceil(p["private"]):
             refused.append(dict(p, why=f"--floor {floor} is below our private value {p['private']} "
                                        f"(minimum {math.ceil(p['private'])})"))
+        elif int(floor) < gate:
+            refused.append(dict(p, why=f"--floor {floor} is below the ladder floor {gate} "
+                                       f"(book x our multiplier x copy marginal, rounded up): a sale under it "
+                                       f"earns no ladder credit"))
         else:
             kept.append(dict(p, value=int(floor), floor_override=True))
     return kept, refused
@@ -542,6 +636,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                          f"(exit {EXIT_LOCK_TIMEOUT}; default {MAX_DEFER_TICKS})")
     ap.add_argument("--floor", type=int, default=None,
                     help="sell floor in P for this run, replacing private value + 2; refused below ceil(private value)")
+    ap.add_argument("--max-wait-ticks", type=int, default=MAX_WAIT_TICKS,
+                    help="a dealer that refuses to open a thread because it is cooling off (cooloff, until_tick) is waited "
+                         "out, pause-safe, up to this many confirmed ticks, then the open is retried once; longer, or "
+                         f"unknown, ends the run with exit {EXIT_COOLOFF} (default {MAX_WAIT_TICKS})")
+    ap.add_argument("--until", default="",
+                    help="HH:MM local wall time: a cooloff wait does not go past it (default: no limit)")
     args = ap.parse_args(argv)
     if args.step < 1 or (args.anchor is not None and args.anchor < 1):
         ap.error("--step and --anchor must be >= 1")
@@ -553,9 +653,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ap.error("--max-rounds must be >= 1")
     if args.max_defer_ticks < 1:
         ap.error("--max-defer-ticks must be >= 1")
+    if args.max_wait_ticks < 1:
+        ap.error("--max-wait-ticks must be >= 1")
+    if args.until and not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", args.until):
+        ap.error("--until must be HH:MM")
     only = [x.strip() for x in args.only.split(",") if x.strip()]
-    if args.allow_single and not listed_sell_ids(only):
-        ap.error("--allow-single needs explicit --only sell:<asset_id> entries (nothing is auto-selected)")
+    if args.allow_single and not listed_sell_entries(only):
+        ap.error("--allow-single needs explicit --only sell:<asset_id> or sell:<REF> entries (nothing is auto-selected)")
     if not DEALERS[args.dealer]["sells_cards"]:
         buys = [x for x in only if not x.startswith("sell:")]
         if buys:
@@ -569,7 +673,12 @@ def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single:
     by_id = {a["id"]: a for a in me["assets"]}
     planned = {p.get("asset_id") for p in plan}
     out = []
-    for aid in listed_sell_ids(only):
+    for entry in listed_sell_entries(only):
+        ids = listed_sell_ids([entry], me["assets"])
+        if not ids:   # a sell:<REF> for a card we do not hold (yet)
+            out.append(f"  skip {entry}: we hold no copy of {entry.partition(':')[2]}")
+            continue
+        aid = ids[0]
         if aid in planned:
             continue
         a = by_id.get(aid)
@@ -583,7 +692,8 @@ def sell_skips(me: dict, only: list[str] | None, plan: list[dict], allow_single:
             why = "not a spare (our last copy, or the copy we keep): add --allow-single to sell it"
         else:
             why = "not planned"
-        out.append(f"  skip sell:{aid} {(a or {}).get('ref', '')}: {why}")
+        named = "" if entry.partition(":")[2].isdigit() else f" (asset {aid})"   # a sell:<REF> shows the copy it picked
+        out.append(f"  skip {entry}{named} {(a or {}).get('ref', '')}: {why}")
     return out
 
 
@@ -631,11 +741,17 @@ def main() -> None:
     me = b.me()
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     plan = build_plan(b, me, only, args.cap, allow_single=args.allow_single)
+    plan, unpriced = refuse_unpriced(plan)   # a target whose own set has no multiplier: never traded on a guess
     plan, floor_refused = apply_floor(plan, args.floor)
+    plan, cap_refused = refuse_caps(plan, args.cap)
     CASH_RESERVE = args.reserve
     print(f"{me['name']} cash={me['cash']} level={me['level']} deals={me['score'].get('deals')}")
+    if not me.get("affinity"):   # without our multipliers no buy has a ladder ceiling: build_plan planned none
+        print("WARNING: /api/me carries no set multipliers (affinity): every target is refused, the ladder gate is unknown.")
     for p in plan:
-        print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f}  {p.get('name', '')}"
+        gate = p.get("ladder_value") if p["side"] == "buy" else p.get("ladder_floor")
+        print(f"  {p['side']:4} {p['item']:7} limit={p['value']:6.1f} private={p['private']:6.1f} "
+              f"{'ladder' if p['side'] == 'buy' else 'ladder_floor'}={gate}  {p.get('name', '')}"
               + (f"  asset={p.get('asset_id')}{(' LAST COPY' if p.get('last') else ' KEPT COPY') if p.get('single') else ''}"
                  if extra and p['side'] == 'sell' else ""))
     print(f"reserve={CASH_RESERVE} (spendable {me['cash'] - CASH_RESERVE} P) anchor={ANCHOR_ABS or f'{ANCHOR_FRAC} x her ask'} "
@@ -669,19 +785,32 @@ def main() -> None:
                 then = f"she crosses: deal at {eg}" if asks[-1] <= eg else f"then her final; take it if >= {floor}"
                 print(f"  asks {p['item']} (asset {p['asset_id']}) if she bids {eg}: "
                       f"{' '.join(str(x) for x in asks)} ({then})")
-        for s in sell_skips(me, only, plan + floor_refused, args.allow_single):
+        for s in sell_skips(me, only, plan + floor_refused + unpriced, args.allow_single):
             print(s)
         for p in floor_refused:
             print(f"  REFUSED sell:{p['asset_id']} {p['item']}: {p['why']}")
+    for p in cap_refused:   # printed by plan too, so the operator sees it before run
+        print(f"  REFUSED buy:{p['item']}: {p['why']}")
+    for p in unpriced:
+        print(f"  REFUSED {p['side']}:{p['item']}: {p['why']}")
     if args.cmd == "plan":
         return
+    if unpriced:   # no multiplier for the set of a named (or planned) card: no ladder gate, so no trade
+        print(f"Not starting: {len(unpriced)} target(s) have no multiplier in /api/me, so no ladder gate can be computed.",
+              flush=True)
+        sys.exit(2)
     if floor_refused:  # never sell a copy below our private value: stop before any thread opens
         print(f"Not starting: {len(floor_refused)} sell(s) refused by --floor; raise it or drop those ids.", flush=True)
+        sys.exit(2)
+    if cap_refused:  # a cap above the ladder ceiling would let a deal close over value for no credit: stop here
+        print(f"Not starting: {len(cap_refused)} buy(s) refused by --cap; lower it to the ladder ceiling or drop those "
+              f"cards.", flush=True)
         sys.exit(2)
     if args.dealer != DEFAULT_DEALER:
         RUN = RunLog(args.dealer)  # logs/<dealer>/<date>.jsonl
     RUN.start(cash=me["cash"], level=me["level"], deals=me["score"].get("deals"), reserve=CASH_RESERVE, cap=args.cap,
-              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value")} for p in plan[:args.max_deals + 3]],
+              plan=[{k: p.get(k) for k in ("side", "item", "asset_id", "value", "private", "ladder_value", "ladder_floor")}
+                    for p in plan[:args.max_deals + 3]],
               **({"dealer": DEALER, "allow_single": args.allow_single, "sell_anchor": SELL_ANCHOR_ABS,
                   "sell_step": SELL_STEP, "floor": args.floor} if extra else {}))
     done = 0
@@ -703,6 +832,14 @@ def main() -> None:
                 buys_short.append(target["item"])
                 continue   # e.g. before the grant: never open at a bid below --anchor and burn a dealer slot
         r = negotiate(b, target, False, resume=args.resume if resuming else None)
+        if r.get("code") == "cooloff" and not resuming:   # the dealer is cooling off: wait for its until_tick, retry once
+            r, cooloff_stop = wait_out_cooloff(
+                b, r, lambda: negotiate(b, target, False), log, args.max_wait_ticks, until_epoch(args.until or None),
+                item=target["item"])
+            if cooloff_stop:
+                stop = cooloff_stop
+                log("stop", code="cooloff_timeout", item=target["item"], until_tick=r.get("until_tick"))
+                break
         if r.get("thread"):
             try:
                 save_thread(b, r["thread"])  # full transcript, her words included
