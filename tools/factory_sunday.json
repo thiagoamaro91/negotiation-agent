@@ -209,14 +209,15 @@
     {
       "name": "market_desk",
       "kind": "service",
-      "enabled": false,
       "required": false,
       "gates": {"doors_open": true, "clock_running": true},
-      "cmd": ["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--until", "{until}"],
+      "cmd": ["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--no-bids", "--page", "SAL-10:110:80",
+              "--page-step", "4", "--page-step-ticks", "8", "--min-cash", "40", "--cap-hour", "150", "--cap-day", "250",
+              "--until", "{until}"],
       "match": ["agent/market_desk.py", "run"],
       "log": "logs/market/{date}.jsonl",
       "stale_ticks": null,
-      "note": "Off: El Rastro only if enabled (--no-team-venues). Its bid step and expiry run twice as fast at 15 s (market audit section 7)."
+      "note": "Page mode: SAL-10 from a team, El Rastro only, bid 80 -> 110 over 64 ticks (docs/plans/pages-sunday.md). Starts at 09:00, not after the allowance: cash 253 covers the 110 cap, the dealers get +150 at 10:40. No other bids (--no-bids). Every Chato and Picaros SAL-10 step stays off: a second copy is worth 22.75."
     },
     {
       "name": "watchdog",

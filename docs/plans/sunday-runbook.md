@@ -2,7 +2,7 @@
 
 Sunday 4 October, doors 09:00 to 15:00 Madrid, 15 s ticks. Everything runs **on the Mac Mini** from `~/bazaar`, started by one command. `tools/factory.py` reads the live clock and schedule, starts the feed recorder, the broker, the duel bot, the dealer bots and the watchdog in their own windows of the tmux session `factory` when their gates open, restarts them, and reports health. What it starts and with which flags is data in `tools/factory_sunday.json`.
 
-**The dealer bots (Abuela, Pícaros, Pilar; Chato has every step off) are on** since their safety fixes merged (#35 and #38: duel lock checked before every accept, pause-safe waits, distinct exit statuses). Each runs its enabled steps one after the other, a step starting after its gate (for the Round 3 steps: one minute after the +150 P allowance, never within 25 game minutes of a duel wave). A dealer with no enabled step is skipped by `up`. `rastro_seller` and `market_desk` stay off. The 08:40 checks and the expected 09:01 table are on [`sunday-preflight.md`](sunday-preflight.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+**The dealer bots (Abuela, Pícaros, Pilar; Chato has every step off) are on** since their safety fixes merged (#35 and #38: duel lock checked before every accept, pause-safe waits, distinct exit statuses). Each runs its enabled steps one after the other, a step starting after its gate (for the Round 3 steps: one minute after the +150 P allowance, never within 25 game minutes of a duel wave). A dealer with no enabled step is skipped by `up`. `rastro_seller` stays off; `market_desk` runs from 09:00 in page mode (it bids for SAL-10 from a team on El Rastro, `docs/plans/pages-sunday.md`, on #70). The 08:40 checks and the expected 09:01 table are on [`sunday-preflight.md`](sunday-preflight.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 ## Saturday night (before you sleep)
 
@@ -102,10 +102,10 @@ At `up`, `REFUSE <name>: already running outside the factory (pid N)` means an o
 
 ## Decisions that stay with people
 
-- Page-completing team buys (LAT-03, SAL-02, MAL-05 style), the LAT-09 or LAV-10 bids, and any other spend that is not a configured dealer step.
+- Page-completing team buys other than the configured SAL-10 page bid, the LAT-09 or LAV-10 bids, and any other spend that is not a configured step.
 - The reciprocal venue cross-listing deal with another team, and any message to another team. The owner sends all outreach.
 - Asking the desk whether venue v20 can switch to auto.
-- Turning on `rastro_seller` or `market_desk` (both off by default), and every `todo` in the config.
+- Turning on `rastro_seller` (off), changing the market desk's page bid, and every `todo` in the config.
 
 ## Dry run
 

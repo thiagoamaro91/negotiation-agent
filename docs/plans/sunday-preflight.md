@@ -9,7 +9,7 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    cd ~/bazaar && git fetch -q && git log -1 --format='%h %s' && git rev-list --count HEAD..origin/main
    git pull --ff-only && python3 -m unittest tests.test_factory 2>&1 | tail -1
    ```
-2. **The config has nothing open.** Expect no output. (`OUTSIDE OPENING HOURS` next to `Scores freeze` is normal; next to `Final duels` it is not. Before 09:00 the wall-time column is indicative only: it anchors on a stale `day_opens` event, and the gates use game hours.)
+2. **The config has nothing open.** Expect no output. (`OUTSIDE OPENING HOURS` next to `Scores freeze` is normal; next to `Final duels` it is not. Before 09:00 the wall-time column is indicative only: it anchors on a stale `day_opens` event, and the gates use game hours. For the same reason `plan` shows `--until 23:05` on `market_desk` before 09:00 (Saturday's close); the real launch computes 15:05.)
    ```bash
    ! python3 tools/factory.py plan | grep -E 'TODO|MISSING|ALREADY RUNNING|WARNING|cannot read'
    ```
@@ -35,7 +35,7 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
 8. **The bus board has no foreign claim on a factory name.** Expect no output. Saturday's `broker` and `duel` rows on `mini` are yours; `up` takes them over.
    ```bash
-   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
+   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
    ```
 9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40).
    ```bash
@@ -59,7 +59,7 @@ Starting before 09:00 is safe: every gate waits for open doors and a running clo
 ```
 started feed        started broker      started duel
 started abuela      skip    chato: no enabled step left to run today      started pilar      started picaros
-off     rastro_seller: ...              off     market_desk: ...              started watchdog
+off     rastro_seller: ...              started market_desk                     started watchdog
 ```
 
 Any `REFUSE` line names its reason. `already running outside the factory`: stop that pid and run `up --yes` again. `missing input file ...`: the duel params file is not on this checkout, pull again. `cannot read the bus board`: GitHub is down; say so in the team chat, then `up --yes --no-bus`.
@@ -73,7 +73,8 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 | duel | `WAITING`, `next duel wave Duels III at 18.650 h` |
 | abuela, picaros, pilar | `WAITING`, `waiting for grant_all at 16.717 h` (Abuela), `16.733 h` (Pícaros), `16.967 h` (Pilar's first resale) |
 | chato | `DONE` (every step off: nothing a dealer sells is inside our value but SAL-10, and that comes from a team) |
-| rastro_seller, market_desk | `off` |
+| market_desk | `RUNNING` (page mode, SAL-10); its log line carries `"page": true` once it bids |
+| rastro_seller | `off` |
 | watchdog | `RUNNING` |
 | last line | `ok` (no `PROBLEM` lines) |
 

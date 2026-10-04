@@ -623,6 +623,27 @@ class Round3Dealers(Sandbox):
                     yield from todos(v, f"{path}[{i}]")
         self.assertEqual(list(todos(f.load_config(f.CONFIG))), [])
 
+    def test_sal10_comes_from_a_team_through_the_desk_and_no_dealer_step_buys_it(self):
+        """The page card SAL-10 is bought from a team on El Rastro by the market desk's page mode. A dealer copy as well
+        would be a second SAL-10, worth 22.75: every dealer step that names it stays off."""
+        cfg = f.load_config(f.CONFIG)
+        procs = {p["name"]: p for p in cfg["processes"]}
+        desk = procs["market_desk"]
+        self.assertIsNot(desk.get("enabled"), False)
+        self.assertEqual(desk["gates"], {"doors_open": True, "clock_running": True})     # from 09:00, not after the grant
+        cmd = desk["cmd"]
+        for flag in ("--no-team-venues", "--no-bids"):
+            self.assertIn(flag, cmd)
+        self.assertEqual(cmd[cmd.index("--page") + 1], "SAL-10:110:80")
+        cap = int(cmd[cmd.index("--page") + 1].split(":")[1])
+        # market_desk.main() refuses a page cap above --cap-hour or --cap-day (that buy could never pass)
+        self.assertLessEqual(cap, int(cmd[cmd.index("--cap-hour") + 1]))
+        self.assertLessEqual(cap, int(cmd[cmd.index("--cap-day") + 1]))
+        self.assertIn("--until", cmd)
+        named = [(p["name"], s["label"]) for p in cfg["processes"] for s in p.get("steps") or []
+                 if s.get("enabled", True) and any("SAL-10" in str(a) for a in s["cmd"])]
+        self.assertEqual(named, [])
+
     FRAGMENT = Path(__file__).resolve().parent.parent / "docs" / "plans" / "factory-dealer-steps-sunday.json"
 
     @unittest.skipUnless(FRAGMENT.exists(), "docs/plans/factory-dealer-steps-sunday.json comes with the ladder PR (#69)")
