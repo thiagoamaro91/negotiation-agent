@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import eval_dealers as E  # noqa: E402
+from dealer_client import live_limit  # noqa: E402  (eval_dealers put agent/ on the path)
 
 
 def nego(thread, team, D, U, deal=None, deal_by=None, side="buy", rarity="uncommon", set_="LAV", dealer="abuela"):
@@ -172,6 +173,98 @@ class Harness(unittest.TestCase):
         sim, _, _, price = self.run_policy("bot", dict(self.cfg, cap=21))   # her final 22 is over the cap: walk
         self.assertIsNone(price)
         self.assertEqual(sim.closed_reason, "closed_by_us")
+
+
+class AccountView(unittest.TestCase):
+    """What the harness answers to the bots' per-decision /api/me read (they re-price the card from its holdings and
+    affinity, agent/dealer_client.live_limit): the live shape, and never a gate kinder than the case's own value."""
+
+    buy = {"side": "buy", "item": "LAV-07", "rarity": "uncommon", "set": "LAV", "book": 25, "private": 40.0,
+           "private_source": "book_x_multiplier", "asset_id": None}
+    sell = {"side": "sell", "item": "LAV-07", "rarity": "uncommon", "set": "LAV", "book": 25, "private": 10.0,
+            "private_source": "assumed_spare", "asset_id": 77}
+
+    def test_it_has_the_live_shape(self):
+        me = E.account_view(dict(self.sell), {"LAV": 1.6})
+        self.assertEqual(sorted(me), ["affinity", "assets", "cash", "score"])
+        for a in me["assets"]:
+            self.assertEqual(sorted(a), ["id", "kind", "name", "print_run", "rarity", "ref", "serial", "set", "your_value"])
+
+    def test_a_first_copy_buy_holds_nothing_and_keeps_its_limit(self):
+        me = E.account_view(self.buy)
+        self.assertEqual((me["assets"], me["affinity"]), ([], {"LAV": 1.6}))      # the multiplier that makes 25 x m = 40
+        target = {"side": "buy", "item": "LAV-07", "book": 25, "value": 40.0}
+        self.assertEqual(live_limit(me, target), (40.0, ""))
+
+    def test_a_second_copy_buy_holds_one_copy(self):
+        case = dict(self.buy, private=10.0, private_source="book_x_multiplier_copy2")
+        me = E.account_view(case)
+        self.assertEqual([a["ref"] for a in me["assets"]], ["LAV-07"])
+        self.assertEqual(live_limit(me, {"side": "buy", "item": "LAV-07", "book": 25, "value": 10.0}), (10.0, ""))
+
+    def test_the_real_multiplier_is_used_when_given(self):
+        me = E.account_view(self.buy, {"LAV": 1.6, "SAL": 1.3})
+        self.assertEqual(me["affinity"], {"LAV": 1.6})
+        me = E.account_view(self.buy, {"LAV": 1.0})                # a kinder private value than the real gate: the gate wins
+        self.assertEqual(live_limit(me, {"side": "buy", "item": "LAV-07", "book": 25, "value": 40.0}), (25, ""))
+
+    def test_a_spare_sale_is_a_second_copy(self):
+        me = E.account_view(self.sell)
+        self.assertEqual(len(me["assets"]), 2)
+        self.assertEqual(live_limit(me, {"side": "sell", "item": "LAV-07", "asset_id": 77, "value": 10}), (10, ""))
+
+    def test_a_last_copy_sale_with_the_real_multiplier_is_graded_whole(self):
+        case = dict(self.sell, private=40.0, private_source="me_json")
+        me = E.account_view(case, {"LAV": 1.6})
+        self.assertEqual(len(me["assets"]), 1)
+        self.assertEqual(live_limit(me, {"side": "sell", "item": "LAV-07", "asset_id": 77, "value": 40}), (40, ""))
+
+    def test_a_sale_whose_value_is_a_quarter_of_the_real_gate_is_a_spare(self):
+        me = E.account_view(self.sell, {"LAV": 1.6})               # ceil(25 x 1.6 x 0.25) = 10 <= ceil(10)
+        self.assertEqual(len(me["assets"]), 2)
+
+
+class OverValueIsRefused(unittest.TestCase):
+    """Friday's LAT-06: the bot's limit (30) let it pay 28 against a value of 27.5. The harness used to replay that
+    deal; with the ladder gate in the bots it is walked from, which is the point of the clip."""
+
+    def test_the_replay_no_longer_pays_28_for_a_27_5_card(self):
+        model = E.DealerModel(field(), exclude_team="t03")
+        r = nego(300, "t03", [(40, False), (30, False), (28, True)], [16, 17], 28, "took_final", set_="LAT")
+        case = case_from(r, model, private=27.5)
+        case["item"] = "LAT-06"
+        cfg = {"cap": None, "step": 1, "anchor_frac": 0.40, "max_rounds": 40, "limit_override": 30.0}
+        sim, _, out, price = E.simulate(case, model, "bot", cfg, 0, 0, deterministic=True, model_on=False)
+        self.assertIsNone(price)
+        self.assertEqual(sim.closed_reason, "closed_by_us")
+        self.assertEqual(out["limit"], 30.0)                      # the limit the old bot logged is still what it was handed
+
+    def test_chato_walks_from_an_88_cap_over_a_77_rare_too(self):
+        model = E.DealerModel(field(), exclude_team="t03")
+        r = nego(302, "t03", [(97, False), (90, False), (80, True)], [30, 34], 80, "took_final", dealer="chato",
+                 rarity="rare", set_="LAT")
+        case = case_from(r, model, private=77.0)                    # 70 x 1.1; the bot was handed 88 (--cap 88)
+        case.update(item="LAT-09", book=70)
+        cfg = {"anchor": 30, "step": 4, "cap": None, "max_bid": None, "max_rounds": 40, "limit_override": 88.0}
+        sim, _, _, price = E.simulate(case, model, "bot", cfg, 0, 0, deterministic=True, model_on=False)
+        self.assertIsNone(price)
+        self.assertEqual(sim.closed_reason, "closed_by_us")
+
+    def test_a_case_without_a_book_still_replays(self):
+        model = E.DealerModel(field(), exclude_team="t03")
+        case = dict(case_from(nego(70, "t03", *REAL_70), model), book=None)    # book from the rarity, as private_value does
+        cfg = {"cap": None, "step": 1, "anchor_frac": 0.40, "max_rounds": 40}
+        sim, _, _, price = E.simulate(case, model, "bot", cfg, 0, 0, deterministic=True, model_on=False)
+        self.assertEqual(price, 22)
+
+    def test_a_deal_under_the_value_is_still_taken(self):
+        model = E.DealerModel(field(), exclude_team="t03")
+        r = nego(301, "t03", [(40, False), (30, False), (27, True)], [16, 17], 27, "took_final", set_="LAT")
+        case = case_from(r, model, private=27.5)
+        case["item"] = "LAT-06"
+        cfg = {"cap": None, "step": 1, "anchor_frac": 0.40, "max_rounds": 40, "limit_override": 30.0}
+        sim, _, _, price = E.simulate(case, model, "bot", cfg, 0, 0, deterministic=True, model_on=False)
+        self.assertEqual(price, 27)
 
 
 if __name__ == "__main__":

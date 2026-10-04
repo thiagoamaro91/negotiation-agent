@@ -36,6 +36,7 @@ Usage (from the repo root):
     python3 tools/duel_arena.py --session 2 --params ~/lab/duel/best_params_duels2.json
     python3 tools/duel_arena.py --session 2 --pair-seen 0 --weights duels1 --params a.json --params b.json
     python3 tools/duel_arena.py --session 2 --sessions 40 --days-lab --params a.json   # days world stress lab
+    python3 tools/duel_arena.py --session 3 --weights duels2 --days-mode buyer:0,seller:10 --params a.json  # Duels III
 """
 from __future__ import annotations
 
@@ -71,13 +72,42 @@ WEIGHTS = {"steady": 2, "fast": 1, "cycler": 1, "oneshot": 1, "llm": 1, "absent"
 # and took our last chance (tft-like), 2 never spoke but took our offer (silent), 7 never spoke nor took (absent).
 DUELS1_WEIGHTS = {"linear": 13, "steady": 5, "fast": 4, "oneshot": 1, "tft": 2, "silent": 2, "absent": 7,
                   "cycler": 0, "llm": 0, "hardliner": 0, "deadline": 0}
+# Duels II (Saturday 21:16-23:00, our 68 duels of server session 3; tools/duel_field_read.py, docs/duel-lab/
+# duels3-params.md): 28 conceded every tick (linear), 8 stepped (steady), 8 jumped then held (fast), 11 spoke once
+# (oneshot), 5 moved only after we did (tft), 8 never spoke: 3 took our offer (silent), 5 never did (absent).
+DUELS2_WEIGHTS = {"linear": 28, "steady": 8, "fast": 8, "oneshot": 11, "tft": 5, "silent": 3, "absent": 5,
+                  "cycler": 0, "llm": 0, "hardliner": 0, "deadline": 0}
+# Our 68 Duels II weights (your_days_weight, primas per day), 34 per role: buyers pay more per day than sellers earn.
+DUELS2_DAYS_W = {
+    "buyer": [1.23, 1.28, 1.33, 1.45, 1.62, 1.83, 1.86, 1.89, 1.9, 2.51, 2.7, 2.78, 3.05, 3.23, 3.32, 3.39, 3.44,
+              3.61, 4.21, 4.22, 4.23, 4.29, 4.54, 4.84, 4.99, 5.32, 5.53, 6.41, 6.83, 7.49, 7.52, 7.72, 8.76, 8.91],
+    "seller": [0.58, 0.86, 0.92, 0.95, 1.12, 1.21, 1.3, 1.43, 1.58, 1.7, 1.74, 1.81, 1.82, 1.97, 2.25, 2.26, 2.32,
+               2.34, 2.35, 2.36, 2.64, 2.75, 2.91, 3.03, 3.11, 3.25, 3.44, 3.67, 3.71, 4.17, 4.54, 5.62, 5.84, 6.24]}
+# The day the Duels II rivals that spoke ended on, by the rival's role: 31 rival buyers (best day 0) kept day 0 22
+# times, sat on our day 10 4, on day 5 or 3 5; 29 rival sellers (best day 10) moved to our day 0 13 times, kept day 10
+# 12, sat on day 5 2, wandered 2. Sellers give the day away, buyers keep it (buyers' weights are the larger ones).
+DUELS2_DMODE = {"buyer": {"best": 22, "flex": 4, "mid": 5}, "seller": {"best": 12, "flex": 13, "mid": 2, "random": 2}}
 # Share of duels whose paired limit duel.mirror_limit finds. Friday: the pair was (odd, odd + 1), same rival team.
 # Duels I: 0 of 34 (pairs are (even, odd) with a different rival in each, and the limits are unrelated: 2360 / 2361).
 PAIR_SEEN = 1.0
 # Two issues. The server's days_meaning wording is unknown, so the arena's names no direction (duel.py then uses its
 # role default and the weight's sign, not its own keyword list). DAYS_FLIP: every side's best day is the opposite of
 # the role default (buyer late, seller early) and the weight shown to us is negative, as a server that signs it would.
-DAYS_WORDING = "primas per day away from your preferred delivery day"
+DAYS_WORDING = "primas per day away from your preferred delivery day"   # pre-Duels II guess, DAYS_MODEL "distance"
+# What the Duels II server said and paid (results 5626, 5675, 5692, Saturday 21:30): a side whose best day is 10 earns
+# its weight per delivery day from day 0 ("each delivery day adds this much cash to your side"), a side whose best day
+# is 0 pays it per day ("each delivery day costs you this much cash"). "distance" is the earlier guess, w x |day - best|
+# for both sides, which undervalued every seller deal by 10 x w.
+DAYS_MODEL = "server"
+WORDING_EARN = "each delivery day adds this much cash to your side"
+WORDING_PAY = "each delivery day costs you this much cash"
+
+
+def days_term(best: int, w: float, day: int) -> float:
+    """What the delivery day costs one side in primas (negative: it earns), under DAYS_MODEL."""
+    if DAYS_MODEL == "server" and best in (0, 10):
+        return w * day if best == 0 else -w * day
+    return w * abs(day - best)
 DAYS_FLIP = False
 # How duel.py runs in the arena on two issues: "" = robust (no --days-confirmed: what `run` does until a human reads
 # the first duel_new lines), "confirmed" (--days-confirmed), or a --days-best value such as "buyer:10,seller:0" (a
@@ -88,11 +118,13 @@ ARENA_DAYS = ""
 # knobs come from their own random.Random (seed, pair), never from the scenario rng, so default runs replay the same.
 DAYS_W = (0.0, 4.0)       # per-day weight range in primas (rescales the uniform(0, 4) draw: lo + w / 4 x (hi - lo))
 DAYS_W_REL = None         # (lo, hi): the weight is instead that fraction of the item's base cost C per day
+DAYS_W_EMP = None         # {role: sorted weights}: the weight is that role's empirical quantile at the uniform draw
 DAYS_COMPAT = 0.0         # share of rival pairs whose two sides want the same best day (0 or 10, at random)
 # Rival day behaviour, weights over modes (one mode per rival team): "best" (always its own best day), "flex" (ours
 # if we named one, else its best), "mid" (day 5), "random" (a fresh day 0-10 each message), "ignore" (weight 0 on
 # days; ours if we named one, else day 0). None: each rival's own "flex" flag decides, as fitted.
 RIVAL_DMODE = None
+RIVAL_DMODE_ROLE = None   # {rival role: {mode: weight}}: the mode by the rival's role (same draw), over RIVAL_DMODE
 DMODES = ("best", "flex", "mid", "random", "ignore")
 
 OFFSETS = (0, 0, 0, 1, 2)        # start offsets of the duels in one wave (ticks)
@@ -142,7 +174,7 @@ class Rival:
         if self.days is None or day is None:
             return 0.0
         best, w = self.days
-        return w * abs(day - best)
+        return days_term(best, w, day)
 
     def utility(self, price: int, day=None) -> float:
         s = (price - self.L) if self.role == "seller" else (self.L - price)
@@ -431,7 +463,9 @@ class Splitter(Rival):
         if ours is not None and len(view["our_msgs"]) > self.seen:
             self.seen = len(view["our_msgs"])
             day = self.last[1]
-            if day is not None and ours[1] is not None:
+            if self.p.get("dmode") is not None:               # a forced days world (RIVAL_DMODE) rules its day
+                day = self.day_for(ours)
+            elif day is not None and ours[1] is not None:
                 day = int(round((day + ours[1]) / 2))
             mid = (self.last[0] + ours[0]) / 2
             floor = self.price(p["m_floor"], day)
@@ -453,6 +487,8 @@ class Logroller(Steady):
     def day_for(self, ours):
         if self.days is None:
             return None
+        if self.p.get("dmode") is not None:                   # a forced days world (RIVAL_DMODE) rules its day
+            return super().day_for(ours)
         m = getattr(self, "_msgs", [])
         if len(m) >= 2 and m[-1][2] is not None and m[-1][2] == m[-2][2]:
             return m[-1][2]
@@ -613,7 +649,7 @@ class Duel:
         if not self.days or day is None:
             return 0.0
         best, w = self.days["ours"]
-        return w * abs(day - best)
+        return days_term(best, w, day)
 
     def our_surplus(self, price: int, day=None) -> float:
         s = (price - self.our_limit) if self.role == "seller" else (self.our_limit - price)
@@ -637,20 +673,20 @@ def make_session(seed: int, sess: dict, kinds: list, weights: dict = None) -> li
         base = 2 * k + 1                                  # pairs are (odd, odd + 1), as on the server
         roles = ["seller", "buyer"] if rng.random() < 0.5 else ["buyer", "seller"]
         world = days_world(seed, k, C) if two else None   # the days knobs, from their own rng
-        if world and world["mode"] is not None:
-            rp = {**rp, "dmode": world["mode"]}
         for j, role in enumerate(roles):
             s, h = rng.uniform(1 - SCALE, 1 + SCALE), rng.uniform(-SHIFT, SHIFT)
             cost, value = max(1, round(C * s + h)), max(2, round(V * s + h))
             ours, theirs = (cost, value) if role == "seller" else (value, cost)
-            days = None
+            days, rmode, rpj = None, None, rp
             if two:
                 rrole = "buyer" if role == "seller" else "seller"
+                rmode = world["modes"][rrole]
+                rpj = {**rp, "dmode": rmode} if rmode is not None else rp
                 best = world["best"]
-                rw = 0.0 if world["mode"] == "ignore" else round(world["w"](wts[rrole]), 2)
-                days = {"ours": (best[role], round(world["w"](wts[role]), 2)), "rival": (best[rrole], rw)}
-            dl = Duel(base + j, k, role, ours, theirs, kind, rp, T, decay, issues, days)
-            if two and world["mode"] == "random":
+                rw = 0.0 if rmode == "ignore" else round(world["w"](wts[rrole], rrole), 2)
+                days = {"ours": (best[role], round(world["w"](wts[role], role), 2)), "rival": (best[rrole], rw)}
+            dl = Duel(base + j, k, role, ours, theirs, kind, rpj, T, decay, issues, days)
+            if two and rmode == "random":
                 dl.rival.drng = random.Random((seed * 1_000_003 + k) * 2 + j)
             out.append(dl)
     rng.shuffle(out)
@@ -669,25 +705,43 @@ def days_world(seed: int, k: int, C: float) -> dict:
     best = {"buyer": fb, "seller": fs}
     if u_compat < DAYS_COMPAT:
         best = {"buyer": shared, "seller": shared}
-    mode = None
-    if RIVAL_DMODE:
-        modes = [m for m in DMODES if RIVAL_DMODE.get(m, 0) > 0]
-        total, acc = sum(RIVAL_DMODE[m] for m in modes), 0.0
-        mode = modes[-1]
-        for m in modes:
-            acc += RIVAL_DMODE[m] / total
-            if u_mode < acc:
-                mode = m
-                break
-    if DAYS_W_REL is not None:
+    mode = _pick_mode(RIVAL_DMODE, u_mode) if RIVAL_DMODE else None
+    modes = {"buyer": mode, "seller": mode}
+    if RIVAL_DMODE_ROLE:
+        modes = {r: _pick_mode(RIVAL_DMODE_ROLE[r], u_mode) for r in ("buyer", "seller")}
+    if DAYS_W_EMP is not None:
+        wmap = lambda w, role=None: _quantile(DAYS_W_EMP[role], w / 4.0)   # noqa: E731
+    elif DAYS_W_REL is not None:
         lo, hi = DAYS_W_REL
-        wmap = lambda w: (lo + (w / 4.0) * (hi - lo)) * C   # noqa: E731
+        wmap = lambda w, role=None: (lo + (w / 4.0) * (hi - lo)) * C   # noqa: E731
     elif tuple(DAYS_W) != (0.0, 4.0):
         lo, hi = DAYS_W
-        wmap = lambda w: lo + (w / 4.0) * (hi - lo)   # noqa: E731
+        wmap = lambda w, role=None: lo + (w / 4.0) * (hi - lo)   # noqa: E731
     else:
-        wmap = lambda w: w   # noqa: E731
-    return {"best": best, "mode": mode, "w": wmap}
+        wmap = lambda w, role=None: w   # noqa: E731
+    return {"best": best, "mode": mode, "modes": modes, "w": wmap}
+
+
+def _pick_mode(weights: dict, u: float) -> str:
+    """The day mode a uniform draw u falls on, over these {mode: weight} (DMODES order)."""
+    modes = [m for m in DMODES if weights.get(m, 0) > 0]
+    total, acc = sum(weights[m] for m in modes), 0.0
+    for m in modes:
+        acc += weights[m] / total
+        if u < acc:
+            return m
+    return modes[-1]
+
+
+def _quantile(xs: list, u: float) -> float:
+    """The u-quantile (0..1) of the sorted list xs, interpolated between neighbours."""
+    pos = max(0.0, min(1.0, u)) * (len(xs) - 1)
+    i = min(int(pos), len(xs) - 2)
+    return xs[i] + (xs[i + 1] - xs[i]) * (pos - i)
+
+
+# The Duels II field as a world: its rival mix, its weights and the rival's day (module overrides; PAIR_SEEN 0).
+DUELS2_MODS = {"DAYS_W_EMP": DUELS2_DAYS_W, "RIVAL_DMODE_ROLE": DUELS2_DMODE, "PAIR_SEEN": 0.0}
 
 
 # ---------------------------------------------------------------- one session
@@ -724,11 +778,18 @@ def server_view(dl: Duel, sess_no: int, deadline: int) -> dict:
     d = {"duel": dl.id, "session": sess_no, "status": "live", "role": dl.role, "item": f"item-{dl.pair}",
          "issues": list(dl.issues),
          "your_days_weight": _shown_weight(dl) if two else None,
-         "days_meaning": DAYS_WORDING if two else None,
+         "days_meaning": _wording(dl) if two else None,
          "your_limit": dl.our_limit, "limit_meaning": "", "rival": f"Rival {dl.pair}",
          "deadline_tick": deadline, "decay_per_round": dl.decay, "rounds": 0, "your_offer": None,
          "rival_offer": None, "messages": [], "result": None, "price": None, "days": None}
     return d
+
+
+def _wording(dl: Duel) -> str:
+    """days_meaning as the server words it: the server's two sentences under DAYS_MODEL "server", else the guess."""
+    if DAYS_MODEL != "server":
+        return DAYS_WORDING
+    return WORDING_EARN if dl.days["ours"][0] == 10 else WORDING_PAY
 
 
 def _shown_weight(dl: Duel) -> float:
@@ -1057,6 +1118,103 @@ def duels1_replay(params: dict, files: list = None, ticks: int = 16) -> list:
     return results
 
 
+def duels2_duels(log_dir: Path = ROOT / "logs" / "duels") -> list:
+    """Duels II's closed duels (server session 3, Saturday 21:16-23:00): price and delivery day."""
+    return friday_duels(log_dir, session=3)
+
+
+def duels2_replay(params: dict, files: list = None, ticks: int = 16, days_best: str = "buyer:0,seller:10") -> list:
+    """Our policy against the rival (price, day) paths of Duels II on the real tick timeline, as duels1_replay does
+    for price only: rivals do not react or accept, a rival's last offer stands to the deadline, and where we accepted
+    in the real run the rival's path ends there (so this replay shows what waiting costs, never what it gains, and
+    cannot reproduce the 14 deals where the rival took our offer). Our days cost is the server's (DAYS_MODEL), read
+    with --days-best `days_best` as the run did. Scored: duels where the rival posted a price; result = our surplus
+    with the day term x (1 - decay) ^ rounds (the server's number, primas); score = result / our limit."""
+    every = files if files is not None else duels2_duels()
+    cfg = cfg_for({**params, "days_best": days_best}, ticks)
+    ws = []
+    for x in every:
+        path = [(m["tick"], m["price"], m.get("days")) for m in x.get("messages") or []
+                if m.get("from") == x.get("rival") and isinstance(m.get("price"), (int, float))]
+        d = {**{k: x[k] for k in ("duel", "session", "role", "item", "issues", "your_days_weight", "days_meaning",
+                                  "your_limit", "rival", "deadline_tick", "decay_per_round")},
+             "status": "live", "rounds": 0, "your_offer": None, "rival_offer": None, "messages": []}
+        ws.append({"d": d, "path": path, "S": x["deadline_tick"] - ticks, "D": x["deadline_tick"], "st": None,
+                   "deal": None, "real": x})
+    if not ws:
+        return []
+
+    def read(live, tick, see, late=False):
+        for w in live:
+            d = w["d"]
+            theirs = [(t, p, day) for t, p, day in w["path"] if t < see]
+            mine = [m for m in d["messages"] if m["from"] == "you"]
+            d["messages"] = sorted(mine + [{"tick": t, "from": d["rival"], "price": p, "days": day, "text": ""}
+                                           for t, p, day in theirs], key=lambda m: (m["tick"], m["from"] != "you"))
+            if theirs:
+                t, p, day = theirs[-1]
+                d["rival_offer"] = {"id": len(theirs), "price": p, "tick": t, "days": day if day is not None else 0}
+            w["st"].pair_l = duel.mirror_limit(d, every)
+            w["st"].rival_limit = w["st"].pair_l if cfg.mirror else None
+            duel.sync_state(w["st"], d)
+        pairs = [(w["d"], w["st"]) for w in live]
+        duel.set_windows(pairs, cfg)
+        decisions = [(d, st, duel.decide(d, st, tick, cfg)) for d, st in pairs]
+        return duel.allocate(decisions, cfg, late=True) if late else duel.allocate(decisions, cfg) or decisions
+
+    for tick in range(min(w["S"] for w in ws), max(w["D"] for w in ws)):
+        live = [w for w in ws if w["S"] <= tick < w["D"] and not w["deal"]]
+        if not live:
+            continue
+        for w in live:
+            if w["st"] is None:
+                w["st"] = duel.DuelState(w["d"], tick, ticks)
+        decisions = read(live, tick, tick)
+        for d, st, dec in decisions:
+            w = next(w for w in live if w["d"] is d)
+            if dec["action"] == "accept":
+                w["deal"] = (d["rival_offer"]["price"], d["rival_offer"]["days"], tick)
+            elif dec["action"] == "say":
+                duel.record_say(st, dec, d, tick)
+                d["messages"].append({"tick": tick, "from": "you", "price": dec["price"], "days": dec["days"],
+                                      "text": ""})
+                d["your_offer"] = {"price": dec["price"], "days": dec["days"]}
+        if duel.late_due(decisions, cfg):
+            rest = [w for w in live if not w["deal"]]
+            for d, st, dec in (read(rest, tick, tick + 1, late=True) if rest else []):
+                if dec["action"] == "accept":
+                    next(w for w in rest if w["d"] is d)["deal"] = (d["rival_offer"]["price"],
+                                                                     d["rival_offer"]["days"], tick)
+    results = []
+    for w in ws:
+        d, real = w["d"], w["real"]
+        r = {"duel": d["duel"], "role": d["role"], "limit": d["your_limit"], "rival_prices": len(w["path"]),
+             "sent": sum(1 for m in d["messages"] if m["from"] == "you"), "deal": bool(w["deal"]), "score": 0.0,
+             "result": 0.0, "scored": bool(w["path"]), "real_result": real.get("result") or 0.0,
+             "real_deal": real.get("status") == "deal"}
+        if w["deal"]:
+            price, day, at = w["deal"]
+            seq = [(m["tick"], "us" if m["from"] == "you" else "them") for m in d["messages"] if m["tick"] < at
+                   or (m["tick"] == at and m["from"] != "you")]
+            rounds = rounds_of(seq, "exchange")
+            best = 0 if d["role"] == "buyer" else 10
+            s = ((price - d["your_limit"]) if d["role"] == "seller" else (d["your_limit"] - price)) \
+                - days_term(best, float(d["your_days_weight"] or 0), int(day))
+            k = (1 - d["decay_per_round"]) ** rounds
+            r.update(price=price, day=day, at=at - w["S"], left=w["D"] - at, rounds=rounds, result=round(s * k, 2),
+                     score=round(s / d["your_limit"] * k, 4))
+        results.append(r)
+    return results
+
+
+def duels2_line(name: str, params: dict) -> str:
+    rr = [r for r in duels2_replay(params) if r["scored"]]
+    n = max(1, len(rr))
+    return (f"{name}: mean score {sum(r['score'] for r in rr) / n:.4f}, result {sum(r['result'] for r in rr):.1f} P, "
+            f"deals {sum(r['deal'] for r in rr)}/{len(rr)} (real run: {sum(r['real_result'] for r in rr):.1f} P, "
+            f"{sum(r['real_deal'] for r in rr)} deals)")
+
+
 def duels1_line(name: str, params: dict) -> str:
     rr = [r for r in duels1_replay(params) if r["scored"]]
     n = max(1, len(rr))
@@ -1228,8 +1386,10 @@ def main() -> None:
     ap.add_argument("--slot-busy", type=float, default=0.0)
     ap.add_argument("--pair-seen", type=float, default=None, help="share of duels whose paired limit is visible "
                     "(default PAIR_SEEN = 1; Duels I: 0)")
-    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend"],
-                    help="rival mix: Friday-fitted WEIGHTS or the Duels I mix (DUELS1_WEIGHTS)")
+    ap.add_argument("--weights", default="friday", choices=["friday", "duels1", "field", "blend", "duels2"],
+                    help="rival mix: Friday-fitted WEIGHTS, the Duels I mix (DUELS1_WEIGHTS), or duels2: the Duels II "
+                    "field (DUELS2_WEIGHTS with its days world, DUELS2_MODS: real weights per role, the rivals' day, "
+                    "paired limit hidden)")
     ap.add_argument("--days-mode", default="", help='two issues: "" robust (duel.py run before --days-confirmed), '
                     '"confirmed", or a --days-best value such as "buyer:10,seller:0"')
     ap.add_argument("--json", action="store_true", help="print the summaries as JSON")
@@ -1241,7 +1401,12 @@ def main() -> None:
     if a.pair_seen is not None:
         PAIR_SEEN = a.pair_seen
     ARENA_DAYS = a.days_mode
-    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS, "blend": BLEND_WEIGHTS}.get(a.weights)
+    if a.weights == "duels2":
+        globals().update(DUELS2_MODS)
+        if a.pair_seen is not None:
+            PAIR_SEEN = a.pair_seen
+    weights = {"duels1": DUELS1_WEIGHTS, "field": FIELD_WEIGHTS, "blend": BLEND_WEIGHTS,
+               "duels2": DUELS2_WEIGHTS}.get(a.weights)
     kinds = [k for k in KINDS if (weights or WEIGHTS).get(k, 0) > 0] if weights else None
     seeds = range(a.seed0, a.seed0 + a.sessions)
     policies = {"defaults": {}}
@@ -1267,6 +1432,11 @@ def main() -> None:
           "decay):")
     for n, p in policies.items():
         print("  " + duels1_line(n, p))
+    if a.session >= 2:
+        print("\nDuels II replay (real (price, day) paths, 16 ticks, decay 0.08, --days-best buyer:0,seller:10; rivals do "
+              "not react or accept; score = result / our limit):")
+        for n, p in policies.items():
+            print("  " + duels2_line(n, p))
     if a.stress:
         print("\nStress (mean score per duel):\n")
         print(stress(policies, seeds, a.session))

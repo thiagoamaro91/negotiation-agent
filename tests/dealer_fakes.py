@@ -36,8 +36,9 @@ BOTS = (chato, abuela)
 
 # module globals that main() or a test may change; saved and restored around every test
 GLOBALS = ("CASH_RESERVE", "MAX_ROUNDS", "ANCHOR_ABS", "STEP", "MAX_BID", "RUN", "DEALER", "DEALER_NAME",
-           "SELL_RARITIES", "DEALER_SELLS_CARDS", "SELL_ANCHOR_MULT", "SELL_ANCHOR_OVER_FLOOR", "SELL_ANCHOR_ABS",
-           "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread", "RunLog")
+           "SELL_RARITIES", "DEALER_SELLS_CARDS", "SELL_CARD_RARITIES", "SELL_ANCHOR_MULT", "SELL_ANCHOR_OVER_FLOOR",
+           "SELL_ANCHOR_ABS", "SELL_STEP", "MAX_DEFER_TICKS", "Bazaar", "load_env", "duel_lock_fresh", "save_thread",
+           "RunLog")
 
 
 class NullRun:
@@ -144,6 +145,12 @@ def patched_sleep(clock):
 
 # ---------------------------------------------------------------- the fake game server
 
+# our set multipliers as /api/me reports them (kit/RULES.md: the same six numbers, shuffled per team). The ladder
+# ceiling of a buy is floor(book x affinity[set]); LAV 1.6 keeps the old fixtures' limits (LAV-09 90 of book 77, LAV-01
+# 12 of book 10) under it, so only tests that set their own affinity see a clip.
+AFFINITY = {"LAV": 1.6, "SAL": 1.3, "LAT": 1.1, "RET": 0.9, "MAL": 0.7, "CHA": 0.5}
+
+
 class _Resp:
     def __init__(self, data):
         self._data = data
@@ -164,7 +171,7 @@ class FakeServer:
 
     def __init__(self, dealer="chato", side="sell", opening=16, replies=(), final=None, item="MAL-06", asset_id=42,
                  expiry=4, cash=1000, opening_final=False, pause=None, clock_down=None, tick_seconds=15.0,
-                 max_requests=5000, assets=(), cards=None, values=None, frozen=None):
+                 max_requests=5000, assets=(), cards=None, values=None, frozen=None, affinity=None):
         self.vc = VirtualClock(*(pause or (None, None)), tick_seconds=tick_seconds, frozen=frozen)
         self.dealer, self.side, self.item, self.asset_id = dealer, side, item, asset_id
         self.opening, self.opening_final = opening, opening_final
@@ -172,6 +179,7 @@ class FakeServer:
         self.clock_down = clock_down          # (from, to) virtual seconds in which /api/clock times out
         self.max_requests = max_requests
         self.assets, self.cards, self.values = list(assets), cards, values or {}
+        self.affinity = dict(AFFINITY if affinity is None else affinity)
         self.tid = 7
         self.thread = None
         self.offers, self.messages = {}, []
@@ -192,6 +200,17 @@ class FakeServer:
     # ---- state
     def tick(self):
         return self.vc.tick()
+
+    def holdings(self):
+        """What /api/me lists. The bots re-read it before every decision (a copy bought or sold by another bot while a
+        thread is open changes what the card is worth to us), so a sell needs the copy it sells in it: unless the test
+        gave `assets`, a sell finds two copies of the card (the spare at asset_id, API value 1.0, and the one we keep),
+        a buy finds none."""
+        if self.assets or self.side != "sell":
+            return list(self.assets)
+        base = {"kind": "card", "ref": self.item, "rarity": "uncommon", "set": self.item.split("-")[0], "name": self.item}
+        return [dict(base, id=self.asset_id, serial=9, your_value=1.0), dict(base, id=self.asset_id + 100000, serial=1,
+                                                                            your_value=40.0)]
 
     def price_of(self, o):
         return o["want"]["cash"] if self.side == "buy" else o["give"]["cash"]
@@ -278,8 +297,8 @@ class FakeServer:
             self._turn(self.processed)
 
     # ---- HTTP
-    def _err(self, status, code, msg=""):
-        return status, {"error": code, "message": msg or code}
+    def _err(self, status, code, msg="", extra=None):
+        return status, dict({"error": code, "message": msg or code}, **(extra or {}))
 
     def _injected(self, kind):
         if self.inject.get(kind):
@@ -303,7 +322,8 @@ class FakeServer:
             return 200, self.vc.read()
         if path == "/api/me" and method == "GET":
             return self._injected("me") or (200, {
-                "name": self.TEAM, "cash": self.cash, "level": 2, "unlocked": [], "assets": list(self.assets),
+                "name": self.TEAM, "cash": self.cash, "level": 2, "unlocked": [], "assets": self.holdings(),
+                "affinity": dict(self.affinity),
                 "score": {"deals": 3, "ladder_points": 0, "score": 0, "rank": 16}})
         if path == "/api/me/value":
             return 200, {"card": query.get("card"), "your_value": self.values.get(query.get("card"), 50)}
@@ -453,12 +473,13 @@ class FakeAccount:
 
     cash = 169
     assets = []
+    affinity = AFFINITY
     cards = ({"id": "LAV-09", "rarity": "rare", "name": "LAV-09", "book": 77},
              {"id": "LAV-01", "rarity": "common", "name": "LAV-01", "book": 10})
 
     def me(self):
         return {"name": "t03", "cash": self.cash, "level": 2, "score": {"deals": 3}, "unlocked": [],
-                "assets": list(self.assets)}
+                "assets": list(self.assets), "affinity": dict(self.affinity)}
 
     def catalog(self):
         return {"sets": [{"id": "LAV", "released": True, "cards": list(self.cards)}]}
