@@ -100,6 +100,11 @@ def write(rows: list, out: Path = None, gates_path: Path = None, title: str = ""
          f"(2000 sessions x 4 worlds). Deltas are each candidate minus the incumbent on the same sessions (mean score "
          f"per duel: share of the pie x 0.9^rounds, 0 without a deal), ± one SE unless marked 2 SE.", "",
          RULE, "",
+         "**Incumbent.** This board measures against `docs/duel-lab/duel-params-duels3.json` as on main since d623273 "
+         "(F4 `last_while_moving` off for Sunday). The night's main search (sweep, random, climb, about 1,800 "
+         "candidates) ran against WP1's 7c64dc7 version with F4 on: `leaderboard-vs-f4on.md`. Its finalists were "
+         "re-tested here with F4 off (rows `O ...`), and F4 and min_surplus > 1 (fails selftest) are out of the space.",
+         "",
          "Worlds: **main** = Duels III (68 duels, 12 ticks, decay 0.10, 4 at once), the Duels II field refit "
          "(68 real duels: linear 28, oneshot 11, steady 8, fast 8, tft 5, absent 5, silent 3) plus a copy of duel.py "
          "with the incumbent params at weight 8 (10.5 %); **drift** = main with 20 % of the mix moved to "

@@ -1,0 +1,652 @@
+{
+ "cells": [
+  {
+   "world": "mix: Duels II field",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3568,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.648,
+   "rounds": 0.19
+  },
+  {
+   "world": "mix: Duels II field",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3688,
+   "delta": 0.01193941176470588,
+   "se": 0.0011765792671222415,
+   "deal_rate": 0.654,
+   "rounds": 0.53
+  },
+  {
+   "world": "mix: Duels I field",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3808,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.638,
+   "rounds": 0.09
+  },
+  {
+   "world": "mix: Duels I field",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3852,
+   "delta": 0.004338007352941179,
+   "se": 0.0010928795617244067,
+   "deal_rate": 0.637,
+   "rounds": 0.43
+  },
+  {
+   "world": "mix: likely field",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4198,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.755,
+   "rounds": 0.3
+  },
+  {
+   "world": "mix: likely field",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4278,
+   "delta": 0.007995845588235297,
+   "se": 0.001259724956962019,
+   "deal_rate": 0.753,
+   "rounds": 0.54
+  },
+  {
+   "world": "mix: Duels II field",
+   "mode": "confirmed",
+   "policy": "incumbent",
+   "mean": 0.3568,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.648,
+   "rounds": 0.19
+  },
+  {
+   "world": "mix: Duels II field",
+   "mode": "confirmed",
+   "policy": "5ff0066a38",
+   "mean": 0.3688,
+   "delta": 0.01193941176470588,
+   "se": 0.0011765792671222415,
+   "deal_rate": 0.654,
+   "rounds": 0.53
+  },
+  {
+   "world": "mix: Duels I field",
+   "mode": "confirmed",
+   "policy": "incumbent",
+   "mean": 0.3808,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.638,
+   "rounds": 0.09
+  },
+  {
+   "world": "mix: Duels I field",
+   "mode": "confirmed",
+   "policy": "5ff0066a38",
+   "mean": 0.3852,
+   "delta": 0.004338007352941179,
+   "se": 0.0010928795617244067,
+   "deal_rate": 0.637,
+   "rounds": 0.43
+  },
+  {
+   "world": "mix: likely field",
+   "mode": "confirmed",
+   "policy": "incumbent",
+   "mean": 0.4198,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.755,
+   "rounds": 0.3
+  },
+  {
+   "world": "mix: likely field",
+   "mode": "confirmed",
+   "policy": "5ff0066a38",
+   "mean": 0.4278,
+   "delta": 0.007995845588235297,
+   "se": 0.001259724956962019,
+   "deal_rate": 0.753,
+   "rounds": 0.54
+  },
+  {
+   "world": "rival: steady",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4834,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.829,
+   "rounds": 0.03
+  },
+  {
+   "world": "rival: steady",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4975,
+   "delta": 0.014085639705882353,
+   "se": 0.0016070267141736635,
+   "deal_rate": 0.817,
+   "rounds": 0.37
+  },
+  {
+   "world": "rival: fast",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.5971,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.852,
+   "rounds": 0.04
+  },
+  {
+   "world": "rival: fast",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.5816,
+   "delta": -0.015472992647058825,
+   "se": 0.0009752708886987745,
+   "deal_rate": 0.854,
+   "rounds": 0.44
+  },
+  {
+   "world": "rival: cycler",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.0859,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.386,
+   "rounds": 0.69
+  },
+  {
+   "world": "rival: cycler",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.0916,
+   "delta": 0.0057107132352941185,
+   "se": 0.0004041062732947124,
+   "deal_rate": 0.383,
+   "rounds": 0.88
+  },
+  {
+   "world": "rival: oneshot",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.1642,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.437,
+   "rounds": 0.62
+  },
+  {
+   "world": "rival: oneshot",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.1707,
+   "delta": 0.006523029411764708,
+   "se": 0.0009300908055928159,
+   "deal_rate": 0.452,
+   "rounds": 0.79
+  },
+  {
+   "world": "rival: llm",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.438,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.817,
+   "rounds": 0.27
+  },
+  {
+   "world": "rival: llm",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4503,
+   "delta": 0.012268338235294116,
+   "se": 0.0006909878166187961,
+   "deal_rate": 0.815,
+   "rounds": 0.4
+  },
+  {
+   "world": "rival: silent",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3152,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.569,
+   "rounds": 0.0
+  },
+  {
+   "world": "rival: silent",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3164,
+   "delta": 0.001241154411764706,
+   "se": 0.0011766828527694016,
+   "deal_rate": 0.537,
+   "rounds": 0.0
+  },
+  {
+   "world": "rival: hardliner",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.1924,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.603,
+   "rounds": 0.15
+  },
+  {
+   "world": "rival: hardliner",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.1941,
+   "delta": 0.0017946176470588233,
+   "se": 0.0006785735621572288,
+   "deal_rate": 0.586,
+   "rounds": 0.56
+  },
+  {
+   "world": "rival: linear",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4979,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.825,
+   "rounds": 0.03
+  },
+  {
+   "world": "rival: linear",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.5056,
+   "delta": 0.007669536764705875,
+   "se": 0.0011408682739304208,
+   "deal_rate": 0.818,
+   "rounds": 0.38
+  },
+  {
+   "world": "rival: tft",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3038,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.772,
+   "rounds": 0.65
+  },
+  {
+   "world": "rival: tft",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3568,
+   "delta": 0.05299044852941177,
+   "se": 0.0014645348548287967,
+   "deal_rate": 0.828,
+   "rounds": 1.16
+  },
+  {
+   "world": "rival: deadline",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4081,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.751,
+   "rounds": 0.53
+  },
+  {
+   "world": "rival: deadline",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4216,
+   "delta": 0.013500727941176474,
+   "se": 0.0007942430536590305,
+   "deal_rate": 0.747,
+   "rounds": 0.54
+  },
+  {
+   "world": "rival: boulware",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3765,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.772,
+   "rounds": 0.54
+  },
+  {
+   "world": "rival: boulware",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4102,
+   "delta": 0.03371,
+   "se": 0.0024211311881880315,
+   "deal_rate": 0.741,
+   "rounds": 0.63
+  },
+  {
+   "world": "rival: conceder",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.5419,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.848,
+   "rounds": 0.07
+  },
+  {
+   "world": "rival: conceder",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.5516,
+   "delta": 0.009732691176470586,
+   "se": 0.0008607113702427472,
+   "deal_rate": 0.848,
+   "rounds": 0.12
+  },
+  {
+   "world": "rival: greedy",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4966,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.745,
+   "rounds": 0.0
+  },
+  {
+   "world": "rival: greedy",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.518,
+   "delta": 0.021396794117647052,
+   "se": 0.0015994926013384793,
+   "deal_rate": 0.72,
+   "rounds": 0.0
+  },
+  {
+   "world": "rival: micro",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.1359,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.507,
+   "rounds": 0.71
+  },
+  {
+   "world": "rival: micro",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.1438,
+   "delta": 0.007956992647058823,
+   "se": 0.000332148229251345,
+   "deal_rate": 0.504,
+   "rounds": 0.83
+  },
+  {
+   "world": "rival: split",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3903,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.857,
+   "rounds": 0.79
+  },
+  {
+   "world": "rival: split",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4599,
+   "delta": 0.06960383088235295,
+   "se": 0.0012341556421486314,
+   "deal_rate": 0.853,
+   "rounds": 0.86
+  },
+  {
+   "world": "rival: logroll",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4395,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.808,
+   "rounds": 0.14
+  },
+  {
+   "world": "rival: logroll",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4617,
+   "delta": 0.022202389705882355,
+   "se": 0.0016795184121448016,
+   "deal_rate": 0.783,
+   "rounds": 0.16
+  },
+  {
+   "world": "rival: llmfair",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3063,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.749,
+   "rounds": 1.27
+  },
+  {
+   "world": "rival: llmfair",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.2992,
+   "delta": -0.007056022058823529,
+   "se": 0.0015002110232837892,
+   "deal_rate": 0.773,
+   "rounds": 1.32
+  },
+  {
+   "world": "days: as modelled (0-4 P/day, opposed, rivals as fitted)",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4198,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.755,
+   "rounds": 0.3
+  },
+  {
+   "world": "days: as modelled (0-4 P/day, opposed, rivals as fitted)",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4278,
+   "delta": 0.007995845588235297,
+   "se": 0.001259724956962019,
+   "deal_rate": 0.753,
+   "rounds": 0.54
+  },
+  {
+   "world": "days: light weights (0-1 P/day)",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4946,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.782,
+   "rounds": 0.27
+  },
+  {
+   "world": "days: light weights (0-1 P/day)",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4951,
+   "delta": 0.0005479632352941166,
+   "se": 0.0014180430502048439,
+   "deal_rate": 0.775,
+   "rounds": 0.5
+  },
+  {
+   "world": "days: heavy weights (2-8 P/day)",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3419,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.698,
+   "rounds": 0.42
+  },
+  {
+   "world": "days: heavy weights (2-8 P/day)",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3517,
+   "delta": 0.009729985294117645,
+   "se": 0.0013255664314855732,
+   "deal_rate": 0.684,
+   "rounds": 0.66
+  },
+  {
+   "world": "days: weights 0.5-4% of cost per day",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4172,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.749,
+   "rounds": 0.3
+  },
+  {
+   "world": "days: weights 0.5-4% of cost per day",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4254,
+   "delta": 0.008235014705882355,
+   "se": 0.0012818109933676043,
+   "deal_rate": 0.748,
+   "rounds": 0.55
+  },
+  {
+   "world": "days: 50% of pairs want the same day",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4609,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.772,
+   "rounds": 0.29
+  },
+  {
+   "world": "days: 50% of pairs want the same day",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4537,
+   "delta": -0.007243352941176471,
+   "se": 0.001669002870850101,
+   "deal_rate": 0.766,
+   "rounds": 0.53
+  },
+  {
+   "world": "days: rivals stubborn on their best day",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4148,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.753,
+   "rounds": 0.3
+  },
+  {
+   "world": "days: rivals stubborn on their best day",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4171,
+   "delta": 0.0023687941176470557,
+   "se": 0.0012641939867324503,
+   "deal_rate": 0.754,
+   "rounds": 0.55
+  },
+  {
+   "world": "days: rivals ignore days (weight 0)",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4689,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.787,
+   "rounds": 0.28
+  },
+  {
+   "world": "days: rivals ignore days (weight 0)",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4746,
+   "delta": 0.005720874999999997,
+   "se": 0.0016044599006102525,
+   "deal_rate": 0.774,
+   "rounds": 0.5
+  },
+  {
+   "world": "days: rivals name a random day",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.4426,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.732,
+   "rounds": 0.24
+  },
+  {
+   "world": "days: rivals name a random day",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.4355,
+   "delta": -0.007088963235294116,
+   "se": 0.001391582838739157,
+   "deal_rate": 0.73,
+   "rounds": 0.47
+  },
+  {
+   "world": "days: direction flipped (buyer late, seller early)",
+   "mode": "robust",
+   "policy": "incumbent",
+   "mean": 0.3247,
+   "delta": 0.0,
+   "se": 0.0,
+   "deal_rate": 0.824,
+   "rounds": 0.26
+  },
+  {
+   "world": "days: direction flipped (buyer late, seller early)",
+   "mode": "robust",
+   "policy": "5ff0066a38",
+   "mean": 0.3204,
+   "delta": -0.004226698529411769,
+   "se": 0.0016424803299007961,
+   "deal_rate": 0.814,
+   "rounds": 0.48
+  }
+ ],
+ "replay": {
+  "incumbent": "incumbent: mean score 0.1898, result 558.7 P, deals 22/25 (real run: 574.0 P, 24 deals)",
+  "5ff0066a38": "5ff0066a38: mean score 0.1865, result 552.8 P, deals 21/25 (real run: 574.0 P, 24 deals)"
+ },
+ "replay2": {
+  "incumbent": "incumbent: mean score 0.2391, result 1204.0 P, deals 46/60 (real run: 1415.5 P, 54 deals)",
+  "5ff0066a38": "5ff0066a38: mean score 0.2379, result 1192.9 P, deals 45/60 (real run: 1415.5 P, 54 deals)"
+ }
+}

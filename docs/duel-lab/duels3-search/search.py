@@ -103,7 +103,7 @@ SPACE = {
 def valid(p: dict) -> bool:
     r = p["ratios"]
     return all(r[i] > r[i + 1] for i in range(len(r) - 1)) and r[-1] > 1.0 and p["last_r"] > 1.0 and \
-        lab.check(p) is None
+        not p.get("last_while_moving") and p.get("min_surplus", 1) == 1 and lab.check(p) is None
 
 
 def hypotheses() -> list:
