@@ -1,0 +1,25 @@
+{
+ "duel": 15923,
+ "session": 5,
+ "status": "live",
+ "role": "buyer",
+ "item": "Mural de la Esquina",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.64,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 93,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 2645,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

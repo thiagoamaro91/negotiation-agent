@@ -1,0 +1,45 @@
+{
+ "duel": 15875,
+ "session": 5,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.7,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 116,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 2618,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": {
+  "id": 16980,
+  "price": 75,
+  "tick": 2614,
+  "days": 10
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 2609,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 63 P, delivery day 10.",
+   "price": 63,
+   "days": 10
+  },
+  {
+   "tick": 2614,
+   "from": "you",
+   "text": "Last word from me: 75 P, delivery day 10.",
+   "price": 75,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

@@ -585,7 +585,7 @@
   "filled": 43,
   "slots": 60
  },
- "tick": 2578,
+ "tick": 2618,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
@@ -595,7 +595,7 @@
   "market": 8.15,
   "neg_points": 136.5,
   "mm_points": 0.0,
-  "duel_points": 27.94,
+  "duel_points": 31.15,
   "ladder_points": 0.371,
   "bench_efficiency": 0.89,
   "bench_points": 0.5,

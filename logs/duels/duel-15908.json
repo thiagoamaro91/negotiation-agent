@@ -1,0 +1,94 @@
+{
+ "duel": 15908,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.03,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 114,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 2628,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17319,
+  "price": 154,
+  "tick": 2626,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2616,
+   "from": "Rival Verde",
+   "text": "119 with delivery on day 0. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 119,
+   "days": 0
+  },
+  {
+   "tick": 2617,
+   "from": "Rival Verde",
+   "text": "123 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 123,
+   "days": 0
+  },
+  {
+   "tick": 2618,
+   "from": "Rival Verde",
+   "text": "127 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 127,
+   "days": 0
+  },
+  {
+   "tick": 2619,
+   "from": "Rival Verde",
+   "text": "131 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 131,
+   "days": 0
+  },
+  {
+   "tick": 2620,
+   "from": "Rival Verde",
+   "text": "136 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 136,
+   "days": 0
+  },
+  {
+   "tick": 2621,
+   "from": "Rival Verde",
+   "text": "137 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 137,
+   "days": 0
+  },
+  {
+   "tick": 2623,
+   "from": "Rival Verde",
+   "text": "142 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 142,
+   "days": 0
+  },
+  {
+   "tick": 2624,
+   "from": "Rival Verde",
+   "text": "149 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 149,
+   "days": 0
+  },
+  {
+   "tick": 2626,
+   "from": "Rival Verde",
+   "text": "154 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 154,
+   "days": 0
+  }
+ ],
+ "result": 40.0,
+ "price": 154,
+ "days": 0
+}

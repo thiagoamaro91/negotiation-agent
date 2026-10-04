@@ -1,0 +1,108 @@
+{
+ "duel": 16082,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.55,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 112,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 2594,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 16372,
+  "price": 125,
+  "tick": 2592,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2582,
+   "from": "Rival Luna",
+   "text": "Hello! I can do 73 with delivery on day 0.",
+   "price": 73,
+   "days": 0
+  },
+  {
+   "tick": 2583,
+   "from": "Rival Luna",
+   "text": "Thanks for the reply. 86, delivery day 0.",
+   "price": 86,
+   "days": 0
+  },
+  {
+   "tick": 2584,
+   "from": "Rival Luna",
+   "text": "Let me move closer: 96, day 0.",
+   "price": 96,
+   "days": 0
+  },
+  {
+   "tick": 2585,
+   "from": "Rival Luna",
+   "text": "I'd like to close this: 103 with day 0.",
+   "price": 103,
+   "days": 0
+  },
+  {
+   "tick": 2586,
+   "from": "Rival Luna",
+   "text": "Meeting you halfway: 109, delivered day 0.",
+   "price": 109,
+   "days": 0
+  },
+  {
+   "tick": 2587,
+   "from": "Rival Luna",
+   "text": "Final stretch from me: 113, day 0.",
+   "price": 113,
+   "days": 0
+  },
+  {
+   "tick": 2588,
+   "from": "Rival Luna",
+   "text": "Hello! I can do 116 with delivery on day 0.",
+   "price": 116,
+   "days": 0
+  },
+  {
+   "tick": 2589,
+   "from": "Rival Luna",
+   "text": "Thanks for the reply. 118, delivery day 0.",
+   "price": 118,
+   "days": 0
+  },
+  {
+   "tick": 2590,
+   "from": "Rival Luna",
+   "text": "Let me move closer: 120, day 0.",
+   "price": 120,
+   "days": 0
+  },
+  {
+   "tick": 2591,
+   "from": "Rival Luna",
+   "text": "I'd like to close this: 123 with day 0.",
+   "price": 123,
+   "days": 0
+  },
+  {
+   "tick": 2592,
+   "from": "Rival Luna",
+   "text": "Meeting you halfway: 125, delivered day 0.",
+   "price": 125,
+   "days": 0
+  }
+ ],
+ "result": 13.0,
+ "price": 125,
+ "days": 0
+}

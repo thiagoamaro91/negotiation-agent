@@ -506,7 +506,7 @@
      "flavour": "Better dressed than you.",
      "book": 10,
      "print_run": 300,
-     "minted": 29,
+     "minted": 30,
      "hidden": false,
      "page": true
     },
@@ -517,7 +517,7 @@
      "flavour": "Seven euros and a view.",
      "book": 10,
      "print_run": 300,
-     "minted": 29,
+     "minted": 30,
      "hidden": false,
      "page": true
     },
@@ -626,7 +626,7 @@
      "flavour": "Rowing in circles, happily.",
      "book": 10,
      "print_run": 300,
-     "minted": 21,
+     "minted": 22,
      "hidden": false,
      "page": true
     },
