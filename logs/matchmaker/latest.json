@@ -1,32 +1,102 @@
 {
- "generated_at": 1791101587,
- "tick": 1677,
+ "generated_at": 1791102699,
+ "tick": 1750,
  "venue": "v20",
  "matches": [
   {
-   "tier": 1,
-   "kind": "live want, known supply",
+   "tier": 2,
+   "kind": "live want",
    "inferred": false,
-   "team": "t12",
-   "team_name": "Team 12",
-   "card": "LAV-07",
-   "card_name": "Samosas de la Plaza",
+   "team": "t07",
+   "team_name": "Team 7",
+   "card": "RET-11",
+   "card_name": "Palacio de Cristal",
+   "rarity": "epic",
+   "set": "RET",
+   "set_name": "El Retiro",
+   "buyer_active": true,
+   "basis": "feed",
+   "p_missing": null,
+   "page": null,
+   "holders": [],
+   "dealers": [
+    {
+     "dealer": "picaros",
+     "name": "Los Pícaros",
+     "sells": {
+      "low": 128,
+      "median": 144,
+      "high": 167
+     },
+     "n": 27
+    }
+   ],
+   "dealer_left": 5,
+   "prices": {
+    "fair": 228.0,
+    "fair_text": "about 228 P (last team-to-team trades: 240, 216)",
+    "team_range": {
+     "low": 222,
+     "median": 228,
+     "high": 234,
+     "trades": 2
+    },
+    "rarity_median": 211.5,
+    "dealer_sells": {
+     "picaros": 144
+    },
+    "dealer_buys": {
+     "pilar": 195,
+     "banco": 120.0
+    }
+   },
+   "price": 170,
+   "action": {
+    "offer": 22455,
+    "venue": "rastro",
+    "venue_owner": "world",
+    "asset": null,
+    "venue_class": 1,
+    "side": "bid",
+    "price": 99,
+    "fee": 6,
+    "expires_tick": 1759,
+    "maker": "t07",
+    "maker_name": "Team 7",
+    "to": null,
+    "who": [],
+    "who_names": [],
+    "call": "POST /api/offers/22455/accept"
+   },
+   "proposal": null,
+   "fair_offer": false,
+   "score": 366.1,
+   "rank": 1
+  },
+  {
+   "tier": 2,
+   "kind": "live want",
+   "inferred": false,
+   "team": "t07",
+   "team_name": "Team 7",
+   "card": "MAL-07",
+   "card_name": "Mercado de San Ildefonso",
    "rarity": "uncommon",
-   "set": "LAV",
-   "set_name": "Lavapiés",
+   "set": "MAL",
+   "set_name": "Malasaña",
    "buyer_active": true,
    "basis": "feed",
    "p_missing": null,
    "page": null,
    "holders": [
     {
-     "team": "t07",
-     "name": "Team 7",
-     "copies": 1,
-     "spare": false,
-     "asset": 237,
+     "team": "t01",
+     "name": "Team 1",
+     "copies": 2,
+     "spare": true,
+     "asset": 362,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -39,33 +109,33 @@
       "median": 23.0,
       "high": 25
      },
-     "n": 72
+     "n": 74
     },
     {
      "dealer": "chato",
      "name": "El Chato",
      "sells": {
       "low": 26,
-      "median": 30,
+      "median": 30.0,
       "high": 32
      },
-     "n": 21
+     "n": 22
     }
    ],
    "dealer_left": 72,
    "prices": {
-    "fair": 49.5,
-    "fair_text": "about 49.5 P (last team-to-team trades: 44, 55)",
+    "fair": 15.5,
+    "fair_text": "about 15.5 P (last team-to-team trades: 9, 17, 14, 25)",
     "team_range": {
-     "low": 47,
-     "median": 50,
-     "high": 52,
-     "trades": 2
+     "low": 13,
+     "median": 16,
+     "high": 19,
+     "trades": 4
     },
     "rarity_median": 20.0,
     "dealer_sells": {
      "abuela": 23.0,
-     "chato": 30
+     "chato": 30.0
     },
     "dealer_buys": {
      "pilar": 19.0,
@@ -74,36 +144,36 @@
      "picaros": 11.0
     }
    },
-   "price": 23,
+   "price": 19,
    "action": {
-    "offer": 21827,
+    "offer": 22456,
     "venue": "rastro",
     "venue_owner": "world",
     "asset": null,
     "venue_class": 1,
     "side": "bid",
-    "price": 24,
-    "fee": 3,
-    "expires_tick": 1701,
-    "maker": "t12",
-    "maker_name": "Team 12",
+    "price": 10,
+    "fee": 2,
+    "expires_tick": 1759,
+    "maker": "t07",
+    "maker_name": "Team 7",
     "to": null,
     "who": [
-     "t07"
+     "t01"
     ],
     "who_names": [
-     "Team 7"
+     "Team 1"
     ],
-    "call": "POST /api/offers/21827/accept"
+    "call": "POST /api/offers/22456/accept"
    },
    "proposal": null,
-   "fair_offer": true,
-   "score": 56.4,
-   "rank": 1
+   "fair_offer": false,
+   "score": 30.3,
+   "rank": 2
   },
   {
-   "tier": 1,
-   "kind": "live want, known supply",
+   "tier": 2,
+   "kind": "live want",
    "inferred": false,
    "team": "t07",
    "team_name": "Team 7",
@@ -124,7 +194,7 @@
      "spare": true,
      "asset": 778,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
@@ -134,7 +204,7 @@
      "spare": true,
      "asset": 293,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
@@ -144,7 +214,7 @@
      "spare": false,
      "asset": 811,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -154,10 +224,10 @@
      "name": "Abuela",
      "sells": {
       "low": 8,
-      "median": 9.0,
+      "median": 9,
       "high": 10
      },
-     "n": 88
+     "n": 89
     }
    ],
    "dealer_left": 276,
@@ -172,7 +242,7 @@
     },
     "rarity_median": 7.0,
     "dealer_sells": {
-     "abuela": 9.0
+     "abuela": 9
     },
     "dealer_buys": {
      "abuela": 6.0,
@@ -181,15 +251,15 @@
    },
    "price": 6,
    "action": {
-    "offer": 21916,
+    "offer": 22457,
     "venue": "rastro",
     "venue_owner": "world",
-    "asset": 96,
+    "asset": null,
     "venue_class": 1,
-    "side": "swap",
-    "price": 0,
-    "fee": 1,
-    "expires_tick": 1686,
+    "side": "bid",
+    "price": 5,
+    "fee": 2,
+    "expires_tick": 1759,
     "maker": "t07",
     "maker_name": "Team 7",
     "to": null,
@@ -203,279 +273,12 @@
      "Team 18",
      "Team 4"
     ],
-    "call": "POST /api/offers/21916/accept",
-    "gives": "MAL-02"
-   },
-   "proposal": null,
-   "fair_offer": true,
-   "score": 9.4,
-   "rank": 2
-  },
-  {
-   "tier": 2,
-   "kind": "live want",
-   "inferred": false,
-   "team": "t16",
-   "team_name": "Team 16",
-   "card": "SAL-11",
-   "card_name": "La Puerta de Alcalá",
-   "rarity": "epic",
-   "set": "SAL",
-   "set_name": "Salamanca",
-   "buyer_active": true,
-   "basis": "feed",
-   "p_missing": null,
-   "page": null,
-   "holders": [
-    {
-     "team": "t04",
-     "name": "Team 4",
-     "copies": 1,
-     "spare": false,
-     "asset": 1145,
-     "active": true,
-     "as_of": 1677,
-     "seen": "reconstructed"
-    }
-   ],
-   "dealers": [],
-   "dealer_left": 0,
-   "prices": {
-    "fair": 222.5,
-    "fair_text": "about 222.5 P (last team-to-team trades: 238, 207)",
-    "team_range": {
-     "low": 215,
-     "median": 222,
-     "high": 230,
-     "trades": 2
-    },
-    "rarity_median": 207,
-    "dealer_sells": {
-     "picaros": 144.5
-    },
-    "dealer_buys": {
-     "pilar": 195,
-     "banco": 120
-    }
-   },
-   "price": 222,
-   "action": {
-    "offer": 21884,
-    "venue": "rastro",
-    "venue_owner": "world",
-    "asset": null,
-    "venue_class": 1,
-    "side": "bid",
-    "price": 176,
-    "fee": 10,
-    "expires_tick": 1692,
-    "maker": "t16",
-    "maker_name": "Team 16",
-    "to": null,
-    "who": [
-     "t04"
-    ],
-    "who_names": [
-     "Team 4"
-    ],
-    "call": "POST /api/offers/21884/accept"
+    "call": "POST /api/offers/22457/accept"
    },
    "proposal": null,
    "fair_offer": false,
-   "score": 409.9,
+   "score": 14.4,
    "rank": 3
-  },
-  {
-   "tier": 2,
-   "kind": "live want",
-   "inferred": false,
-   "team": "t04",
-   "team_name": "Team 4",
-   "card": "SAL-06",
-   "card_name": "La Galería",
-   "rarity": "uncommon",
-   "set": "SAL",
-   "set_name": "Salamanca",
-   "buyer_active": true,
-   "basis": "feed",
-   "p_missing": null,
-   "page": null,
-   "holders": [],
-   "dealers": [
-    {
-     "dealer": "abuela",
-     "name": "Abuela",
-     "sells": {
-      "low": 20,
-      "median": 23.0,
-      "high": 25
-     },
-     "n": 72
-    },
-    {
-     "dealer": "chato",
-     "name": "El Chato",
-     "sells": {
-      "low": 26,
-      "median": 30,
-      "high": 32
-     },
-     "n": 21
-    }
-   ],
-   "dealer_left": 71,
-   "prices": {
-    "fair": 25.5,
-    "fair_text": "about 25.5 P (last team-to-team trades: 28, 23)",
-    "team_range": {
-     "low": 24,
-     "median": 26,
-     "high": 27,
-     "trades": 2
-    },
-    "rarity_median": 20.0,
-    "dealer_sells": {
-     "abuela": 23.0,
-     "chato": 30
-    },
-    "dealer_buys": {
-     "pilar": 19.0,
-     "abuela": 14.5,
-     "chato": 14,
-     "picaros": 11.0
-    }
-   },
-   "price": 23,
-   "action": {
-    "offer": 21480,
-    "venue": "rastro",
-    "venue_owner": "world",
-    "asset": null,
-    "venue_class": 1,
-    "side": "bid",
-    "price": 12,
-    "fee": 2,
-    "expires_tick": 1714,
-    "maker": "t04",
-    "maker_name": "Team 4",
-    "to": null,
-    "who": [],
-    "who_names": [],
-    "call": "POST /api/offers/21480/accept"
-   },
-   "proposal": null,
-   "fair_offer": false,
-   "score": 33.3,
-   "rank": 4
-  },
-  {
-   "tier": 2,
-   "kind": "live want",
-   "inferred": false,
-   "team": "t04",
-   "team_name": "Team 4",
-   "card": "SAL-03",
-   "card_name": "Perrito con Abrigo",
-   "rarity": "common",
-   "set": "SAL",
-   "set_name": "Salamanca",
-   "buyer_active": true,
-   "basis": "feed",
-   "p_missing": null,
-   "page": null,
-   "holders": [
-    {
-     "team": "t01",
-     "name": "Team 1",
-     "copies": 3,
-     "spare": true,
-     "asset": 934,
-     "active": true,
-     "as_of": 1677,
-     "seen": "reconstructed"
-    },
-    {
-     "team": "t12",
-     "name": "Team 12",
-     "copies": 1,
-     "spare": false,
-     "asset": 567,
-     "active": true,
-     "as_of": 1677,
-     "seen": "reconstructed"
-    },
-    {
-     "team": "t15",
-     "name": "Team 15",
-     "copies": 1,
-     "spare": false,
-     "asset": 1051,
-     "active": true,
-     "as_of": 1677,
-     "seen": "reconstructed"
-    }
-   ],
-   "dealers": [
-    {
-     "dealer": "abuela",
-     "name": "Abuela",
-     "sells": {
-      "low": 8,
-      "median": 9.0,
-      "high": 10
-     },
-     "n": 88
-    }
-   ],
-   "dealer_left": 272,
-   "prices": {
-    "fair": 5.0,
-    "fair_text": "about 5 P (last team-to-team trades: 5, 5)",
-    "team_range": {
-     "low": 5,
-     "median": 5,
-     "high": 5,
-     "trades": 2
-    },
-    "rarity_median": 7.0,
-    "dealer_sells": {
-     "abuela": 9.0
-    },
-    "dealer_buys": {
-     "abuela": 6.0,
-     "picaros": 5.0
-    }
-   },
-   "price": 6,
-   "action": {
-    "offer": 21486,
-    "venue": "rastro",
-    "venue_owner": "world",
-    "asset": null,
-    "venue_class": 1,
-    "side": "bid",
-    "price": 4,
-    "fee": 2,
-    "expires_tick": 1715,
-    "maker": "t04",
-    "maker_name": "Team 4",
-    "to": null,
-    "who": [
-     "t01",
-     "t12",
-     "t15"
-    ],
-    "who_names": [
-     "Team 1",
-     "Team 12",
-     "Team 15"
-    ],
-    "call": "POST /api/offers/21486/accept"
-   },
-   "proposal": null,
-   "fair_offer": false,
-   "score": 12.5,
-   "rank": 5
   },
   {
    "tier": 2,
@@ -505,7 +308,7 @@
    },
    "price": 450,
    "action": {
-    "offer": 21639,
+    "offer": 22429,
     "venue": "v21",
     "venue_owner": "t09",
     "asset": null,
@@ -513,18 +316,18 @@
     "side": "bid",
     "price": 286,
     "fee": 0,
-    "expires_tick": 1741,
+    "expires_tick": 1862,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
     "who": [],
     "who_names": [],
-    "call": "POST /api/offers/21639/accept"
+    "call": "POST /api/offers/22429/accept"
    },
    "proposal": null,
    "fair_offer": true,
    "score": 653.3,
-   "rank": 6
+   "rank": 4
   },
   {
    "tier": 2,
@@ -554,7 +357,7 @@
    },
    "price": 450,
    "action": {
-    "offer": 21645,
+    "offer": 22432,
     "venue": "v02",
     "venue_owner": "t12",
     "asset": 1158,
@@ -562,19 +365,19 @@
     "side": "swap",
     "price": 0,
     "fee": 0,
-    "expires_tick": 1742,
+    "expires_tick": 1863,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
     "who": [],
     "who_names": [],
-    "call": "POST /api/offers/21645/accept",
+    "call": "POST /api/offers/22432/accept",
     "gives": "SAL-02"
    },
    "proposal": null,
    "fair_offer": false,
    "score": 646.8,
-   "rank": 7
+   "rank": 5
   },
   {
    "tier": 2,
@@ -604,7 +407,7 @@
    },
    "price": 450,
    "action": {
-    "offer": 21727,
+    "offer": 22417,
     "venue": "v02",
     "venue_owner": "t12",
     "asset": 1097,
@@ -612,19 +415,19 @@
     "side": "swap",
     "price": 0,
     "fee": 0,
-    "expires_tick": 1764,
+    "expires_tick": 1859,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
     "who": [],
     "who_names": [],
-    "call": "POST /api/offers/21727/accept",
+    "call": "POST /api/offers/22417/accept",
     "gives": "LAT-05"
    },
    "proposal": null,
    "fair_offer": false,
    "score": 618.5,
-   "rank": 8
+   "rank": 6
   },
   {
    "tier": 2,
@@ -649,7 +452,7 @@
      "spare": false,
      "asset": 1166,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -697,7 +500,7 @@
    },
    "price": 66,
    "action": {
-    "offer": 21641,
+    "offer": 22430,
     "venue": "v21",
     "venue_owner": "t09",
     "asset": null,
@@ -705,7 +508,7 @@
     "side": "bid",
     "price": 44,
     "fee": 0,
-    "expires_tick": 1741,
+    "expires_tick": 1862,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
@@ -715,12 +518,108 @@
     "who_names": [
      "Team 1"
     ],
-    "call": "POST /api/offers/21641/accept"
+    "call": "POST /api/offers/22430/accept"
    },
    "proposal": null,
    "fair_offer": false,
    "score": 101.1,
-   "rank": 9
+   "rank": 7
+  },
+  {
+   "tier": 2,
+   "kind": "live want",
+   "inferred": false,
+   "team": "t06",
+   "team_name": "Team 6",
+   "card": "LAT-10",
+   "card_name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "set_name": "La Latina",
+   "buyer_active": true,
+   "basis": "feed",
+   "p_missing": null,
+   "page": null,
+   "holders": [
+    {
+     "team": "t15",
+     "name": "Team 15",
+     "copies": 1,
+     "spare": false,
+     "asset": 90,
+     "active": true,
+     "as_of": 1750,
+     "seen": "reconstructed"
+    }
+   ],
+   "dealers": [
+    {
+     "dealer": "chato",
+     "name": "El Chato",
+     "sells": {
+      "low": 75,
+      "median": 89,
+      "high": 96
+     },
+     "n": 33
+    },
+    {
+     "dealer": "picaros",
+     "name": "Los Pícaros",
+     "sells": {
+      "low": 48,
+      "median": 56.5,
+      "high": 67
+     },
+     "n": 70
+    }
+   ],
+   "dealer_left": 21,
+   "prices": {
+    "fair": 72.0,
+    "fair_text": "about 72 P (last team-to-team trades: 72, 86, 60)",
+    "team_range": {
+     "low": 66,
+     "median": 72,
+     "high": 79,
+     "trades": 3
+    },
+    "rarity_median": 72,
+    "dealer_sells": {
+     "chato": 89,
+     "picaros": 56.5
+    },
+    "dealer_buys": {
+     "pilar": 75.0,
+     "chato": 49
+    }
+   },
+   "price": 66,
+   "action": {
+    "offer": 22309,
+    "venue": "v21",
+    "venue_owner": "t09",
+    "asset": null,
+    "venue_class": 2,
+    "side": "bid",
+    "price": 44,
+    "fee": 0,
+    "expires_tick": 1842,
+    "maker": "t06",
+    "maker_name": "Team 6",
+    "to": null,
+    "who": [
+     "t15"
+    ],
+    "who_names": [
+     "Team 15"
+    ],
+    "call": "POST /api/offers/22309/accept"
+   },
+   "proposal": null,
+   "fair_offer": false,
+   "score": 101.1,
+   "rank": 8
   },
   {
    "tier": 2,
@@ -739,34 +638,29 @@
    "page": null,
    "holders": [
     {
-     "team": "t16",
-     "name": "Team 16",
-     "copies": 2,
-     "spare": true,
-     "asset": 613,
-     "active": true,
-     "as_of": 1677,
-     "seen": "live ask",
-     "asking": {
-      "price": 21,
-      "venue": "rastro",
-      "offer": 21893
-     }
-    },
-    {
      "team": "t06",
      "name": "Team 6",
      "copies": 1,
      "spare": false,
      "asset": 1100,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "live ask",
      "asking": {
       "price": 21,
       "venue": "rastro",
-      "offer": 21842
+      "offer": 22444
      }
+    },
+    {
+     "team": "t16",
+     "name": "Team 16",
+     "copies": 2,
+     "spare": true,
+     "asset": 613,
+     "active": true,
+     "as_of": 1750,
+     "seen": "reconstructed"
     }
    ],
    "dealers": [
@@ -778,17 +672,17 @@
       "median": 23.0,
       "high": 25
      },
-     "n": 72
+     "n": 74
     },
     {
      "dealer": "chato",
      "name": "El Chato",
      "sells": {
       "low": 26,
-      "median": 30,
+      "median": 30.0,
       "high": 32
      },
-     "n": 21
+     "n": 22
     }
    ],
    "dealer_left": 72,
@@ -804,7 +698,7 @@
     "rarity_median": 20.0,
     "dealer_sells": {
      "abuela": 23.0,
-     "chato": 30
+     "chato": 30.0
     },
     "dealer_buys": {
      "pilar": 19.0,
@@ -828,19 +722,19 @@
     "maker_name": "Team 5",
     "to": null,
     "who": [
-     "t16",
-     "t06"
+     "t06",
+     "t16"
     ],
     "who_names": [
-     "Team 16",
-     "Team 6"
+     "Team 6",
+     "Team 16"
     ],
     "call": "POST /api/offers/21791/accept"
    },
    "proposal": null,
    "fair_offer": false,
-   "score": 22.8,
-   "rank": 10
+   "score": 22.0,
+   "rank": 9
   },
   {
    "tier": 2,
@@ -865,12 +759,12 @@
      "spare": false,
      "asset": 1133,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "live ask",
      "asking": {
       "price": 30,
       "venue": "rastro",
-      "offer": 21841
+      "offer": 22443
      }
     },
     {
@@ -880,7 +774,7 @@
      "spare": false,
      "asset": 193,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -893,17 +787,17 @@
       "median": 23.0,
       "high": 25
      },
-     "n": 72
+     "n": 74
     },
     {
      "dealer": "chato",
      "name": "El Chato",
      "sells": {
       "low": 26,
-      "median": 30,
+      "median": 30.0,
       "high": 32
      },
-     "n": 21
+     "n": 22
     }
    ],
    "dealer_left": 71,
@@ -919,7 +813,7 @@
     "rarity_median": 20.0,
     "dealer_sells": {
      "abuela": 23.0,
-     "chato": 30
+     "chato": 30.0
     },
     "dealer_buys": {
      "pilar": 19.0,
@@ -954,8 +848,8 @@
    },
    "proposal": null,
    "fair_offer": false,
-   "score": 22.8,
-   "rank": 11
+   "score": 22.0,
+   "rank": 10
   },
   {
    "tier": 2,
@@ -980,12 +874,12 @@
      "spare": false,
      "asset": 88,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "live ask",
      "asking": {
       "price": 30,
       "venue": "rastro",
-      "offer": 21840
+      "offer": 22442
      }
     },
     {
@@ -995,7 +889,7 @@
      "spare": false,
      "asset": 1112,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
@@ -1005,7 +899,7 @@
      "spare": false,
      "asset": 964,
      "active": false,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -1018,17 +912,17 @@
       "median": 23.0,
       "high": 25
      },
-     "n": 72
+     "n": 74
     },
     {
      "dealer": "chato",
      "name": "El Chato",
      "sells": {
       "low": 26,
-      "median": 30,
+      "median": 30.0,
       "high": 32
      },
-     "n": 21
+     "n": 22
     }
    ],
    "dealer_left": 71,
@@ -1044,7 +938,7 @@
     "rarity_median": 20.0,
     "dealer_sells": {
      "abuela": 23.0,
-     "chato": 30
+     "chato": 30.0
     },
     "dealer_buys": {
      "pilar": 19.0,
@@ -1081,8 +975,8 @@
    },
    "proposal": null,
    "fair_offer": false,
-   "score": 22.8,
-   "rank": 12
+   "score": 22.0,
+   "rank": 11
   },
   {
    "tier": 2,
@@ -1090,134 +984,54 @@
    "inferred": false,
    "team": "t06",
    "team_name": "Team 6",
-   "card": "MAL-06",
-   "card_name": "Tienda de Discos",
-   "rarity": "uncommon",
-   "set": "MAL",
-   "set_name": "Malasaña",
+   "card": "LAT-03",
+   "card_name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "set_name": "La Latina",
    "buyer_active": true,
    "basis": "feed",
    "p_missing": null,
    "page": null,
    "holders": [
-    {
-     "team": "t04",
-     "name": "Team 4",
-     "copies": 1,
-     "spare": false,
-     "asset": 148,
-     "active": true,
-     "as_of": 1677,
-     "seen": "reconstructed"
-    },
     {
      "team": "t05",
      "name": "Team 5",
-     "copies": 1,
-     "spare": false,
-     "asset": null,
+     "copies": 2,
+     "spare": true,
+     "asset": 308,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
-    }
-   ],
-   "dealers": [
-    {
-     "dealer": "abuela",
-     "name": "Abuela",
-     "sells": {
-      "low": 20,
-      "median": 23.0,
-      "high": 25
-     },
-     "n": 72
     },
     {
-     "dealer": "chato",
-     "name": "El Chato",
-     "sells": {
-      "low": 26,
-      "median": 30,
-      "high": 32
-     },
-     "n": 21
-    }
-   ],
-   "dealer_left": 65,
-   "prices": {
-    "fair": 20.0,
-    "fair_text": "about 20 P (last team-to-team trades: 17, 20, 28, 20)",
-    "team_range": {
-     "low": 19,
-     "median": 20,
-     "high": 22,
-     "trades": 4
+     "team": "t16",
+     "name": "Team 16",
+     "copies": 2,
+     "spare": true,
+     "asset": 229,
+     "active": true,
+     "as_of": 1750,
+     "seen": "reconstructed"
     },
-    "rarity_median": 20.0,
-    "dealer_sells": {
-     "abuela": 23.0,
-     "chato": 30
-    },
-    "dealer_buys": {
-     "pilar": 19.0,
-     "abuela": 14.5,
-     "chato": 14,
-     "picaros": 11.0
-    }
-   },
-   "price": 20,
-   "action": {
-    "offer": 21703,
-    "venue": "v21",
-    "venue_owner": "t09",
-    "asset": null,
-    "venue_class": 2,
-    "side": "bid",
-    "price": 9,
-    "fee": 0,
-    "expires_tick": 1756,
-    "maker": "t06",
-    "maker_name": "Team 6",
-    "to": null,
-    "who": [
-     "t04",
-     "t05"
-    ],
-    "who_names": [
-     "Team 4",
-     "Team 5"
-    ],
-    "call": "POST /api/offers/21703/accept"
-   },
-   "proposal": null,
-   "fair_offer": false,
-   "score": 22.6,
-   "rank": 13
-  },
-  {
-   "tier": 2,
-   "kind": "live want",
-   "inferred": false,
-   "team": "t06",
-   "team_name": "Team 6",
-   "card": "MAL-07",
-   "card_name": "Mercado de San Ildefonso",
-   "rarity": "uncommon",
-   "set": "MAL",
-   "set_name": "Malasaña",
-   "buyer_active": true,
-   "basis": "feed",
-   "p_missing": null,
-   "page": null,
-   "holders": [
     {
      "team": "t01",
      "name": "Team 1",
-     "copies": 2,
-     "spare": true,
-     "asset": 362,
+     "copies": 1,
+     "spare": false,
+     "asset": 7,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
+     "seen": "reconstructed"
+    },
+    {
+     "team": "t13",
+     "name": "Team 13",
+     "copies": 1,
+     "spare": false,
+     "asset": 1119,
+     "active": true,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -1226,71 +1040,66 @@
      "dealer": "abuela",
      "name": "Abuela",
      "sells": {
-      "low": 20,
-      "median": 23.0,
-      "high": 25
+      "low": 8,
+      "median": 9,
+      "high": 10
      },
-     "n": 72
-    },
-    {
-     "dealer": "chato",
-     "name": "El Chato",
-     "sells": {
-      "low": 26,
-      "median": 30,
-      "high": 32
-     },
-     "n": 21
+     "n": 89
     }
    ],
-   "dealer_left": 72,
+   "dealer_left": 280,
    "prices": {
-    "fair": 15.5,
-    "fair_text": "about 15.5 P (last team-to-team trades: 9, 17, 14, 25)",
+    "fair": 8.0,
+    "fair_text": "about 8 P (last team-to-team trades: 6, 8, 9)",
     "team_range": {
-     "low": 13,
-     "median": 16,
-     "high": 19,
-     "trades": 4
+     "low": 7,
+     "median": 8,
+     "high": 8,
+     "trades": 3
     },
-    "rarity_median": 20.0,
+    "rarity_median": 7.0,
     "dealer_sells": {
-     "abuela": 23.0,
-     "chato": 30
+     "abuela": 9
     },
     "dealer_buys": {
-     "pilar": 19.0,
-     "abuela": 14.5,
-     "chato": 14,
-     "picaros": 11.0
+     "abuela": 6.0,
+     "picaros": 5.0
     }
    },
-   "price": 19,
+   "price": 8,
    "action": {
-    "offer": 21704,
+    "offer": 22311,
     "venue": "v21",
     "venue_owner": "t09",
     "asset": null,
     "venue_class": 2,
     "side": "bid",
-    "price": 9,
+    "price": 4,
     "fee": 0,
-    "expires_tick": 1756,
+    "expires_tick": 1842,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
     "who": [
-     "t01"
+     "t05",
+     "t16",
+     "t01",
+     "t13",
+     "t15"
     ],
     "who_names": [
-     "Team 1"
+     "Team 5",
+     "Team 16",
+     "Team 1",
+     "Team 13",
+     "Team 15"
     ],
-    "call": "POST /api/offers/21704/accept"
+    "call": "POST /api/offers/22311/accept"
    },
    "proposal": null,
    "fair_offer": false,
-   "score": 22.6,
-   "rank": 14
+   "score": 12.2,
+   "rank": 12
   },
   {
    "tier": 2,
@@ -1315,7 +1124,7 @@
      "spare": true,
      "asset": 539,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
@@ -1325,7 +1134,7 @@
      "spare": false,
      "asset": 213,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
@@ -1335,17 +1144,17 @@
      "spare": false,
      "asset": 61,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     },
     {
-     "team": "t07",
-     "name": "Team 7",
+     "team": "t14",
+     "name": "Team 14",
      "copies": 1,
      "spare": false,
-     "asset": 96,
+     "asset": 71,
      "active": true,
-     "as_of": 1677,
+     "as_of": 1750,
      "seen": "reconstructed"
     }
    ],
@@ -1355,10 +1164,10 @@
      "name": "Abuela",
      "sells": {
       "low": 8,
-      "median": 9.0,
+      "median": 9,
       "high": 10
      },
-     "n": 88
+     "n": 89
     }
    ],
    "dealer_left": 267,
@@ -1373,7 +1182,7 @@
     },
     "rarity_median": 7.0,
     "dealer_sells": {
-     "abuela": 9.0
+     "abuela": 9
     },
     "dealer_buys": {
      "abuela": 6.0,
@@ -1382,7 +1191,7 @@
    },
    "price": 6,
    "action": {
-    "offer": 21674,
+    "offer": 22461,
     "venue": "v21",
     "venue_owner": "t09",
     "asset": null,
@@ -1390,7 +1199,7 @@
     "side": "bid",
     "price": 2,
     "fee": 0,
-    "expires_tick": 1749,
+    "expires_tick": 1870,
     "maker": "t06",
     "maker_name": "Team 6",
     "to": null,
@@ -1398,7 +1207,6 @@
      "t10",
      "t04",
      "t05",
-     "t07",
      "t14",
      "t16",
      "t18",
@@ -1408,34 +1216,33 @@
      "Team 10",
      "Team 4",
      "Team 5",
-     "Team 7",
      "Team 14",
      "Team 16",
      "Team 18",
      "Team 17"
     ],
-    "call": "POST /api/offers/21674/accept"
+    "call": "POST /api/offers/22461/accept"
    },
    "proposal": null,
    "fair_offer": false,
    "score": 7.5,
-   "rank": 15
+   "rank": 13
   }
  ],
  "teams": {
   "t01": {
    "name": "Team 1",
-   "album": 41,
+   "album": 42,
    "pages_complete": 3,
    "named_page_cards": 32,
-   "unseen": 9,
-   "pages_exact": false,
+   "unseen": 10,
+   "pages_exact": true,
    "active": true,
-   "consistent": false,
-   "inconsistent": "no choice of the unnamed cards fits album_filled 41 and pages_complete 3",
+   "consistent": true,
+   "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1675,
+   "last_move_tick": 1727,
    "near_pages": [
     {
      "set": "SAL",
@@ -1446,17 +1253,17 @@
       "SAL-06"
      ],
      "p_missing": {
-      "SAL-04": 0.57,
-      "SAL-06": 0.774
+      "SAL-04": 0.0,
+      "SAL-06": 0.0
      }
     }
    ]
   },
   "t02": {
    "name": "Team 2",
-   "album": 38,
+   "album": 39,
    "pages_complete": 2,
-   "named_page_cards": 28,
+   "named_page_cards": 29,
    "unseen": 10,
    "pages_exact": true,
    "active": true,
@@ -1464,37 +1271,61 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1677,
-   "near_pages": []
+   "last_move_tick": 1749,
+   "near_pages": [
+    {
+     "set": "CHA",
+     "have": 8,
+     "size": 10,
+     "appears_missing": [],
+     "p_missing": {}
+    }
+   ]
   },
   "t04": {
    "name": "Team 4",
    "album": 42,
    "pages_complete": 3,
-   "named_page_cards": 37,
-   "unseen": 5,
+   "named_page_cards": 39,
+   "unseen": 3,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1657,
-   "near_pages": []
+   "last_move_tick": 1745,
+   "near_pages": [
+    {
+     "set": "LAV",
+     "have": 8,
+     "size": 10,
+     "appears_missing": [
+      "LAV-01",
+      "LAV-06"
+     ],
+     "p_missing": {
+      "LAV-01": 0.002,
+      "LAV-06": 0.002
+     }
+    }
+   ]
   },
   "t05": {
    "name": "Team 5",
    "album": 50,
    "pages_complete": 4,
-   "named_page_cards": 42,
-   "unseen": 8,
+   "named_page_cards": 43,
+   "unseen": 7,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
-   "held_by_leaderboard": [],
-   "last_move_tick": 1663,
+   "held_by_leaderboard": [
+    "LAV-10"
+   ],
+   "last_move_tick": 1750,
    "near_pages": [
     {
      "set": "SAL",
@@ -1541,7 +1372,7 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1666,
+   "last_move_tick": 1750,
    "near_pages": [
     {
      "set": "LAV",
@@ -1558,31 +1389,27 @@
   },
   "t07": {
    "name": "Team 7",
-   "album": 37,
+   "album": 35,
    "pages_complete": 3,
-   "named_page_cards": 32,
-   "unseen": 5,
+   "named_page_cards": 28,
+   "unseen": 7,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
-   "held_by_leaderboard": [
-    "LAV-09"
-   ],
-   "last_move_tick": 1677,
+   "held_by_leaderboard": [],
+   "last_move_tick": 1749,
    "near_pages": [
     {
-     "set": "LAV",
-     "have": 8,
+     "set": "LAT",
+     "have": 9,
      "size": 10,
      "appears_missing": [
-      "LAV-04",
-      "LAV-05"
+      "LAT-02"
      ],
      "p_missing": {
-      "LAV-04": 0.0,
-      "LAV-05": 0.0
+      "LAT-02": 0.0
      }
     },
     {
@@ -1610,7 +1437,7 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1657,
+   "last_move_tick": 1744,
    "near_pages": [
     {
      "set": "CHA",
@@ -1623,46 +1450,33 @@
   },
   "t09": {
    "name": "Team 9",
-   "album": 43,
-   "pages_complete": 2,
+   "album": 44,
+   "pages_complete": 3,
    "named_page_cards": 31,
-   "unseen": 12,
+   "unseen": 13,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1677,
+   "last_move_tick": 1740,
    "near_pages": []
   },
   "t10": {
    "name": "Team 10",
-   "album": 39,
-   "pages_complete": 3,
-   "named_page_cards": 31,
-   "unseen": 8,
+   "album": 43,
+   "pages_complete": 4,
+   "named_page_cards": 33,
+   "unseen": 10,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1677,
+   "last_move_tick": 1750,
    "near_pages": [
-    {
-     "set": "SAL",
-     "have": 8,
-     "size": 10,
-     "appears_missing": [
-      "SAL-07",
-      "SAL-08"
-     ],
-     "p_missing": {
-      "SAL-07": 0.0,
-      "SAL-08": 0.0
-     }
-    },
     {
      "set": "RET",
      "have": 9,
@@ -1689,9 +1503,9 @@
   },
   "t12": {
    "name": "Team 12",
-   "album": 43,
-   "pages_complete": 3,
-   "named_page_cards": 34,
+   "album": 44,
+   "pages_complete": 4,
+   "named_page_cards": 35,
    "unseen": 9,
    "pages_exact": true,
    "active": true,
@@ -1699,19 +1513,8 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1661,
+   "last_move_tick": 1712,
    "near_pages": [
-    {
-     "set": "LAV",
-     "have": 9,
-     "size": 10,
-     "appears_missing": [
-      "LAV-07"
-     ],
-     "p_missing": {
-      "LAV-07": 0.001
-     }
-    },
     {
      "set": "LAT",
      "have": 9,
@@ -1720,7 +1523,7 @@
       "LAT-08"
      ],
      "p_missing": {
-      "LAT-08": 0.001
+      "LAT-08": 0.0
      }
     }
    ]
@@ -1737,7 +1540,7 @@
    "inconsistent": "no choice of the unnamed cards fits album_filled 32 and pages_complete 3",
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1533,
+   "last_move_tick": 1712,
    "near_pages": [
     {
      "set": "LAV",
@@ -1773,7 +1576,7 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1657,
+   "last_move_tick": 1738,
    "near_pages": [
     {
      "set": "LAV",
@@ -1815,7 +1618,7 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1666,
+   "last_move_tick": 1750,
    "near_pages": [
     {
      "set": "LAV",
@@ -1847,15 +1650,15 @@
    "name": "Team 16",
    "album": 35,
    "pages_complete": 2,
-   "named_page_cards": 31,
-   "unseen": 4,
+   "named_page_cards": 32,
+   "unseen": 3,
    "pages_exact": true,
    "active": true,
    "consistent": true,
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1675,
+   "last_move_tick": 1745,
    "near_pages": [
     {
      "set": "LAT",
@@ -1924,7 +1727,7 @@
    "inconsistent": null,
    "basis": "feed",
    "held_by_leaderboard": [],
-   "last_move_tick": 1673,
+   "last_move_tick": 1734,
    "near_pages": [
     {
      "set": "RET",
@@ -1936,8 +1739,8 @@
    ]
   }
  },
- "withheld": 7,
- "withheld_inconsistent": 4,
+ "withheld": 9,
+ "withheld_inconsistent": 2,
  "census_tick": null,
  "census_rejected": null,
  "tiers": {

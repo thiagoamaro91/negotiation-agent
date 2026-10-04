@@ -288,7 +288,7 @@
      "flavour": "Nobody remembers it; everybody was there.",
      "book": 70,
      "print_run": 30,
-     "minted": 9,
+     "minted": 10,
      "hidden": false,
      "page": true
     },
@@ -692,7 +692,7 @@
      "flavour": "Yes, it is an artichoke.",
      "book": 25,
      "print_run": 90,
-     "minted": 19,
+     "minted": 20,
      "hidden": false,
      "page": true
     },
@@ -812,7 +812,7 @@
      "flavour": "An octagon of terraces.",
      "book": 10,
      "print_run": 300,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -834,7 +834,7 @@
      "flavour": "Last set at three.",
      "book": 25,
      "print_run": 90,
-     "minted": 6,
+     "minted": 7,
      "hidden": false,
      "page": true
     },
