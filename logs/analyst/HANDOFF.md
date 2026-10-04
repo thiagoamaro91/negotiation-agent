@@ -1,6 +1,6 @@
-TRIGGER 12:15 Duels III matrix rerun after PR #99 (tick ~2160, logs from origin/mini/logs at 12:12)
-VERDICT baseline proven (23 values match run 20261004-104947-a0b5); refit field: base 0.398 per duel (live gave 0.411); hold_while_conceding -0.016 ±0.002 (worse on every mix, -0.105 on D-1 stress), silent_last_margin +0.05 +0.000 ±0.000 -> keep the Duels III params for the Final
-PROPOSE nothing: no duel-params-final.json, factory_sunday.json duel params path stays docs/duel-lab/duel-params-duels3.json
-NEEDS YES none (do NOT restart the duel window; the Duels III process carries into the Final with the right params)
-PR https://github.com/thiagoamaro91/negotiation-agent/pull/91 (reports; #99 merged)
-ORGANISERS: nothing new since 12:05 (next: Market Test ~12:37, finale warning ~13:47, stalls close + Final ~13:59)
+TRIGGER 12:46 Market Test b156 + ladder read-out (ticks 2254-2270; tick 2289, logs from origin/mini/logs at 12:45)
+VERDICT stall fine: 7 matches, 101 P = 72% of best 140 P, 100% of quote ceiling, ours replay identical, 20/20 expiries = session end -> keep stall (last Market Test of the day). "13 read errors" = server timeouts on /api/clock and /api/broker/book (38 in 12:31-12:43, all retried next tick), no tick or match lost. Ladder R3 9/15 (L1 2, L2 1, L3 3, L4 3, L5 0) + 1 unverified (tick 2287 buy RET-02 @ 8, no bot thread). Score 32.23 rank 5 (+2.94; leader t05 35.81; t18 32.54 just above, gap 0.31)
+PROPOSE nothing for the bots. Ladder to-do for Thiago before stalls close ~13:59 (dealer lane is filling it: 4 bot deals since 12:05): 2 x L2 Chato open (only a deal that clears our value, as LAT-07 @ 13 vs 11 did); check by hand who made tick 2287 RET-02 @ 8 and whether it clears our value (L1 3rd slot); L5 Banco 0/3 stays unmeasured, skip unless a deal clears our value
+NEEDS YES none (heads-up: the server is timing out reads; the Final's duels start ~13:59)
+PR https://github.com/thiagoamaro91/negotiation-agent/pull/91
+ORGANISERS: nothing new since 12:15 (Market Test fired tick 2254 ~12:37; next: finale warning ~13:47, stalls close + Final ~13:59, freeze warning ~14:53, scores freeze ~14:59)
