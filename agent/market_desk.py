@@ -80,6 +80,17 @@ Every tick, one pass:
            post. Page writes (asks, bids, replacements) wait for EVERY live duel: --duel-guard-ticks relaxes only
            ordinary accepts.
      --page implies --page-bonus for offline values; keyed, /api/me/value already carries the bonus.
+  9. RECIPROCITY (--reciprocity, off by default): "if you trade on our venue, we trade on yours", genuine buys only.
+     A partner is a team with an offer listed on, or a trade settled on, our venue (v20) since the day opened (the
+     latest day.opened event in the tape; --partner-lookback N: the last N ticks instead), plus --partners t05,t12.
+     No day.opened in the tape: no feed partners (fail closed). With the flag:
+       (a) a non-page listing on a partner's OWN open board venue may be taken despite --no-team-venues, at that
+           venue's real fee (fee_bps + per card); other teams' venues stay excluded;
+       (b) when two listings of the same card both pass every rule and their all-in (price + fee) is within
+           --reciprocity-tie P (default 0: equal), the one on a partner's venue is the one we take;
+       (c) nothing else moves: the structure check, the gain rule, the price caps, --min-cash, --cap-hour/--cap-day,
+           the per-partner limit, the lease and the duel deferral all apply to it as to any buy. Sells and swaps are
+           unchanged. plan prints the partner set and every listing that reciprocity made eligible, with why.
 
 Why bids (another team suggested it publicly; weighed here on its merits, not because they said so): the side that
 accepts pays the fee, so a filled bid saves us 5 % + 1 P against taking a listing, and it reaches sellers who hold a
@@ -136,6 +147,7 @@ STATE = LOGS / "state"
 HEARTBEAT = STATE / "desk-market.json"
 DUEL_LOCK = ROOT / "results" / "duel.lock"   # agent/duel.py run: expiry (epoch seconds) while any duel is live
 YIELD_DIR = ROOT / "logs" / "state"   # page-yield-<REF>: a fallback step buys REF; the desk stops and acks (.ack)
+OUR_VENUE = "v20"                     # La Celestina: --reciprocity counts the teams that trade on it
 PAGE_SWEEP_TICKS = 20                 # page mode with --no-team-venues: every N ticks, read every eligible team board
 SELLER_CONFIG = ROOT / "agent" / "rastro_floors.json"   # rastro_seller.py's spares: our swaps leave them alone
 ME_SNAPSHOT = STATE / "me.json"
@@ -196,6 +208,12 @@ class Config:
     page_step: int = 4                  # P added to a page bid every page_step_ticks
     page_step_ticks: int = 8
     page_address: bool = False          # address the page bid to the last public receiver of the card
+    # reciprocity (--reciprocity): partners' own board venues for our genuine buys (docstring, step 9)
+    reciprocity: bool = False
+    partners: tuple = ()                # static partners (--partners t05,t12), on top of the feed's
+    partner_lookback: int | None = None  # ticks of v20 evidence that count (None: since the latest day.opened)
+    reciprocity_tie: int = 0            # P of all-in within which a partner venue's listing wins a tie
+    our_venue: str = OUR_VENUE
 
 
 # ---------------------------------------------------------------- pure: fees, margins, structure
@@ -524,6 +542,9 @@ class Tape:
         self.settled: list = []      # every settlement payload with its tick
         self.cancelled: dict = {}    # offer id -> tick
         self.listed_on: dict = {}    # offer id -> (venue, ref) of one-card listings off El Rastro
+        self.venue_use: dict = {}    # team venue -> [(event id, tick, team, "listed"|"settled")] (reciprocity)
+        self.day_open = None         # (event id, tick) of the latest day.opened
+        self.day_opens: dict = {}    # day ("sun") -> (event id, tick) of its day.opened
 
     def ingest(self, events) -> "Tape":
         for e in sorted((e for e in events if isinstance(e, dict)), key=lambda e: (e.get("tick") or 0, e.get("id") or 0)):
@@ -541,10 +562,23 @@ class Tape:
                 if isinstance(o.get("id"), int) and len(gave) == 1 and isinstance(gave[0], dict) \
                         and isinstance(gave[0].get("ref"), str) and isinstance(ven, str) and ven != HOME:
                     self.listed_on[o["id"]] = (ven, gave[0]["ref"])
+                if isinstance(ven, str) and ven != HOME and isinstance(e.get("actor"), str) \
+                        and TEAM_RE.match(e["actor"]):
+                    self.venue_use.setdefault(ven, []).append((eid, e.get("tick") or 0, e["actor"], "listed"))
             elif t == "offer.cancelled" and isinstance(p.get("offer"), int):
                 self.cancelled[p["offer"]] = e.get("tick")
             elif t == "settlement":
                 self._settle(e.get("tick") or 0, p)
+                ven = p.get("venue")
+                if isinstance(ven, str) and ven != HOME:
+                    for team in p.get("parties") or []:
+                        if isinstance(team, str) and TEAM_RE.match(team):
+                            self.venue_use.setdefault(ven, []).append((eid, e.get("tick") or 0, team, "settled"))
+            elif t == "day.opened" and isinstance(eid, int):
+                if self.day_open is None or eid > self.day_open[0]:
+                    self.day_open = (eid, e.get("tick") or 0)
+                if isinstance(p.get("day"), str):
+                    self.day_opens[p["day"]] = (eid, e.get("tick") or 0)
             elif t == "gift.given":
                 team = p.get("team")
                 for ref in p.get("cards") or []:
@@ -723,6 +757,60 @@ def swap_caps(cfg: Config, *, fee: int, cash: int, ledger: Ledger, t_hours: floa
     return None
 
 
+def reciprocity_partners(tape: "Tape", cfg: Config, me: str, tick: int | None = None,
+                         today: str | None = None) -> tuple:
+    """(partners, since): {team: {"listed": n, "settled": n, "evidence": n, "static": bool}} for every team other
+    than us with an offer listed on, or a trade settled on, cfg.our_venue within the lookback, plus cfg.partners.
+    Lookback: cfg.partner_lookback ticks before `tick`, else events after today's day.opened in the tape (`today`:
+    the clock's "today", e.g. "sun"; None: the latest day.opened). Without it (a recorded feed that stops before
+    today opened) no feed evidence counts: fail closed, never yesterday's teams by accident.
+    Feed rows are data: only the event type, venue, actor and parties are read, never any text."""
+    if cfg.partner_lookback is not None and tick is not None:
+        lo = int(tick) - int(cfg.partner_lookback)
+        keep, since = (lambda eid, t: t > lo), f"ticks > {lo} (--partner-lookback {cfg.partner_lookback})"
+    elif (opened := tape.day_opens.get(today) if today else tape.day_open) is not None:
+        did, dt = opened
+        keep, since = (lambda eid, t: isinstance(eid, int) and eid > did), f"day.opened event {did} (tick {dt})"
+    else:
+        keep, since = (lambda eid, t: False), f"no day.opened{' for ' + today if today else ''} in the tape: " \
+                                              f"feed evidence off"
+    out = {}
+    for eid, t, team, kind in tape.venue_use.get(cfg.our_venue) or []:
+        if team == me or not keep(eid, t):
+            continue
+        row = out.setdefault(team, {"listed": 0, "settled": 0, "evidence": 0, "static": False})
+        row[kind] += 1
+        row["evidence"] += 1
+    for team in cfg.partners:
+        if team != me:
+            out.setdefault(team, {"listed": 0, "settled": 0, "evidence": 0, "static": False})["static"] = True
+    return out, since
+
+
+def recip_venue_ok(venues: dict, vid: str, me: str, partners: dict) -> str | None:
+    """None when team venue `vid` is a reciprocity partner's own venue we may buy on: open (venue_table keeps open
+    ones only), a plain `board` venue, owned by a partner that is not us. Otherwise the reason it is not."""
+    v = venues.get(vid)
+    if not v:
+        return f"venue {vid} not open"
+    owner = v.get("owner")
+    if v.get("house") or vid == HOME or not owner:
+        return f"venue {vid} has no team owner"
+    if owner == me:
+        return f"{vid} is our own venue"
+    if owner not in partners:
+        return f"{owner} is not a reciprocity partner"
+    if v.get("mechanism") != "board":
+        return f"{owner}'s {vid} mechanism {v.get('mechanism')!r}, board only"
+    return None
+
+
+def partner_note(owner: str, partners: dict, venue: str = OUR_VENUE) -> str:
+    p = partners.get(owner) or {}
+    bits = [f"{p[k]} {k}" for k in ("listed", "settled") if p.get(k)] + (["--partners"] if p.get("static") else [])
+    return f"reciprocity partner {owner} ({', '.join(bits) or 'no evidence'} on {venue})"
+
+
 # ---------------------------------------------------------------- the decision (pure)
 
 def _num(x) -> str:
@@ -809,6 +897,7 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
                     pending.add(t[5:])
     records, cands = [], []
     base = {"tick": tick, "t_hours": round(th, 3)}
+    partners = (snap.get("partners") or {}) if cfg.reciprocity else {}
 
     def fee_of(vid: str) -> tuple:
         v = venues.get(vid) or {}
@@ -863,6 +952,15 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             gain, need = round(v - price - fee, 2), round(need_buy(v, cfg), 2)
             rec.update(value=round(v, 2), value_src=src, gain=gain, need=need)
             page_venue = page_venue_ok(venues, vid, me) if page and vid != HOME else None
+            recip_why = None
+            if cfg.reciprocity and owner_of(vid):   # a team venue: is it a partner's own board venue?
+                recip_why = recip_venue_ok(venues, vid, me, partners)
+                if recip_why is None:
+                    rec["recip_partner"] = owner_of(vid)
+                    if not cfg.team_venues and not page:
+                        rec["reciprocity"] = (f"eligible despite --no-team-venues: {vid} is "
+                                              f"{partner_note(owner_of(vid), partners, cfg.our_venue)}; "
+                                              f"venue fee {fee} counted (all-in {price + fee})")
             if ref in pending:
                 records.append({**rec, "action": "skip", "reason": "an offer of ours on this card is settling"})
             elif page and ref in yields:
@@ -874,8 +972,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
                                 "reason": f"page cap: price {price} + fee {fee} = {price + fee} > cap {page['cap']}"})
             elif gain < need:
                 records.append({**rec, "action": "skip", "reason": f"gain {gain:+.1f} below need {need:.1f}"})
-            elif owner_of(vid) and not cfg.team_venues and not page:   # a page card may come from a team board
-                records.append({**rec, "action": "skip", "reason": "team venue (off by --no-team-venues)"})
+            elif owner_of(vid) and not cfg.team_venues and not page and not rec.get("reciprocity"):
+                # a page card may come from a team board; with --reciprocity, so may any card from a partner's board
+                records.append({**rec, "action": "skip", "reason": "team venue (off by --no-team-venues)" + (
+                    f"; not via --reciprocity: {recip_why}" if cfg.reciprocity else "")})
             else:
                 # live bids do not hold back a buy: a buy is the surer gain, and the bid planner below then
                 # cancels the bids that no longer fit in cash - min cash (run sends those cancels first)
@@ -973,12 +1073,20 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
 
     # one accept per tick: the best gain; one per card. Never while agent/duel.py holds results/duel.lock.
     cands.sort(key=lambda c: (-c["gain"], c.get("price") or 0, c.get("offer") or 0))
-    accept, taken_refs = None, set()
+    if cfg.reciprocity:
+        cands = reciprocity_order(cands, cfg.reciprocity_tie)
+    accept, taken_refs, taken_by = None, set(), {}
     for c in cands:
         if c["card"] in taken_refs:
-            records.append({**c, "action": "skip", "reason": "a better offer on the same card"})
+            tie = (taken_by.get(c["card"]) or {}).get("recip_tie") or {}
+            why = "a better offer on the same card"
+            if tie.get("over") == c.get("offer"):
+                why = (f"reciprocity tie-break: partner {tie['partner']}'s {tie['venue']} at all-in {tie['all_in']} "
+                       f"preferred over this all-in {tie['over_all_in']} (tie {tie['tol']} P)")
+            records.append({**c, "action": "skip", "reason": why})
             continue
         taken_refs.add(c["card"])
+        taken_by[c["card"]] = c
         if snap.get("duel_lock"):
             records.append({**c, "action": "defer", "reason": "results/duel.lock is fresh: the duel bot holds "
                                                               "the team's accept slot"})
@@ -997,6 +1105,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
                 note += f"; cancel our swap {swapbook[c['card']]['offer']} first"
             if c.get("cancel_listing"):
                 note += f"; cancel our listing {c['cancel_listing']} first"
+            if c.get("recip_tie"):
+                t = c["recip_tie"]
+                note += (f"; reciprocity: partner {t['partner']}'s {t['venue']} (all-in {t['all_in']} vs "
+                         f"{t['over_all_in']} on {t['over_venue']})")
             records.append({**c, "action": "take", "reason": f"best gain this tick ({c['gain']:+.1f}){note}"})
         else:
             records.append({**c, "action": "defer", "reason": f"one accept per tick (taking {accept['card']} "
@@ -1019,6 +1131,31 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
     for s in swap_actions:
         records.append({**base, **s["record"]})
     return {"records": records, "accept": accept, "bids": bid_actions, "swaps": swap_actions}
+
+
+def reciprocity_order(cands: list, tol: int = 0) -> list:
+    """--reciprocity tie-break on the sorted candidates: where a card's first candidate is a buy off a partner's
+    venue and another buy of the same card on a partner's venue (record field recip_partner) costs no more all-in
+    (price + fee) than it plus `tol` P, that one takes the first one's place. Both passed every rule already; only
+    the choice between them moves. Sells and swaps are never reordered."""
+    out = list(cands)
+    first = {}
+    for c in out:
+        first.setdefault(c["card"], c)
+    for card, w in first.items():
+        if w.get("side") != "buy" or w.get("recip_partner"):
+            continue
+        w_all = int(w["price"]) + int(w["fee"])
+        alts = [c for c in out if c is not w and c["card"] == card and c.get("side") == "buy"
+                and c.get("recip_partner") and int(c["price"]) + int(c["fee"]) <= w_all + int(tol)]
+        if not alts:
+            continue
+        best = min(alts, key=lambda c: (int(c["price"]) + int(c["fee"]), c.get("offer") or 0))
+        out.remove(best)
+        out.insert(out.index(w), {**best, "recip_tie": {
+            "partner": best["recip_partner"], "venue": best["venue"], "all_in": int(best["price"]) + int(best["fee"]),
+            "over": w.get("offer"), "over_venue": w["venue"], "over_all_in": w_all, "tol": int(tol)}})
+    return out
 
 
 def pick_asset(copies: list, wanted, listed: dict, cfg: Config, k: int, info: dict) -> tuple:
@@ -1734,6 +1871,9 @@ class Desk:
         self.yield_dir = YIELD_DIR
         self.page_seen: set = set()   # team board venues whose last read showed a listing of a page card we lack
         self._swept = None            # the tick of the last full sweep of the team boards (page mode)
+        self.partners: dict = {}      # --reciprocity: {team: evidence} (reciprocity_partners)
+        self.partners_since = None
+        self._partners_key = None     # the last partner set logged (log on change only)
         self.last = None
         self.last_snap = None
         self.start_tick = None            # trades from the tape count toward the caps from here on
@@ -1810,8 +1950,9 @@ class Desk:
         vt = venue_table(self.public.venues(), tick)
         boards = {}
         page_boards = set(self.page_boards(vt, acct["id"], tick))
+        recip_boards = set(self.recip_boards(vt, acct["id"], tick, clock.get("today")))
         for vid in vt:
-            if vid != HOME and not self.cfg.team_venues and vid not in page_boards:
+            if vid != HOME and not self.cfg.team_venues and vid not in page_boards | recip_boards:
                 continue
             try:
                 boards[vid] = self.public.board(vid).get("offers", [])
@@ -1843,6 +1984,9 @@ class Desk:
                 "duel_live": self.duel_guard(tick), "duel_any": self.duel_guard(tick, any_live=True),
                 "duels_unread": self.duel_guard(tick, unread=True), "page_yield": self.page_yields(),
                 "feed_down": feed_down}
+        if self.cfg.reciprocity:
+            snap["partners"] = dict(self.partners)
+            snap["partners_since"] = self.partners_since
         # the reads above take time: if the tick moved while they ran, the account and the offers may disagree
         # (a bid of ours that settled between /api/me and /api/me/offers), so the snapshot is not used for writes
         try:
@@ -1947,6 +2091,25 @@ class Desk:
             return ok
         hinted = {ven for oid, (ven, ref) in self.tape.listed_on.items() if ref in lacking and oid not in self.tape.cancelled}
         return [vid for vid in ok if vid in hinted | self.page_seen]
+
+    def recip_boards(self, vt: dict, me: str, tick: int | None = None, today: str | None = None) -> list:
+        """--reciprocity: refresh the partner set from the tape (logged when it changes) and return the partners'
+        own open board venues, which are read every tick even under --no-team-venues. [] with the flag off."""
+        if not self.cfg.reciprocity:
+            return []
+        self.partners, self.partners_since = reciprocity_partners(self.tape, self.cfg, me, tick, today)
+        key = tuple(sorted((t, p["evidence"], p["static"]) for t, p in self.partners.items()))
+        if key != self._partners_key:
+            old = {t for t, *_ in self._partners_key or ()}
+            self._partners_key = key
+            self.out(f"tick {tick} reciprocity partners since {self.partners_since}: " + (", ".join(
+                f"{t} ({p['evidence']} on {self.cfg.our_venue}{', static' if p['static'] else ''})"
+                for t, p in sorted(self.partners.items())) or "none"))
+            if self.log is not None:
+                self.log.event("reciprocity_partners", tick=tick, since=self.partners_since,
+                               partners={t: dict(p) for t, p in sorted(self.partners.items())},
+                               added=sorted(set(self.partners) - old), removed=sorted(old - set(self.partners)))
+        return [vid for vid in vt if vid != HOME and recip_venue_ok(vt, vid, me, self.partners) is None]
 
     def duel_lock_fresh(self) -> bool:
         """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
@@ -2437,7 +2600,23 @@ def build_config(args) -> Config:
                   swap_max_fee=args.swap_max_fee, address_swaps=args.address_swaps,
                   swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares,
                   duel_guard_ticks=args.duel_guard_ticks, page_targets=parse_pages(args.page),
-                  page_step=args.page_step, page_step_ticks=args.page_step_ticks, page_address=args.page_address)
+                  page_step=args.page_step, page_step_ticks=args.page_step_ticks, page_address=args.page_address,
+                  reciprocity=args.reciprocity, partners=parse_partners(args.partners),
+                  partner_lookback=args.partner_lookback, reciprocity_tie=args.reciprocity_tie)
+
+
+def parse_partners(spec) -> tuple:
+    """--partners t05,t12 -> ("t05", "t12"). Team ids only (tNN)."""
+    out = []
+    for part in str(spec or "").split(","):
+        part = part.strip().lower()
+        if not part:
+            continue
+        if not TEAM_RE.match(part):
+            raise ValueError(f"--partners {part!r}: expected team ids like t05,t12")
+        if part not in out:
+            out.append(part)
+    return tuple(out)
 
 
 def add_config_args(ap: argparse.ArgumentParser) -> None:
@@ -2495,6 +2674,16 @@ def add_config_args(ap: argparse.ArgumentParser) -> None:
                     help="keyed: defer ordinary accepts only while a live duel of ours is within N ticks of its "
                          "deadline (default: while any duel of ours is live). Page writes (--page asks, bids and "
                          "replacements) always wait for every live duel: N never relaxes them")
+    ap.add_argument("--reciprocity", action="store_true",
+                    help=f"opt in: buy non-page cards on a reciprocity partner's own board venue too (a team that "
+                         f"listed or traded on {OUR_VENUE} today, or --partners), at its real fee, and prefer a "
+                         f"partner venue when the all-in is equal (within --reciprocity-tie); every cap still holds")
+    ap.add_argument("--partners", default="", metavar="t05,t12", help="--reciprocity: static partners (team ids)")
+    ap.add_argument("--partner-lookback", type=int, default=c.partner_lookback, metavar="TICKS",
+                    help=f"--reciprocity: {OUR_VENUE} evidence from the last TICKS ticks (default: since the day "
+                         f"opened)")
+    ap.add_argument("--reciprocity-tie", type=int, default=c.reciprocity_tie, metavar="P",
+                    help="--reciprocity: all-in difference (P) within which a partner venue's listing wins (default 0)")
 
 
 def default_feeds(files=None) -> list:
@@ -2544,6 +2733,10 @@ def main() -> None:
         ap.error("--recorded is for `plan --keyless` only")
     if args.assume_cash is not None and (args.cmd != "plan" or not args.keyless):
         ap.error("--assume-cash is for `plan --keyless` only")
+    if (cfg.partners or args.partner_lookback is not None or cfg.reciprocity_tie) and not cfg.reciprocity:
+        ap.error("--partners, --partner-lookback and --reciprocity-tie need --reciprocity")
+    if cfg.reciprocity_tie < 0 or (cfg.partner_lookback is not None and cfg.partner_lookback < 1):
+        ap.error("--reciprocity-tie must be >= 0 and --partner-lookback >= 1")
     if cfg.swap_venue != HOME and not cfg.swap_team_venue:
         ap.error(f"--swap-venue {cfg.swap_venue} is another team's venue (its trades score for its owner): "
                  f"add --swap-team-venue to mean it")
@@ -2627,6 +2820,15 @@ def summary(desk: Desk, clock: dict, res: dict, json_out: bool) -> None:
     print("  decisions:", ", ".join(f"{k}/{a} {n}" for (k, a), n in sorted(by.items())))
     a = res["accept"]
     print(f"  accept this tick: {line(a) if a else 'none'}")
+    if desk.cfg.reciprocity:
+        ps = snap.get("partners") or {}
+        print(f"  reciprocity on: partners since {snap.get('partners_since')}: " + (", ".join(
+            f"{t} ({p['listed']} listed, {p['settled']} settled on {desk.cfg.our_venue}"
+            f"{', --partners' if p['static'] else ''})" for t, p in sorted(ps.items())) or "none") +
+              f"; tie {desk.cfg.reciprocity_tie} P")
+        for r in recs:
+            if r.get("reciprocity") or r.get("recip_tie"):
+                print(f"  reciprocity: {line(r)} [{r.get('reciprocity') or 'tie-break'}]")
     for r in recs:
         if r.get("page") and r["kind"] == "buy":
             print(f"  page ask: {line(r)}")
