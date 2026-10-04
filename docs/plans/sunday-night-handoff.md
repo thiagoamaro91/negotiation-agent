@@ -1,8 +1,8 @@
 # Sunday night handoff (Sat 3 to Sun 4 Oct)
 
 > **Read this first · updated 03:55 Madrid**
-> - **Merged:** #62 evals, #63 broker 15 s pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #68 pitch, #69 dealer ladder steps, #70 desk page mode, #72 Duels III params.
-> - **Open:** #71 analyst (the bots do not need it).
+> - **Merged:** #62 evals, #63 broker 15 s pace, #64 announce fix, #65 Market Test memo, #67 Open Bazaar, #68 pitch, #69 dealer ladder steps, #70 desk page mode, #71 analyst kit, #72 Duels III params.
+> - **Open:** nothing the bots need.
 
 **For Thiago, 07:00, five minutes.** No key entered a model's context; nothing was sent or spent outside review. Next: the [pre-flight](sunday-preflight.md) at 08:40.
 
