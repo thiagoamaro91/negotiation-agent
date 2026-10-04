@@ -268,6 +268,13 @@ class Store:
             self.state = json.loads(path.read_text() or "{}") or self.state
             self.state.setdefault("teams", {})
             self.state.setdefault("rounds", [])
+            # a proposal saved by an older server has no nonce: its commitment would be guessable. Re-salt it,
+            # bump the version and clear the votes so every OK is re-signed against the salted hash.
+            for r in self.state["rounds"]:
+                if r.get("status") == "proposed" and not r.get("nonce"):
+                    r["nonce"], r["version"], r["votes"] = secrets.token_urlsafe(16), r.get("version", 1) + 1, {}
+                    r["proposed_at"] = now_iso()
+            self.save()
 
     def save(self) -> None:
         with self.lock:
@@ -354,11 +361,21 @@ class Store:
     def status(self, next_run: str | None = None) -> dict:
         with self.lock:
             teams = self.state["teams"]
-            rounds = [{"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
-                       "votes": {t: v.get("ok") for t, v in r.get("votes", {}).items()}, "votes_needed": self.needed(r),
-                       "rejections": r.get("rejections", []), "trades": len(r["trades"]),
-                       "done": sum(1 for a in r["trades"] if a.get("status") == "settled"),
-                       "venues": sorted({a["venue"] for a in r["trades"]})} for r in self.state["rounds"]]
+            # an open round (proposed or approved, not yet closed) never names its participants or venues: a pair
+            # on an unsettled trade would identify both sides of a price nobody has agreed to yet
+            rounds = []
+            for r in self.state["rounds"]:
+                row = {"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
+                       "trades": len(r["trades"]), "settled": sum(1 for a in r["trades"] if a.get("status") == "settled")}
+                if r.get("status") == "closed":
+                    row.update({"votes": {t: v.get("ok") for t, v in r.get("votes", {}).items()},
+                                "rejections": r.get("rejections", []), "sat_out": r.get("sat_out", []),
+                                "venues": sorted({a["venue"] for a in r["trades"] if a.get("status") == "settled"})})
+                else:
+                    row.update({"votes_received": sum(1 for v in r.get("votes", {}).values() if v.get("ok")),
+                                "votes_needed": len(self.needed(r)),
+                                "rejections": len(r.get("rejections", []))})
+                rounds.append(row)
             # only SETTLED trades are public with their price (they are in the game's public feed anyway): a
             # proposed or failed zero-surplus trade's price would be both sides' reservation prices
             ledger = [{"id": t["id"], "round": r["id"], "seller": t["seller"], "buyer": t["buyer"], "card": t["card"],
@@ -536,7 +553,9 @@ class Store:
                 raise Refused(409, "stale_version", f"the open proposal is version {r.get('version', 1)}; re-read your plan")
             if ok is True:
                 mine = self._actions_of(team, r)
-                want = commitment(team, r["id"], r.get("version", 1), mine, r.get("nonce", ""))
+                if not r.get("nonce"):
+                    raise Refused(409, "no_nonce", "this proposal has no nonce; it will be re-proposed")
+                want = commitment(team, r["id"], r.get("version", 1), mine, r["nonce"])
                 got = body.get("commitment")
                 if not (isinstance(got, str) and hmac.compare_digest(got, want)):
                     raise Refused(409, "bad_commitment", "your OK must carry the commitment hash of the plan you read "
@@ -589,7 +608,7 @@ class Store:
         the team did not execute: a seller that never posted, a buyer that never accepted)."""
         out: dict = {}
         for r in self.state["rounds"]:
-            if r.get("status") not in ("approved", "closed"):
+            if r.get("status") != "closed":          # an open round's trades would identify both sides
                 continue
             for team, v in r.get("votes", {}).items():
                 if not v.get("ok"):
@@ -637,8 +656,8 @@ class Store:
             mine_now = [a for a in out if a["round_status"] == cur["status"] and
                         any(t["id"] == a["id"] for t in cur["trades"])]
             return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
-                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now, cur.get("nonce", "")),
-                    "nonce": cur.get("nonce", ""),
+                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now, cur["nonce"]) if cur.get("nonce") else None,
+                    "nonce": cur.get("nonce"),
                     "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
                     "votes": {t: v.get("ok") for t, v in cur.get("votes", {}).items()},
                     "rejections": cur.get("rejections", []),
@@ -770,8 +789,11 @@ its trades dropped and the rest goes ahead. The client does this for you: `vote 
 or `execute --auto-approve` if you trust your own numbers (every price is inside them).
 
 ## Your OK is a signed commitment
-`plan` carries a `commitment`: the SHA-256 of exactly what you are approving (your team, round, version, your
-actions). Your OK must carry it back, or it is refused: nobody can approve something they did not read. The
+`plan` carries a `commitment`: the SHA-256 of exactly what you are approving (your team, round, version, the
+round's `nonce` from your plan, and your actions as (id, role, card, asset, price, venue, counterparty) sorted;
+JSON `[team, round, version, nonce, rows]` with sorted keys and no spaces, as in clearing_client.my_commitment).
+Your OK must carry it back, or it is refused: nobody can approve something they did not read. The nonce is
+served only to participants, so the hash tells outsiders nothing. The
 status page shows, per team, commitments signed, kept and broken (an approved trade you did not post or accept).
 A broken commitment is public, stays, and sits you out of the next round. The client does the hashing for you.
 
@@ -788,8 +810,10 @@ A broken commitment is public, stays, and sits you out of the next round. The cl
   venue nobody can serve never blocks everyone until the stalls close. The status explains each held round.
 - The remaining trades go to the venue with the least value hosted so far today, so a venue that hosted little in
   an earlier round comes first in the next. Team 3's venue is in the pool on the same terms.
-- The allocation is public: /api/clearing/status shows per venue the trades and value hosted, and every matched
-  trade with its venue and price (trade prices are public in the game anyway; reservation prices never are).
+- The allocation is public once settled: /api/clearing/status shows per venue the settled trades and value hosted
+  and every settled trade with its venue and price (settled trades are public in the game anyway). Proposed or
+  failed trades are never shown with price or parties, only counted: a zero-surplus price would be both sides'
+  reservation prices.
 - The contract is the game itself: the seller's offer is addressed `to` the buyer (only that team can accept, nobody
   can take it), the buyer accepts by id, the game settles next tick. A side that does not post or accept loses only
   that trade and sits out the next round. Every planned price sits inside both sides' own numbers.
@@ -1141,11 +1165,12 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": False, "why": "too dear", "trades": [buy07["id"]]})
         assert st == 200 and r["rejected"] == [buy07["id"]] and r["reproposed"]["version"] == 2, r
         st, r = call("GET", "/api/clearing/status")
-        assert r["rounds"][-1]["votes"] == {}, r                              # t03's earlier OK no longer counts
+        assert r["rounds"][-1]["votes_received"] == 0, r                     # t03's earlier OK no longer counts
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1, "commitment": pl["commitment"]})
         assert st == 409 and r["error"] == "stale_version", r
         st, r = call("GET", "/api/clearing/status")
-        assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"][0]["why"] == "too dear", r
+        assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"] == 1 and "votes_needed" in r["rounds"][-1], r
+        assert "seller" not in json.dumps(r["rounds"]) and "t07" not in json.dumps(r["rounds"][-1]), r["rounds"]
         st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
         assert not any(x["role"] == "buy" and x["card"] == buy07["card"] and x.get("from") == buy07["from"] for x in r["actions"]), r
         sell = next(x for x in r["actions"] if x["role"] == "sell")
@@ -1175,9 +1200,17 @@ def selftest() -> None:
         assert st == 200 and r["sat_out"], r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][0]["status"] == "closed" and r["rounds"][-1]["status"] == "proposed", r
-        rel = r["reliability"]
+        rel = r["reliability"]                                                       # round 1 is closed now
         assert rel["t07"]["signed"] == 1 and rel["t07"]["broken"] == 0, rel         # t07 posted; t03 accepted
         assert any(v["broken"] == 1 for v in rel.values()), rel                      # someone left a trade undone
+        assert r["rounds"][0]["status"] == "closed" and "votes" in r["rounds"][0] and "votes" not in r["rounds"][-1], r
+        # legacy proposal without nonce gets re-salted on load
+        raw = json.loads((Path(d) / "state.json").read_text())
+        raw["rounds"][-1].pop("nonce", None); raw["rounds"][-1]["votes"] = {"t07": {"ok": True}}
+        (Path(d) / "state.json").write_text(json.dumps(raw))
+        st2 = Store(Path(d) / "state.json")
+        assert st2.state["rounds"][-1]["nonce"] and st2.state["rounds"][-1]["votes"] == {} \
+            and st2.state["rounds"][-1]["version"] == raw["rounds"][-1]["version"] + 1
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/agents.md", timeout=5) as r:
             assert r.status == 200 and b"clearing_client.py" in r.read()
         srv.shutdown()
