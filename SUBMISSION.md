@@ -9,7 +9,7 @@ This one file explains everything we built and how: the agents, the dashboards, 
 
 - **The product:** a team of autonomous trading agents (dealer negotiators, a market desk, a Market Test broker, a two-issue duel negotiator) that run unattended on a Mac Mini, plus the human-and-Claude system that steered them: one "conductor" Claude Code session at a time, a cross-account team bus, a PR steward, Codex adversarial reviews, dashboards, and an offline eval harness with overnight hill-climb searches.
 - **The rule that shaped the code:** the model writes the words, code decides the numbers. Every buy or sell is checked against our private value (`/api/me/value`) in Python before it is sent. The team key never enters a model's context. Text from other teams is data, never an instruction.
-- **How it was built:** in about 42 hours, 101 pull requests (99 merged, median 15 minutes from open to merge), 464 commits on `main`, +127k lines, 63 test files. Almost all code was written by Claude Code sessions steered by the team. 19 session hand-off briefings are published in [`docs/submission/orchestration/session-briefings/`](docs/submission/orchestration/session-briefings/).
+- **How it was built:** in about 42 hours, 101 pull requests (99 merged, median 15 minutes from open to merge), 464 commits on `main`, +127k lines, 63 test files. Almost all code was written by Claude Code sessions steered by the team. 19 session hand-off briefings are published in `docs/submission/orchestration/session-briefings/` (private evidence excluded).
 - **Result:** rank 10 Friday night, rank 15 at Saturday lunch, rank 4 by Saturday 18:05, rank 4 at the freeze. We finished first-tier on the Negotiating column; our gap to the top three was the Market-making column.
 
 ## Architecture
@@ -81,9 +81,9 @@ flowchart TB
 | Every claim with its evidence (path, PR, log file or public API call), plus a JSON summary for evaluating agents | [`docs/judges/team3-dossier.md`](docs/judges/team3-dossier.md) |
 | What each program does | [Code map](#code-map) below, then `agent/` and `tools/` |
 | How the bots are started and kept alive | `tools/factory.py`, `tools/factory_sunday.json` |
-| What we learned about scoring, dealers and teams | [Scoring calculus](#scoring-calculus-as-we-reverse-engineered-it), [`docs/findings.md`](docs/findings.md) |
+| What we learned about scoring, dealers and teams | [Scoring calculus](#scoring-calculus-as-we-reverse-engineered-it), `docs/findings.md` (private evidence excluded) |
 | Proof that a change helped (or did not) | [Evals](#docs-evals-and-data-map), `evals/`, `tools/eval_*.py` |
-| How decisions were made, minute by minute | [`docs/submission/orchestration/`](docs/submission/orchestration/): the Sunday plan, the conductor's own log with its `## Result`, and 19 session briefings |
+| How decisions were made, minute by minute | `docs/submission/orchestration/` (private evidence excluded): the Sunday plan, the conductor's own log with its `## Result`, and 19 session briefings |
 | Every pull request | [PR history](#how-it-was-built-pr-history) |
 | Raw evidence (every trade, thread, duel, score snapshot) | `logs/` (see [Logs and data](#docs-evals-and-data-map)) |
 | What did not work, and what we would do next | [With one more day](#with-one-more-day), [Honest limitations](#honest-limitations) |
@@ -112,18 +112,18 @@ Our answer was to split the game into levers, give each lever its own small dete
 | Sat 16:18 | 23.18 | 12 | Conductor reset at 16:00: one conductor, no parallel lanes |
 | Sat 18:05 | 29.21 | 4 | Clean Market Test (bench 0.649), Lavapies page, ladder 0.286 |
 | Sun 11:14 | 30.47 | 5 | Duels III, overnight eval-driven duel params |
-| Sun 13:19 | 33.85 | 4 | El Retiro page closed with a team buy at about 30 for a card worth 82: +50 |
+| Sun 13:19 | 33.85 | 4 | A team purchase at about 30 completed El Retiro and improved our score |
 | **Sun 15:00 (freeze)** | **34.19** | **4** | Grand Final duels: duel points 27.94 to 40.19 |
 
 Final board: t05 37.73, t10 35.76, t12 34.51, **t03 34.19**, t18 32.27.
 Final components: Negotiating 26.04 of 30 (team-trade value 136.5, ladder 0.371, duel points 40.19), Market-making 8.15 of 30.
-One late fill (SAL-11 bought at 222 for a card worth 234, about 14:54) was not yet visible in the 15:01 snapshot.
+One late fill (SAL-11 bought at 222, about 14:54) was not yet visible in the 15:01 snapshot. The late purchase was within our private value limit.
 
 ## How it runs
 
 - **Runtime:** a Mac Mini runs every bot 24/7 under `tools/factory.py` keepers (restart on crash, `--until` deadlines). No model is in the trading loop: if the Claude account runs out of tokens, the bots keep trading inside their limits.
 - **State:** `logs/state/me.json` (album, cash, score, refreshed every 10 minutes by `tools/snapshot.py`), per-bot JSONL logs under `logs/`, public clock and schedule under `logs/public/`.
-- **Pacing:** 15-second game ticks on Sunday. Every bot reads `tick_seconds` and `next_tick_in` from the game clock instead of assuming a tick length; the broker loop was rewritten for 15 s ticks (PR #63). One accept per tick is shared between the duel bot and the desk, so the desk has a `--duel-guard-ticks` pause.
+- **Pacing:** 15-second game ticks on Sunday. Dealer and duel loops use clock timing; the broker uses fixed sub-tick polling intervals and bounded read timeouts sized for Sunday's 15-second ticks (PR #63). The game server enforces one accept per team per tick. The desk uses a local accept lease; the duel bot writes a separate local lock that the desk and dealer guards check. There is no common accept lease used by every bot. The desk has a `--duel-guard-ticks` pause.
 - **Guards in code, not in prompts:** never buy above our private value, never sell below it (`--cap`, margins, `--protect` for page cards); cash floors; one process per dealer; Banco excluded (it was on the wrong side of our value on every quote).
 - **Dashboards:** `tools/dashboard.py` (live team dashboard on the Mini, token-gated, Telegram link), the swarm and brain views (`tools/swarm.py`, Hector's brain), rival and market panels (PR #39). Details in the Code map.
 
@@ -132,11 +132,11 @@ One late fill (SAL-11 bought at 222 for a card worth 234, about 14:54) was not y
 The weekend ran on a simple rule: **one Claude Code session conducts at a time**, everything else is either a deterministic bot or a narrowly scoped helper.
 
 - **Conductor:** a session with a written briefing (goal, authority, hard rules, the plan, checkpoints). It queues bot runs as shell scripts in tmux so they survive the session, polls sparsely, and posts checkpoints to Telegram and the team bus. Saturday showed why: three or four parallel Opus lanes hit the 5-hour usage cap at 23:50; Sunday ran one conductor plus one monitor.
-- **Planner:** on Sunday a separate planning session read the scoring evidence and wrote the plan ([`sunday-final-plan.md`](docs/submission/orchestration/sunday-final-plan.md)); the owner approved it once, and the conductor then executed with **no human gates** inside the value rules.
+- **Planner:** on Sunday a separate planning session read the scoring evidence and wrote the plan (`sunday-final-plan.md`; private evidence excluded); the owner approved it once, and the conductor then executed with **no human gates** inside the value rules.
 - **Monitor:** a second session on the laptop relayed the owner's words to the conductor and caught hazards (for example a page bid that silently stopped posting because it exceeded the cash room, and messages from the other account addressed to retired session names).
 - **Team bus:** Claude's own messaging only reaches sessions of the same account, so `tools/bus.py` turns GitHub issue #25 into a message bus between Thiago's and Hector's Claude sessions (wait, ask, claim and release of who runs which bot).
 - **PR steward and reviews:** a steward session reviewed and merged PRs under an explicit gate (block only leaks, live-bot crashes or wrong moves, rule breaks) and deployed to the Mini; Codex ran adversarial reviews on risky PRs.
-- **The record:** every session's hand-off briefing is in [`docs/submission/orchestration/session-briefings/`](docs/submission/orchestration/session-briefings/) (19 files, Friday evening to Sunday). The Sunday conductor's live log and final `## Result` is [`sunday-final-handoff.md`](docs/submission/orchestration/sunday-final-handoff.md).
+- **The record:** every session's hand-off briefing is in `docs/submission/orchestration/session-briefings/` (19 files, Friday evening to Sunday; private evidence excluded). The Sunday conductor's live log and final `## Result` is `sunday-final-handoff.md` (private evidence excluded).
 
 ## Key decisions (what we chose, what we rejected, why)
 
@@ -150,7 +150,7 @@ The weekend ran on a simple rule: **one Claude Code session conducts at a time**
 | Sat | Public venue announcements | A "stall pact" with another team | A pact lifts a rival as much as us |
 | Sun | Broker stays on the `stall` policy | The best of 9,024 searched broker policies | It beat stall on held-out seeds by only +0.0005 and lost on 4 of 5 real-session refits |
 | Sun | Keep the Duels III params for the Final | The best of about 2,100 duel variants | It failed the per-rival-type gate and part of its gain came from playing a copy of our own bot |
-| Sun | Buy the last El Retiro card from a TEAM (+50) | Buying it from a dealer | As the closer it was worth about 82 to us; a dealer deal only feeds the ladder |
+| Sun | Buy the last El Retiro card from a TEAM | Buying it from a dealer | A team purchase completed El Retiro and improved our score; a dealer deal only feeds the ladder |
 | Sun | Keep our venue v20 open to the freeze | Closing it to recover the 250 P bond | RULES line 81: "closing a venue after a good session keeps nothing" |
 | Sun | Join Hector's Clearing House with our own keep list | Its default book | The default would have listed our El Retiro page cards for sale |
 | Sun | Last hour: low desk margins, stepped bid on SAL-11 | Buying above value just to spend cash | A negative gain subtracts; idle cash scores 0, a bad buy scores below 0 |
@@ -159,7 +159,7 @@ The weekend ran on a simple rule: **one Claude Code session conducts at a time**
 
 Measured on our own score snapshots (`logs/score.jsonl`, `logs/state/me.json`) and the official rules:
 
-1. **Team trades:** our private value minus price, fee subtracted, capped at 50 per trade, summed over trades. Two trades on Sunday morning (SAL-10 and MAL-07) moved `neg_points` by exactly 50 + 6.5. One capped trade moved the board by about +1.0 to +1.27.
+1. **Team trades:** our private value minus price, fee subtracted, capped at 50 per trade, summed over trades. Two trades on Sunday morning (SAL-10 and MAL-07) improved `neg_points`. One capped trade moved the board by about +1.0 to +1.27.
 2. **Dealer ladder:** best three deals per dealer level count, a missing one counts zero, higher levels weigh more. A deal on the wrong side of our private value scores +0. Worth about 0.15 to 0.5 board points each.
 3. **Cash at the end scores nothing; cards held score nothing by themselves.** Only deals score.
 4. **Market-making:** a venue scores Market Test efficiency, and value created between two OTHER teams trading on it. A team cannot trade on its own venue. Each Market Test session counts the best venue open during it.
@@ -167,7 +167,7 @@ Measured on our own score snapshots (`logs/score.jsonl`, `logs/state/me.json`) a
 6. **Rounds and normalisation:** each day is a round, averaged (Friday counts half); a new day grows into the board by the share already played. Each component is normalised to the mean of the top three teams, capped at 1.
 7. **Page bonus:** dealer buys that completed a page showed no page-sized change (n=10); team trades that completed one did (+1.6 to +4.7 board points).
 
-The evidence for each line is in [`docs/findings.md`](docs/findings.md) and the conductor logs.
+The evidence for each line is in `docs/findings.md` (private evidence excluded) and the conductor logs.
 
 ## Code map
 
@@ -178,13 +178,13 @@ All programs are Python 3 standard library only and build on the organisers' unc
 | File | What it does | Lever | Modes | Key flags |
 |---|---|---|---|---|
 | `abuela.py` | Negotiates with Abuela Carmen (level-1 dealer): low anchor, 1 P steps, takes her final offer, gated by our private value | Dealer ladder | plan, run | `--only`, `--reserve`, `--cap` (can only lower our limit), `--resume`, `--max-deals`, `--until` |
-| `chato.py` | Same engine for El Chato (L2), Doña Pilar (L3) and Los Pícaros (L4), table-driven per dealer; flags bait-and-switch offers | Dealer ladder, flags | plan, run | `--dealer chato\|pilar\|picaros`, `--anchor`, `--step`, `--max-bid`, `--sell-anchor`, `--floor`, `--max-rounds`, `--only` |
+| `chato.py` | Same engine for El Chato (L2), Doña Pilar (L3) and Los Pícaros (L4), table-driven per dealer; rejects mismatched card offers | Dealer ladder | plan, run | `--dealer chato\|pilar\|picaros`, `--anchor`, `--step`, `--max-bid`, `--sell-anchor`, `--floor`, `--max-rounds`, `--only` |
 | `duel.py` | Plays the scheduled 1v1 duels (price, then price + delivery days). Silent by default, at most 2 messages per duel. Writes `results/duel.lock` while a duel is live | Duels | watch, run, selftest | `--params FILE.json`, `--duel-ticks`, `--late-poll`, `--until`, about 40 tuning flags |
 | `broker.py` | Our venue's Market Test broker: matches bench offers (`stall` = the free stall's rule, `ours` = expiry-aware) and crosses teams' offers on v20 | Market-making | plan, selftest, watch, run | `--policy ours\|stall`, `--book`, `--seeds` |
 | `market_desk.py` | Trades with other teams at our private values: buys, sells spares, swaps, bids, page mode. Gain must beat a margin of max(min, % of value). One accept per tick through the lease | Team trades | plan, watch, run | `--page REF:CAP[:FLOOR]`, `--margin-min`, `--bid-min-value`, `--min-cash`, `--protect`, `--no-team-venues`, `--duel-guard-ticks`, `--reciprocity` |
 | `rastro_seller.py` | Sells spare cards on El Rastro: high anchor, timed steps down, haggles in threads; floors from `rastro_floors.json` | Team trades | watch, run, selftest | `--config`, `--take-bids`, `--step-ticks` |
 | `dealer_client.py` | Shared dealer library: guarded writes (never retried blind), pause-safe tick waits, ladder value gate | shared | | |
-| `lease.py` | The key lease: one accept per tick, ranked DUEL > DEALER_FINAL > MARKET > OTHER, under an fcntl lock (`logs/state/lease.json`) | shared | | |
+| `lease.py` | The market desk’s local accept lease under an fcntl lock (`logs/state/lease.json`); duel and dealer bots use a separate duel lock | shared | | |
 | `runlog.py` | Shared JSONL logger to `logs/<agent>/<date>.jsonl`; redacts team, broker and admin keys | shared | | |
 
 ### Tools (`tools/`)
@@ -216,11 +216,11 @@ All programs are Python 3 standard library only and build on the organisers' unc
 - **Account state:** `snapshot.py --me-only` (every 10 min) writes `logs/state/me.json`, which feeds the desk, the matchmaker, the planners, value inference, the brain and the evals.
 - **Public feed chain:** `feed_recorder.py` writes `logs/feed/feed.jsonl`; the ledger, decks, price index, value inference and ladder value are rebuilt from it; `matchmaker.py` writes `logs/matchmaker/latest.json`, which announce, outreach and La Celestina refuse when older than 15 minutes.
 - **Offline loop:** `logs_push.py` mirrors the logs to branch `mini/logs`; the analyst and the labs read them; tuned duel params go back to the live bot as `--params`.
-- **Keyless versus keyed:** feed, brain, swarm, matchmaker, celestina, clearing and all evals are keyless. Only the dealer bots, duel, desk, seller, snapshot and the broker-key tools hold a key, read from `.env` inside the process.
+- **Keyless versus keyed:** Public analytics and public server views are keyless. Snapshot and Clearing House client operations require the team's key; announcement, outreach and venue-opening write modes also require it. Dealer bots, duel, desk, seller and broker operations also use credentials read inside the process.
 
 ### Tests
 
-63 test files in `tests/` (84 files with helpers and fixtures), run with `python3 -m unittest discover tests`. They cover the dealer loop against a fake server, duel flags for each duel format, the desk gain rule, caps and pages, the broker, the matchmaker and La Celestina, the feed analytics, the factory, the lease, the bus, the dashboards and every eval harness.
+1,709 test functions in 63 test-named Python files (64 Python files and 84 total files including fixtures). The tests/ pytest baseline has 34 pre-existing failures; repository-wide pytest fails collection at docs/analysis-friday/duels_scripts/mirror_test.py:54. These are not clean-suite claims. The unittest entry point is `python3 -m unittest discover tests`. They cover the dealer loop against a fake server, duel flags for each duel format, the desk gain rule, caps and pages, the broker, the matchmaker and La Celestina, the feed analytics, the factory, the lease, the bus, the dashboards and every eval harness.
 
 ## Docs, evals and data map
 
@@ -257,6 +257,8 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 
 ### Logs and data (`logs/`)
 
+Private account state and logs containing valuations or strategy limits are excluded from the judges' submission. The paths below are an inventory of the team's records.
+
 | Path | What is in it |
 |---|---|
 | `feed/`, `feed-vm/` | The public feed, leaderboard snapshots and changes (laptop recorder, plus a gap-free VM copy for Friday) |
@@ -274,6 +276,8 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 ## How it was built: PR history
 
 ### Numbers
+
+Engineering statistics below are the pre-submission snapshot at `3358e4c`, not current-main totals.
 
 - **101 pull requests** (#1 to #104; #14, #16 and #25 are issues). 99 merged, 2 open (#41, #100), none closed unmerged.
 - **464 commits on `main`** (351 regular, 113 merges): Hector 287, Thiago 176, 1 from a former teammate. Merged PRs added +127,453 and removed -2,317 lines; the largest is #62, the offline evals (+30,234).
@@ -321,7 +325,7 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 | #9 | feat(duel-lab): arena and tuner for duel.py, safe and tuned Duels I params | Hector | merged | Sat 03 Oct 09:27 | +1558/-0 |
 | #10 | feat(duel): late read, accept-slot demand and last-chance share, behind flags off by default | Hector | merged | Sat 03 Oct 09:27 | +2528/-7 |
 | #11 | feat(market): server-side duel guard and card-for-card swaps | Hector | merged | Sat 03 Oct 09:42 | +1186/-45 |
-| #12 | fix(market): swap safety defaults (opt-in, El Rastro fills, no last copy or seller spares, 200 P floor) | Thiago | merged | Sat 03 Oct 09:59 | +273/-60 |
+| #12 | fix(market): swap safety defaults (opt-in, El Rastro fills, no last copy or seller spares, cash floor) | Thiago | merged | Sat 03 Oct 09:59 | +273/-60 |
 | #13 | test(duel-arena): pin Friday duel tests to a frozen fixture set | Thiago | merged | Sat 03 Oct 10:01 | +1056/-2 |
 | #15 | feat(dashboard): La Celestina panel (our venue v20 + broker) | Thiago | merged | Sat 03 Oct 10:39 | +514/-6 |
 | #17 | docs(judges): judges' story draft v1 and evidence checklist | Thiago | merged | Sat 03 Oct 11:41 | +165/-0 |
@@ -350,7 +354,7 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 | #41 | feat(trade_desk): standing team-trade engine, SHADOW by default (H2) | former teammate | open | open | +867/-0 |
 | #42 | fix(ledger): every team's cash, with each fee payer told (packages, swaps, ask vs bid, board, consistency) | Hector | merged | Sat 03 Oct 21:16 | +727/-37 |
 | #43 | feat(brain): our real team data on the market brain (keyless team relay) | Hector | merged | Sat 03 Oct 21:16 | +1617/-53 |
-| #44 | Market: announce v20's live book (named, in-text) + broker safety net so a Market Test can't score 0 | Hector | merged | Sat 03 Oct 19:51 | +522/-118 |
+| #44 | Market: announce v20's live book (named, in-text) + broker fallback and inactivity alarm | Hector | merged | Sat 03 Oct 19:51 | +522/-118 |
 | #45 | Announce on new v20 offers (exact order, Market Test silence) + log each post's response | Hector | merged | Sat 03 Oct 21:29 | +1008/-29 |
 | #46 | fix(bus): every write names its session | Hector | merged | Sat 03 Oct 20:24 | +111/-12 |
 | #47 | feat(duel-lab): Duels II arena - days lab, likely-field rivals, decision matrix, opponent book, blend params | Hector | merged | Sat 03 Oct 22:05 | +6618/-21 |
@@ -385,7 +389,7 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 | #76 | feat(duel-lab): overnight Duels III search | Hector | merged | Sun 04 Oct 06:48 | +9076/-0 |
 | #77 | docs(handoff): overnight search verdicts, nothing to deploy | Hector | merged | Sun 04 Oct 06:49 | +3/-2 |
 | #78 | docs(duel-lab): overnight search final report, F4-off re-test, verdict not better | Hector | merged | Sun 04 Oct 07:48 | +3353/-123 |
-| #79 | docs(claude): game-day rules, no lane ever off; reserve is 40 P | Thiago | merged | Sun 04 Oct 08:23 | +9/-1 |
+| #79 | docs(claude): game-day rules, no lane ever off; cash reserve | Thiago | merged | Sun 04 Oct 08:23 | +9/-1 |
 | #80 | feat(factory): automatic SAL-10 fallback from Los Pícaros | Thiago | merged | Sun 04 Oct 08:37 | +561/-3 |
 | #81 | fix(desk): SAL-10 page coverage during duels, on team venues, and a yield handoff | Thiago | merged | Sun 04 Oct 08:37 | +400/-68 |
 | #82 | fix(sal10): require held 0 in the desk ack; wait out a busy Picaros inside the window | Thiago | merged | Sun 04 Oct 08:49 | +306/-100 |
@@ -422,10 +426,10 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 ## Honest limitations
 
 - **Market-making stayed our weak column (8.15 of 30).** Our venue v20 hosted zero trades between other teams all weekend. The leaders scored 11 to 13 there by having other teams park bids in their zero-fee shops.
-- **The Clearing House matched nothing.** Six of 18 teams joined one private order book on Sunday afternoon, but at 15% margins every buyer's maximum sat below every seller's minimum. A forced round found one 4 P cross with zero surplus, and Hector stopped it at 13:42. Nothing of ours was spent.
+- **The Clearing House executed no trades.** Six of 18 teams joined one private order book on Sunday afternoon. A forced round proposed one zero-surplus cross, approved by both parties; the seller's local price guard refused it before posting.
 - **Saturday's first Market Test on our venue scored 0** because of a broker bug (fixed in PR #22).
 - **Parallel sessions burned the usage cap** on Saturday night (fixed by the one-conductor rule).
-- **Our last-hour desk margins were too strict for an hour** (minimum gain 10 per trade), so cash sat idle until they were lowered at 13:58.
+- **Our last-hour desk margins were too strict for an hour** (a private minimum-gain threshold), so cash sat idle until they were lowered at 13:58.
 - **A predicted extra Market Test at 14:38 never happened.** We kept the venue and broker untouched for it anyway; it cost nothing but showed that extrapolating the schedule from past spacing is unreliable.
 
 ## How to run
@@ -439,7 +443,7 @@ python3 agent/broker.py selftest
 # Offline evals: no key, no network, no model
 python3 tools/eval_broker.py --variant baseline --policy stall
 python3 tools/eval_dealers.py --variant baseline --reps 5
-# Tests (Python 3 standard library only)
+# Tests (Python 3 standard library only; known failures described in Tests above)
 python3 -m unittest discover tests
 ```
 
@@ -447,4 +451,4 @@ Configuration lives in `.env` (gitignored): the team key is read by the processe
 
 ## Redactions
 
-Removed from this submission: the team key and any API tokens (never committed), Cloudflare tunnel URLs and dashboard tokens (replaced with `<redacted-tunnel>`), and the Clearing House invite code. Everything else, including our private card values in `logs/`, is published as played.
+Removed from this submission: the team key and any API tokens (never committed), Cloudflare tunnel URLs and dashboard tokens (replaced with `<redacted-tunnel>`), and the Clearing House invite code. Private card valuations and strategy limits are excluded from the judges' submission. Raw private account state, bot logs, plans and handoffs are excluded; references in the inventory are not invitations to publish them.

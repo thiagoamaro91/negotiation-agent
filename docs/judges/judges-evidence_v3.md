@@ -74,7 +74,9 @@ Version B is the default. Version A changes row 5 only.
 3. **If there is no screen at all, or the slot is cut:** Thiago switches to the 60-second fallback (story section 4).
 4. **If the funnel or the tunnel is refused or down:** rows 5 and 7 use the public site and the screenshot; nothing else changes.
 
-## Before going on (from the freeze)
+## Before going on (archived rehearsal checklist)
+
+Archived early-Sunday rehearsal plan; its predicted freeze time and shutdown checklist were superseded. Use the final submission timeline for actual events.
 
 | Wall time | Step | Who |
 |---|---|---|
