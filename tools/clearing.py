@@ -206,7 +206,7 @@ def match(books: dict, venues: list, participants: dict, hosted: dict | None = N
         if any(team in (tr["seller"], tr["buyer"]) for tr in trades):
             continue
         for c in cands:
-            if team in (c["seller"], c["buyer"]) and take(c):
+            if team in (c["seller"], c["buyer"]) and any(can_host(v, c) for v in by_id) and take(c):
                 break
     for c in cands:
         if any(can_host(v, c) for v in by_id):
@@ -664,7 +664,8 @@ class Store:
         """Pass offer ids along from the public books when a seller did not report: an open offer on the trade's
         venue addressed to the buyer, giving that asset for that cash. Returns how many were filled in."""
         with self.lock:
-            pending = [t for r in self.state["rounds"] for t in r["trades"] if t["status"] == "planned"]
+            pending = [t for r in self.state["rounds"] if r.get("status") == "approved"
+                       for t in r["trades"] if t["status"] == "planned"]
             venues = sorted({t["venue"] for t in pending})
         n = 0
         for vid in venues:
@@ -679,9 +680,11 @@ class Store:
                 assets = [a.get("id") if isinstance(a, dict) else a for a in (give.get("assets") or [])]
                 with self.lock:
                     want = o.get("want") or {}
+                    if give.get("types") or give.get("cash") or want.get("assets") or want.get("types") \
+                            or len(assets) != 1 or not isinstance(want.get("cash"), int):
+                        continue                      # exactly one card for plain cash, the same shape check_buy demands
                     for t in pending:
-                        if t["venue"] == vid and assets == [t["asset"]] and want.get("cash") == t["price"] \
-                                and not want.get("assets") and not want.get("types") and not give.get("cash") \
+                        if t["venue"] == vid and assets == [t["asset"]] and want["cash"] == t["price"] \
                                 and o.get("to") == t["buyer"] and t["status"] == "planned" and o.get("id"):
                             t["offer"], t["status"], t["posted"] = int(o["id"]), "posted", now_iso()
                             n += 1

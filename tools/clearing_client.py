@@ -216,8 +216,17 @@ def cmd_vote(a) -> None:
         record_approval(cfg, plan)
     if a.no:
         body["why"] = a.why or "no reason given"
-        if a.trades:
-            body["trades"] = [x.strip() for x in a.trades.split(",") if x.strip()]
+        ids = [x.strip() for x in a.trades.split(",") if x.strip()] if a.trades else []
+        if ids:
+            body["trades"] = ids
+        ap = cfg.get("approved") or {}
+        if ids and ap.get("actions"):
+            for i in ids:
+                ap["actions"].pop(i, None)
+            cfg["approved"] = ap
+        else:
+            cfg["approved"] = None                 # a NOT OK revokes everything I had signed in this proposal
+        save_cfg(cfg)                              # persisted BEFORE the request, whatever the server answers
     print(json.dumps(call(f"{cfg['server']}/api/clearing/vote", body), indent=1))
 
 
@@ -261,7 +270,7 @@ def venue_fee(venue: str, price: int) -> int | None:
         tick = 0
     bps, per = int(row.get("fee_bps") or 0), int(row.get("fee_per_card") or 0)
     pend = row.get("pending_fee")
-    if isinstance(pend, dict) and (tick == 0 or int(pend.get("effective_tick") or 0) <= tick + 1):
+    if isinstance(pend, dict):          # any announced change counts, whenever it lands: the conservative debit
         bps, per = max(bps, int(pend.get("fee_bps") or 0)), max(per, int(pend.get("fee_per_card") or 0))
     return int(math.ceil(price * bps / 10000)) + per
 
@@ -279,20 +288,11 @@ def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: i
     qty = sum(int(w.get("qty", 1)) for w in wants)
     if bought.get(x.get("card"), 0) >= qty:
         return f"already bought {qty} of {x.get('card')} this session: refused"
-    fee = venue_fee(x.get("venue"), int(x.get("price") or 0))
-    if fee is None:
-        return "venue unknown to the game (yet)"
-    debit = int(x.get("price") or 0) + fee
-    if debit > my_max:
-        return f"price {x.get('price')} + real fee {fee} = {debit} is above my max {my_max}"
+    price = int(x.get("price") or 0)
     cur = call(f"{GAME}/api/me/value?card={x.get('card')}", key=key)
     val = cur.get("your_value") if isinstance(cur, dict) else None
-    if not isinstance(val, (int, float)) or debit > val:
-        return f"debit {debit} is not below the card's current value to me ({val}): refused"
     me = call(f"{GAME}/api/me", key=key)
     cash = me.get("cash")
-    if not isinstance(cash, int) or cash - debit < reserve:
-        return f"cash {cash} minus {debit} would go under my reserve {reserve}: refused"
     pub = call(f"{GAME}/api/venues/{x.get('venue')}/offers")
     offer = next((o for o in (pub.get("offers") or []) if isinstance(o, dict) and o.get("id") == x.get("offer")), None)
     if offer is None:
@@ -308,8 +308,18 @@ def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: i
         return "offer does not give exactly one copy of the plan's card"
     if want.get("assets") or want.get("types") or not isinstance(want.get("cash"), int):
         return "offer wants a card of mine or something other than cash: refused"
-    if want["cash"] != x.get("price"):
-        return f"offer price {want['cash']} differs from the plan price {x.get('price')}"
+    if want["cash"] != price:
+        return f"offer price {want['cash']} differs from the plan price {price}"
+    fee = venue_fee(x.get("venue"), price)            # LAST, right before the accept: the freshest fee wins
+    if fee is None:
+        return "venue unknown to the game (yet)"
+    debit = price + fee
+    if debit > my_max:
+        return f"price {price} + real fee {fee} = {debit} is above my max {my_max}"
+    if not isinstance(val, (int, float)) or debit > val:
+        return f"debit {debit} is not below the card's current value to me ({val}): refused"
+    if not isinstance(cash, int) or cash - debit < reserve:
+        return f"cash {cash} minus {debit} would go under my reserve {reserve}: refused"
     return None
 
 
@@ -460,8 +470,8 @@ def main() -> None:
         sp.add_argument("--server", dest="server_sub", default="", help=argparse.SUPPRESS)
         sp.add_argument("--team", dest="team_sub", default="", help=argparse.SUPPRESS)
     a = p.parse_args()
-    a.server = a.server or getattr(a, "server_sub", "") or ""
-    a.team = a.team or getattr(a, "team_sub", "") or ""
+    a.server = getattr(a, "server_sub", "") or a.server or ""      # an explicit flag wins over CLEARING_URL
+    a.team = getattr(a, "team_sub", "") or a.team or ""
     if a.cmd == "join" and not a.server:
         sys.exit("--server is required")
     a.fn(a)
