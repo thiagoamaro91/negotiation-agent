@@ -570,8 +570,7 @@ class Silenced(Exception):
 
 SESSIONS = ROOT / "logs" / "state" / "announce-sessions.json"   # the Market Tests the gate knows, across restarts
 FEED_LIMIT = 1000        # the API's feed window: fewer events than this is the whole feed
-COVER_TICKS = 2 * BENCH_TICKS   # a fresh status needs the feed to cover at least this many ticks back (or more, when
-                                # a known session is longer): a test that started before the window must not be missed
+LOOKBACK_MARGIN = BENCH_TICKS   # the feed must reach back the longest Market Test seen plus this many ticks
 FIRE_SLACK_H = 0.05      # a bench start event within this many game hours of a scheduled session is that session
 
 
@@ -643,19 +642,6 @@ def bench_starts(events) -> list:
     return out
 
 
-def recorded_span(path: Path = FEED_FILE):
-    """(first tick, last tick) of the recorded feed, or None: how far the recorder's copy reaches."""
-    try:
-        with open(path, "rb") as f:
-            first = json.loads(f.readline())["tick"]
-            f.seek(0, os.SEEK_END)
-            f.seek(max(0, f.tell() - 65536))
-            last = json.loads([x for x in f.read().splitlines() if x.strip()][-1])["tick"]
-        return (first, last) if _int(first) and _int(last) else None
-    except (OSError, ValueError, KeyError, IndexError, TypeError):
-        return None
-
-
 class Gate:
     """Every request and every post asks the gate first: silence checked right before each request and right before
     posting; no post while the Market Test status is unknown or stale (Codex BLOCKERs on #45). It fails closed: the
@@ -667,9 +653,13 @@ class Gate:
     read back at start, with the tick up to which the feed was covered. A refresh is known only when:
       - the schedule, the clock and the feed are well formed (Malformed otherwise);
       - every scheduled bench that has fired is matched to its start event (else: when did it start? unknown);
-      - the feed reaches far enough back (COVER_TICKS, or the longest known session): the API window is the whole
-        feed (fewer than FEED_LIMIT events), or it starts early enough, or the recorded feed or the saved state
-        reaches back to its first event.
+      - the feed reaches back far enough: the longest Market Test seen in any schedule, feed or saved state (at
+        least BENCH_TICKS) plus LOOKBACK_MARGIN ticks. Proof is the API window itself (the whole feed when it holds
+        fewer than FEED_LIMIT events, or a window starting that far back), or this gate's own earlier windows: the
+        saved covered_to tick, advanced only after a complete success, when the new window overlaps it. The
+        recorded feed only adds sessions; its endpoints never prove coverage (the recorder appends with gaps).
+    A refresh clears the status when it begins and sets it again only after a complete success, so a failed read
+    never leaves an older permission to post.
     Windows are placed from the clock's tick, so a paused clock keeps a running session silent; a later read never
     shortens a window already placed."""
 
@@ -678,21 +668,30 @@ class Gate:
         self.sessions = {}      # start tick -> ticks
         self.expected = {}      # scheduled game hour -> ticks, until its start event is seen
         self.covered_to = None  # the last tick through which the feed was known to be covered (saved state)
+        self.longest = BENCH_TICKS  # the longest Market Test seen anywhere (schedule, feed, saved state)
         self.state_path = state_path
         self.clock = clock or (lambda: time.time())  # looked up at call time, so a patched clock is honoured
         self._load()
 
     def _load(self) -> None:
+        """The saved state, trusted only whole: a sessions mapping (start tick -> positive ticks), a whole covered_to
+        and, if present, a whole positive longest. Anything else and the file is ignored."""
         if self.state_path is None:
             return
         try:
             data = json.loads(Path(self.state_path).read_text())
-            sessions = {int(k): v for k, v in (data.get("sessions") or {}).items()}
-            if all(_int(v) and v > 0 for v in sessions.values()) and (data.get("covered_to") is None
-                                                                      or _int(data.get("covered_to"))):
-                self.sessions, self.covered_to = sessions, data.get("covered_to")
-        except (OSError, ValueError, AttributeError, TypeError):
-            pass   # no saved state (or a bad one): the feed alone must then cover the recent ticks
+            raw, covered, longest = data["sessions"], data["covered_to"], data.get("longest", BENCH_TICKS)
+            if not isinstance(raw, dict) or not _int(covered) or not (_int(longest) and longest > 0):
+                return
+            sessions = {}
+            for k, v in raw.items():
+                if not (isinstance(k, str) and k.lstrip("-").isdigit()) or not (_int(v) and v > 0):
+                    return
+                sessions[int(k)] = v
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return   # no saved state (or a bad one): the feed alone must then cover the recent ticks
+        self.sessions, self.covered_to = sessions, covered
+        self.longest = max(self.longest, longest, *sessions.values()) if sessions else max(self.longest, longest)
 
     def _save(self) -> None:
         if self.state_path is None:
@@ -702,7 +701,7 @@ class Gate:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps({"sessions": {str(k): v for k, v in sorted(self.sessions.items())},
-                                       "covered_to": self.covered_to}))
+                                       "covered_to": self.covered_to, "longest": self.longest}))
             os.replace(tmp, path)
         except OSError:
             pass
@@ -710,6 +709,7 @@ class Gate:
     def _add(self, start: int, ticks) -> None:
         n = ticks if _int(ticks) and ticks > 0 else BENCH_TICKS
         self.sessions[start] = max(self.sessions.get(start, 0), n)   # never the shorter of two reports
+        self.longest = max(self.longest, n)
 
     def quiet_end(self):
         return quiet_until(self.windows, self.clock())
@@ -739,11 +739,12 @@ class Gate:
                   + active_windows(known, clock, at_clock) + kept)
         return sorted(set(placed))
 
-    def refresh(self, get, extra_events=(), recorded=None) -> bool:
+    def refresh(self, get, extra_events=()) -> bool:
         """Read the schedule and the clock, place their windows at once, then read the feed for sessions already
         running (each request gated); True only when the status is known (see the class). `extra_events`: bench
-        events from the recorded feed; `recorded`: its (first tick, last tick)."""
+        events from the recorded feed (they add sessions; they never prove that none is running)."""
         self.tried_at = self.clock()
+        self.status_at = None                          # unknown from here until this refresh succeeds completely
         try:
             self.check()
             upcoming = checked_schedule(get(f"{URL}/api/schedule"))
@@ -754,6 +755,7 @@ class Gate:
             for e in upcoming:
                 if e.get("action") == "bench":
                     self.expected[e["at_hours"]] = (e.get("params") or {}).get("ticks") or BENCH_TICKS
+                    self.longest = max(self.longest, self.expected[e["at_hours"]])
             self.windows = self._place(upcoming, clock, at_clock)   # installed before the feed read
             self.check()
             body = get(f"{URL}/api/feed?limit={FEED_LIMIT}")
@@ -775,10 +777,9 @@ class Gate:
                 self._add(min(x for x, _ in match), n)   # a longer reported duration was added above: max wins
                 del self.expected[at]
             self.windows = self._place(upcoming, clock, at_clock)
-            cover = max([COVER_TICKS] + list(self.sessions.values()) + list(self.expected.values()))
+            cover = max(BENCH_TICKS, self.longest) + LOOKBACK_MARGIN
             lo = min((e["tick"] for e in api), default=tick)
             covered = len(api) < FEED_LIMIT or lo <= tick - cover \
-                or (recorded is not None and recorded[0] <= tick - cover and recorded[1] >= lo - 1) \
                 or (self.covered_to is not None and self.covered_to >= lo - 1)
             if unresolved or not covered:
                 print(f"Market Test status unknown ({'a fired session without its start event' if unresolved else 'the feed does not reach back far enough'}); no post", flush=True)
@@ -972,7 +973,7 @@ def main(argv: list[str] | None = None) -> None:
             gate.expire()
             continue
         if gate.due_refresh():
-            gate.refresh(get_json, recorded_events(kinds=("bench.started", "schedule.fired")), recorded_span())
+            gate.refresh(get_json, recorded_events(kinds=("bench.started", "schedule.fired")))
             continue                                   # start again from the silence check with what was learnt
         if not gate.known():                           # status unknown: no request but the status read, no post
             time.sleep(POLL_S)

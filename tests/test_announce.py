@@ -489,7 +489,7 @@ def run_loop(argv, get_json, state, posts, logged=None, slow=None):
     with tempfile.TemporaryDirectory() as d, \
             um.patch.object(an, "get_json", get), um.patch.object(an.time, "sleep", sleep), \
             um.patch.object(an.time, "time", lambda: state["now"]), um.patch.object(an, "STATE", Path(d) / "s"), \
-            um.patch.object(an, "recorded_events", lambda *a, **k: []), um.patch.object(an, "recorded_span", lambda *a: None), \
+            um.patch.object(an, "recorded_events", lambda *a, **k: []), \
             um.patch.object(an, "post_announce", lambda text, key: posts.append((state["now"], text)) or {"ok": True}), \
             um.patch("runlog.RunLog", Log), um.patch("broker.load_broker_key", lambda *_: "bk_fake"):
         an.main(argv)
@@ -725,13 +725,90 @@ class TestGateMemory(unittest.TestCase):
             self.assertFalse(an.Gate(clock=lambda: 0.0, state_path=path).refresh(
                 self.api(state, feed={"events": [{"type": "x", "tick": 239, "payload": {}}] * an.FEED_LIMIT})))
 
-    def test_the_recorded_feed_covers_what_the_window_misses(self):
+    def test_the_recorded_feed_never_proves_coverage(self):
+        """Round 2, finding 2: the recorder saved to tick 90, missed the test that began at 100, resumed at 103. Its
+        endpoints (0, 104) prove nothing; with the API window starting at 103 the status stays unknown."""
         window = {"events": [{"type": "offer.listed", "tick": 103, "payload": {}} for _ in range(an.FEED_LIMIT)]}
+        recorded = [{"type": "offer.listed", "tick": t, "payload": {}} for t in (0, 50, 90, 103, 104)]
         state = {"now": 0.0, "tick": 105, "t": 10.0}
         g = an.Gate(clock=lambda: state["now"])
-        self.assertFalse(g.refresh(self.api(state, feed=window), (), (0, 90)))  # the recorder stopped at 90: a hole
+        self.assertFalse(g.refresh(self.api(state, feed=window), recorded))
+        self.assertFalse(g.known())
+        recorded.append({"type": "bench.started", "tick": 100, "payload": {"start_tick": 100, "ticks": 16}})
         g = an.Gate(clock=lambda: state["now"])
-        self.assertTrue(g.refresh(self.api(state, feed=window), (), (0, 104)))
+        g.refresh(self.api(state, feed=window), recorded)
+        self.assertEqual(g.sessions, {100: 16})                       # it still adds the sessions it does carry
+
+    def test_coverage_comes_from_this_gates_own_overlapping_windows(self):
+        state = {"now": 0.0, "tick": 100, "t": 10.0}
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "s.json"
+            self.assertTrue(an.Gate(clock=lambda: 0.0, state_path=path).refresh(self.api(state)))   # covered to 100
+            state["tick"] = 130
+            full = lambda lo: {"events": [{"type": "x", "tick": lo, "payload": {}}] * an.FEED_LIMIT}
+            self.assertTrue(an.Gate(clock=lambda: 0.0, state_path=path).refresh(self.api(state, feed=full(101))))
+            state["tick"] = 160                                          # covered to 130 now; a window from 132
+            self.assertFalse(an.Gate(clock=lambda: 0.0, state_path=path).refresh(self.api(state, feed=full(132))))
+
+    def test_a_failed_refresh_takes_back_the_permission_to_post(self):
+        """Round 2, finding 1: a known status, then a refresh whose feed says "unavailable": unknown at once, not
+        when the old status ages out."""
+        state = {"now": 0.0, "tick": 100, "t": 10.0}
+        g = an.Gate(clock=lambda: state["now"])
+        self.assertTrue(g.refresh(self.api(state)))
+        state.update(now=60.0, tick=102)
+        self.assertTrue(g.known())
+        self.assertFalse(g.refresh(self.api(state, feed={"events": "unavailable"})))
+        self.assertFalse(g.known())
+
+    def test_a_saved_state_is_trusted_only_whole(self):
+        """Round 2, finding 3: {"covered_to": 104} without a sessions mapping is ignored, as is a bad mapping."""
+        window = {"events": [{"type": "x", "tick": 103, "payload": {}}] * an.FEED_LIMIT}
+        state = {"now": 0.0, "tick": 105, "t": 10.0}
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "s.json"
+            for bad in ({"covered_to": 104}, {"covered_to": 104, "sessions": []},
+                        {"covered_to": 104, "sessions": {"100": "16"}}, {"covered_to": 104, "sessions": {"x": 16}},
+                        {"covered_to": "104", "sessions": {}}, {"sessions": {"100": 16}},
+                        {"covered_to": 104, "sessions": {}, "longest": 0}):
+                path.write_text(json.dumps(bad))
+                g = an.Gate(clock=lambda: 0.0, state_path=path)
+                self.assertEqual((g.covered_to, g.sessions), (None, {}), bad)
+                self.assertFalse(g.refresh(self.api(state, feed=window)), bad)
+            path.write_text(json.dumps({"covered_to": 104, "sessions": {"100": 16}}))
+            g = an.Gate(clock=lambda: 0.0, state_path=path)
+            self.assertEqual((g.covered_to, g.sessions), (104, {100: 16}))
+
+    def test_the_lookback_is_the_longest_test_seen_plus_a_margin(self):
+        """Round 2, finding 4: once a 64-tick test has been seen, 32 ticks of feed no longer rule out a running one."""
+        window = {"events": [{"type": "x", "tick": 55, "payload": {}}] * an.FEED_LIMIT}
+        state = {"now": 0.0, "tick": 90, "t": 10.0}
+        sched16 = {"upcoming": [{"at_hours": 12.0, "action": "bench", "params": {"ticks": 16}}]}
+        sched64 = {"upcoming": [{"at_hours": 12.0, "action": "bench", "params": {"ticks": 64}}]}
+        self.assertTrue(an.Gate(clock=lambda: 0.0).refresh(self.api(state, schedule=sched16, feed=window)))
+        g = an.Gate(clock=lambda: 0.0)
+        self.assertFalse(g.refresh(self.api(state, schedule=sched64, feed=window)))
+        self.assertEqual(g.longest, 64)
+        g = an.Gate(clock=lambda: 0.0)
+        long_one = {"events": [{"type": "bench.started", "tick": 2, "payload": {"start_tick": 2, "ticks": 64}}]}
+        g.refresh(self.api(state, feed=long_one))                   # a 64-tick test seen in the feed (long over)
+        self.assertEqual(g.longest, 64)
+        with tempfile.TemporaryDirectory() as d:                    # and remembered across a restart
+            path = Path(d) / "s.json"
+            path.write_text(json.dumps({"covered_to": 10, "sessions": {}, "longest": 64}))
+            self.assertFalse(an.Gate(clock=lambda: 0.0, state_path=path).refresh(self.api(state, feed=window)))
+            saved = Path(d) / "saved.json"
+            first = an.Gate(clock=lambda: 0.0, state_path=saved)
+            first.refresh(self.api(dict(state, tick=20), schedule=sched64))   # it saw the 64-tick test, then a restart
+            self.assertEqual(json.loads(saved.read_text())["longest"], 64)
+            self.assertEqual(an.Gate(clock=lambda: 0.0, state_path=saved).longest, 64)
+
+    def test_a_feed_shorter_than_the_api_window_is_the_whole_feed(self):
+        state = {"now": 0.0, "tick": 105, "t": 10.0}
+        short = {"events": [{"type": "x", "tick": 103, "payload": {}}] * (an.FEED_LIMIT - 1)}
+        self.assertTrue(an.Gate(clock=lambda: 0.0).refresh(self.api(state, feed=short)))
+        full = {"events": [{"type": "x", "tick": 103, "payload": {}}] * an.FEED_LIMIT}
+        self.assertFalse(an.Gate(clock=lambda: 0.0).refresh(self.api(state, feed=full)))
 
     def test_the_feed_is_not_read_when_the_schedule_already_says_silence(self):
         state, calls = {"now": 0.0, "tick": 100, "t": 10.0}, []
@@ -811,6 +888,29 @@ class TestFailClosedLoop(unittest.TestCase):
             return {"offers": [], "venues": []}
         run_loop(["run", "--yes", "--count", "1", "--deadline-min", "15", "--exclude", ""], get_json, state, posts)
         self.assertEqual(posts, [])
+
+
+class TestRound2Loop(unittest.TestCase):
+    def test_after_a_failed_refresh_the_loop_never_posts_on_the_old_status(self):
+        """Round 2, finding 1, in the run loop: a test starts unlisted at t=200 and the feed turns "unavailable"; the
+        refresh at 240 fails; the old status (read at 0) must not let a post through before it ages out at 300."""
+        state, posts = {"now": 0.0, "tick": 100}, []
+
+        def get_json(url):
+            if url.endswith("/api/clock"):
+                return {"tick": state["tick"], "t_hours": 10.0 + state["now"] / 3600, "tick_seconds": 30.0}
+            if "/api/feed" in url:
+                return {"events": "unavailable"} if state["now"] >= 200 else {"events": []}
+            if url.endswith("/api/schedule"):
+                return {"upcoming": []}
+            if url.endswith("/api/venues"):
+                return {"venues": [{"venue": "v20", "status": "open"}]}
+            return {"offers": []}
+        run_loop(["run", "--yes", "--count", "20", "--every-min", "1", "--min-gap-min", "1", "--deadline-min", "8",
+                  "--exclude", ""], get_json, state, posts)
+        failed = min(t for t, u in state["calls"] if u.endswith("/api/schedule") and t >= 200)
+        self.assertEqual([t for t, _ in posts if t >= failed], [])
+        self.assertTrue([t for t, _ in posts if t < failed])
 
 
 class TestStatusAfterSilence(unittest.TestCase):
