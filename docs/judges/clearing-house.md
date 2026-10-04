@@ -42,7 +42,7 @@ with its own key.
 | 11:07 | PR #96 opened: server, client, selftest | GitHub |
 | ~11:18 | live behind a tunnel on Hector's laptop; invitation message and a bilingual visual explainer to teams | operator |
 | 11:30 to 13:05 | rules added as Hector sharpened the contract: a round for everyone or no round; balance by value hosted; proposal and OK / NOT OK with reasons; signed commitments; invite codes per team | PR #96 history |
-| 12:2x to 13:13 | six teams join: t13, t07, t16, t15, t03 (from the Mini), t14 | status export |
+| 12:2x to 13:13 | six teams join: t13, t07, t16, t15, t03 (from the Mini), t14 | operator recollection (join times and order); status export (membership only) |
 | ~12:44 | Team 7 hits a parser trap in the published join command; fixed. Team 13 reports that addressed offers never show on a venue's public book, so the hardened buyer could never verify one; fixed against the public feed | PR #96 commits, operator |
 | 11:07 to 13:07 | five adversarial review rounds by Codex (Sol) on PR #96; the proven money-safety blockers were fixed on the live code; merged 13:07 | GitHub, review logs |
 | 13:08 to 13:17 | follow-up PR #101 (feed state: cancellations, expiry) merged "ship with fixes": two lost-trade recovery defects remain open, neither spends money | GitHub, review log |
