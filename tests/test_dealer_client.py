@@ -307,7 +307,9 @@ class TestPauseCostsNoRounds(unittest.TestCase):
                 return {}
 
             def me(self):
-                return {"cash": 1000}
+                base = {"kind": "card", "ref": "MAL-06", "rarity": "uncommon", "set": "MAL", "name": "MAL-06"}
+                return {"cash": 1000, "affinity": {"MAL": 0.7},
+                        "assets": [dict(base, id=42, serial=9, your_value=40), dict(base, id=43, serial=1, your_value=40)]}
         return Sim()
 
     def test_pause_does_not_spend_rounds(self):

@@ -52,6 +52,7 @@ from bazaar_sdk import BazaarError  # noqa: E402
 
 import abuela  # noqa: E402  (importing the bots writes nothing; RunLog only makes logs/<agent>/ if missing)
 import chato  # noqa: E402
+from dealer_client import copy_marginal, ladder_floor  # noqa: E402
 
 FLOW = "dealers"
 TEAM = "t03"
@@ -440,6 +441,52 @@ def conversation_params(case: dict, model: DealerModel, rng: random.Random, dete
     return {"L": int(L), "P": int(P), "tol": int(tol), "L_from": L_from, "P_from": P_from}
 
 
+# ================================================================ what /api/me would say for a case
+
+def account_view(case: dict, affinity: dict = None) -> dict:
+    """What the live /api/me would return while this case's conversation runs, in its real shape (affinity, and assets
+    with id, kind, ref, serial, rarity, set, your_value): the bots re-read it before every decision and re-price the card
+    from it (agent/dealer_client.live_limit), so a harness that answered only {"cash": ...} would close every thread as
+    limit_unknown. The account is built so that it says what the case says, never something kinder:
+      buy:  we hold the copies the case's private value implies (private_source "..._copyN": N - 1 held, else none), and
+            the set multiplier is `affinity[set]` when given (the real one, from logs/state/me.json), else the one that
+            makes book x multiplier x copy marginal equal the case's private value
+      sell: the copy sold (asset_id, your_value = private) plus the copies that make it a spare of the right rank: the
+            fewest held (1, 2, 3) for which ceil(book x multiplier x marginal) does not exceed ceil(private)
+    so the live gate never sits above the case's own value and never below it by more than the rounding."""
+    item, rarity, side = case["item"], case.get("rarity"), case["side"]
+    book = case.get("book") or BOOK.get(rarity, 0)
+    set_id = str(item).split("-")[0]   # the set the bots look the multiplier up by (case["set"] is the same in real data)
+    private = float(case["private"])
+    base = {"kind": "card", "ref": item, "rarity": rarity, "set": set_id, "name": item, "print_run": None}
+    assets = []
+    if side == "buy":
+        src = str(case.get("private_source") or "")
+        held = int(src.rsplit("_copy", 1)[1]) - 1 if "_copy" in src and src.rsplit("_copy", 1)[1].isdigit() else 0
+        mult = (affinity or {}).get(set_id)
+        if mult is None and book:
+            mult = private / (book * copy_marginal(held + 1))
+        for i in range(held):
+            assets.append(dict(base, id=800000 + i, serial=i + 1, your_value=private))
+    else:
+        mult = (affinity or {}).get(set_id)
+        n = 3
+        if mult is None and book:
+            n = 2 if str(case.get("private_source")) in ("assumed_spare", "bot_log_floor_minus_2") else 1
+            mult = private / (book * copy_marginal(n))
+        else:
+            for k in (1, 2, 3):
+                g = ladder_floor(book, mult, copy_marginal(k))
+                if g is not None and g <= math.ceil(private):
+                    n = k
+                    break
+        assets.append(dict(base, id=case["asset_id"], serial=99, your_value=private))
+        for i in range(n - 1):
+            assets.append(dict(base, id=810000 + i, serial=i + 1, your_value=private))
+    return {"cash": 10 ** 6, "score": {"deals": 1}, "affinity": {set_id: mult} if mult is not None else {},
+            "assets": assets}
+
+
 # ================================================================ the simulated dealer the bots talk to
 
 class SimDealer:
@@ -452,8 +499,9 @@ class SimDealer:
     TID = 9000
 
     def __init__(self, case: dict, model: DealerModel, params: dict, seed: str, deterministic: bool,
-                 prefix: bool = True, model_on: bool = True):
+                 prefix: bool = True, model_on: bool = True, affinity: dict = None):
         self.case, self.model, self.p = case, model, params
+        self.affinity = affinity
         self.seed, self.det = seed, deterministic
         self.prefix, self.model_on = prefix, model_on
         self.sign = 1 if case["side"] == "buy" else -1
@@ -595,7 +643,7 @@ class SimDealer:
                 "standing_offers": [dict(o) for o in self.offers if o["status"] in ("open", "queued")]}
 
     def me(self):
-        return {"cash": 10 ** 6, "score": {"deals": 1}}
+        return account_view(self.case, self.affinity)
 
     def say(self, tid, text="", price=None, offer=None, topic=None):
         if self.status != "open":
@@ -687,8 +735,8 @@ def bot_target(case: dict, cfg: dict) -> dict:
         value = min(private, cap) if cap is not None else private
         if cfg.get("limit_override") is not None:  # fidelity runs: exactly the limit the real bot logged
             value = cfg["limit_override"]
-        return {"side": "buy", "item": case["item"], "name": case["item"], "book": case["book"], "value": value,
-                "private": private}
+        return {"side": "buy", "item": case["item"], "name": case["item"],
+                "book": case["book"] or BOOK.get(case["rarity"], 0), "value": value, "private": private}
     if cfg.get("floor") is not None:
         floor = cfg["floor"]
     else:
@@ -946,10 +994,11 @@ def config_from_argv(case: dict) -> dict:
 
 
 def simulate(case: dict, model: DealerModel, policy: str, cfg: dict, rep: int, seed: int,
-             deterministic: bool = False, prefix: bool = True, model_on: bool = True) -> tuple:
+             deterministic: bool = False, prefix: bool = True, model_on: bool = True, affinity: dict = None) -> tuple:
     rng = random.Random(f"{seed}:{case['id']}:{rep}:params")
     params = conversation_params(case, model, rng, deterministic)
-    sim = SimDealer(case, model, params, f"{seed}:{case['id']}:{rep}", deterministic, prefix=prefix, model_on=model_on)
+    sim = SimDealer(case, model, params, f"{seed}:{case['id']}:{rep}", deterministic, prefix=prefix, model_on=model_on,
+                    affinity=affinity)
     out = POLICIES[policy](case, cfg, sim)
     price = sim.deal[0] if sim.deal else None
     return sim, params, out, price
@@ -977,7 +1026,7 @@ def trace_of(case: dict, policy_label: str, cfg: dict, params: dict, sim: SimDea
 def case_fn(case: dict, model: DealerModel, policy: str, cfg: dict, rep: int, seed: int, label: str,
             affinity: dict = None):
     def fn():
-        sim, params, out, price = simulate(case, model, policy, cfg, rep, seed)
+        sim, params, out, price = simulate(case, model, policy, cfg, rep, seed, affinity=affinity)
         value = book_value(case, affinity)
         g = grade(case, price, sim.offers_seen, L=params["L"], value=value)
         g.update(real_grade(case, value))

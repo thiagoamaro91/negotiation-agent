@@ -23,11 +23,16 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import duel_arena as arena  # noqa: E402
 
-MIXES = {"Duels I field": "duels1", "likely field": "field"}
+MIXES = {"Duels II field": "duels2", "Duels I field": "duels1", "likely field": "field"}
 
 
 def mix_weights(name: str):
-    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS}[name]
+    return {"duels1": arena.DUELS1_WEIGHTS, "field": arena.FIELD_WEIGHTS, "duels2": arena.DUELS2_WEIGHTS}[name]
+
+
+def mix_mods(name: str) -> dict:
+    """Module overrides a mix brings with it: the Duels II field also has its days world (arena.DUELS2_MODS)."""
+    return {k: v for k, v in arena.DUELS2_MODS.items() if k != "PAIR_SEEN"} if name == "duels2" else {}
 
 
 def mix_kinds(name: str) -> list:
@@ -39,7 +44,7 @@ def cell(job: tuple) -> tuple:
     """One cell: (row, column, policy) -> per-seed mean scores and the summary."""
     row, col, pname, params, seeds, session, world = job
     g = vars(arena)
-    saved = {k: g[k] for k in world["mods"]}
+    saved = {k: g[k] for k in set(world["mods"]) | {"PAIR_SEEN", "ARENA_DAYS"}}
     g.update(world["mods"])
     arena.PAIR_SEEN = 0.0
     arena.ARENA_DAYS = world["days_mode"]
@@ -64,19 +69,21 @@ def load_mix(path) -> dict:
 
 
 def jobs_for(policies: dict, seeds, session: int, mixes: dict | None = None, d1: bool = False) -> list:
-    """Every cell. mixes: extra {label: weights} next to the named MIXES (a field refit from the last session);
-    d1: one more row per mix, robust, where an accept at deadline-1 does not settle (arena d1_settles=False)."""
+    """Every cell. mixes: extra {label: weights} next to the named MIXES (a field refit from the last session; no
+    module overrides); d1: one more row per mix, robust, where an accept at deadline-1 does not settle
+    (arena d1_settles=False)."""
     out = []
-    all_mixes = {label: mix_weights(mix) for label, mix in MIXES.items()}
-    all_mixes.update(mixes or {})
+    all_mixes = {label: (mix_weights(mix), mix_mods(mix)) for label, mix in MIXES.items()}
+    all_mixes.update({label: (w, {}) for label, w in (mixes or {}).items()})
     for mode, days_mode in (("robust", ""), ("confirmed", "confirmed")):
-        for label, wts in all_mixes.items():
-            w = {"mods": {}, "days_mode": days_mode, "weights": wts, "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0]}
+        for label, (wts, mods) in all_mixes.items():
+            w = {"mods": dict(mods), "days_mode": days_mode, "weights": wts,
+                 "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0]}
             out += [(f"mix: {label}", mode, n, p, seeds, session, w) for n, p in policies.items()]
     if d1:
-        for label, wts in all_mixes.items():
-            w = {"mods": {}, "days_mode": "", "weights": wts, "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0],
-                 "kw": {"d1_settles": False}}
+        for label, (wts, mods) in all_mixes.items():
+            w = {"mods": dict(mods), "days_mode": "", "weights": wts,
+                 "kinds": [k for k in arena.KINDS if wts.get(k, 0) > 0], "kw": {"d1_settles": False}}
             out += [(f"d1: {label}", "robust", n, p, seeds, session, w) for n, p in policies.items()]
     for kind in arena.KINDS:
         if kind == "absent":
@@ -135,6 +142,7 @@ def main() -> None:
         table.setdefault((row, col), {})[pname] = summ
         per_seed[(row, col, pname)] = ps
     replay = {n: arena.duels1_line(n, p) for n, p in policies.items()}
+    replay2 = {n: arena.duels2_line(n, p) for n, p in policies.items()}
 
     names = list(policies)
     lines = [f"# Duel matrix: {arena.SESSIONS[a.session]['name']}", "",
@@ -160,12 +168,15 @@ def main() -> None:
         lines.append(f"| {row} | {col} | " + " | ".join(parts) + " |")
     lines += ["", "Duels I replay (real rival price paths; rivals do not react or accept):", ""]
     lines += [f"- {replay[n]}" for n in names]
+    lines += ["", "Duels II replay (real (price, day) paths, 16 ticks, decay 0.08; rivals do not react or accept):", ""]
+    lines += [f"- {replay2[n]}" for n in names]
     md = "\n".join(lines) + "\n"
     print(md)
     if a.out_md:
         Path(a.out_md).expanduser().write_text(md)
     if a.out_json:
-        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay}, indent=1))
+        Path(a.out_json).expanduser().write_text(json.dumps({"cells": out_json, "replay": replay, "replay2": replay2},
+                                                            indent=1))
 
 
 if __name__ == "__main__":

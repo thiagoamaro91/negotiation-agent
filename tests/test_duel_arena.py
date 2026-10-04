@@ -51,10 +51,26 @@ class Scoring(unittest.TestCase):
 
     def test_two_issues_the_pie_is_the_best_joint_pie_over_days(self):
         days = {"ours": (10, 1.0), "rival": (0, 3.0)}           # we sell and want day 10; the buyer wants day 0
-        dl = one_duel("seller", 100, 150, days=days)
-        self.assertEqual(dl.pie(), 40.0)                        # day 0 is efficient: 50 - 1 x 10 - 3 x 0
-        self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], (140 - 100 - 10) / 40)
-        self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], 40 / 40)
+        with knobs(DAYS_MODEL="distance"):                      # the pre-Duels II guess: w x |day - best|
+            dl = one_duel("seller", 100, 150, days=days)
+            self.assertEqual(dl.pie(), 40.0)                    # day 0 is efficient: 50 - 1 x 10 - 3 x 0
+            self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], (140 - 100 - 10) / 40)
+            self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], 40 / 40)
+        dl = one_duel("seller", 100, 150, days=days)            # the server: the seller earns 1/day, the buyer pays 3
+        self.assertEqual(dl.pie(), 50.0)                        # day 0 still: 50 + 1 x 0 - 3 x 0
+        self.assertAlmostEqual(arena.score_deal(dl, 140, 0, 0)[0], 40 / 50)
+        self.assertAlmostEqual(arena.score_deal(dl, 140, 10, 0)[0], (140 - 100 + 10) / 50)
+
+    def test_the_referee_pays_what_the_duels2_server_paid(self):
+        # Saturday's Duels II results (logs/duel, event "result"): our seller surplus x 0.92 ** rounds.
+        # 5692: cost 53, w 2.36, sold at 87 on day 10, 1 round -> 53.0; 5626: cost 88, w 1.12, 132 on day 0, 1 round
+        # -> 40.5; 5675: cost 30, w 2.26, 66 on day 0, no round -> 36.0. The old guess gave 10.5, 30.2 and 13.4.
+        for cost, w, price, day, rounds, result in ((53, 2.36, 87, 10, 1, 53.0), (88, 1.12, 132, 0, 1, 40.5),
+                                                     (30, 2.26, 66, 0, 0, 36.0)):
+            dl = one_duel("seller", cost, 2 * cost, days={"ours": (10, w), "rival": (0, 1.0)})
+            self.assertAlmostEqual(dl.our_surplus(price, day) * 0.92 ** rounds, result, places=1)
+        buyer = one_duel("buyer", 150, 100, days={"ours": (0, 2.0), "rival": (10, 1.0)})
+        self.assertEqual(buyer.our_surplus(120, 4), 150 - 120 - 2.0 * 4)   # a buyer pays w per day from day 0
 
 
 class RoundsRule(unittest.TestCase):
@@ -230,10 +246,12 @@ class DaysWorld(unittest.TestCase):
 
     def test_default_knobs_replay_the_arena_from_before_the_knobs(self):
         # measured on 9cf97d3 (before the knobs existed): 204 duels, 86 deals, score sum 39.9354, mean 0.19576
+        # (the referee of that time: DAYS_MODEL "distance"; the server model changes the scores by design)
         before = (204, 86, 39.9354, "3aa66e5a9dac7b27aad67ff0c4d999999028342822805a84a631691b0d101c7d")
-        self.assertEqual(self.fingerprint(), before)
-        with knobs(DAYS_W=(0.0, 4.0), DAYS_W_REL=None, DAYS_COMPAT=0.0, RIVAL_DMODE=None):
+        with knobs(DAYS_MODEL="distance"):
             self.assertEqual(self.fingerprint(), before)
+            with knobs(DAYS_W=(0.0, 4.0), DAYS_W_REL=None, DAYS_COMPAT=0.0, RIVAL_DMODE=None):
+                self.assertEqual(self.fingerprint(), before)
 
     def test_the_knobs_never_touch_the_scenario_rng(self):
         def shape(ds):
@@ -315,3 +333,105 @@ class DaysWorld(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ForcedDayModes(unittest.TestCase):
+    """Codex on #47: the logroller and the splitter must follow a forced days world (RIVAL_DMODE) like the others."""
+
+    def test_logroller_and_splitter_follow_rival_dmode(self):
+        for kind in ("logroll", "split"):
+            rp = {**arena._kind_params(kind, __import__("random").Random(1), 16, __import__("random").Random(1).uniform,
+                                       {}, False), "dmode": "mid"}
+            r = arena.KINDS[kind]("buyer", 120, 16, rp, (0, 2.0))
+            r._msgs = [(1, 140, 10), (2, 138, 10)]          # we held day 10 twice: a logroller would follow it
+            self.assertEqual(r.day_for((138, 10)), 5, kind)
+        sp = arena.KINDS["split"]("buyer", 120, 16, {"m0": 0.3, "m_floor": 0.0, "tol": 0.0, "e0": 0, "dmode": "mid"},
+                                  (0, 2.0))
+        sp.act(0, {"our_offer": None, "our_msgs": []})
+        out = sp.act(1, {"our_offer": (150, 10), "our_msgs": [(1, 150, 10)]})
+        self.assertEqual(out["say"][1], 5)                   # not the midpoint of its day and ours
+
+
+class Duels2Field(unittest.TestCase):
+    """The Duels II refit (WP1, Duels III): the rival mix, our real weights per role and the rival's day by role."""
+
+    def session(self, seed=0, **extra):
+        with knobs(**{**arena.DUELS2_MODS, **extra}):
+            return arena.make_session(seed, arena.SESSIONS[3], [k for k in arena.KINDS
+                                                                 if arena.DUELS2_WEIGHTS.get(k, 0) > 0],
+                                      arena.DUELS2_WEIGHTS)
+
+    def test_the_mix_is_the_68_duels_of_duels2(self):
+        self.assertEqual(sum(arena.DUELS2_WEIGHTS.values()), 68)
+        self.assertEqual({k: len(v) for k, v in arena.DUELS2_DAYS_W.items()}, {"buyer": 34, "seller": 34})
+
+    def test_weights_come_from_that_roles_real_weights(self):
+        lo = {r: min(v) for r, v in arena.DUELS2_DAYS_W.items()}
+        hi = {r: max(v) for r, v in arena.DUELS2_DAYS_W.items()}
+        ws = {"buyer": [], "seller": []}
+        for seed in range(4):
+            for dl in self.session(seed):
+                rrole = "buyer" if dl.role == "seller" else "seller"
+                for role, w in ((dl.role, dl.days["ours"][1]), (rrole, dl.days["rival"][1])):
+                    self.assertTrue(lo[role] - 0.01 <= w <= hi[role] + 0.01, (role, w))
+                    ws[role].append(w)
+        med = {r: sorted(v)[len(v) // 2] for r, v in ws.items()}
+        self.assertGreater(med["buyer"], med["seller"] + 0.5)      # buyers pay more per day than sellers earn
+
+    def test_the_rivals_day_mode_follows_its_role(self):
+        for dl in self.session(1, RIVAL_DMODE_ROLE={"buyer": {"best": 1}, "seller": {"flex": 1}}):
+            self.assertEqual(dl.rival.p.get("dmode"), "best" if dl.rival.role == "buyer" else "flex")
+        modes = {}
+        for seed in range(6):
+            for dl in self.session(seed):
+                modes.setdefault(dl.rival.role, set()).add(dl.rival.p.get("dmode"))
+        self.assertEqual(modes["buyer"], {"best", "flex", "mid"})
+        self.assertEqual(modes["seller"], {"best", "flex", "mid", "random"})
+
+    def test_the_refit_never_touches_the_scenario_rng(self):
+        def shape(ds):
+            return sorted((d.id, d.pair, d.role, d.kind, d.our_limit, d.rival_limit) for d in ds)
+        with knobs(PAIR_SEEN=0.0):
+            base = arena.make_session(2, arena.SESSIONS[3], [k for k in arena.KINDS
+                                                             if arena.DUELS2_WEIGHTS.get(k, 0) > 0],
+                                      arena.DUELS2_WEIGHTS)
+        self.assertEqual(shape(self.session(2)), shape(base))
+
+
+class MatrixDuels2(unittest.TestCase):
+    def test_the_matrix_plays_the_duels2_mix_in_its_days_world_and_restores_the_globals(self):
+        import duel_matrix as matrix
+        jobs = [j for j in matrix.jobs_for({"p": {}}, [0], 3) if j[0] == "mix: Duels II field"]
+        self.assertEqual({j[1] for j in jobs}, {"robust", "confirmed"})
+        for j in jobs:
+            self.assertIs(j[6]["mods"]["DAYS_W_EMP"], arena.DUELS2_DAYS_W)
+            self.assertIs(j[6]["mods"]["RIVAL_DMODE_ROLE"], arena.DUELS2_DMODE)
+            self.assertIs(j[6]["weights"], arena.DUELS2_WEIGHTS)
+        before = (arena.DAYS_W_EMP, arena.RIVAL_DMODE_ROLE, arena.PAIR_SEEN, arena.ARENA_DAYS)
+        row, col, name, summ, per_seed = matrix.cell(jobs[-1])
+        self.assertEqual((arena.DAYS_W_EMP, arena.RIVAL_DMODE_ROLE, arena.PAIR_SEEN, arena.ARENA_DAYS), before)
+        self.assertEqual(summ["n"], 68)
+
+
+class Duels2Replay(unittest.TestCase):
+    def duel_file(self, role="seller", limit=100, weight=2.0, path=((1000, 120, 10),), D=1016):
+        meaning = "each delivery day adds this much cash to your side" if role == "seller" else \
+            "each delivery day costs you this much cash"
+        return {"duel": 7, "session": 3, "status": "deal", "role": role, "item": "x", "issues": ["price", "days"],
+                "your_days_weight": weight, "days_meaning": meaning, "your_limit": limit, "rival": "Rival R",
+                "deadline_tick": D, "decay_per_round": 0.08, "result": 1.0,
+                "messages": [{"tick": t, "from": "Rival R", "text": "", "price": p, "days": day} for t, p, day in path]}
+
+    def test_a_deal_is_paid_with_the_servers_day_term(self):
+        p = json.loads((ROOT / "docs" / "duel-lab" / "duel-params-duels2-blend.json").read_text())
+        [r] = arena.duels2_replay(p, [self.duel_file()])
+        self.assertTrue(r["deal"])
+        self.assertEqual((r["price"], r["day"], r["rounds"]), (120, 10, 0))
+        self.assertEqual(r["result"], 40.0)                      # 120 - 100 + 2 x 10: the seller earns its days
+        [b] = arena.duels2_replay(p, [self.duel_file("buyer", 140, 2.0, ((1000, 100, 5),))])
+        self.assertEqual(b["result"], 30.0)                      # 140 - 100 - 2 x 5: the buyer pays them
+
+    def test_it_reads_the_68_duels_of_duels2(self):
+        files = arena.duels2_duels()
+        self.assertEqual(len(files), 68)
+        self.assertTrue(all(f["issues"] == ["price", "days"] for f in files))

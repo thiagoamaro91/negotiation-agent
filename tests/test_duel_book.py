@@ -79,12 +79,12 @@ class Grouping(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertTrue(any(m["step"] == "co-occur" and m["duel"] == 2384 for m in merges))
 
-    def test_pair_merges_role_specific_lines_and_can_be_switched_off(self):
+    def test_a_pair_is_not_merged_unless_asked(self):
         sell = snap(2360, "seller", 154, [(503, 93, "Puedo llegar a 93 primas. Dime si cerramos.")])
         buy = snap(2361, "buyer", 140, [(518, 158, "Es una pieza que merece su precio: 158 primas. Pienso que es justo.")])
         duels = book.load(write_dir(tempfile.mkdtemp(), [sell, buy]))
-        self.assertEqual(len(book.group(duels)[0]), 1)
-        self.assertEqual(len(book.group(duels, use_pairs=False)[0]), 2)
+        self.assertEqual(len(book.group(duels)[0]), 2)                  # consecutive ids, same item: not proof
+        self.assertEqual(len(book.group(duels, use_pairs=True)[0]), 1)  # opt-in (--pairs)
 
     def test_different_bots_stay_apart_and_first_files_are_skipped(self):
         a = snap(2498, "seller", 51, [(579 + i, 39, "39?") for i in range(4)], item="El Mesón de la Cava")

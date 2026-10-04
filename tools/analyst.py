@@ -745,9 +745,10 @@ def cmd_duels(a, events) -> tuple:
                 lines.append("matrix: no candidate (no lever has hits, no --candidate): keep")
                 verdict += "; Final params: keep"
             else:
-                mix_name = f"Duels {'I' * a.session} field"
+                import duel_matrix as dm
+                mix_name = f"Duels {'I' * a.session} refit"     # never a named mix's label (main has "Duels II field")
                 cells = run_matrix(a, base_path, cands, mix_file, mix_name, out_dir)
-                guards = [f"mix: {mix_name}", "mix: Duels I field", "mix: likely field", f"d1: {mix_name}"]
+                guards = [f"mix: {mix_name}", f"d1: {mix_name}"] + [f"mix: {m}" for m in dm.MIXES]
                 win, why = pick_winner(cells, "base", f"mix: {mix_name}", guards)
                 lines.append(f"matrix (arena session {a.matrix_session}, {a.sessions} sessions, base {base_path.name}"
                              f"): {out_dir / 'matrix.md'}")
