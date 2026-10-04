@@ -1,6 +1,6 @@
 # Bazaar: own the Abuela queue (Team 3), 2026-10-02 evening
 
-You are a fresh session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, on Team 3 with Jay and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents trade Madrid trading cards over an HTTP API with our team key. The owner asked for this parallel session to **take over and keep processing the Abuela Carmen queue** while the parent session works on other things. He wants to **understand what is happening**: after every deal, explain it in plain conversational English (no jargon).
+You are a fresh session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, on Team 3 with a former teammate and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents trade Madrid trading cards over an HTTP API with our team key. The owner asked for this parallel session to **take over and keep processing the Abuela Carmen queue** while the parent session works on other things. He wants to **understand what is happening**: after every deal, explain it in plain conversational English (no jargon).
 
 Owner decision trail so far (all approved by him):
 - Welcome deal used: bought LAV-06 at her fixed welcome price 17 P (thread 49).
@@ -17,7 +17,7 @@ Owner decision trail so far (all approved by him):
 ## Current state (21:24, tick ~64)
 - Cash 361 P, level 1 (only Abuela unlocked), 2 deals, score about 8.5 of 60, rank about 10 of 18.
 - **A bot process is ALREADY RUNNING** (PID 8780, started by the parent session): `python3 -u agent/abuela.py run --only LAV-08,SAL-06 --max-deals 2`, output in `results/run-deals-2-3.out`, events also in `logs/abuela/2026-10-02.jsonl`. It is mid-haggle on LAV-08 (thread 105): her 24 P, us 15 P, her final offer expected any round now. After LAV-08 it will haggle SAL-06, then exit.
-- Abuela allows ONE open conversation per team. **Never start a second `agent/abuela.py run` while PID 8780 (or any `agent/abuela.py run`) is alive**: check with `pgrep -fl "agent/abuela.py run"`. Jay sometimes runs his own Abuela agent with the same key; if you get `thread_exists` and the open thread is not ours, do NOT close it: tell the owner.
+- Abuela allows ONE open conversation per team. **Never start a second `agent/abuela.py run` while PID 8780 (or any `agent/abuela.py run`) is alive**: check with `pgrep -fl "agent/abuela.py run"`. A former teammate sometimes runs his own Abuela agent with the same key; if you get `thread_exists` and the open thread is not ours, do NOT close it: tell the owner.
 
 ## What we know about Abuela (evidence from the feed and our logs)
 - She opens at about 1.15 x list (29 P for an uncommon, 30 P for a pack, 12 P for a common), drops 3-4 P on her first move, then mirrors our step size (we go +1 P, she goes -1 P or holds).

@@ -85,7 +85,7 @@ Spoken pace about 150 words a minute. Limit: 4:00. With every bracket in, the lo
 
 **3:25 · The team behind it (Craft)**
 
-> We're three people, Jay, Hector and me, running Claude sessions like a trading firm: a conductor, a pull-request steward, overnight analysts[if merged #71: , one on duty today].
+> We're three people, a former teammate, Hector and me, running Claude sessions like a trading firm: a conductor, a pull-request steward, overnight analysts[if merged #71: , one on duty today].
 
 **3:35 · Close (Idea), ends about 3:49**
 

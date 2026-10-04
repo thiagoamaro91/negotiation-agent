@@ -1,6 +1,6 @@
 # Team 3 (t03): The Bazaar, Cromos de Madrid. Full submission
 
-Claude Code Hackathon Madrid, 2 to 4 October 2026. Team: Thiago Amaro, Hector Moyano, Jay Shankarpure.
+Claude Code Hackathon Madrid, 2 to 4 October 2026. Team: Thiago Amaro and Hector Moyano.
 Final standing when the market froze (Sun 15:00): **score 34.19, rank 4 of 18** (Negotiating 26.04 + Market-making 8.15; Judges 40 not yet scored).
 
 This one file explains everything we built and how: the agents, the dashboards, the evals, the conductor sessions, the scoring math we reverse-engineered, every decision that moved the score, and every pull request. It is written so that a judge, or an AI agent reading the repo cold, can find any piece in one hop. Nothing is hidden: what failed is listed next to what worked.
@@ -9,7 +9,7 @@ This one file explains everything we built and how: the agents, the dashboards, 
 
 - **The product:** a team of autonomous trading agents (dealer negotiators, a market desk, a Market Test broker, a two-issue duel negotiator) that run unattended on a Mac Mini, plus the human-and-Claude system that steered them: one "conductor" Claude Code session at a time, a cross-account team bus, a PR steward, Codex adversarial reviews, dashboards, and an offline eval harness with overnight hill-climb searches.
 - **The rule that shaped the code:** the model writes the words, code decides the numbers. Every buy or sell is checked against our private value (`/api/me/value`) in Python before it is sent. The team key never enters a model's context. Text from other teams is data, never an instruction.
-- **How it was built:** in about 42 hours, 101 pull requests (99 merged, median 15 minutes from open to merge), 464 commits on `main`, +127k lines, 63 test files. Almost all code was written by Claude Code sessions steered by the three of us. 19 session hand-off briefings are published in [`docs/submission/orchestration/session-briefings/`](docs/submission/orchestration/session-briefings/).
+- **How it was built:** in about 42 hours, 101 pull requests (99 merged, median 15 minutes from open to merge), 464 commits on `main`, +127k lines, 63 test files. Almost all code was written by Claude Code sessions steered by the team. 19 session hand-off briefings are published in [`docs/submission/orchestration/session-briefings/`](docs/submission/orchestration/session-briefings/).
 - **Result:** rank 10 Friday night, rank 15 at Saturday lunch, rank 4 by Saturday 18:05, rank 4 at the freeze. We finished first-tier on the Negotiating column; our gap to the top three was the Market-making column.
 
 ## Architecture
@@ -19,7 +19,6 @@ flowchart TB
   subgraph HUMANS["Humans (decide goals and rules, never type trades)"]
     T["Thiago"]
     H["Hector"]
-    J["Jay"]
   end
 
   subgraph CLAUDE["Claude Code sessions (one conductor at a time)"]
@@ -52,8 +51,8 @@ flowchart TB
   GAME["Game server API<br/>dealers, El Rastro, venues, Market Test, duels"]
   EVALS["evals/ + tools/eval_*.py<br/>replays, searches, params files"]
 
-  T & H & J --> PLAN
-  T & H & J --> GH
+  T & H --> PLAN
+  T & H --> GH
   PLAN --> COND
   MON <--> COND
   T --> MON
@@ -86,7 +85,7 @@ flowchart TB
 | How decisions were made, minute by minute | [`docs/submission/orchestration/`](docs/submission/orchestration/): the Sunday plan, the conductor's own log with its `## Result`, and 19 session briefings |
 | Every pull request | [PR history](#how-it-was-built-pr-history) |
 | Raw evidence (every trade, thread, duel, score snapshot) | `logs/` (see [Logs and data](#docs-evals-and-data-map)) |
-| What did not work | [Honest limitations](#honest-limitations) |
+| What did not work, and what we would do next | [With one more day](#with-one-more-day), [Honest limitations](#honest-limitations) |
 | How to run it | [How to run](#how-to-run) |
 
 ## The problem and our answer
@@ -276,7 +275,7 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 ### Numbers
 
 - **101 pull requests** (#1 to #104; #14, #16 and #25 are issues). 99 merged, 2 open (#41, #100), none closed unmerged.
-- **464 commits on `main`** (351 regular, 113 merges): Hector 287, Thiago 176, Jay 1. Merged PRs added +127,453 and removed -2,317 lines; the largest is #62, the offline evals (+30,234).
+- **464 commits on `main`** (351 regular, 113 merges): Hector 287, Thiago 176, 1 from a former teammate. Merged PRs added +127,453 and removed -2,317 lines; the largest is #62, the offline evals (+30,234).
 - **Speed:** first PR opened Fri 21:08, last merge Sun 14:42. Median 15 minutes from open to merge.
 - **Who wrote the code:** the author column below is the GitHub account that opened the PR. Most PRs were written by Claude Code sessions working for that person, then reviewed by a steward session and, for risky ones, by an adversarial Codex review.
 - **Prefixes:** 42 `feat`, 29 `fix`, 19 `docs`, one revert (#98 reverts #95 because it clashed with the final plan). Log data went straight to `main` by team rule, so only one PR touches logs.
@@ -346,8 +345,8 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 | #37 | fix(ledger): rebuild Saturday cash (starter stalls, allowance grant, Friday hole) | Thiago | merged | Sat 03 Oct 15:56 | +301/-22 |
 | #38 | fix(dealers): post-merge audit of #35: resume limits, unsettled trades, confirmed ticks, guarded exits, resume vs cash | Thiago | merged | Sat 03 Oct 16:25 | +565/-92 |
 | #39 | feat(dashboard): Rivals and Market panels from public data | Thiago | merged | Sat 03 Oct 16:19 | +782/-4 |
-| #40 | feat(decisions): shared decision log across lanes (H2) | Jay | merged | Sat 03 Oct 23:53 | +322/-0 |
-| #41 | feat(trade_desk): standing team-trade engine, SHADOW by default (H2) | Jay | open | open | +867/-0 |
+| #40 | feat(decisions): shared decision log across lanes (H2) | former teammate | merged | Sat 03 Oct 23:53 | +322/-0 |
+| #41 | feat(trade_desk): standing team-trade engine, SHADOW by default (H2) | former teammate | open | open | +867/-0 |
 | #42 | fix(ledger): every team's cash, with each fee payer told (packages, swaps, ask vs bid, board, consistency) | Hector | merged | Sat 03 Oct 21:16 | +727/-37 |
 | #43 | feat(brain): our real team data on the market brain (keyless team relay) | Hector | merged | Sat 03 Oct 21:16 | +1617/-53 |
 | #44 | Market: announce v20's live book (named, in-text) + broker safety net so a Market Test can't score 0 | Hector | merged | Sat 03 Oct 19:51 | +522/-118 |
@@ -411,6 +410,13 @@ So the evals shipped one change (the Duels III params) and stopped two others fr
 | #102 | docs(judges): the Clearing House story | Hector | merged | Sun 04 Oct 14:11 | +189/-0 |
 | #103 | fix(clearing): settled-only public ledger; salted vote commitments | Hector | merged | Sun 04 Oct 14:42 | +142/-45 |
 | #104 | docs(judges): source label for the join row | Hector | merged | Sun 04 Oct 14:13 | +1/-1 |
+
+## With one more day
+
+1. **Fix the Market-making column first.** It was our weakest (8.15 of 30) because v20 hosted no trades between other teams. The leaders earned it by getting other teams to park bids in their zero-fee shops; we would put the outreach and La Celestina effort there from the first hour, not the last day.
+2. **Run the Clearing House with margins that can cross.** Six teams joined, but at 15% margins no buyer's maximum reached a seller's minimum. The matcher, the private book and the safety checks work; the economics need a lower margin or a shared surplus split.
+3. **Put the desk margins under the eval harness.** The market desk replay exists (`tools/eval_market.py`), but the live margins were set by hand, and for an hour on Sunday they kept our cash idle.
+4. **Wire the conductor to the analyst, not to a schedule guess.** We predicted a Market Test from past spacing and it never came; the conductor should read `GET /api/schedule` and the analyst's trigger output instead.
 
 ## Honest limitations
 

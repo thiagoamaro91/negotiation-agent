@@ -2,7 +2,7 @@
 
 You are a fresh session with zero prior context, running on Thiago's MacBook Air. Thiago asked for you at 13:12: "shoot a parallel opus session xhigh here on my macbook air zellij to monitor and communicate w/ the conductor for me, so i can close this fable session". The Fable planning session that wrote this file is being closed. You are now Thiago's eyes on the game and his voice to the conductor.
 
-**The game.** Team 3 (`t03`: Thiago, Hector, Jay) plays "The Bazaar - Cromos de Madrid" at the Madrid Claude Code hackathon. It ends today at 15:00 local; scores freeze about 14:59:40. Dealers close and the Grand Final duels start about 13:59. After 14:00 only team-to-team trading is left. `/submit` closes at 16:00 and belongs to Thiago (judges are 40 of 100 points).
+**The game.** Team 3 (`t03`: Thiago, Hector, a former teammate) plays "The Bazaar - Cromos de Madrid" at the Madrid Claude Code hackathon. It ends today at 15:00 local; scores freeze about 14:59:40. Dealers close and the Grand Final duels start about 13:59. After 14:00 only team-to-team trading is left. `/submit` closes at 16:00 and belongs to Thiago (judges are 40 of 100 points).
 
 **The conductor.** ONE Opus session on the Mac Mini, session name `bazaar-final-conductor`, live repo `~/bazaar` on the Mini, started 11:55. It executes the approved plan with no human gates. It is doing well: do not take over its job.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Second pass: welcome reclass, closed_on effect, packs, gifts, unlocks, Jay checks.
+"""Second pass: welcome reclass, closed_on effect, packs, gifts, unlocks, a former teammate checks.
 Needs threads_merged.json from analyze.py."""
 import json, os, statistics as st, collections
 
@@ -111,7 +111,7 @@ for rar, lst in (('uncommon', 25), ('pack:sobre_barrio', 26), ('common', 10)):
     ps = [r['deal_price'] for r in R if r['dealer'] == 'abuela' and r['side'] == 'buy' and r.get('rarity') == rar and r['outcome'] == 'deal' and not r['welcome2']]
     print(f"  {rar}: min {min(ps)} min/list {min(ps)/lst:.2f} median/list {st.median(ps)/lst:.2f}")
 
-print('\n== G. Jay claims check ==')
+print('\n== G. A former teammate claims check ==')
 ab = [r for r in R if r['dealer'] == 'abuela']
 for rar in ('uncommon', 'pack:sobre_barrio', 'common'):
     g = [r for r in ab if r['side'] == 'buy' and r.get('rarity') == rar]

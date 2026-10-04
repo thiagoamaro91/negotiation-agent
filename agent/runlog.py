@@ -10,7 +10,7 @@ the whole team can read every run. Team, broker and admin keys are redacted befo
     save_thread(b, 49)          # full transcript to logs/threads/thread-00049.json
     log.end(cash=383)
 
-Set BAZAAR_OPERATOR=jay (or hector, thiago) so the logs say who ran what.
+Set BAZAAR_OPERATOR=hector (or thiago) so the logs say who ran what.
 """
 from __future__ import annotations
 

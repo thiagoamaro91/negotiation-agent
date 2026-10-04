@@ -38,7 +38,7 @@ Our working assumption until the desk answers: a short live talk (3 minutes) wit
 
 Built on the game's own rule ("words persuade, structure binds", `kit/RULES.md` line 11) and on a fact judges may not expect: no model call sits on our money path. Claude researched, built, reviewed and tuned everything; in the market, code decides every number. Say that out loud before anyone asks "where is the AI?".
 
-**Decision for Thiago before v1 is final:** this contradicts the team's written principle ("the model writes the words", in `CLAUDE.md`, `docs/plans/HANDOFF.md` and `docs/plans/judges.md`). The truth in the code is stronger: the bots speak in template lines that Claude wrote, and no model call runs in `agent/`. It is also a bet at a Claude hackathon: a judge could hear "they did not use AI in the agent". Tell Hector and Jay before the pitch either way.
+**Decision for Thiago before v1 is final:** this contradicts the team's written principle ("the model writes the words", in `CLAUDE.md`, `docs/plans/HANDOFF.md` and `docs/plans/judges.md`). The truth in the code is stronger: the bots speak in template lines that Claude wrote, and no model call runs in `agent/`. It is also a bet at a Claude hackathon: a judge could hear "they did not use AI in the agent". Tell Hector and a former teammate before the pitch either way.
 
 ## 3. The 3-minute script
 
@@ -70,7 +70,7 @@ Spoken pace about 150 words a minute. Total 444 words, about 2:58 spoken, which 
 
 **2:05 to 2:40 · The team behind it (Craft)** · about 80 words
 
-> We're three people: Jay, Hector and me, running a set of Claude sessions like a team. One conducts the trading, one reviews and merges every pull request, others crunch the data overnight. We plant bugs on purpose to test our tests: 107 out of 108 caught. And this morning our own market bot got merged with a default that was too aggressive. Our second review caught it, and the fix merged 18 minutes later. The scariest agent in a market is your own.
+> We're three people: a former teammate, Hector and me, running a set of Claude sessions like a team. One conducts the trading, one reviews and merges every pull request, others crunch the data overnight. We plant bugs on purpose to test our tests: 107 out of 108 caught. And this morning our own market bot got merged with a default that was too aggressive. Our second review caught it, and the fix merged 18 minutes later. The scariest agent in a market is your own.
 
 **2:40 to 3:00 · Close (Idea)** · about 40 words
 

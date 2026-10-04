@@ -141,10 +141,10 @@ class Bus(unittest.TestCase):
         evs = swarm.bus_events([
             comment(1, "hector-market", ["thiagoamaro91"], "PR #44 is ready", login="hector14mv"),
             comment(2, "thiago-air-f7", ["hector14mv"], "received", reply=1),
-            comment(3, "jay-claude-desktop", ["all"], "PR 40 is up", login="jpshankarpurieu2025-rgb"),
+            comment(3, "member3-claude-desktop", ["all"], "PR 40 is up", login="former-teammate"),
         ])
         self.assertEqual([(e["src"], e["dst"]) for e in evs],
-                         [("hector-market", "thiago"), ("conductor", "hector-market"), ("jay-claude-desktop", "bus")])
+                         [("hector-market", "thiago"), ("conductor", "hector-market"), ("member3-claude-desktop", "bus")])
         self.assertEqual(evs[1]["ts"], "2026-10-03T19:18:48+02:00")
         self.assertEqual(evs[0]["text"], "[info] PR #44 is ready")
 

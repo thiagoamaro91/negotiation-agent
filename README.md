@@ -10,7 +10,7 @@ Score: Negotiating 30 + Market-making 30 + Judges 40. Full rules: [`kit/RULES.md
 
 ```bash
 cp .env.example .env          # then put the team key in it (ask Thiago); .env is gitignored, never commit it
-export BAZAAR_OPERATOR=jay    # your name, so the logs say who ran what
+export BAZAAR_OPERATOR=thiago   # your name, so the logs say who ran what
 python3 agent/abuela.py plan  # read-only: what the Abuela agent would trade, with our private values
 ```
 

@@ -1,6 +1,6 @@
 # Friday log analysis: what changes for Saturday
 
-Built 2026-10-03 ~01:50 from every log of Friday night: our dealer runs (Abuela 49 events, Chato 50), 10 server-side threads, 18 practice duels, the public feed (2,103 events: 157 dealer threads across all 18 teams, 206 duels, 340 El Rastro listings, 105 settlements), 68 leaderboard snapshots, our score history (repo plus the Mac Mini dashboard), and Jay's and Héctor's branch models. Four analysts each owned one Saturday decision. They all worked from one frozen snapshot and recomputed every number with a script. Full working and scripts: `projects/negotiation-agent/docs/analysis-friday/`. MEASURED = counted in the logs. INFERENCE = our reading of them.
+Built 2026-10-03 ~01:50 from every log of Friday night: our dealer runs (Abuela 49 events, Chato 50), 10 server-side threads, 18 practice duels, the public feed (2,103 events: 157 dealer threads across all 18 teams, 206 duels, 340 El Rastro listings, 105 settlements), 68 leaderboard snapshots, our score history (repo plus the Mac Mini dashboard), and a former teammate's and Héctor's branch models. Four analysts each owned one Saturday decision. They all worked from one frozen snapshot and recomputed every number with a script. Full working and scripts: `projects/negotiation-agent/docs/analysis-friday/`. MEASURED = counted in the logs. INFERENCE = our reading of them.
 
 **First move at 09:00:** read `GET /api/schedule` to see whether the clock resumed or jumped, then relist the spares at the prices in section 1. Our Friday listings expire around 09:07 (30 s ticks) or 09:15 (60 s ticks) if the clock resumes, and are already dead if it jumps.
 
@@ -127,7 +127,7 @@ Evidence: team buys came before the largest jumps (t10 +20.81, t05 +7.79, t15 +4
 
 ## 7. Teammates' models
 
-- **Jay's Abuela memory** (`memory-system` branch). Holds: the 17/7 welcome prices, her 29/30/12 openings, the pack low of 19, selling commons at 5-6, and the unlock at 3 deals. Fails: "lowest uncommon is 22" (two deals closed at 21) and "commons final at 9" (one closed at 8, and 7 of 17 at 8-9). His pack ceiling of 22 is too high; aim for 19.
+- **a former teammate's Abuela memory** (`memory-system` branch). Holds: the 17/7 welcome prices, her 29/30/12 openings, the pack low of 19, selling commons at 5-6, and the unlock at 3 deals. Fails: "lowest uncommon is 22" (two deals closed at 21) and "commons final at 9" (one closed at 8, and 7 of 17 at 8-9). His pack ceiling of 22 is too high; aim for 19.
 - **Héctor's value_inference** (PR #3): 146 of 148 price floors fit some valid multiplier ordering, but that is a consistency check (nothing contradicts it), not an accuracy check. The accuracy number is the brain's own scorecard in section 10: 0.416 hit rate against 0.396 for the naive guess. The two outliers (t14's LAV-07 bid of 55, t05's LAV-09 bid of 125) fit if page completion is driving them.
 
 ## 8. Ops fixes before 09:00
