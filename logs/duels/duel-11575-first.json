@@ -1,0 +1,38 @@
+{
+ "duel": 11575,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.52,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 111,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2021,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15169,
+  "price": 118,
+  "tick": 2009,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2009,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 118 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 118,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

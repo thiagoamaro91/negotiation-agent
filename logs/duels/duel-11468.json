@@ -1,0 +1,73 @@
+{
+ "duel": 11468,
+ "session": 4,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.83,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 96,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 1974,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14276,
+  "price": 95,
+  "tick": 1973,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1963,
+   "from": "Rival Azul",
+   "text": "Hi there. 105 P from my side. Delivery on day 0.",
+   "price": 105,
+   "days": 0
+  },
+  {
+   "tick": 1966,
+   "from": "Rival Azul",
+   "text": "How about 113 P? Delivery on day 0.",
+   "price": 113,
+   "days": 0
+  },
+  {
+   "tick": 1968,
+   "from": "Rival Azul",
+   "text": "I can move to 86 P. Delivery on day 10.",
+   "price": 86,
+   "days": 10
+  },
+  {
+   "tick": 1970,
+   "from": "Rival Azul",
+   "text": "I can move to 112 P. Delivery on day 5.",
+   "price": 112,
+   "days": 5
+  },
+  {
+   "tick": 1971,
+   "from": "Rival Azul",
+   "text": "Meeting you partway: 94 P. Delivery on day 10.",
+   "price": 94,
+   "days": 10
+  },
+  {
+   "tick": 1973,
+   "from": "Rival Azul",
+   "text": "Meeting you partway: 95 P. Delivery on day 10.",
+   "price": 95,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

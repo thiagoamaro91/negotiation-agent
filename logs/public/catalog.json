@@ -441,7 +441,7 @@
      "flavour": "A dome bigger than your plans.",
      "book": 180,
      "print_run": 9,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": false
     },
@@ -736,7 +736,7 @@
      "flavour": "A greenhouse that forgot the plants.",
      "book": 180,
      "print_run": 9,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": false
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 6,
+     "minted": 7,
      "hidden": false,
      "page": true
     },

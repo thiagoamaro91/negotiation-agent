@@ -1,0 +1,71 @@
+{
+ "duel": 11545,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.15,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 106,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1986,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 14407,
+  "price": 65,
+  "tick": 1978,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 14540,
+  "price": 80,
+  "tick": 1984,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1974,
+   "from": "Rival Luna",
+   "text": "I can do 98 P with delivery in 0 days. Every round costs us both, so let's close.",
+   "price": 98,
+   "days": 0
+  },
+  {
+   "tick": 1978,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 65 P, delivery day 0.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 1979,
+   "from": "Rival Luna",
+   "text": "88 P with delivery in 0 days works for me and we can close now.",
+   "price": 88,
+   "days": 0
+  },
+  {
+   "tick": 1983,
+   "from": "Rival Luna",
+   "text": "I can do 82 P with delivery in 0 days to close today.",
+   "price": 82,
+   "days": 0
+  },
+  {
+   "tick": 1984,
+   "from": "Rival Luna",
+   "text": "I can do 80 P with delivery in 0 days to close today.",
+   "price": 80,
+   "days": 0
+  }
+ ],
+ "result": 23.4,
+ "price": 80,
+ "days": 0
+}

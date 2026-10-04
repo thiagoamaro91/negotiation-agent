@@ -1,0 +1,38 @@
+{
+ "duel": 11574,
+ "session": 4,
+ "status": "live",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.44,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 73,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1995,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14501,
+  "price": 30,
+  "tick": 1983,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1983,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 30 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 30,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

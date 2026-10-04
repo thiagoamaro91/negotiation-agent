@@ -1,0 +1,101 @@
+{
+ "duel": 11676,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.03,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 79,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 2011,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15153,
+  "price": 99,
+  "tick": 2008,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1999,
+   "from": "Rival Oro",
+   "text": "Propuesta justa para cerrar pronto: 65 P y 0 días.",
+   "price": 65,
+   "days": 0
+  },
+  {
+   "tick": 2000,
+   "from": "Rival Oro",
+   "text": "Me muevo para acercarnos: 69 P con 0 días.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 2001,
+   "from": "Rival Oro",
+   "text": "Yo ya me he movido. Propongo 74 P y 0 días.",
+   "price": 74,
+   "days": 0
+  },
+  {
+   "tick": 2002,
+   "from": "Rival Oro",
+   "text": "Propuesta justa para cerrar pronto: 78 P y 0 días.",
+   "price": 78,
+   "days": 0
+  },
+  {
+   "tick": 2003,
+   "from": "Rival Oro",
+   "text": "Me muevo para acercarnos: 82 P con 0 días.",
+   "price": 82,
+   "days": 0
+  },
+  {
+   "tick": 2004,
+   "from": "Rival Oro",
+   "text": "Yo ya me he movido. Propongo 86 P y 0 días.",
+   "price": 86,
+   "days": 0
+  },
+  {
+   "tick": 2005,
+   "from": "Rival Oro",
+   "text": "Propuesta justa para cerrar pronto: 91 P y 0 días.",
+   "price": 91,
+   "days": 0
+  },
+  {
+   "tick": 2006,
+   "from": "Rival Oro",
+   "text": "Me muevo para acercarnos: 95 P con 0 días.",
+   "price": 95,
+   "days": 0
+  },
+  {
+   "tick": 2007,
+   "from": "Rival Oro",
+   "text": "Yo ya me he movido. Propongo 98 P y 0 días.",
+   "price": 98,
+   "days": 0
+  },
+  {
+   "tick": 2008,
+   "from": "Rival Oro",
+   "text": "Propuesta justa para cerrar pronto: 99 P y 0 días.",
+   "price": 99,
+   "days": 0
+  }
+ ],
+ "result": 20.0,
+ "price": 99,
+ "days": 0
+}

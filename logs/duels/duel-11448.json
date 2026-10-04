@@ -1,0 +1,87 @@
+{
+ "duel": 11448,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.84,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 190,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 2002,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14932,
+  "price": 152,
+  "tick": 2000,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1993,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 199,
+   "days": 10
+  },
+  {
+   "tick": 1994,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 192,
+   "days": 10
+  },
+  {
+   "tick": 1995,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 185,
+   "days": 10
+  },
+  {
+   "tick": 1996,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 179,
+   "days": 10
+  },
+  {
+   "tick": 1997,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 172,
+   "days": 10
+  },
+  {
+   "tick": 1998,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 165,
+   "days": 10
+  },
+  {
+   "tick": 1999,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 159,
+   "days": 10
+  },
+  {
+   "tick": 2000,
+   "from": "Rival Verde",
+   "text": "Propongo este precio, creo que es justo para los dos.",
+   "price": 152,
+   "days": 10
+  }
+ ],
+ "result": 29.6,
+ "price": 152,
+ "days": 10
+}

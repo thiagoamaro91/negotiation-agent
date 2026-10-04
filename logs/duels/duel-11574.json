@@ -1,0 +1,108 @@
+{
+ "duel": 11574,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.44,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 73,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1995,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14762,
+  "price": 80,
+  "tick": 1993,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1983,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 30 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 30,
+   "days": 0
+  },
+  {
+   "tick": 1984,
+   "from": "Rival Plata",
+   "text": "33 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 33,
+   "days": 0
+  },
+  {
+   "tick": 1985,
+   "from": "Rival Plata",
+   "text": "Mi propuesta: 37 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 37,
+   "days": 0
+  },
+  {
+   "tick": 1986,
+   "from": "Rival Plata",
+   "text": "Puedo llegar a 42 primas y entrega en 0 días. Dime si cerramos.",
+   "price": 42,
+   "days": 0
+  },
+  {
+   "tick": 1987,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 45 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 45,
+   "days": 0
+  },
+  {
+   "tick": 1988,
+   "from": "Rival Plata",
+   "text": "51 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 51,
+   "days": 0
+  },
+  {
+   "tick": 1989,
+   "from": "Rival Plata",
+   "text": "Mi propuesta: 58 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 58,
+   "days": 0
+  },
+  {
+   "tick": 1990,
+   "from": "Rival Plata",
+   "text": "Puedo llegar a 64 primas y entrega en 0 días. Dime si cerramos.",
+   "price": 64,
+   "days": 0
+  },
+  {
+   "tick": 1991,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 72 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 72,
+   "days": 0
+  },
+  {
+   "tick": 1992,
+   "from": "Rival Plata",
+   "text": "80 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 80,
+   "days": 0
+  },
+  {
+   "tick": 1993,
+   "from": "Rival Plata",
+   "text": "Mi propuesta: 80 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 80,
+   "days": 0
+  }
+ ],
+ "result": 7.0,
+ "price": 80,
+ "days": 0
+}
