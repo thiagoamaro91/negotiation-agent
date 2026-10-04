@@ -19,7 +19,7 @@ import celestina as cel  # noqa: E402
 NOW = 1_000_000.0
 
 
-def m(team, card, tier=4, inferred=True, holders=(("t05", 890),), action=None, price=24):
+def m(team, card, tier=4, inferred=True, holders=(("t05", 890),), action=None, price=24, to=None, owner=None):
     out = {"tier": tier, "inferred": inferred, "team": team, "team_name": f"Team {int(team[1:])}", "card": card,
            "card_name": "Name", "rarity": "uncommon", "set_name": "Malasaña", "p_missing": 0.77 if inferred else None,
            "holders": [{"team": t, "name": f"Team {int(t[1:])}", "copies": 2, "asset": a, "spare": True}
@@ -30,7 +30,7 @@ def m(team, card, tier=4, inferred=True, holders=(("t05", 890),), action=None, p
         side, oid, venue, p, maker = action
         out["action"] = {"side": side, "offer": oid, "venue": venue, "price": p, "fee": 2, "expires_tick": 1505,
                          "maker": maker, "maker_name": f"Team {int(maker[1:])}", "who": [t for t, _ in holders],
-                         "gives": "SAL-02" if side == "swap" else None}
+                         "gives": "SAL-02" if side == "swap" else None, "to": to, "venue_owner": owner}
     return out
 
 
@@ -40,6 +40,14 @@ DOC = {"generated_at": NOW - 60, "tick": 1445, "matches": [
     m("t03", "LAV-09"),                                                              # Team 3 as buyer: never shown
     m("t14", "LAT-07", tier=3, holders=(("t06", 1133),), action=("ask", 20218, "rastro", 30, "t03")),  # our offer
 ]}
+
+
+def row(oid, kind, ref, price, venue="rastro", to=None, want_ref=None, exp=1505):
+    return {"offer": oid, "kind": kind, "ref": ref, "price": price, "venue": venue, "to": to, "want_ref": want_ref,
+            "expires_tick": exp}
+
+
+PUB = {"tick": 1446, "cards": {"SAL-06": {"offers": [row(20259, "bid", "SAL-06", 20)]}}}
 BANNED = ("holders", "holdings", "copies", "net", "targets", "who", "spare")
 
 
@@ -55,39 +63,75 @@ def keys(x):
 
 class Board(unittest.TestCase):
     def test_the_board_keeps_live_wants_first_labels_inferences_and_never_shows_the_holder_map(self):
-        v = cel.missing_view(DOC, now=NOW)
+        v = cel.missing_view(DOC, now=NOW, pub=PUB)
         self.assertEqual(v["name"], "Open Bazaar · who needs which card")
         self.assertEqual([(e["team"], e["card"]) for e in v["matches"]], [("t09", "SAL-06"), ("t13", "MAL-08")])
         live, inferred = v["matches"]
-        self.assertEqual((live["need"], live["action"]["call"]),
-                         ("live bid", "POST https://bazaar.causaprima.ai/api/offers/20259/accept"))
+        self.assertEqual((live["need"], live["action"]["live"], live["action"]["call"]),
+                         ("live bid", True, "POST https://bazaar.causaprima.ai/api/offers/20259/accept"))
         self.assertEqual(inferred["need"], cel.INFERRED_NOTE)
         self.assertEqual(inferred["holder_count"], 1)
         self.assertEqual(inferred["orders"]["ask"]["give"], {"assets": ["<your MAL-08 asset id>"]})
         self.assertFalse(set(keys(v)) & set(BANNED))
-        self.assertNotIn("890", json.dumps(v))                         # nobody else's asset id
+        self.assertNotIn("890", json.dumps(v))                         # nobody's asset id
         self.assertNotIn("t03", json.dumps(v))
 
-    def test_a_team_sees_its_own_needs_and_what_it_holds_with_its_own_asset_id_only(self):
-        v = cel.missing_view(DOC, team="t05", now=NOW)
-        self.assertEqual([(e["card"], e["yours"], e["you_hold"]) for e in v["matches"]],
-                         [("SAL-06", False, True), ("MAL-08", False, True)])
-        self.assertEqual(v["matches"][1]["orders"]["your_ask"]["give"], {"assets": [890]})
-        self.assertEqual(cel.missing_view(DOC, team="t13", now=NOW)["matches"][0]["yours"], True)
-        self.assertNotIn("your_ask", cel.missing_view(DOC, team="t13", now=NOW)["matches"][0]["orders"])
+    def test_a_team_id_shows_only_that_teams_own_needs_never_what_it_holds(self):
+        self.assertEqual(cel.missing_view(DOC, team="t05", now=NOW, pub=PUB)["matches"], [])   # t05 only holds
+        v = cel.missing_view(DOC, team="t13", now=NOW, pub=PUB)
+        self.assertEqual([(e["card"], e["yours"]) for e in v["matches"]], [("MAL-08", True)])
+        self.assertNotIn("you_hold", json.dumps(v))
+        self.assertNotIn("your_ask", json.dumps(v))
+
+    def test_a_named_offer_is_served_live_only_while_the_current_book_shows_it_unchanged(self):
+        def action(pub):
+            return cel.missing_view(DOC, now=NOW, pub=pub)["matches"][0]["action"]
+        self.assertTrue(action(PUB)["live"])
+        for pub in (None, {"tick": 1446, "cards": {}},                                          # warming up, gone
+                    {"tick": 1446, "cards": {"x": {"offers": [row(20259, "bid", "SAL-06", 18)]}}},   # price changed
+                    {"tick": 1446, "cards": {"x": {"offers": [row(20259, "ask", "SAL-06", 20)]}}},   # another side
+                    {"tick": 1446, "cards": {"x": {"offers": [row(20259, "bid", "SAL-07", 20)]}}},   # another card
+                    {"tick": 1446, "cards": {"x": {"offers": [row(20259, "bid", "SAL-06", 20, to="t05")]}}},
+                    {"tick": 1500, "cards": PUB["cards"]}):                                       # about to expire
+            a = action(pub)
+            self.assertEqual((a["live"], "call" in a), (False, False), pub)
+            self.assertIn("history", a["history"])
+
+    def test_an_addressed_offer_names_its_addressee_and_an_owner_is_told_it_cannot(self):
+        doc = {"generated_at": NOW, "matches": [
+            m("t09", "SAL-06", tier=1, inferred=False, action=("bid", 1, "v07", 20, "t09"), to="t05"),
+            m("t08", "SAL-07", tier=2, inferred=False, action=("bid", 2, "v07", 20, "t08"), owner="t10")]}
+        pub = {"tick": 1, "cards": {"a": {"offers": [row(1, "bid", "SAL-06", 20, "v07", to="t05"),
+                                                     row(2, "bid", "SAL-07", 20, "v07")]}}}
+        a, b = (e["action"] for e in cel.missing_view(doc, now=NOW, pub=pub)["matches"])
+        self.assertIn("only Team 5 (it is addressed to that team) accepts it", a["how"])
+        self.assertNotIn("a team with a copy", a["how"])
+        self.assertIn("not Team 10 (a team cannot trade on its own venue)", b["how"])
+
+    def test_the_broker_is_described_as_it_works(self):
+        how = cel.missing_view(DOC, now=NOW, pub=PUB)["matches"][1]["orders"]["how"]
+        self.assertIn("from two different teams when the bid covers the ask plus the fee", how)
+        self.assertIn("as capacity allows", how)
+        for oversold in ("same tick", "the tick they meet", "any ask"):
+            self.assertNotIn(oversold, how)
 
     def test_a_stale_or_missing_file_is_an_empty_board(self):
         self.assertEqual(cel.missing_view(DOC, now=NOW + cel.MATCHES_MAX_AGE)["matches"], [])
         self.assertTrue(cel.missing_view({}, now=NOW)["stale"])
         self.assertEqual(cel.MissingBoard(Path("/nonexistent/latest.json")).load(), {})
 
-    def test_text_lines_give_the_caller_the_one_call(self):
-        v = {"missing": cel.missing_view(DOC, team="t05", now=NOW)["matches"]}
-        lines = cel.bazaar_lines(v["missing"], cel.GAME)
-        self.assertEqual(lines[0], 'OPEN BAZAAR: Team 9 bids 20 P for SAL-06 on El Rastro (offer 20259) and you hold a '
-                                   'copy -> POST https://bazaar.causaprima.ai/api/offers/20259/accept '
-                                   '{"assets":["<your SAL-06 asset id>"]}')
-        self.assertIn("Team 13 appears to be missing MAL-08 (inferred) and you hold a copy; SELL MAL-08", lines[1])
+    def test_text_lines_are_only_the_callers_own_needs(self):
+        doc = dict(DOC, matches=DOC["matches"] + [
+            m("t14", "LAT-07", tier=3, holders=(("t06", 1133),), action=("ask", 20218, "rastro", 30, "t06"))])
+        pub = {"tick": 1446, "cards": {"x": {"offers": [row(20218, "ask", "LAT-07", 30)]}}}
+        lines = cel.bazaar_lines(cel.missing_view(doc, team="t14", now=NOW, pub=pub)["matches"], cel.GAME)
+        self.assertEqual(lines, ["OPEN BAZAAR: Team 6 sells LAT-07 for 30 P on El Rastro (offer 20218); you appear to "
+                                 "be missing it (inferred) -> POST https://bazaar.causaprima.ai/api/offers/20218/accept {}"])
+        self.assertEqual(cel.bazaar_lines(cel.missing_view(doc, team="t05", now=NOW, pub=pub)["matches"], cel.GAME), [])
+        entries = cel.missing_view(doc, now=NOW, pub=pub)["matches"]
+        theirs = [dict(e, yours=False) for e in entries]                    # someone else's needs: no line
+        gone = [dict(e, yours=True) for e in cel.missing_view(doc, now=NOW, pub=None)["matches"] if e.get("action")]
+        self.assertEqual(cel.bazaar_lines(theirs + gone, cel.GAME), [])     # an offer no longer standing: no line
 
 
 class Routes(unittest.TestCase):
@@ -108,9 +152,12 @@ class Routes(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_api_missing_answers_before_the_engine_warms_up_and_checks_the_team(self):
-        with urllib.request.urlopen(self.base + "/api/missing?team=t05") as r:
+        with urllib.request.urlopen(self.base + "/api/missing") as r:
             body = json.loads(r.read())
         self.assertEqual([e["card"] for e in body["matches"]], ["SAL-06", "MAL-08"])
+        self.assertFalse(body["matches"][0]["action"]["live"])                  # nothing to check it against yet
+        with urllib.request.urlopen(self.base + "/api/missing?team=t05") as r:
+            self.assertEqual(json.loads(r.read())["matches"], [])
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(self.base + "/api/missing?team=<script>")
         self.assertEqual(cm.exception.code, 400)

@@ -16,9 +16,12 @@ Never send your key to La Celestina: it never asks for it. Your key goes only to
 public game data only. Explicit live wants come first, each with ONE call that completes it
 (`action.call`, e.g. `POST {{GAME}}/api/offers/N/accept`, wherever the offer is: El Rastro, {{VENUE}} or another
 venue). A need marked `inferred: true` ("appears to be missing") is a guess from public trades, not a fact.
-With `team`, you get the matches where you are the buyer (`yours`) and where you hold a copy someone wants
-(`you_hold`, with your own asset id in `orders.your_ask`). A swap is accepted directly; our broker never crosses
-swaps. Check your own value before any call. The same list is the first key (`missing`) of `/api/match`.
+Each named offer is re-checked against the current books: `action.live` true carries `action.call`; false means it
+is history (no call). An offer with `action.to` can only be accepted by that team; a team never accepts on its own
+venue. With `team`, you get only the matches where you are the buyer (`yours`). A swap is accepted directly; our
+broker never crosses swaps. On {{VENUE}} our broker crosses a bid and an ask for the same card from two different
+teams when the bid covers the ask plus the fee, at the midpoint, as capacity allows. Check your own value before any
+call. The same list is the first key (`missing`) of `/api/match`.
 
 ## What this is
 

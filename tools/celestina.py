@@ -869,8 +869,37 @@ def _team_ok(t) -> bool:
     return isinstance(t, str) and bool(MATCH_TEAM_RE.match(t)) and t != US
 
 
-def missing_entry(m: dict, team: str | None = None) -> dict | None:
-    """One matchmaker match, whitelisted for the public side. None for anything malformed or about Team 3."""
+BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
+                "the ask plus the fee, at the midpoint, as capacity allows")   # tools/matchmaker.py's words
+MIN_TICKS_LEFT = 8                  # a named offer expiring sooner than this is not served as live
+
+
+def live_index(pub: dict | None) -> dict | None:
+    """{(venue, offer id): its row} from the current public snapshot's books, or None before the first refresh."""
+    if not isinstance(pub, dict) or not isinstance(pub.get("cards"), dict):
+        return None
+    return {(r.get("venue"), r.get("offer")): r for c in pub["cards"].values() if isinstance(c, dict)
+            for r in c.get("offers") or [] if isinstance(r, dict)}
+
+
+def still_live(a: dict, ref: str, index: dict | None, tick) -> bool:
+    """The named offer as the current snapshot shows it: in its venue's book, the same side, card, price (what a swap
+    gives), the same addressee, and not expiring within MIN_TICKS_LEFT ticks."""
+    r = (index or {}).get((a.get("venue"), a.get("offer")))
+    if r is None or r.get("to") != a.get("to"):
+        return False
+    exp = r.get("expires_tick")
+    if isinstance(tick, int) and isinstance(exp, int) and exp - tick < MIN_TICKS_LEFT:
+        return False
+    if a.get("side") == "swap":
+        return r.get("kind") == "swap" and r.get("ref") == a.get("gives") and r.get("want_ref") == ref
+    return r.get("kind") == a.get("side") and r.get("ref") == ref and r.get("price") == a.get("price")
+
+
+def missing_entry(m: dict, team: str | None = None, index: dict | None = None, tick=None) -> dict | None:
+    """One matchmaker match, whitelisted for the public side: never who holds what (a count only, no asset ids),
+    never Team 3. A named offer keeps its accept call only while the current snapshot still shows it as the
+    matchmaker saw it (still_live); otherwise it is labelled history and has no call."""
     if not isinstance(m, dict) or not _team_ok(m.get("team")) or not isinstance(m.get("card"), str) \
             or not REF_RE.match(m["card"]):
         return None
@@ -884,52 +913,61 @@ def missing_entry(m: dict, team: str | None = None) -> dict | None:
          "card": ref, "card_name": m.get("card_name"), "rarity": m.get("rarity"), "set_name": m.get("set_name"),
          "need": INFERRED_NOTE if inferred else f"live {(a or {}).get('side', 'want')}",
          "p_missing": m.get("p_missing") if inferred else None, "holder_count": len(holders),
+         "holders_note": "teams that held a copy in public trades (reconstructed, may have changed)",
          "dealers": [d.get("name") for d in m.get("dealers") or [] if isinstance(d, dict) and d.get("name")][:2],
          "price": m.get("price") if isinstance(m.get("price"), int) else None,
          "fair": pr.get("fair"), "team_range": pr.get("team_range") if isinstance(pr.get("team_range"), dict) else None}
     if a:
-        e["action"] = {k: a.get(k) for k in ("offer", "venue", "side", "price", "fee", "expires_tick", "maker", "gives")}
+        e["action"] = {k: a.get(k) for k in ("offer", "venue", "side", "price", "fee", "expires_tick", "maker", "gives",
+                                             "to")}
         e["action"]["maker_name"] = team_name(a["maker"])
-        e["action"]["call"] = f"POST {GAME}/api/offers/{a['offer']}/accept"
-        e["action"]["how"] = ("the buyer accepts this ask" if a.get("side") == "ask" else
-                              "a team with a copy accepts it directly (a swap is never crossed by a broker), body "
-                              f'{{"assets": ["<your {ref} asset id>"]}}' if a.get("side") == "swap" else
-                              f'a team with a copy accepts it, body {{"assets": ["<your {ref} asset id>"]}}')
+        owner = a.get("venue_owner") if _team_ok(a.get("venue_owner")) or a.get("venue_owner") == US else None
+        if still_live(a, ref, index, tick):
+            e["action"]["live"] = True
+            e["action"]["call"] = f"POST {GAME}/api/offers/{a['offer']}/accept"
+            who = (f"only {team_name(a['to'])} (it is addressed to that team)" if a.get("to") else "a team with a copy"
+                   + (f", not {team_name(owner)} (a team cannot trade on its own venue)" if owner else ""))
+            e["action"]["how"] = ("the buyer accepts this ask" if a.get("side") == "ask" else
+                                  f"{who} accepts it directly (a swap is never crossed by a broker), body "
+                                  f'{{"assets": ["<your {ref} asset id>"]}}' if a.get("side") == "swap" else
+                                  f'{who} accepts it, body {{"assets": ["<your {ref} asset id>"]}}')
+        else:
+            e["action"]["live"] = False
+            e["action"]["history"] = (f"not in {a.get('venue')}'s current book as the matchmaker saw it"
+                                      + (f" (tick {tick})" if isinstance(tick, int) else "") + ": history, no call")
     elif e["price"]:
         e["orders"] = {"bid": {"venue": VENUE, "give": {"cash": e["price"]}, "want": {"cards": [ref]}},
                        "ask": {"venue": VENUE, "give": {"assets": [f"<your {ref} asset id>"]},
                                "want": {"cash": e["price"]}},
-                       "how": f"POST {GAME}/api/offers with your key; our broker crosses a bid and an ask for the same "
-                              f"card on {VENUE} at the midpoint the tick they meet (0 % fee)"}
+                       "how": f"POST {GAME}/api/offers with your key; on {VENUE} (0 % fee) {BROKER_TERMS}"}
     if team:
         e["yours"] = m["team"] == team
-        mine = next((h for h in holders if h["team"] == team), None)
-        e["you_hold"] = mine is not None
-        if mine and isinstance(mine.get("asset"), int) and e["price"] and not a:
-            e["orders"]["your_ask"] = {"venue": VENUE, "give": {"assets": [mine["asset"]]}, "want": {"cash": e["price"]}}
     return e
 
 
-def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE) -> dict:
-    """GET /api/missing: the board from the matchmaker's output, best first. With `team`, only the matches where it is
-    the buyer or where it holds a copy someone wants (its own asset ids only)."""
+def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE,
+                 pub: dict | None = None) -> dict:
+    """GET /api/missing: the board from the matchmaker's output, best first, every named offer re-checked against the
+    current public snapshot `pub`. With `team`, only the matches where that team is the buyer: nothing here says who
+    holds what (anyone can pass any team id)."""
     now = time.time() if now is None else now
     at = doc.get("generated_at") if isinstance(doc, dict) else None
     stale = not isinstance(at, (int, float)) or now - at > max_age
+    index, tick = live_index(pub), (pub or {}).get("tick") if isinstance(pub, dict) else None
     rows = []
     for m in [] if stale else (doc.get("matches") or []):
-        e = missing_entry(m, team)
-        if e is None or (team and not (e["yours"] or e["you_hold"])):
+        e = missing_entry(m, team, index, tick)
+        if e is None or (team and not e["yours"]):
             continue
         rows.append(e)
         if len(rows) >= MISSING_MAX:
             break
     return {"name": "Open Bazaar · who needs which card",
             "about": "A free public directory of who needs which card, from public game data only: explicit live wants "
-                     "first, each with the one call that completes it; a need marked inferred is a guess from public "
-                     f"trades, not a fact. Zero-fee matching on La Celestina ({VENUE}).",
-            "tick": doc.get("tick") if isinstance(doc, dict) else None, "generated_at": at, "stale": stale,
-            "team": team, "matches": rows}
+                     "first, each with the one call that completes it while the offer still stands; a need marked "
+                     f"inferred is a guess from public trades, not a fact. Zero-fee matching on La Celestina ({VENUE}).",
+            "tick": doc.get("tick") if isinstance(doc, dict) else None, "checked_at_tick": tick,
+            "generated_at": at, "stale": stale, "team": team, "matches": rows}
 
 
 class MissingBoard:
@@ -1288,32 +1326,23 @@ def compact(body) -> str:
 
 
 def bazaar_lines(missing: list, game: str) -> list:
-    """format=text: the Open Bazaar entries that concern the caller (it needs the card, or holds a copy someone
-    needs), one line each with the one call. An inferred need is said as one."""
+    """format=text: the Open Bazaar entries where the caller is the buyer, one line each with the one call. An
+    inferred need is said as one; a named offer that no longer stands is left out."""
     out = []
     for m in missing:
-        if not isinstance(m, dict) or not (m.get("yours") or m.get("you_hold")):
+        if not isinstance(m, dict) or not m.get("yours"):
             continue
         ref, a, o = m["card"], m.get("action"), m.get("orders") or {}
-        need = (f"{'you appear' if m.get('yours') else m['team_name'] + ' appears'} to be missing {ref} (inferred)"
-                if m.get("inferred") else "")
+        need = "you appear to be missing it (inferred)" if m.get("inferred") else "you bid for it"
         if a:
+            if not a.get("call") or a.get("side") != "ask":
+                continue
             where = "El Rastro" if a["venue"] == "rastro" else a["venue"]
-            what = (f"{a['maker_name']} bids {P(a['price'] or 0)} for {ref}" if a["side"] == "bid" else
-                    f"{a['maker_name']} gives {a.get('gives')} for any {ref}" if a["side"] == "swap" else
-                    f"{a['maker_name']} sells {ref} for {P(a['price'] or 0)}")
-            if a["side"] == "ask" and m.get("yours"):
-                out.append(f"OPEN BAZAAR: {what} on {where} (offer {a['offer']}); {need or 'you bid for it'} -> "
-                           f"{a['call']} {{}}")
-            elif a["side"] in ("bid", "swap") and m.get("you_hold"):
-                out.append(f"OPEN BAZAAR: {what} on {where} (offer {a['offer']}) and you hold a copy -> {a['call']} "
-                           + compact({"assets": [f"<your {ref} asset id>"]}))
-        elif m.get("yours") and o.get("bid"):
-            out.append(f"OPEN BAZAAR: {need}; BUY {ref} at {P(o['bid']['give']['cash'])} on {o['bid']['venue']} -> "
-                       f"POST {game}/api/offers {compact(o['bid'])}")
-        elif m.get("you_hold") and o.get("your_ask"):
-            out.append(f"OPEN BAZAAR: {need} and you hold a copy; SELL {ref} at {P(o['your_ask']['want']['cash'])} on "
-                       f"{o['your_ask']['venue']} -> POST {game}/api/offers {compact(o['your_ask'])}")
+            out.append(f"OPEN BAZAAR: {a['maker_name']} sells {ref} for {P(a['price'] or 0)} on {where} (offer "
+                       f"{a['offer']}); {need} -> {a['call']} {{}}")
+        elif o.get("bid"):
+            out.append(f"OPEN BAZAAR: you appear to be missing {ref} (inferred); BUY {ref} at "
+                       f"{P(o['bid']['give']['cash'])} on {o['bid']['venue']} -> POST {game}/api/offers {compact(o['bid'])}")
     return out
 
 
@@ -1700,7 +1729,8 @@ LOCK = threading.Lock()
 
 
 def publish(snap: dict) -> None:
-    pub = {"missing": missing_view(MISSING.load()), **public_view(snap)}
+    view = public_view(snap)
+    pub = {"missing": missing_view(MISSING.load(), pub=view), **view}
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
                      public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
@@ -1840,7 +1870,7 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 team = (q.get("team") or [None])[0]
                 if team is not None and not MATCH_TEAM_RE.match(team):
                     return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
-                return self._json(200, missing_view(MISSING.load(), team))
+                return self._json(200, missing_view(MISSING.load(), team, pub=snap))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
@@ -1858,7 +1888,7 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
-                        view = {"missing": missing_view(MISSING.load(), team)["matches"], **view}
+                        view = {"missing": missing_view(MISSING.load(), team, pub=snap)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
