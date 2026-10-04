@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 280,
+ "cash": 251,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -506,9 +506,31 @@
    "print_run": 300,
    "name": "La Castañera",
    "your_value": 9.0
+  },
+  {
+   "id": 1393,
+   "kind": "card",
+   "ref": "RET-06",
+   "serial": 19,
+   "rarity": "uncommon",
+   "set": "RET",
+   "print_run": 90,
+   "name": "La Rosaleda",
+   "your_value": 22.5
+  },
+  {
+   "id": 1405,
+   "kind": "card",
+   "ref": "RET-01",
+   "serial": 21,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "Barca del Estanque",
+   "your_value": 9.0
   }
  ],
- "collection_value": 1854.5,
+ "collection_value": 1886.0,
  "album": {
   "pages": [
    {
@@ -546,7 +568,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 7,
+    "have": 9,
     "of": 10,
     "complete": false,
     "master": false
@@ -560,26 +582,26 @@
     "master": false
    }
   ],
-  "filled": 41,
+  "filled": 43,
   "slots": 60
  },
- "tick": 2300,
+ "tick": 2351,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 32.23,
-  "negotiating": 24.08,
+  "score": 32.39,
+  "negotiating": 24.24,
   "market": 8.15,
   "neg_points": 86.5,
   "mm_points": 0.0,
   "duel_points": 27.94,
-  "ladder_points": 0.334,
+  "ladder_points": 0.336,
   "bench_efficiency": 0.89,
   "bench_points": 0.5,
   "bench_venue": "v20",
   "level": 5,
-  "album_filled": 41,
+  "album_filled": 43,
   "album_slots": 60,
   "pages_complete": 3,
   "rarest": {
@@ -590,7 +612,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 45,
+  "deals": 47,
   "badges": [
    "Sharp ear"
   ],
@@ -625,7 +647,5 @@
   "description": "Zero fees. Our broker crosses every matching bid and ask, card by card, every tick.",
   "opened_tick": 269
  },
- "open_threads": [
-  3458
- ]
+ "open_threads": []
 }

@@ -69,7 +69,7 @@
      "flavour": "Too sweet, too hot, just right.",
      "book": 10,
      "print_run": 300,
-     "minted": 28,
+     "minted": 29,
      "hidden": false,
      "page": true
     },
@@ -80,7 +80,7 @@
      "flavour": "Painted over every spring, better every time.",
      "book": 10,
      "print_run": 300,
-     "minted": 31,
+     "minted": 32,
      "hidden": false,
      "page": true
     },
@@ -331,7 +331,7 @@
      "flavour": "The first one is always small.",
      "book": 10,
      "print_run": 300,
-     "minted": 26,
+     "minted": 27,
      "hidden": false,
      "page": true
     },
@@ -364,7 +364,7 @@
      "flavour": "The roof looks like a wave.",
      "book": 10,
      "print_run": 300,
-     "minted": 26,
+     "minted": 28,
      "hidden": false,
      "page": true
     },
@@ -419,7 +419,7 @@
      "flavour": "Patron saint of farmers and long lunches.",
      "book": 70,
      "print_run": 30,
-     "minted": 9,
+     "minted": 10,
      "hidden": false,
      "page": true
     },
@@ -484,7 +484,7 @@
      "flavour": "Look, don't touch.",
      "book": 10,
      "print_run": 300,
-     "minted": 25,
+     "minted": 26,
      "hidden": false,
      "page": true
     },
@@ -626,7 +626,7 @@
      "flavour": "Rowing in circles, happily.",
      "book": 10,
      "print_run": 300,
-     "minted": 20,
+     "minted": 21,
      "hidden": false,
      "page": true
     },
@@ -714,7 +714,7 @@
      "flavour": "Exactly 666 metres above the sea.",
      "book": 70,
      "print_run": 30,
-     "minted": 18,
+     "minted": 19,
      "hidden": false,
      "page": true
     },
@@ -856,7 +856,7 @@
      "flavour": "Light you can almost touch.",
      "book": 70,
      "print_run": 30,
-     "minted": 10,
+     "minted": 11,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 9,
+     "minted": 11,
      "hidden": false,
      "page": true
     },

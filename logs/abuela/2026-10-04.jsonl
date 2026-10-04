@@ -156,3 +156,22 @@
 {"ts": "2026-10-04T12:51:33", "run": "20261004-124939-54b8", "agent": "abuela", "event": "accept", "thread": 3504, "price": 21, "why": "final", "ours": 16, "round": 7}
 {"ts": "2026-10-04T12:51:45", "run": "20261004-124939-54b8", "agent": "abuela", "event": "result", "thread": 3504, "status": "deal", "price": 21, "reason": null}
 {"ts": "2026-10-04T12:51:46", "run": "20261004-124939-54b8", "agent": "abuela", "event": "run_end", "cash": 259, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 46, "ladder_points": 0.336, "score": 32.38, "rank": 5}
+{"ts": "2026-10-04T13:00:36", "run": "20261004-130031-0055", "agent": "abuela", "event": "run_start", "operator": "thiago", "argv": ["run", "--reserve", "40", "--max-deals", "1", "--until", "13:50", "--only", "RET-07", "--cap", "22"], "cash": 259, "level": 5, "deals": 46, "reserve": 40, "cap": 22.0, "plan": [{"side": "buy", "item": "RET-07", "asset_id": null, "value": 22, "private": 22.5, "ladder_value": 22, "ladder_floor": null}]}
+{"ts": "2026-10-04T13:00:37", "run": "20261004-130031-0055", "agent": "abuela", "event": "open", "thread": 3636, "side": "buy", "item": "RET-07", "value": 22, "welcome": false, "private": 22.5, "ladder_value": 22}
+{"ts": "2026-10-04T13:00:53", "run": "20261004-130031-0055", "agent": "abuela", "event": "her", "thread": 3636, "price": 29, "final": false, "round": 1}
+{"ts": "2026-10-04T13:00:54", "run": "20261004-130031-0055", "agent": "abuela", "event": "say", "thread": 3636, "price": 11, "her": 29}
+{"ts": "2026-10-04T13:01:13", "run": "20261004-130105-2d80", "agent": "abuela", "event": "run_start", "operator": "thiago", "argv": ["run", "--reserve", "40", "--max-deals", "1", "--until", "13:50", "--only", "RET-01", "--cap", "9"], "cash": 259, "level": 5, "deals": 46, "reserve": 40, "cap": 9.0, "plan": [{"side": "buy", "item": "RET-01", "asset_id": null, "value": 9.0, "private": 9.0, "ladder_value": 9, "ladder_floor": null}]}
+{"ts": "2026-10-04T13:01:14", "run": "20261004-130105-2d80", "agent": "abuela", "event": "open", "thread": 3645, "side": "buy", "item": "RET-01", "value": 9.0, "welcome": false, "private": 9.0, "ladder_value": 9}
+{"ts": "2026-10-04T13:01:24", "run": "20261004-130105-2d80", "agent": "abuela", "event": "her", "thread": 3645, "price": 12, "final": false, "round": 1}
+{"ts": "2026-10-04T13:01:24", "run": "20261004-130105-2d80", "agent": "abuela", "event": "say", "thread": 3645, "price": 4, "her": 12}
+{"ts": "2026-10-04T13:01:40", "run": "20261004-130105-2d80", "agent": "abuela", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T13:01:44", "run": "20261004-130105-2d80", "agent": "abuela", "event": "her", "thread": 3645, "price": 10, "final": false, "round": 2}
+{"ts": "2026-10-04T13:01:44", "run": "20261004-130105-2d80", "agent": "abuela", "event": "say", "thread": 3645, "price": 5, "her": 10}
+{"ts": "2026-10-04T13:01:55", "run": "20261004-130105-2d80", "agent": "abuela", "event": "her", "thread": 3645, "price": 9, "final": false, "round": 3}
+{"ts": "2026-10-04T13:01:56", "run": "20261004-130105-2d80", "agent": "abuela", "event": "say", "thread": 3645, "price": 6, "her": 9}
+{"ts": "2026-10-04T13:02:11", "run": "20261004-130105-2d80", "agent": "abuela", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T13:02:15", "run": "20261004-130105-2d80", "agent": "abuela", "event": "say", "thread": 3645, "price": 7, "her": 9}
+{"ts": "2026-10-04T13:02:22", "run": "20261004-130105-2d80", "agent": "abuela", "event": "her", "thread": 3645, "price": 8, "final": false, "round": 5}
+{"ts": "2026-10-04T13:02:22", "run": "20261004-130105-2d80", "agent": "abuela", "event": "accept", "thread": 3645, "price": 8, "why": "crossed", "ours": 7, "round": 5}
+{"ts": "2026-10-04T13:02:41", "run": "20261004-130105-2d80", "agent": "abuela", "event": "result", "thread": 3645, "status": "deal", "price": 8, "reason": null}
+{"ts": "2026-10-04T13:02:41", "run": "20261004-130105-2d80", "agent": "abuela", "event": "run_end", "cash": 251, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 47, "ladder_points": 0.336, "score": 32.39, "rank": 5}
