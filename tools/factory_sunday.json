@@ -1,6 +1,8 @@
 {
   "_about": "Sunday 4 Oct configuration for tools/factory.py. Data only: change this file, not the code; each keeper re-reads it before every start. A 'todo' field marks a value that is still open: `plan` prints every one under its command, and docs/plans/sunday-preflight.md wants none left at 08:40. Placeholders: {python} {until} {params} {duel_ticks} {idle_ticks} {config} {date}. Gates doors_open and clock_running default to true; only the keyless feed and the watchdog opt out. Processes are matched by script basename plus mode token. The dealer bots are on (PR #35 and its follow-up #38 merged: duel lock checked before every accept, pause-safe waits, distinct exit statuses); a dealer step that exits non-zero, or exits 0 without a deal or nothing-to-do marker max_attempts times (default 3), is not relaunched. Dealer commands come from section 7 of the Saturday dealer audit.",
   "base_url": "https://bazaar.causaprima.ai",
+  "pace_assumed": 2.0,
+  "pace_assumed_note": "Display only: the game hours per wall hour that `plan` assumes before the keepers have measured the running clock (Sunday's published table, Madrid time, fits about 2.0). No gate, no launch and no restart ever reads it.",
   "tmux_session": "factory",
   "python": null,
   "env": {"BAZAAR_OPERATOR": "claude-mini", "PYTHONUNBUFFERED": "1"},

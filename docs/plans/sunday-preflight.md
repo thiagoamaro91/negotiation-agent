@@ -1,4 +1,4 @@
-# Sunday pre-flight: 08:40 on the Mac Mini
+# Sunday pre-flight: 08:40 Madrid, on the Mac Mini
 
 Twelve checks, one line each (check 1 also pulls when behind), then the 08:55 command. Everything here is read-only except the last command. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
@@ -37,7 +37,7 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```bash
    cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|matchmaker|announce|logs_push|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
    ```
-9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40).
+9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40 Madrid).
    ```bash
    T=$(grep '^DASH_TOKEN=' ~/bazaar-dashboard/.env | cut -d= -f2); curl -s "http://127.0.0.1:8765/data?t=$T" | python3 -c "import sys,json;d=json.load(sys.stdin);m=d['me'];print('cash',m['cash'],'level',m['level'],'age',d['age'],'error',d['error'])"
    ```
@@ -46,20 +46,20 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    T=$(grep '^DASH_TOKEN=' ~/bazaar-dashboard/.env | cut -d= -f2); curl -s -o /dev/null -w '%{http_code}\n' "$(cat ~/bazaar-dashboard/tunnel.url)/?t=$T"
    ```
 
-11. **The logs push works** (08:45). Expect `pushed <sha> <n> files` the first time, `nothing new` after, and one `refs/heads/mini/logs` line from `ls-remote`. This creates the worktree `~/bazaar/.logs-push`; the factory's `logs_push` service reuses it from 08:55 and pushes every 10 minutes. The tool is keyless, never touches `main`, and a failed push does not stop it.
+11. **The logs push works** (08:45 Madrid). Expect `pushed <sha> <n> files` the first time, `nothing new` after, and one `refs/heads/mini/logs` line from `ls-remote`. This creates the worktree `~/bazaar/.logs-push`; the factory's `logs_push` service reuses it from 08:55 and pushes every 10 minutes. The tool is keyless, never touches `main`, and a failed push does not stop it.
    ```bash
    cd ~/bazaar && python3 tools/logs_push.py --once && git ls-remote origin mini/logs
    ```
    If it prints `push failed` (credentials, network): fix the git credentials if you can in two minutes; otherwise fall back to a manual push every 15 minutes, `cd ~/bazaar && git add logs && git commit -m "logs: $(date +%H:%M)" && git pull --rebase && git push`, and tell the VM analyst (bus post or by hand) that the logs are on `main`, not on `mini/logs`.
 
-12. **The matchmaker board is sane** (08:50). Expect a first number above 5 (lines), `0`, and `[]`: a board with tiers 1 to 4, no Team 3 row, none of the cards we lack. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
+12. **The matchmaker board is sane** (08:50 Madrid). Expect a first number above 5 (lines), `0`, and `[]`: a board with tiers 1 to 4, no Team 3 row, none of the cards we lack. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
    ```bash
    cd ~/bazaar && python3 tools/matchmaker.py report --live > /tmp/mm.txt; wc -l < /tmp/mm.txt; grep -c -E '\| Team 3 \|' /tmp/mm.txt; python3 -c "import re,sys; sys.path.insert(0,'tools'); import announce; t=open('/tmp/mm.txt').read(); print(sorted(c for c in announce.MISSING if re.search(r'\b'+c+r'\b', t)))"
    ```
 
 The team key sits in `~/bazaar/.env` and the bots read it themselves; the factory never passes a key to a bot. The dashboard's duel and broker panels read the folder named by `BROKER_ROOT` in `~/bazaar-dashboard/.env`; for the factory's bots it must be `~/bazaar` (`grep '^BROKER_ROOT=' ~/bazaar-dashboard/.env`), otherwise those panels stay empty.
 
-## If a pull request is not on `main` by 08:00
+## If a pull request is not on `main` by 08:00 Madrid
 
 - **#70 (desk page mode), merged.** `grep -c 'add_argument("--page",' agent/market_desk.py` must print `1`. If it prints `0`, the Mini has not pulled (check 1); the desk's page flags would be unknown and it would crash-loop. Only if it still prints `0` after a pull: in `tools/factory_sunday.json`, replace `market_desk.cmd` with the fallback below, or set `"enabled": false` to keep the cash for the dealers. SAL-10 then waits for the 13:30 decision.
   ```bash
@@ -68,7 +68,7 @@ The team key sits in `~/bazaar/.env` and the bots read it themselves; the factor
   As a `cmd` list: `["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--no-bids", "--min-cash", "40", "--until", "{until}"]` (plain buys only, no page bid).
 - **#72 (duel params), merged.** If check 2 still prints `MISSING input file docs/duel-lab/duel-params-duels3.json`, the Mini has not pulled: pull (check 1). Only if the file is truly absent from `origin/main`, set `duel.params` in the config to `docs/duel-lab/duel-params-duels2-final.json` (Duels II's set). Never copy one params file over another.
 
-## 08:55: start
+## 08:55 Madrid: start
 
 ```bash
 cd ~/bazaar && python3 tools/factory.py up --yes
@@ -85,7 +85,7 @@ started announce    off     outreach: ...   started logs_push   started watchdog
 
 Any `REFUSE` line names its reason. `already running outside the factory`: stop that pid and run `up --yes` again. `missing input file ...`: the duel params file is not on this checkout, pull again. `cannot read the bus board`: GitHub is down; say so in the team chat, then `up --yes --no-bus`.
 
-## 09:01: expected `python3 tools/factory.py status`
+## 09:01 Madrid: expected `python3 tools/factory.py status`
 
 | Process | Expected line |
 |---|---|
@@ -105,20 +105,21 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 
 `tmux attach -t factory` shows one window per bot (detach with Ctrl-b d).
 
-## 09:05: the clock speed (one more read)
+## 09:05 Madrid: the clock and the published schedule
 
-The schedule is in game hours. The organisers' wall-clock table (hard test 09:39, Round 3 10:39, Duels III 11:39, Final 14:09) fits a game clock that runs two game hours per wall hour from Saturday's close at 13.37 h, with a one-hour pause around 12:30. The factory's wall times (`plan`) assume one for one. Measure it:
+**The reference for humans is the organisers' published Sunday schedule, in Madrid time:** doors 09:00, hard Market Test 09:39, Market Test 09:49, Round 3 and Chamberí 10:39, +150 P 10:40, Market Test 10:49, Duels III 11:39, Market Test 11:49, Market Test 13:49, finale warning 14:03, Grand Final and NPC stalls close 14:09, freeze warning 14:36, scores freeze 14:39, close 15:00. The wall times that `factory plan` prints (marked `+`) are ESTIMATES from the game clock: they use the pace the keepers measured (game hours per wall hour), do not model the pause near 12:30 (after it they read about an hour early) and can be off by up to an hour. **The bots never use them.** Every launch, gate and restart is decided in game hours from the live `/api/clock` and `/api/schedule`, re-read on every loop: the duel bot starts 10 game minutes before each wave (5 to 10 minutes of Madrid time, depending on the pace), the dealers stay 25 game minutes clear of a wave, and a pace that differs from the published one changes nothing but the wall time at which they happen.
 
 ```bash
-python3 - <<'EOF'
-import json, time, urllib.request
-def clock(): return json.load(urllib.request.urlopen("https://bazaar.causaprima.ai/api/clock"))
-a, ta = clock(), time.time(); time.sleep(60); b, tb = clock(), time.time()
-print("game seconds per wall second:", round((b["t_hours"] - a["t_hours"]) * 3600 / (tb - ta), 2))
-EOF
+cd ~/bazaar && python3 tools/factory.py plan | grep -E '^pace|hard Market Test'
 ```
 
-`1.0`: use `plan`'s wall times. `2.0`: use the organisers' table in the handoff; `plan`'s wall column is then twice too far. The bots are not affected, they gate on game hours. At 09:05 also check that the leaderboard still shows Saturday's round as the active one until Round 3 starts.
+Expect, from about 09:03 (the keepers need two minutes of running clock): a `pace` line that says `measured by the keepers` (about 2 game hours per wall hour) and `14.650  Sun 09:3x+ ... The hard Market Test` with the time between **09:37 and 09:41 Madrid**.
+
+- **`pace NOT MEASURED yet`:** the clock has run less than two minutes, or the keepers are not up (`tmux ls`, then `up --yes`). Look again at 09:08.
+- **The pace is about 2 and the hard Market Test reads outside 09:37 to 09:41:** the organisers moved events in `/api/schedule`. Nothing to fix: the bots follow the live schedule. Read the new times from `plan`, tell Hector, and use them instead of the table.
+- **The pace is about 1:** the game clock really runs one game hour per wall hour, so the published times (Madrid) will not match the game: `plan` shows the real ones (hard Market Test about 10:17). Nothing to fix for the bots (they act on game events); tell Hector and the team chat at once and give the humans the `plan` times.
+
+Also check that the leaderboard still shows Saturday's round as the active one until Round 3 starts (10:39 Madrid).
 
 ## What the VM analyst does at each trigger
 
@@ -127,7 +128,7 @@ The analyst (PR #71) reads the pushed logs, writes `logs/analyst/LATEST.md` on i
 | Trigger | Analyst command | What it may lead to |
 |---|---|---|
 | a Market Test ends | `bench` | the stall stays unless `ours` wins by more than 2 SE; a restart only between tests |
-| Duels III complete (about 12:35, 68 of 68) | `duels --session 3 --matrix` | Final params only by PR plus a human restart of the duel window before 14:00 |
+| Duels III complete (about 12:35 Madrid, 68 of 68) | `duels --session 3 --matrix` | Final params only by PR plus a human restart of the duel window before 14:00 Madrid |
 | each dealer step ends | `ladder` | nothing unless a slot is missing |
 | every hour | `score` | nothing |
 
@@ -150,7 +151,7 @@ The watchdog window sends one message when its set of problems changes, and "all
 | `broker dropped N matches in Market Test bXX` | read the `why` of the last `dropped` line in `logs/broker/<date>.jsonl` and post it on the bus; a restart does not fix a policy bug |
 | `broker has no match in Market Test bXX after N ticks` | look at the broker window for `refused` or `send_error`; post it on the bus |
 | `rate_limited` in a dealer log (`logs/<dealer>/<date>.jsonl`) | four dealer bots and the desk share the key's 5 requests per second: stagger the steps (raise `after_event.delay_min` of the later ones in `tools/factory_sunday.json`; a keeper re-reads it before its next start) |
-| `push failed: ...` in the `logs_push` window (the watchdog does not see it) | the loop retries every 10 minutes and the commit stays local; read the reason (credentials, network). Still failing after 09:30: the manual fallback of check 11 |
+| `push failed: ...` in the `logs_push` window (the watchdog does not see it) | the loop retries every 10 minutes and the commit stays local; read the reason (credentials, network). Still failing after 09:30 Madrid: the manual fallback of check 11 |
 | `clock unreachable` | `curl -s https://bazaar.causaprima.ai/api/clock`; the keepers wait on their own |
 
 Open the two held packs between dealer steps and before 10:39, never while a step runs. Nothing changes during a duel wave or a Market Test: no restart, no edit, no hand-started bot. Restart one bot between them with `tmux kill-window -t factory:<name>` and `up --yes`. After 15:00: `tmux kill-session -t factory`.

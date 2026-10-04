@@ -26,8 +26,8 @@ DAYS = [{"day": "sat", "opens": "2026-10-03T09:00:00+02:00", "closes": "2026-10-
         {"day": "sun", "opens": "2026-10-04T09:00:00+02:00", "closes": "2026-10-04T15:00:00+02:00", "tick_seconds": 15.0}]
 
 
-def clock(t_hours=16.0, tick_seconds=15.0, paused=False, doors="open", next_opens=None, closes=None):
-    return {"tick": 100, "t_hours": t_hours, "tick_seconds": tick_seconds, "paused": paused, "doors": doors,
+def clock(t_hours=16.0, tick_seconds=15.0, paused=False, doors="open", next_opens=None, closes=None, tick=100):
+    return {"tick": tick, "t_hours": t_hours, "tick_seconds": tick_seconds, "paused": paused, "doors": doors,
             "next_opens": next_opens, "closes": closes, "days": DAYS}
 
 
@@ -537,19 +537,160 @@ class ReviewOutOfHours(Sandbox):
                "session": {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120},
                "cmd": ["{python}", "-c", "pass"], "match": ["agent/duel.py", "run"]}
 
-    def test_duel_projected_after_close_does_not_launch(self):
-        # Sunday 14:58 at game 21.55: the Final (21.65) projects to 15:04, after the 15:00 close
+    def test_a_measured_pace_refuses_a_wave_that_projects_after_close(self):
+        # Sunday 14:58 at game 21.55: the Final (21.65) is 6 game minutes away
+        c = clock(t_hours=21.55, closes="2026-10-04T15:00:00+02:00")
+        now = SUN_0900 + 5 * 3600 + 58 * 60
+        sess = {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120}
+        self.assertEqual(f.session_gate(sess, c, [FINAL], now, pace=1.0)[1:], (False, "Final duels projected at Sun 15:04, "
+                                                                              "outside opening hours: not launching"))
+        self.assertFalse(f.session_gate(sess, c, [FINAL], now, pace=2.0)[1])          # 15:01
+        self.assertTrue(f.session_gate(sess, c, [FINAL], now, pace=4.0)[1])           # 14:59:30: it can still happen
+
+    def test_an_unknown_pace_never_refuses_a_launch(self):
+        """A duel bot that launches for nothing idles until --until; one that is refused misses the wave. With no pace
+        measured the wave is projected as early as the fastest believable clock allows."""
         c = clock(t_hours=21.55, closes="2026-10-04T15:00:00+02:00")
         with mock.patch.object(f.time, "time", lambda: SUN_0900 + 5 * 3600 + 58 * 60):
-            rc, st = self.keep(self.config(self.SESSION), "duel", [c], [FakeChild()], schedule=[FINAL])
-        self.assertEqual(self.popen, [])
-        self.assertIn("outside opening hours", st["why"])
+            self.keep(self.config(self.SESSION), "duel", [c], [FakeChild(polls=3, hang=True)], schedule=[FINAL], sleeps=2)
+        self.assertEqual(len(self.popen), 1)
 
     def test_duel_inside_hours_launches_in_its_lead_window(self):
         c = clock(t_hours=18.55, closes="2026-10-04T15:00:00+02:00")
         with mock.patch.object(f.time, "time", lambda: SUN_0900 + 2 * 3600 + 50 * 60):
             self.keep(self.config(self.SESSION), "duel", [c], [FakeChild(polls=3, hang=True)], schedule=[DUELS3], sleeps=2)
         self.assertEqual(len(self.popen), 1)
+
+
+class Pace(Sandbox):
+    """The organisers' Sunday table fits two game hours per wall hour; the factory's old wall estimate assumed one. Every
+    decision is taken in game hours from the live clock, so a different pace moves WHEN things happen in wall time and
+    nothing else; only what `plan` prints is an estimate."""
+
+    SESS = {"event": {"action": "duels"}, "lead_min": 10, "window_min": 165}
+
+    @staticmethod
+    def run_clock(pace, seconds, tick_s=15.0, poll_s=10.0, start_wall=SUN_0900 + 300, start_h=13.5333):
+        """Feed a PaceMeter the reads a keeper would make: every poll_s, on a clock whose ticks come every tick_s of wall
+        time and carry tick_s x pace game seconds."""
+        meter, t = f.PaceMeter(), 0.0
+        while t <= seconds:
+            tick = int(t // tick_s)
+            meter.update(start_wall + t, clock(t_hours=start_h + tick * tick_s * pace / 3600, tick=1500 + tick))
+            t += poll_s
+        return meter
+
+    def test_the_meter_reads_the_pace_of_the_running_clock(self):
+        for pace in (1.0, 2.0, 4.0):
+            self.assertIsNone(self.run_clock(pace, 60).pace, "too early to say")
+            self.assertAlmostEqual(self.run_clock(pace, 150).pace, pace, delta=0.12 * pace)
+            self.assertAlmostEqual(self.run_clock(pace, 900).pace, pace, delta=0.03 * pace)
+
+    def test_a_pause_a_closed_door_or_a_clock_going_back_starts_the_meter_again(self):
+        meter = self.run_clock(2.0, 300)
+        self.assertIsNotNone(meter.pace)
+        meter.update(SUN_0900 + 700, clock(paused=True, tick=1600))
+        self.assertIsNone(meter.pace)
+        meter = self.run_clock(2.0, 300)
+        meter.update(SUN_0900 + 700, clock(doors="closed", tick=1600))
+        self.assertIsNone(meter.pace)
+        meter = self.run_clock(2.0, 300)
+        meter.update(SUN_0900 + 700, clock(t_hours=1.0, tick=1))
+        self.assertIsNone(meter.pace)
+
+    def test_the_wall_estimate_at_the_measured_pace_is_the_published_time(self):
+        # Sunday 09:05 Madrid, game clock 13.533 h at two game hours per wall hour: the hard Market Test (14.65 h)
+        c = clock(t_hours=13.5333, tick=1550)
+        hard = f.to_wall(14.65, c, [], SUN_0900 + 300, pace=2.0)[0]
+        self.assertAlmostEqual(hard, SUN_0900 + 39 * 60, delta=120)                     # 09:39 +- 2 min
+        self.assertAlmostEqual(f.to_wall(18.65, c, [], SUN_0900 + 300, pace=2.0)[0], SUN_0900 + 159 * 60, delta=120)  # 11:39
+        self.assertEqual(f.ticks_until(14.65, 13.5333, 15.0, 2.0), 134)
+        self.assertGreater(f.to_wall(14.65, c, [], SUN_0900 + 300, pace=1.0)[0], SUN_0900 + 70 * 60)    # the old reading: 10:12
+
+    def test_a_stale_day_opening_does_not_move_the_estimate_while_the_doors_are_closed(self):
+        opens = {"action": "day_opens", "at_hours": 16.65, "wall": "2026-10-04T09:00:00+02:00", "params": {}}
+        c = clock(t_hours=13.3667, doors="closed", paused=True, next_opens="2026-10-04T09:00:00+02:00")
+        # the clock resumes at 13.367 h at 09:00 (Saturday closed there), not at the schedule's 16.65 h
+        wall = f.to_wall(18.65, c, [opens], SUN_0900 - 3600, pace=2.0)[0]
+        self.assertAlmostEqual(wall, SUN_0900 + (18.65 - 13.3667) * 1800, delta=1)
+
+    def test_the_duel_session_opens_at_its_game_hour_whatever_the_pace_or_the_wall_time(self):
+        lead_h = self.SESS["lead_min"] / 60
+        for pace in (None, 1.0, 2.0, 4.0):
+            for wall in (SUN_0900 + 600, SUN_0900 + 2 * 3600 + 29 * 60, SUN_0900 + 3 * 3600):    # 09:10, 11:29, 12:00
+                at = lambda h: f.session_gate(self.SESS, clock(t_hours=h, closes="2026-10-04T15:00:00+02:00"),
+                                              [DUELS3], wall, pace)
+                self.assertTrue(at(18.65 - lead_h + 0.001)[1], (pace, wall))
+                self.assertFalse(at(18.65 - lead_h - 0.01)[1], (pace, wall))
+                self.assertEqual(at(18.65 - lead_h - 0.01)[2], "next duel wave Duels III at 18.650 h")
+
+    def test_the_dealer_quiet_window_is_game_hours_whatever_the_wall_time(self):
+        gates = {"doors_open": True, "clock_running": True, "no_duel_lock": True, "duel_quiet_min": 25}
+        for wall in (SUN_0900, SUN_0900 + 2 * 3600, SUN_0900 + 4 * 3600):
+            self.assertFalse(f.check_gates(gates, clock(t_hours=18.65 - 24 / 60), [DUELS3], None, wall)[0])
+            self.assertTrue(f.check_gates(gates, clock(t_hours=18.65 - 26 / 60), [DUELS3], None, wall)[0])
+
+    def test_the_duel_keeper_launches_in_its_lead_window_at_any_wall_time(self):
+        for wall in (SUN_0900 + 30 * 60, SUN_0900 + 2 * 3600 + 34 * 60):                    # 09:30 and 11:34 Madrid
+            c = clock(t_hours=18.55, closes="2026-10-04T15:00:00+02:00")
+            with mock.patch.object(f.time, "time", lambda w=wall: w):
+                self.keep(self.config(ReviewOutOfHours.SESSION), "duel", [c], [FakeChild(polls=3, hang=True)],
+                          schedule=[DUELS3], sleeps=2)
+            self.assertEqual(len(self.popen), 1, wall)
+
+    def test_a_test_two_ticks_old_is_not_missing_at_double_speed(self):
+        bench = ev("bench", 17.0, ticks=16)
+        c = dict(clock(t_hours=17.02), tick=1000)                      # 72 game seconds after the test began
+        self.assertEqual(len(f.missed_tests([bench], [], c, pace=1.0)), 1)             # 5 ticks at one game second per second
+        self.assertEqual(f.missed_tests([bench], [], c, pace=2.0), [])                 # 2 ticks at two: the broker has time
+
+    def plan_text(self, pace_arg=None, measured=None):
+        out = io.StringIO()
+        c = clock(t_hours=13.3667, doors="closed", paused=True, next_opens="2026-10-04T09:00:00+02:00",
+                  closes="2026-10-03T23:00:00+02:00")
+        sched = [ev("bench", 14.65, name="The hard Market Test", note="The hard Market Test"), DUELS3]
+        cfg = f.load_config(f.CONFIG)
+
+        def get(_cfg, path):
+            return {"upcoming": sched} if path == "schedule" else c
+        if measured:
+            f.write_json(f.pace_path(), {"pace": measured, "at": SUN_0900 - 60})
+        with mock.patch.object(f, "get", get), mock.patch.object(f.time, "time", lambda: SUN_0900 - 600), \
+                contextlib.redirect_stdout(out):
+            f.cmd_plan(cfg, f.CONFIG, pace_arg)
+        return out.getvalue()
+
+    def test_plan_says_which_pace_its_wall_times_use_and_that_they_are_estimates(self):
+        text = self.plan_text()
+        self.assertIn("pace NOT MEASURED yet", text)
+        self.assertIn("2 game hours per wall hour", text)
+        self.assertIn("The published table (Madrid) is the reference", text)
+        self.assertRegex(text, r"14\.650  Sun 09:38\+ .*bench")
+        self.assertRegex(text, r"18\.650  Sun 11:38\+ .*duels")
+        self.assertIn("pace 1 game hours per wall hour (--pace)", self.plan_text(pace_arg=1.0))
+        self.assertRegex(self.plan_text(pace_arg=1.0), r"14\.650  Sun 10:16\+ .*bench")
+
+    def test_plan_prefers_what_the_keepers_measured(self):
+        text = self.plan_text(measured=1.0)
+        self.assertIn("pace 1.00 game hours per wall hour, measured by the keepers", text)
+        self.assertRegex(text, r"14\.650  Sun 10:16\+ .*bench")
+        self.assertIsNone(f.read_pace(SUN_0900 + 3600))                                    # an old reading is not trusted
+
+    def test_a_keeper_shares_the_pace_it_measures(self):
+        """A keeper that waits (a dealer for the allowance) still reads the clock every loop: that is what measures it."""
+        clocks = [clock(t_hours=13.5 + i * 15 * 2 / 3600, tick=1500 + i, closes="2026-10-04T15:00:00+02:00") for i in range(60)]
+        now = [SUN_0900 + 300.0]
+
+        def tick_time():
+            now[0] += 4.0
+            return now[0]
+        with mock.patch.object(f.time, "time", tick_time):
+            waiting = dict(DEALER, steps=[{"label": "a", "after_event": {"action": "grant_all", "delay_min": 1},
+                                           "cmd": ["{python}", "-c", "pass"]}])           # the allowance is hours away
+            self.keep(self.config(waiting), "abuela", clocks, [], sleeps=40, schedule=[GRANT])
+        shared = json.loads(f.pace_path().read_text())
+        self.assertGreater(shared["pace"], 0)
+        self.assertEqual(shared["tick"] >= 1500, True)
 
 
 class ReviewChildEnv(Sandbox):

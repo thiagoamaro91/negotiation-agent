@@ -48,7 +48,7 @@ At 09:05 check the leaderboard `rounds` to confirm Saturday's round still counts
 
 ## Timeline (game hours from the schedule)
 
-Wall times come from `plan`: the game clock stops during any pause, so every pause moves the later events (Saturday's lunch pause already moved Sunday's events by more than half an hour). The factory gates on game hours, so a pause only delays it.
+The organisers' published schedule (Madrid) is the reference for humans: [`sunday-night-handoff.md`](sunday-night-handoff.md) lists it. The wall times `plan` prints (marked `+`) are estimates from the game clock at the pace the keepers measured; they ignore the pause near 12:30 and can be off by up to an hour. The factory gates on game hours from the live clock and schedule (re-read every loop), so a pause or a different pace only changes the Madrid time at which a step happens, never whether it happens.
 
 | Game hour | Event | What the factory does |
 |---|---|---|
