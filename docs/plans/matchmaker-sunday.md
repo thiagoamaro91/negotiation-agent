@@ -44,10 +44,12 @@ python3 tools/outreach.py plan                                                  
 | 1 | 2 | Team 9 bids for SAL-06 on El Rastro (#20259, to tick 1505) | 20 P; team trades 24-27, Abuela sells ~23, Chato ~30 |
 | 2 | 2 | Team 1 bids for MAL-11 (epic) on El Rastro (#20243, to tick 1481) | 152 P; Los Pícaros sell epics ~142.5, one team trade at 195 |
 | 3 | 3 | Team 6 asks for LAT-07 on El Rastro (#20218, to tick 1455); Team 14 appears to be missing it (p 0.80, La Latina 8/10) | 30 P; team trades 14-15 |
-| 4 | 4 | Team 13 appears to be missing MAL-08 (p 0.77, Malasaña 8/10); Team 5 holds a copy | v20 bid 24 P; team trades 15-20, Abuela ~23 |
-| 5 | 4 | Team 14 appears to be missing LAT-06 (p 0.80, La Latina 8/10); Team 5 holds one | v20 bid 24 P; team trade 20 |
+| 4 | 4 | Team 13 appears to be missing MAL-08 (p 0.77, Malasaña 8/10); Team 5 held a copy at tick 1445 (reconstructed) | v20 bid 24 P; team trades 15-20, Abuela ~23 |
+| 5 | 4 | Team 14 appears to be missing LAT-06 (p 0.80, La Latina 8/10); Team 5 held one at tick 1445 (reconstructed) | v20 bid 24 P; team trade 20 |
 
-Also live: Team 6's 450 P bid for SAL-12 and swaps for LAV-12 / RET-12 (legendaries, on v21 / v02: other teams' venues, so not announced by default), and Team 14 appears to be missing LAV-01 (p 0.59) with Teams 6, 12 and 17 holding two copies each (v20 bid 6 P). Several of these offers expire in the first minutes after 09:00: the 09:00 run decides.
+Also live: Team 6's 450 P bid for SAL-12 and swaps for LAV-12 / RET-12 (legendaries, on v21 / v02: other teams' venues, so not announced by default), and Team 14 appears to be missing LAV-01 (p 0.59) with Teams 6, 12 and 17 holding two copies each at tick 1445 by public trades (reconstructed; a Workshop burn may have used them) (v20 bid 6 P). Several of these offers expire in the first minutes after 09:00: the 09:00 run decides.
+
+**What the tools now promise, and no more** (review of #67): our broker crosses a bid and an ask for the same card from two different teams when the bid covers the ask plus the fee, at the midpoint, as capacity allows; an offer addressed to one team is for that team only; nobody is asked to accept on its own venue; holdings from the feed are history ("held at tick N, reconstructed"); every named offer is re-read in its venue's current book right before it is posted, served or sent.
 
 **Honest limits.** Most of the top matches are on El Rastro, so taking them earns us no market points; they are the honest answer to "who needs what". Only tier 4 (and any live want on v20) can move v20. Round 3 releases Chamberí at 10:39: every team then starts that page at zero, so the page inferences matter less after it.
 
@@ -55,7 +57,7 @@ Also live: Team 6's 450 P bid for SAL-12 and swaps for LAV-12 / RET-12 (legendar
 
 HTTP 200 on a post proves nothing. Per channel:
 
-- **Announcements**: every post logs the match it named (`named` event in `logs/announce/<date>.jsonl`), and its `response` 20 ticks later carries `named_outcome` (`settled`: the named offer's maker traded that card on that venue; `v20_trade`) plus v20 listings and trades in the 20 ticks after vs before.
+- **Announcements**: every post logs the match it named (`named` event in `logs/announce/<date>.jsonl`), and its `response` 20 ticks later carries `named_outcome` (`settled`: a settlement with the named offer's whole structure: venue, maker, card, price, and for an ask the very asset; the feed's settlements carry no offer id; `v20_trade`) plus v20 listings and trades in the 20 ticks after vs before.
 - **La Celestina**: `--access-log` shows who read `/api/missing` and `/api/match`; success is a v20 listing or trade by that team within 40 ticks.
 - **Outreach**: `logs/outreach/<date>.jsonl` names the team, card and offer; success is that team listing, accepting or trading that card within 40 ticks.
 - **Overall**: other-team trades on v20 per hour (feed `settlement` with `venue: v20`, parties not t03), split by the channel that named that team and card last before the trade. Baseline: 0 per hour on Saturday.
