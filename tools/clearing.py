@@ -661,40 +661,60 @@ class Store:
             return {"id": tr["id"], "status": tr["status"], "offer": tr["offer"]}
 
     def watch_books(self) -> int:
-        """Pass offer ids along when a seller did not report: addressed offers never show on a venue's public
-        book, so read the public feed's offer.listed events (maker, to, give, want). Binds only an open offer from
-        the seller to the buyer, on that venue, giving exactly that asset for plain cash at the plan price, and only
-        for approved rounds. Returns how many were filled in."""
+        """Pass offer ids along when a seller did not report, from the public feed (addressed offers never show on a
+        venue's public book). The feed's offer state is reconstructed first (a listing opens, any later offer.* event
+        for that id closes), so a cancelled or expired listing is never bound and a bound offer that was cancelled
+        goes back to planned so the seller's new listing can be bound. Binds only, for approved rounds, an open
+        unexpired offer from the seller to the buyer on that venue giving exactly that asset for plain cash at the
+        plan price. Returns how many trades changed."""
         with self.lock:
-            pending = [t for r in self.state["rounds"] if r.get("status") == "approved"
-                       for t in r["trades"] if t["status"] == "planned"]
-        if not pending:
+            trades = [t for r in self.state["rounds"] if r.get("status") == "approved"
+                      for t in r["trades"] if t["status"] in ("planned", "posted")]
+        if not trades:
             return 0
         try:
             req = urllib.request.Request(GAME_URL + "/api/feed?limit=500", headers={"Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=8) as r:
                 feed = json.loads(r.read().decode("utf-8"))
+            tick = int((public_get("/api/clock") or {}).get("tick") or 0)
         except Exception:
             return 0
-        n = 0
-        for e in (feed or {}).get("events") or []:
-            if not isinstance(e, dict) or e.get("type") != "offer.listed":
+        if tick <= 0:
+            return 0
+        state: dict = {}
+        for e in sorted((x for x in (feed or {}).get("events") or [] if isinstance(x, dict)), key=lambda e: e.get("id") or 0):
+            typ, pay = str(e.get("type") or ""), e.get("payload")
+            if not typ.startswith("offer.") or not isinstance(pay, dict):
                 continue
-            o = (e.get("payload") or {}).get("offer") if isinstance(e.get("payload"), dict) else None
-            if not isinstance(o, dict) or o.get("status", "open") != "open":
+            o = pay.get("offer")
+            oid = o.get("id") if isinstance(o, dict) else o
+            if not isinstance(oid, int):
                 continue
+            st = state.setdefault(oid, {"offer": None, "open": False})
+            if typ == "offer.listed" and isinstance(o, dict):
+                st["offer"], st["open"] = o, o.get("status", "open") == "open"
+            else:
+                st["open"] = False
+
+        def fits(o: dict, t: dict) -> bool:
             give, want = o.get("give") or {}, o.get("want") or {}
             assets = [a.get("id") if isinstance(a, dict) else a for a in (give.get("assets") or [])]
-            if give.get("types") or give.get("cash") or want.get("assets") or want.get("types") \
-                    or len(assets) != 1 or not isinstance(want.get("cash"), int):
-                continue
-            with self.lock:
-                for t in pending:
-                    if t["venue"] == o.get("venue") and assets == [t["asset"]] and want["cash"] == t["price"] \
-                            and o.get("to") == t["buyer"] and o.get("maker") == t["seller"] \
-                            and t["status"] == "planned" and o.get("id"):
-                        t["offer"], t["status"], t["posted"] = int(o["id"]), "posted", now_iso()
-                        n += 1
+            return not give.get("types") and not give.get("cash") and not want.get("assets") and not want.get("types") \
+                and assets == [t["asset"]] and want.get("cash") == t["price"] and o.get("venue") == t["venue"] \
+                and o.get("to") == t["buyer"] and o.get("maker") == t["seller"] and int(o.get("expires_tick") or 0) > tick
+
+        n = 0
+        with self.lock:
+            for t in trades:
+                if t["status"] == "posted" and t.get("offer") in state and not state[t["offer"]]["open"]:
+                    t["offer"], t["status"], t["error"] = None, "planned", "offer cancelled or expired; waiting for a new listing"
+                    n += 1
+                if t["status"] == "planned":
+                    for oid, st in state.items():
+                        if st["open"] and st["offer"] and fits(st["offer"], t):
+                            t["offer"], t["status"], t["posted"], t["error"] = oid, "posted", now_iso(), None
+                            n += 1
+                            break
         if n:
             self.save()
         return n
