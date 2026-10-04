@@ -157,7 +157,7 @@
      "flavour": "A bank building that gave itself away.",
      "book": 180,
      "print_run": 9,
-     "minted": 4,
+     "minted": 6,
      "hidden": false,
      "page": false
     },
@@ -299,7 +299,7 @@
      "flavour": "The loudest room in the city.",
      "book": 180,
      "print_run": 9,
-     "minted": 3,
+     "minted": 4,
      "hidden": false,
      "page": false
     },
@@ -583,7 +583,7 @@
      "flavour": "One man's collection, everyone's afternoon.",
      "book": 70,
      "print_run": 30,
-     "minted": 21,
+     "minted": 22,
      "hidden": false,
      "page": true
     },
@@ -736,7 +736,7 @@
      "flavour": "A greenhouse that forgot the plants.",
      "book": 180,
      "print_run": 9,
-     "minted": 3,
+     "minted": 4,
      "hidden": false,
      "page": false
     },
@@ -768,7 +768,7 @@
      "flavour": "Mind the gap.",
      "book": 10,
      "print_run": 300,
-     "minted": 2,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -779,7 +779,7 @@
      "flavour": "Every headline, one opinion.",
      "book": 10,
      "print_run": 300,
-     "minted": 2,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -790,7 +790,7 @@
      "flavour": "Chocolate thick enough to stand a spoon.",
      "book": 10,
      "print_run": 300,
-     "minted": 1,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -801,7 +801,7 @@
      "flavour": "The stalls became restaurants.",
      "book": 10,
      "print_run": 300,
-     "minted": 0,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -812,7 +812,7 @@
      "flavour": "An octagon of terraces.",
      "book": 10,
      "print_run": 300,
-     "minted": 0,
+     "minted": 2,
      "hidden": false,
      "page": true
     },
@@ -823,7 +823,7 @@
      "flavour": "Closed in 1966, opened again for you.",
      "book": 25,
      "print_run": 90,
-     "minted": 2,
+     "minted": 3,
      "hidden": false,
      "page": true
     },
@@ -834,7 +834,7 @@
      "flavour": "Last set at three.",
      "book": 25,
      "print_run": 90,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": true
     },
@@ -845,7 +845,7 @@
      "flavour": "Latin on the walls, football in the yard.",
      "book": 25,
      "print_run": 90,
-     "minted": 1,
+     "minted": 4,
      "hidden": false,
      "page": true
     },

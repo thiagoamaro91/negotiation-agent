@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 403,
+ "cash": 395,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -451,9 +451,20 @@
    "print_run": 30,
    "name": "Fiesta de San Cayetano",
    "your_value": 28.0
+  },
+  {
+   "id": 1206,
+   "kind": "card",
+   "ref": "RET-04",
+   "serial": 18,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "Paseo de Coches",
+   "your_value": 9.0
   }
  ],
- "collection_value": 1528.2,
+ "collection_value": 1537.2,
  "album": {
   "pages": [
    {
@@ -491,7 +502,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 2,
+    "have": 3,
     "of": 10,
     "complete": false,
     "master": false
@@ -505,26 +516,26 @@
     "master": false
    }
   ],
-  "filled": 34,
+  "filled": 35,
   "slots": 60
  },
- "tick": 1457,
- "tick_seconds": 60.0,
+ "tick": 1505,
+ "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 28.6,
-  "negotiating": 22.74,
-  "market": 5.87,
+  "score": 27.13,
+  "negotiating": 21.59,
+  "market": 5.54,
   "neg_points": 0.0,
   "mm_points": 0.0,
   "duel_points": 0.0,
-  "ladder_points": 0.0,
+  "ladder_points": 0.018,
   "bench_efficiency": null,
   "bench_points": null,
   "bench_venue": null,
   "level": 5,
-  "album_filled": 34,
+  "album_filled": 35,
   "album_slots": 60,
   "pages_complete": 2,
   "rarest": {
@@ -535,7 +546,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 32,
+  "deals": 33,
   "badges": [
    "Sharp ear"
   ],
@@ -570,5 +581,7 @@
   "description": "Zero fees. Our broker crosses every matching bid and ask, card by card, every tick.",
   "opened_tick": 269
  },
- "open_threads": []
+ "open_threads": [
+  2215
+ ]
 }

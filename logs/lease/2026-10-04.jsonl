@@ -5,3 +5,11 @@
 {"ts": "2026-10-04T09:24:25", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1483, "asked": 1, "got": 1, "why": null}
 {"ts": "2026-10-04T09:26:25", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1491, "asked": 1, "got": 1, "why": null}
 {"ts": "2026-10-04T09:26:25", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1491, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:28:25", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1499, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:28:25", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1499, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:30:29", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1507, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:30:30", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1507, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:32:26", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1515, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:32:26", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1515, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:34:26", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1523, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T09:34:26", "run": "20261004-092032-1589", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 1523, "asked": 1, "got": 1, "why": null}
