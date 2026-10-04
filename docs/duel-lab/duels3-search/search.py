@@ -94,7 +94,8 @@ SPACE = {
     "hold_ticks": ("i", 1, 4, [3, 4]),
     "hold_counter": ("b", None, None, [False]),
     "silent_last_margin": ("f", 0.0, 0.45, [0.05, 0.1, 0.15, 0.2, 0.3, 0.4]),
-    "last_while_moving": ("b", None, None, [False]),
+    # last_while_moving (F4) is out since the incumbent turned it off for Sunday (d623273, review of #72: a slow
+    # message can cost another duel's late accept, which the arena does not model)
     "early_share": ("f", 0.6, 1.0, [0.7, 0.85, 0.95]),        # needs the soft pie: inert with the pair hidden
 }
 

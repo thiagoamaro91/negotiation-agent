@@ -25,8 +25,9 @@ def load(path: Path) -> list:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
-def gates() -> dict:
-    return json.loads(GATES.read_text()) if GATES.exists() else {}
+def gates(path: Path = None) -> dict:
+    path = path or GATES
+    return json.loads(path.read_text()) if path.exists() else {}
 
 
 def _d(c: dict, two=False) -> str:
@@ -89,11 +90,11 @@ def verdict(row: dict, g: dict) -> tuple:
     return "REPLACES the incumbent", []
 
 
-def write(rows: list) -> None:
-    g = gates()
+def write(rows: list, out: Path = None, gates_path: Path = None, title: str = "") -> None:
+    g = gates(gates_path)
     by_split = {s: [r for r in rows if r.get("split") == s and "error" not in r] for s in ("train", "select", "test")}
     uniq = {s: len({r["id"] for r in v}) for s, v in by_split.items()}
-    L = ["# Duels III overnight search: leaderboard", "",
+    L = ["# Duels III overnight search: leaderboard" + title, "",
          f"Refreshed {time.strftime('%Y-%m-%d %H:%M %Z')}. Candidates scored: {uniq['train']} on train "
          f"(200 sessions x 4 worlds), {uniq['select']} on select (600 sessions x 4 worlds), {uniq['test']} on TEST "
          f"(2000 sessions x 4 worlds). Deltas are each candidate minus the incumbent on the same sessions (mean score "
@@ -181,4 +182,4 @@ def write(rows: list) -> None:
         for r in worst:
             L.append(f"| {r['name']} | {r['change']} | {_d(r['obj'])} |")
         L.append("")
-    OUT.write_text("\n".join(L) + "\n")
+    (out or OUT).write_text("\n".join(L) + "\n")
