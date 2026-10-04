@@ -368,8 +368,11 @@ class Store:
                 row = {"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
                        "trades": len(r["trades"]), "settled": sum(1 for a in r["trades"] if a.get("status") == "settled")}
                 if r.get("status") == "closed":
-                    row.update({"votes": {t: v.get("ok") for t, v in r.get("votes", {}).items()},
-                                "rejections": r.get("rejections", []), "sat_out": r.get("sat_out", []),
+                    settled_parties = {x for a in r["trades"] if a.get("status") == "settled" for x in (a["seller"], a["buyer"])}
+                    row.update({"votes_received": sum(1 for v in r.get("votes", {}).values() if v.get("ok")),
+                                "votes_needed": len(self.needed(r)), "rejections": len(r.get("rejections", [])),
+                                "sat_out": len(r.get("sat_out", [])),
+                                "parties_of_settled_trades": sorted(settled_parties),
                                 "venues": sorted({a["venue"] for a in r["trades"] if a.get("status") == "settled"})})
                 else:
                     row.update({"votes_received": sum(1 for v in r.get("votes", {}).values() if v.get("ok")),
@@ -391,12 +394,12 @@ class Store:
                     "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
                             "the venue with the least value hosted today; a side that did not execute sits out the next round",
                     "hosting": hosting, "ledger": ledger, "unsettled_trades_per_round": pending,
-                    "last_attempt": self.state.get("last_attempt"),
+                    "last_attempt": self.public_attempt(self.state.get("last_attempt")),
                     "policy": self.state.get("policy"), "reliability": self.reliability(),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
-                    "cards_offered": sorted({x["card"] for v in teams.values() for x in v["haves"]}),
-                    "cards_wanted": sorted({x["card"] for v in teams.values() for x in v["wants"]}),
+                    "cards_offered": len({x["card"] for v in teams.values() for x in v["haves"]}),
+                    "cards_wanted": len({x["card"] for v in teams.values() for x in v["wants"]}),
                     "rounds": rounds, "next_run": next_run, "now": now_iso()}
 
     def hosted(self) -> dict:
@@ -603,35 +606,47 @@ class Store:
                             "from": tr["seller"]})
         return out
 
+    @staticmethod
+    def public_attempt(a) -> dict | None:
+        """The last run as counts only: who was uncovered and why is told to the teams themselves (their plan),
+        never on the tokenless route, where it would identify the parties of unsettled trades."""
+        if not isinstance(a, dict):
+            return None
+        return {"at": a.get("at"), "round": a.get("round"), "version": a.get("version"), "held": a.get("held"),
+                "trades": a.get("trades"), "uncovered_venues": len(a.get("uncovered") or []),
+                "sat_out": len(a.get("sat_out") or []), "note": a.get("note")}
+
     def reliability(self) -> dict:
-        """Public, per team: commitments signed, kept (every committed trade settled) and broken (a committed trade
-        the team did not execute: a seller that never posted, a buyer that never accepted)."""
+        """Public, per team, counts only: commitments signed (closed rounds), kept (every trade of theirs in a
+        closed round settled) and broken (at least one did not). Teams are named only when they appear as a party
+        of a settled trade somewhere; a team whose every trade failed stays out of this record, because naming it
+        would identify a party of a never-settled trade."""
         out: dict = {}
+        settled_parties = {x for r in self.state["rounds"] for t in r["trades"] if t["status"] == "settled"
+                           for x in (t["seller"], t["buyer"])}
         for r in self.state["rounds"]:
-            if r.get("status") != "closed":          # an open round's trades would identify both sides
+            if r.get("status") != "closed":
                 continue
             for team, v in r.get("votes", {}).items():
-                if not v.get("ok"):
+                if not v.get("ok") or team not in settled_parties:
                     continue
-                rec = out.setdefault(team, {"signed": 0, "kept": 0, "broken": 0, "broken_trades": []})
+                rec = out.setdefault(team, {"signed": 0, "kept": 0, "broken": 0})
                 rec["signed"] += 1
                 mine = [t for t in r["trades"] if team in (t["seller"], t["buyer"])]
-                broke = [t["id"] for t in mine if (t["status"] == "planned" and t["seller"] == team) or
-                         (t["status"] == "posted" and t["buyer"] == team) or
-                         (t["status"] == "failed" and str(t.get("error") or "").startswith("not executed") and
-                          ((t.get("offer") is None and t["seller"] == team) or (t.get("offer") and t["buyer"] == team)))]
-                if broke:
-                    rec["broken"] += 1
-                    rec["broken_trades"] += broke
-                elif r.get("status") == "closed" and all(t["status"] in ("settled", "failed") for t in mine):
+                if mine and all(t["status"] == "settled" for t in mine):
                     rec["kept"] += 1
+                elif mine:
+                    rec["broken"] += 1
         return out
 
     def plan(self, token) -> dict:
         team = self.team_of(token)
         with self.lock:
             if not self.state["rounds"]:
-                return {"team": team, "round": None, "actions": [], "note": "no round yet"}
+                la = self.state.get("last_attempt") or {}
+                return {"team": team, "round": None, "actions": [], "note": "no round yet",
+                        "last_attempt": {**self.public_attempt(la), "you_uncovered": team in (la.get("uncovered") or []),
+                                         "why": (la.get("why") or {}).get(team)} if la else None}
             out = []
             cur = self.state["rounds"][-1]
             for r in self.state["rounds"]:
@@ -655,7 +670,11 @@ class Store:
                 a["round_status"] = next(r["status"] for r in self.state["rounds"] if any(t["id"] == a["id"] for t in r["trades"]))
             mine_now = [a for a in out if a["round_status"] == cur["status"] and
                         any(t["id"] == a["id"] for t in cur["trades"])]
+            la = self.state.get("last_attempt") or {}
+            mine_why = (la.get("why") or {}).get(team)
             return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
+                    "last_attempt": {**self.public_attempt(la), "you_uncovered": team in (la.get("uncovered") or []),
+                                     "why": mine_why} if la else None,
                     "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now, cur["nonce"]) if cur.get("nonce") else None,
                     "nonce": cur.get("nonce"),
                     "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
@@ -1134,7 +1153,10 @@ def selftest() -> None:
         assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t07"], r
         assert r["why"]["t07"]["trades_not_involving_it"] == 0, r
         st, r = call("GET", "/api/clearing/status")
-        assert r["last_attempt"]["held"] and r["rounds"] == [], r
+        assert r["last_attempt"]["held"] and r["rounds"] == [] and "uncovered" not in r["last_attempt"], r
+        assert "t03" not in json.dumps(r["last_attempt"]) and "t07" not in json.dumps(r["last_attempt"]), r
+        st, pl = call("GET", f"/api/clearing/plan?token={toks['t07']}")
+        assert pl["last_attempt"]["you_uncovered"] is True and pl["last_attempt"]["why"], pl
         st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13", "invite": "c11"})
         toks["t11"] = r["token"]
         st, r = call("POST", "/api/clearing/join", {"team": "t99", "venue": None, "invite": "x"})
@@ -1201,9 +1223,14 @@ def selftest() -> None:
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][0]["status"] == "closed" and r["rounds"][-1]["status"] == "proposed", r
         rel = r["reliability"]                                                       # round 1 is closed now
-        assert rel["t07"]["signed"] == 1 and rel["t07"]["broken"] == 0, rel         # t07 posted; t03 accepted
-        assert any(v["broken"] == 1 for v in rel.values()), rel                      # someone left a trade undone
-        assert r["rounds"][0]["status"] == "closed" and "votes" in r["rounds"][0] and "votes" not in r["rounds"][-1], r
+        assert rel["t07"]["signed"] == 1 and rel["t03"]["signed"] == 1, rel        # the settled pair (their other trades failed)
+        assert set(rel) <= {"t03", "t07"}, rel                                       # parties of failed trades stay unnamed
+        assert r["rounds"][0]["status"] == "closed" and r["rounds"][0]["parties_of_settled_trades"] == ["t03", "t07"], r
+        blob = json.dumps(r)
+        for team in ("t11", "t18"):                                                  # only in never-settled trades
+            assert team not in json.dumps(r["rounds"]) and team not in json.dumps(rel) and team not in json.dumps(r["last_attempt"]), team
+        assert "MAL-06" not in blob and "LAV-03" not in blob, "cards of unsettled trades leaked"   # only SAL-10 settled
+        assert isinstance(r["cards_offered"], int) and isinstance(r["cards_wanted"], int), r
         # legacy proposal without nonce gets re-salted on load
         raw = json.loads((Path(d) / "state.json").read_text())
         raw["rounds"][-1].pop("nonce", None); raw["rounds"][-1]["votes"] = {"t07": {"ok": True}}
