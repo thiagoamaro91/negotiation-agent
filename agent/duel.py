@@ -1008,22 +1008,27 @@ def say_body(text: str, price: int, days: int | None) -> dict:
 
 
 SAY_MARGIN = 1.0   # seconds before the tick ends after which no message starts (it would land on a stale decision)
+SAY_MIN_TIMEOUT = 0.5   # a message with less time than this left before its deadline is not sent at all
 
 
 def post_say(b, did: int, text: str, price: int, days: int | None, deadline: float | None = None) -> dict:
     """Send one message: price-only through the kit's duel_say, two-issue with say_body (a top-level days too).
 
-    With `deadline` (epoch seconds, inside the current tick): no call once it has passed (BazaarError "say_budget"),
-    the kit client's retries are 0 for the call and its timeout is capped to the time left, so a slow server can
-    never push our messages, or the tick's accept behind them, into the next tick."""
-    if deadline is not None and time.time() >= deadline:
-        raise BazaarError("say_budget", "tick almost over: message not sent", 0)
+    With `deadline` (epoch seconds, inside the current tick): the kit client's retries are 0 for the call, and the
+    time left is measured again right before the request is built: under SAY_MIN_TIMEOUT (or past the deadline) the
+    message is not sent (BazaarError "say_budget"); otherwise the client's timeout is lowered to the time left,
+    never raised above it. Known limit: the kit's timeout bounds each socket wait (connect, headers, body), not the
+    whole request, so a slow server can still hold one message up to about twice the time left (review of #72)."""
     saved = {k: getattr(b, k) for k in ("retries", "timeout") if hasattr(b, k)} if deadline is not None else {}
     try:
         if "retries" in saved:
             b.retries = 0
-        if "timeout" in saved:
-            b.timeout = max(0.5, min(float(saved["timeout"]), deadline - time.time()))
+        if deadline is not None:
+            left = deadline - time.time()          # right before dispatch: a delay since the caller's check counts
+            if left < SAY_MIN_TIMEOUT:
+                raise BazaarError("say_budget", "tick almost over: message not sent", 0)
+            if "timeout" in saved:
+                b.timeout = min(float(saved["timeout"]), left)
         if days is None:
             return b.duel_say(did, text, price=price)
         return b._call("POST", f"/api/duels/{int(did)}/messages", say_body(text, price, days))
