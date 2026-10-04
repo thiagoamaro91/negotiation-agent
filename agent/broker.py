@@ -38,7 +38,6 @@ Modes (from the repo root):
     python3 agent/broker.py selftest              # the simulator: stall vs ours on the standard and hard mixes
     python3 agent/broker.py run                   # live: our venue's book twice a second, matches sent on change
     python3 agent/broker.py run --policy stall    # live, but exactly the stall's rule (the safe fallback)
-    python3 agent/broker.py run --policy swap     # live, the stall plus one quote-path swap (SwapPolicy; see its doc)
     python3 agent/broker.py watch                 # live and read-only: records the book, logs what it WOULD send
 
 The broker key comes from the environment (BROKER_KEY) or from --key-file (default ~/.bazaar/broker.env, a line
@@ -86,9 +85,6 @@ TRUST_AFTER = 3         # expiries steer the timing only after this many offers 
 FUTURE_KNOWN = 1.0      # FUTURE when the run's offers show different expiries (who leaves when is then known)
 BLIND = "stall"         # when expiries do not tell who leaves when: "stall" (its exact rule) or "policy" (estimates)
 MIN_EDGE = 0.0          # a crossing pair is matched only if its buyer's priority beats its seller's by more than this
-SWAP_RHO = 0.09         # --policy swap: a buyer relaxing slower than this share of its first bid per tick is patient
-SWAP_DELTA = 0.099      # --policy swap: the most (share of the patient buyer's bid) the swapped-in bid may be lower
-SWAP_END_MARGIN = 1     # --policy swap: in a session's last SWAP_END_MARGIN + 1 ticks every buyer counts as leaving
 DP_MAX = 12             # exact matching up to this many offers on the smaller side, else the stall's rule
 
 # ---------------------------------------------------------------- live loop
@@ -442,68 +438,6 @@ class BenchPolicy:
         return plan, "policy:expiry" if known else "policy"
 
 
-class SwapPolicy(BenchPolicy):
-    """--policy swap: the stall's plan with at most one swap per run and tick, from quote paths only (no expiry).
-    Found by the overnight search (evals/broker-search/, timing family, member 79977000b8); its verdict there is
-    "recommendable for the hard test" on the holdout seeds and on unseen + holdout pooled, NOT on the unseen seeds
-    alone, and the gain is under 0.1 point of efficiency (leaderboard.md). A buyer is "leaving-looking" (urgency 1)
-    when seen for the first time, when its bid never relaxed, when it relaxes at least SWAP_RHO of its first bid per
-    tick, or in the session's last SWAP_END_MARGIN + 1 ticks; otherwise (a slow relaxer) it is patient-looking (0).
-    The swap: an unmatched leaving-looking buyer takes the seller of a matched patient-looking buyer when its bid
-    still crosses that seller's ask and is at most SWAP_DELTA below the patient buyer's bid; the patient buyer waits.
-    Sellers are never swapped. Every pair respects the quotes; the guard and the stall fallback (any exception, a run
-    with no history) are BenchPolicy's."""
-
-    def __init__(self, params: dict | None = None):
-        super().__init__(params)
-        self.starts: dict = {}  # run -> first tick we saw one of its offers (the session clock)
-
-    def plan(self, book: dict, tick: int) -> list:
-        for run in bench_quotes(book):
-            self.starts.setdefault(run, tick)
-        return super().plan(book, tick)
-
-    def urgency(self, oid, tick: int) -> float:
-        tr = self.tracker.traders[oid]
-        if tick - self.starts.get(tr["run"], tr["first"]) >= P_MAX - 1 - SWAP_END_MARGIN:
-            return 1.0
-        (t0, q0), q = tr["quotes"][0], tr["quotes"][-1][1]
-        move = (q - q0) / q0 if q0 else 0.0  # buyers: a bid relaxes upward
-        if move <= 0:  # never relaxed, or seen once (one quote: move 0)
-            return 1.0
-        return 1.0 if move / (tick - t0) >= SWAP_RHO else 0.0
-
-    def _plan_run(self, book: dict, asks: list, bids: list, tick: int):
-        trs = self.tracker.traders
-        if not asks or not bids:
-            return [], "one_side"
-        if not any(len(trs[oid]["quotes"]) >= 2 for _, oid in asks + bids if oid in trs):
-            return stall_run(asks, bids, book), "stall:no_history"
-        q = {oid: v for v, oid in asks + bids}
-        pairs = [[s, b] for s, b, _ in stall_run(asks, bids, book)]
-        taken = {x for pr in pairs for x in pr}
-        urg = {oid: self.urgency(oid, tick) for _, oid in bids}
-        best = None
-        for _, x in bids:
-            if x in taken or urg[x] < 0.5:
-                continue
-            for idx, (s, b) in enumerate(pairs):
-                if urg[b] > 0.0 or q[x] < q[s] or price_for(book, q[s], q[x]) is None or (s, x) in self.refused:
-                    continue
-                loss = abs(q[b] - q[x]) / max(1.0, q[b])
-                if loss > SWAP_DELTA:
-                    continue
-                key = (urg[x] - urg[b], -loss)
-                if best is None or key > best[0]:
-                    best = (key, x, idx)
-        why = "swap:none"
-        if best is not None:
-            _, x, idx = best
-            pairs[idx][1] = x
-            why = "swap:1"
-        return [(s, b, price_for(book, q[s], q[b])) for s, b in pairs], why
-
-
 # ---------------------------------------------------------------- public offers and the guard
 
 def public_matches(book: dict) -> list:
@@ -658,14 +592,6 @@ class PacedClient:
         return self.writer.match(sell, buy, price)
 
 
-POLICIES = ("ours", "stall", "swap")
-
-
-def make_policy(name: str):
-    """The bench policy object for --policy (None = the stall's rule, kept in plan_book)."""
-    return {"ours": BenchPolicy, "swap": SwapPolicy}.get(name, lambda: None)()
-
-
 class Desk:
     """One broker process. step() is one loop: read, plan when the book changed, send, log, heartbeat. The client
     only needs book(), clock() and match(): tests drive it with a fake one. send=False (watch) plans and logs what
@@ -676,7 +602,7 @@ class Desk:
         self.c, self.log, self.now, self.heartbeat = client, log, now, heartbeat
         self.send_on, self.mode = send, "run" if send else "watch"
         self.policy_name = policy_name
-        self.policy = make_policy(policy_name)
+        self.policy = BenchPolicy() if policy_name == "ours" else None
         self.tracker = self.policy.tracker if self.policy is not None else Tracker()  # quote paths for the log
         self.restore()
         self.state = None
@@ -908,7 +834,7 @@ def cmd_plan(args) -> None:
     books = read_books(Path(args.book))
     if not books:
         raise SystemExit(f"{args.book}: no book found")
-    policy = make_policy(args.policy)
+    policy = BenchPolicy() if args.policy == "ours" else None
     for tick, book in books:
         tick = args.tick if args.tick is not None else (tick or 0)
         ok, bad, notes = plan_book(book, tick, policy)
@@ -943,7 +869,7 @@ def main(argv=None) -> None:
     p = sub.add_parser("plan", help="offline: the matches for a recorded book")
     p.add_argument("--book", required=True, help="a book JSON, or logs/broker/<date>.jsonl to replay")
     p.add_argument("--tick", type=int, default=None, help="override the tick (single book)")
-    p.add_argument("--policy", choices=POLICIES, default="ours")
+    p.add_argument("--policy", choices=("ours", "stall"), default="ours")
     p.add_argument("--all", action="store_true", help="also print states with nothing to match")
     s = sub.add_parser("selftest", help="simulate: stall vs ours (tools/bench_sim.py)")
     s.add_argument("--seeds", type=int, default=400)
@@ -953,7 +879,7 @@ def main(argv=None) -> None:
                                  "(works with the free stall's key too)")):
         r = sub.add_parser(mode, help=what)
         r.add_argument("--key-file", default=str(KEY_FILE))
-        r.add_argument("--policy", choices=POLICIES, default="ours")
+        r.add_argument("--policy", choices=("ours", "stall"), default="ours")
     args = ap.parse_args(argv)
     {"plan": cmd_plan, "selftest": cmd_selftest, "run": cmd_run, "watch": cmd_run}[args.mode](args)
 
