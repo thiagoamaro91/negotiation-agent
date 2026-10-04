@@ -161,7 +161,9 @@ class FakeGate:
 
     def check(self):
         if self.quiet_end() is not None:
-            raise RuntimeError("silenced")
+            sys.path.insert(0, str(ROOT / "agent"))
+            import announce
+            raise announce.Silenced()
 
 
 class Cli(unittest.TestCase):
@@ -172,10 +174,11 @@ class Cli(unittest.TestCase):
                         "give": {"cash": 0, "assets": [{"id": 1, "kind": "card", "ref": "LAT-07"}], "types": []},
                         "want": {"cash": 30, "assets": [], "types": []}}]}
 
-    def run_main(self, argv, client=None, gate=None, state=None, book=None):
+    def run_main(self, argv, client=None, gate=None, state=None, book=None, doc=None, trace=None):
         import announce
         buf, logged = io.StringIO(), []
         book = self.BOOK if book is None else book
+        doc = DOC if doc is None else doc
 
         class RL:
             def __init__(self, *_): pass
@@ -184,6 +187,8 @@ class Cli(unittest.TestCase):
             def end(self, **d): logged.append(("end", d))
 
         def get_json(url):
+            if trace is not None:
+                trace.append("get " + url.rsplit("/api/", 1)[1])
             if url.endswith("/api/clock"):
                 return {"tick": 1440, "tick_seconds": 15.0}
             venue = url.split("/api/venues/")[1].split("/")[0] if "/api/venues/" in url else None
@@ -191,7 +196,8 @@ class Cli(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             mpath = Path(d) / "m.json"
-            mpath.write_text(json.dumps(dict(DOC, generated_at=time.time())))
+            if doc != "missing":
+                mpath.write_text(json.dumps(dict(doc, generated_at=time.time())))
             spath = Path(d) / "s.json"
             if state is not None:
                 spath.write_text(json.dumps(state))
@@ -254,6 +260,91 @@ class Cli(unittest.TestCase):
         text, logged, state3 = self.run_main(["run", "--yes", "--max-teams", "1"], client=c3, state=state)
         self.assertEqual([x[0] for x in c3.calls][:1], ["close"])
         self.assertEqual(state3["unclosed"], [])
+
+    def test_every_request_is_right_after_a_silence_check(self):
+        """Sol round 2, blocker 1: no read or write without the gate asked just before it (cleanup reads, the clock
+        read, both freshness reads included)."""
+        import announce
+        trace = []
+
+        class Traced(FakeGate):
+            def check(self):
+                trace.append("check")
+                super().check()
+
+            def quiet_end(self):
+                trace.append("check")
+                return super().quiet_end()
+
+        class TracedClient(FakeClient):
+            def _maybe(self, what):
+                trace.append("client " + what[0])
+                super()._maybe(what)
+        self.run_main(["run", "--yes", "--max-teams", "2"], client=TracedClient(), gate=Traced(), trace=trace,
+                      state={"unclosed": [5]})
+        requests = [i for i, x in enumerate(trace) if x != "check"]
+        self.assertTrue(len(requests) > 6, trace)
+        for i in requests:
+            self.assertEqual(trace[i - 1], "check", (i, trace[max(0, i - 3):i + 1]))
+
+    def test_a_silence_that_starts_during_the_cleanup_stops_every_later_read(self):
+        """Sol round 2, blocker 1: the silence starts at t+100; the old thread's close answers at t+101; nothing after."""
+        import announce
+        clock = {"now": 1000.0}
+        trace = []
+
+        class SlowClose(FakeClient):
+            def close_thread(self, tid):
+                r = super().close_thread(tid)
+                clock["now"] = 1101.0                                       # the answer lands inside the silence
+                return r
+
+        class Gate(FakeGate):
+            def quiet_end(self):
+                return 1900.0 if 1100.0 <= clock["now"] < 1900.0 else None
+
+            def check(self):
+                if self.quiet_end() is not None:
+                    raise announce.Silenced()
+        c = SlowClose()
+        with um.patch.object(out.time, "time", lambda: clock["now"]):
+            text, logged, state = self.run_main(["run", "--yes"], client=c, gate=Gate(), trace=trace,
+                                                state={"unclosed": [5]})
+        self.assertEqual([x[0] for x in c.calls], ["close"])
+        self.assertEqual(trace, [])                                         # no read at all after the close
+        self.assertEqual(state["unclosed"], [])
+
+    def test_a_silence_found_while_rechecking_the_offer_stops_the_run(self):
+        import announce
+
+        class Late(FakeGate):
+            n = 0
+
+            def check(self):
+                self.n += 1
+                if self.n >= 2:                                             # the second read of offer_stands
+                    raise announce.Silenced()
+        c = FakeClient()
+        text, logged, state = self.run_main(["run", "--yes", "--max-teams", "2"], client=c, gate=Late())
+        self.assertEqual((c.calls, state), ([], {}))
+        self.assertIn(("stopped", {"reason": "Market Test silence"}), logged)
+
+    def test_a_thread_left_open_is_closed_even_with_nothing_left_to_send(self):
+        """Sol round 2, blocker 2: one match, sent, its close fails; the next run has nothing to send (deduplicated)
+        and must still close the thread; so must a run whose match file is stale or missing."""
+        one = dict(DOC, matches=[DOC["matches"][0]])
+        c = FakeClient(fail={"close": BazaarError("network", "", 0)})
+        _, _, state = self.run_main(["run", "--yes"], client=c, doc=one)
+        self.assertEqual((state["keys"], state["unclosed"]), (["t09:SAL-06:20259"], [77]))
+        c2 = FakeClient()
+        _, _, state2 = self.run_main(["run", "--yes"], client=c2, doc=one, state=state)
+        self.assertEqual(([x[0] for x in c2.calls], state2["unclosed"]), (["close"], []))
+        c3 = FakeClient()
+        _, _, state3 = self.run_main(["run", "--yes"], client=c3, doc="missing", state=state)
+        self.assertEqual(([x[0] for x in c3.calls], state3["unclosed"]), (["close"], []))
+        c4 = FakeClient()
+        _, _, state4 = self.run_main(["run", "--yes", "--max-teams", "0"], client=c4, state=state)
+        self.assertEqual((c4.calls, state4["unclosed"]), ([], [77]))      # an explicit 0 touches nothing
 
     def test_run_sends_nothing_when_the_market_test_status_is_unknown_or_stale(self):
         c = FakeClient()

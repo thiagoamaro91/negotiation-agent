@@ -235,20 +235,38 @@ def near_silence(gate, now: float, tick_s: float) -> bool:
     return any(start - NEAR_SILENCE_TICKS * tick_s <= now < end for start, end in gate.windows)
 
 
-def offer_stands(m: dict, get) -> bool:
+def offer_stands(m: dict, get, gate=None) -> bool:
     """The named live offer, re-read in its venue's current book (announce.still_live), or True for a match that names
-    no offer (an inferred need: the message carries a v20 bid, nothing to re-read)."""
+    no offer (an inferred need: the message carries a v20 bid, nothing to re-read). The silence gate is asked right
+    before each of the two reads; Silenced propagates (the caller stops)."""
     import announce
     a = m.get("action")
     if not isinstance(a, dict):
         return True
+    venue = a.get("venue") or "rastro"
     try:
-        venue = a.get("venue") or "rastro"
+        if gate is not None:
+            gate.check()
         book = [dict(o, venue=venue) for o in get(f"{URL}/api/venues/{venue}/offers").get("offers") or []]
+        if gate is not None:
+            gate.check()
         tick = get(f"{URL}/api/clock").get("tick")
+    except announce.Silenced:
+        raise
     except Exception:  # noqa: BLE001
         return False
     return announce.still_live(a, m["card"], {venue: book}, tick if isinstance(tick, int) else None)
+
+
+def recover(client, state: dict, state_path: Path, log, gate) -> str | None:
+    """Close every thread an earlier run left open, before anything else and whatever the matches say. None when
+    none is left open; else why it stopped (nothing else may be sent then)."""
+    for tid in list(state.get("unclosed") or []):
+        if not close_thread_safely(client, tid, log, gate):
+            return f"thread {tid} from an earlier run is still open: nothing sent"
+        state["unclosed"].remove(tid)
+        save_state(state, state_path)
+    return None
 
 
 def main(argv=None) -> None:
@@ -256,7 +274,8 @@ def main(argv=None) -> None:
     ap.add_argument("cmd", nargs="?", default="plan", choices=["plan", "run"])
     ap.add_argument("--yes", action="store_true", help="run only: really send")
     ap.add_argument("--matches", default=str(MATCHES))
-    ap.add_argument("--max-teams", type=int, default=1, help="teams messaged in this run (one thread at a time)")
+    ap.add_argument("--max-teams", type=int, default=1, help="teams messaged in this run (one thread at a time); "
+                                                             "0 = run does nothing at all")
     ap.add_argument("--venue", default=THREAD_VENUE, help="the venue the thread is opened on (a channel only)")
     ap.add_argument("--exclude", default=None, help="comma list of cards never named (default: announce.MISSING)")
     ap.add_argument("--state", default=str(STATE))
@@ -267,12 +286,42 @@ def main(argv=None) -> None:
     exclude = tuple(x.strip() for x in (args.exclude if args.exclude is not None else ",".join(announce.MISSING)).split(",")
                     if x.strip())
     day = time.strftime("%Y-%m-%d")
-    state = load_state(Path(args.state))
+    state_path = Path(args.state)
+    state = load_state(state_path)
+    if args.cmd == "run" and args.max_teams <= 0:
+        print("--max-teams 0: nothing sent, nothing read")
+        return
+    session = {}
+
+    def connect():
+        """The key, the log and the gate, once, for run only."""
+        if not session:
+            from bazaar_sdk import Bazaar
+            from runlog import RunLog
+            session["log"] = RunLog("outreach")
+            session["log"].start(unclosed=list(state.get("unclosed") or []))
+            session["client"] = Bazaar(URL, team_key(), timeout=10, wait_on_tick=False, retries=0)
+            session["gate"] = announce.Gate()
+        return session["client"], session["log"], session["gate"]
+
+    def stop(reason: str, sent: int = 0) -> None:
+        print(f"stopped: {reason}")
+        if session:
+            session["log"].event("stopped", reason=reason)
+            session["log"].end(sent=sent)
+
+    if args.cmd == "run" and state.get("unclosed"):   # recovery first, whatever the matches say
+        client, log, gate = connect()
+        if not status_fresh(gate) or gate.quiet_end() is not None:
+            return stop("Market Test now or status unknown: an earlier thread stays open, nothing sent")
+        why = recover(client, state, state_path, log, gate)
+        if why:
+            return stop(why)
     try:
         doc = load_matches(Path(args.matches))
     except (OSError, ValueError, LookupError) as e:
         print(f"nothing to send: {type(e).__name__}: {e}")
-        return
+        return stop("no fresh matches") if session else None
     plan = targets(doc, state, day, max(0, args.max_teams), exclude)
     print(f"{NAME} outreach, matchmaker tick {doc.get('tick')}: {len(plan)} message(s), one thread at a time.")
     print(f"slot budget: {MAX_THREADS} threads per team; each send holds 1 for a few seconds (open, one message, "
@@ -284,56 +333,48 @@ def main(argv=None) -> None:
         print(f"   POST {URL}/api/threads {json.dumps({'with': to, 'venue': args.venue})}")
         print(f"   POST {URL}/api/threads/<id>/messages {json.dumps({'text': text}, ensure_ascii=False)}")
         print(f"   POST {URL}/api/threads/<id>/close")
-    if args.cmd == "plan" or not plan:
+    if args.cmd == "plan":
         return
-    from bazaar_sdk import Bazaar
-    from runlog import RunLog
-    log = RunLog("outreach")
-    log.start(plan=[{"to": to, "card": m.get("card"), "tier": m.get("tier"), "key": key_of(m)} for to, m, _ in plan])
-    client = Bazaar(URL, team_key(), timeout=10, wait_on_tick=False, retries=0)
-    gate = announce.Gate()
+    if not plan:
+        return stop("no match to send") if session else None
+    client, log, gate = connect()
+    log.event("plan", plan=[{"to": to, "card": m.get("card"), "tier": m.get("tier"), "key": key_of(m)}
+                            for to, m, _ in plan])
     sent = 0
-
-    def stop(reason: str) -> None:
-        print(f"stopped: {reason}")
-        log.event("stopped", reason=reason)
-        log.end(sent=sent)
-
-    if not status_fresh(gate) or gate.quiet_end() is not None:
-        return stop("Market Test now or status unknown: nothing sent")
-    for tid in list(state.get("unclosed") or []):   # a thread left open last time is closed before anything else
-        if not close_thread_safely(client, tid, log, gate):
-            return stop(f"thread {tid} from an earlier run is still open: nothing sent")
-        state["unclosed"].remove(tid)
-        save_state(state, Path(args.state))
     try:
+        if not status_fresh(gate) or gate.quiet_end() is not None:   # the silence check right before the read
+            return stop("Market Test now or status unknown: nothing sent")
         tick_s = float(announce.get_json(f"{URL}/api/clock").get("tick_seconds") or 60.0)
+    except announce.Silenced:
+        return stop("Market Test silence")
     except Exception:  # noqa: BLE001
         tick_s = 60.0
     for i, (to, m, text) in enumerate(plan):
         if i:
             time.sleep(GAP_S)
-        if not status_fresh(gate):
-            return stop("Market Test status unknown or stale")
-        if near_silence(gate, time.time(), tick_s):
-            return stop(f"a Market Test silence is on or starts within {NEAR_SILENCE_TICKS} ticks")
-        if not offer_stands(m, announce.get_json):
-            log.event("skipped", to=to, key=key_of(m), reason="the named offer no longer stands as it was")
-            continue
+        try:
+            if not status_fresh(gate):
+                return stop("Market Test status unknown or stale", sent)
+            if near_silence(gate, time.time(), tick_s):
+                return stop(f"a Market Test silence is on or starts within {NEAR_SILENCE_TICKS} ticks", sent)
+            if not offer_stands(m, announce.get_json, gate):
+                log.event("skipped", to=to, key=key_of(m), reason="the named offer no longer stands as it was")
+                continue
+        except announce.Silenced:
+            return stop("Market Test silence", sent)
         res = send_one(client, to, text, args.venue, log, gate)
         if res["thread"] is not None and not res["closed"]:
             state.setdefault("unclosed", []).append(res["thread"])
-            save_state(state, Path(args.state))
+            save_state(state, state_path)
         if res["sent"]:
             sent += 1
             state.setdefault("teams", {}).setdefault(day, []).append(to)
             state.setdefault("keys", []).append(key_of(m))
-            save_state(state, Path(args.state))
+            save_state(state, state_path)
             log.event("sent", to=to, key=key_of(m), card=m.get("card"), tier=m.get("tier"),
                       offer=(m.get("action") or {}).get("offer"), thread=res["thread"], closed=res["closed"])
         if res["error"]:
-            print(f"stopped: {res['error']}")
-            break
+            return stop(res["error"], sent)
     log.end(sent=sent)
 
 
