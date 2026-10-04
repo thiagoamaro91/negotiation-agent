@@ -207,6 +207,27 @@
       ]
     },
     {
+      "name": "sal10",
+      "kind": "steps",
+      "note": "The handoff's 13:30 decision, automated: tools/sal10_fallback.py buys SAL-10 (our last Salamanca page card, 177 with the page bonus) from Los Picaros ONLY if a team has not sold it to the market desk by then. It exits 0 with a nothing-to-do marker when SAL-10 is already ours; otherwise it writes logs/state/page-yield-SAL-10 and waits up to 3 ticks (120 s) for the desk's .ack with open_bid false (no ack: nothing bought, exit 2, the watchdog flags it), re-checks it is clear of the next Market Test and the Final, then runs chato.py --dealer picaros --only SAL-10 --cap 88 --reserve 40 --max-deals 1 (chato takes only an offer whose structured give is one SAL-10). Its own group, not a picaros step, so a failed RET step cannot block it; its chato child is matched by the picaros keeper, which therefore never starts a second Picaros run beside it. Same dealer gates. No run is LAUNCHED from 25 game min before a duel wave until its configured end (duel_quiet_min and duel_wave_hours), whatever the state of the duel lock; a run launched earlier may still overlap a wave, and the dealer_client accept lock (results/duel.lock) then holds its accepts. max_attempts 2 so a no-deal retry cannot drift into the 13:49 Market Test.",
+      "required": false,
+      "max_attempts": 2,
+      "gates": {"doors_open": true, "clock_running": true, "no_duel_lock": true, "duel_quiet_min": 25,
+                "duel_wave_hours": {"Duels III": 1.7, "Final duels": 0.9, "default": 1.7}},
+      "match": ["tools/sal10_fallback.py", "run"],
+      "log": "logs/sal10/{date}.jsonl",
+      "stale_ticks": null,
+      "steps": [
+        {
+          "label": "r3-s1-sal10-picaros",
+          "after_event": {"action": "duels", "contains": "Duels III", "delay_min": 105},
+          "cmd": ["{python}", "-u", "tools/sal10_fallback.py", "run", "--only", "SAL-10", "--max-deals", "1", "--cap", "88",
+                  "--reserve", "40", "--max-rounds", "40"],
+          "note": "Duels III (18.65 h) + 105 game min = 20.40 h: after the wave's configured end (18.65 + 1.7 = 20.35 h), 36 game min before the 21.0 h Market Test (13:49 Madrid) and 50 before the Final's 25 min quiet window (21.233 h); at about two game hours per wall hour that is about 13:30 Madrid. Pinned to the Duels III event because every Market Test shares one note, so after_event could not single out the 21.0 one."
+        }
+      ]
+    },
+    {
       "name": "rastro_seller",
       "kind": "service",
       "enabled": false,
