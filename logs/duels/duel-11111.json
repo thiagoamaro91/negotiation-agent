@@ -1,0 +1,45 @@
+{
+ "duel": 11111,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.87,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 107,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1874,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 11843,
+  "price": 127,
+  "tick": 1868,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1864,
+   "from": "Rival Sol",
+   "text": "Hello, and thank you for meeting me. I would propose 113 P with delivery on day 0.",
+   "price": 113,
+   "days": 0
+  },
+  {
+   "tick": 1868,
+   "from": "Rival Sol",
+   "text": "I appreciate it, thank you. Could we close at 127 P, delivery on day 0, please?",
+   "price": 127,
+   "days": 0
+  }
+ ],
+ "result": 6.0,
+ "price": 113,
+ "days": 0
+}

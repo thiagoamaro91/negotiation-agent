@@ -157,7 +157,7 @@
      "flavour": "A bank building that gave itself away.",
      "book": 180,
      "print_run": 9,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": false
     },
@@ -408,7 +408,7 @@
      "flavour": "The best sunset, free of charge.",
      "book": 25,
      "print_run": 90,
-     "minted": 19,
+     "minted": 20,
      "hidden": false,
      "page": true
     },
@@ -561,7 +561,7 @@
      "flavour": "Fitted by hand since 1890.",
      "book": 25,
      "print_run": 90,
-     "minted": 23,
+     "minted": 24,
      "hidden": false,
      "page": true
     },
@@ -648,7 +648,7 @@
      "flavour": "The puppets know more than he does.",
      "book": 10,
      "print_run": 300,
-     "minted": 15,
+     "minted": 16,
      "hidden": false,
      "page": true
     },
@@ -725,7 +725,7 @@
      "flavour": "A king, a lake, a lot of steps.",
      "book": 70,
      "print_run": 30,
-     "minted": 12,
+     "minted": 13,
      "hidden": false,
      "page": true
     },
@@ -779,7 +779,7 @@
      "flavour": "Every headline, one opinion.",
      "book": 10,
      "print_run": 300,
-     "minted": 6,
+     "minted": 7,
      "hidden": false,
      "page": true
     },
