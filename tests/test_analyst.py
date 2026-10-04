@@ -218,6 +218,19 @@ class DeployedCheck(unittest.TestCase):
         self.assertIn("file 2 vs run 6", why)
         self.assertFalse(an.deployed_check({"ratios": [1.55, 1.306]}, self.LOG, {5})[0])
 
+    def test_the_robust_tag_make_cfg_adds_is_not_a_difference(self):
+        # Duels III (run 20261004-104947-a0b5): the file says buyer:0,seller:10, run_start logs it with ;robust
+        log = [{"event": "run_start", "run": "r3", "days_best": "buyer:0,seller:10;robust", "days_confirmed": False},
+               {"event": "say", "run": "r3", "duel": 7}]
+        ok, why = an.deployed_check({"days_best": "buyer:0,seller:10"}, log, {7})
+        self.assertTrue(ok, why)
+        log[0]["days_confirmed"] = True                      # make_cfg never tags a confirmed run: a real difference
+        self.assertFalse(an.deployed_check({"days_best": "buyer:0,seller:10"}, log, {7})[0])
+        log[0].update(days_best="buyer:10,seller:10;robust", days_confirmed=False)
+        ok, why = an.deployed_check({"days_best": "buyer:0,seller:10"}, log, {7})
+        self.assertFalse(ok)
+        self.assertIn("days_best: file buyer:0,seller:10 vs run buyer:10,seller:10;robust", why)
+
     def test_no_run_start_or_nothing_compared(self):
         self.assertFalse(an.deployed_check({"accept_any_ticks": 6}, self.LOG, {99})[0])
         self.assertFalse(an.deployed_check({"duel_ticks": 12}, self.LOG, {5})[0])
