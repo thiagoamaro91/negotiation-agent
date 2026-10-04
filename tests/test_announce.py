@@ -908,24 +908,48 @@ class TestMissingVariant(unittest.TestCase):
                 an.remember_match(f"k{i}", path)
             self.assertEqual(an.recent_matches(path), [f"k{i}" for i in range(2, an.MISSING_REPEAT + 2)])
 
-    def test_the_response_says_whether_the_named_offer_itself_was_taken(self):
+    def test_the_response_names_a_candidate_settlement_with_the_offers_whole_structure(self):
         bid_named = {"card": "SAL-06", "offer": 20259, "venue": "rastro", "maker": "t09", "side": "bid", "price": 20}
         ask_named = {"card": "LAT-07", "offer": 20218, "venue": "rastro", "maker": "t06", "side": "ask", "price": 30,
                      "asset": 1133}
+        swap_named = {"card": "RET-12", "offer": 20068, "venue": "rastro", "maker": "t06", "side": "swap",
+                      "asset": 501, "gives": "SAL-02"}
 
-        def settle(tick, parties, venue, ref="SAL-06", price=20, aid=1):
-            return {"type": "settlement", "tick": tick, "payload": {"venue": venue, "parties": parties, "price": price,
-                                                                    "items": [{"ref": ref, "id": aid}]}}
-        self.assertEqual(an.named_outcome([settle(105, ["t05", "t09"], "rastro")], 100, 20, bid_named)["settled"], True)
-        for ev in (settle(99, ["t05", "t09"], "rastro"), settle(105, ["t05", "t07"], "rastro"),
-                   settle(106, ["t05", "t09"], "rastro", "SAL-07"), settle(106, ["t05", "t09"], "rastro", price=18),
-                   settle(106, ["t05", "t09"], "v02")):
-            self.assertFalse(an.named_outcome([ev], 100, 20, bid_named)["settled"], ev)
-        self.assertTrue(an.named_outcome([settle(105, ["t06", "t14"], "rastro", "LAT-07", 30, 1133)], 100, 20,
-                                         ask_named)["settled"])
-        self.assertFalse(an.named_outcome([settle(105, ["t06", "t14"], "rastro", "LAT-07", 30, 999)], 100, 20,
-                                          ask_named)["settled"])                   # another copy, another offer
-        self.assertTrue(an.named_outcome([settle(110, ["t05", "t07"], "v20")], 100, 20, bid_named)["v20_trade"])
+        def settle(tick, items, venue="rastro", price=20):
+            return {"type": "settlement", "tick": tick, "payload": {"venue": venue, "price": price, "items": [
+                {"kind": "card", "ref": r, "id": i, "frm": f, "to": to} for r, i, f, to in items]}}
+        ok = settle(105, [("SAL-06", 1, "t05", "t09")])
+        res = an.named_outcome([ok], 100, 20, bid_named)
+        self.assertEqual((res["candidate"], res["candidate_tick"]), (True, 105))
+        self.assertIn("no offer id", res["attribution"])
+        self.assertNotIn("settled", res)                                     # never presented as proof
+        for ev in (settle(99, [("SAL-06", 1, "t05", "t09")]),                           # before the post
+                   settle(105, [("SAL-06", 1, "t09", "t05")]),                          # t09 SELLS it: wrong way
+                   settle(105, [("SAL-07", 1, "t05", "t09")]),                          # another card
+                   settle(105, [("SAL-06", 1, "t05", "t09")], price=18),                # another price
+                   settle(105, [("SAL-06", 1, "t05", "t09")], venue="v02"),             # another venue
+                   settle(105, [("SAL-06", 1, "t05", "t09"), ("SAL-06", 2, "t05", "t09")])):   # two copies
+            self.assertFalse(an.named_outcome([ev], 100, 20, bid_named)["candidate"], ev)
+        self.assertTrue(an.named_outcome([settle(105, [("LAT-07", 1133, "t06", "t14")], price=30)], 100, 20,
+                                         ask_named)["candidate"])
+        for ev in (settle(105, [("LAT-07", 999, "t06", "t14")], price=30),              # another copy
+                   settle(105, [("LAT-07", 1133, "t14", "t06")], price=30)):            # the other way
+            self.assertFalse(an.named_outcome([ev], 100, 20, ask_named)["candidate"], ev)
+        self.assertTrue(an.named_outcome([settle(105, [("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")],
+                                                 price=0)], 100, 20, swap_named)["candidate"])
+        for items in ([("SAL-03", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")],     # the wrong card given
+                      [("SAL-02", 501, "t06", "t05"), ("RET-11", 7, "t05", "t06")],     # the wrong card got
+                      [("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t07", "t06")],     # two counterparties
+                      [("SAL-02", 501, "t06", "t05")]):                                 # one leg only
+            self.assertFalse(an.named_outcome([settle(105, items, price=0)], 100, 20, swap_named)["candidate"], items)
+        self.assertTrue(an.named_outcome([settle(110, [("SAL-06", 1, "t05", "t07")], venue="v20")], 100, 20,
+                                         bid_named)["v20_trade"])
+        fits = lambda items, price=0: an.outcome_fits(settle(105, items, price=price)["payload"], swap_named)
+        self.assertTrue(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")]))
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-11", 7, "t05", "t06")]))      # wanted card
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06"),
+                               ("LAV-01", 8, "t05", "t06")]))                                    # a third card
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")], price=5))  # cash too
 
     def test_a_missing_or_stale_matchmaker_file_is_never_posted(self):
         import tempfile

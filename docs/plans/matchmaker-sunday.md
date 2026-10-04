@@ -57,7 +57,7 @@ Also live: Team 6's 450 P bid for SAL-12 and swaps for LAV-12 / RET-12 (legendar
 
 HTTP 200 on a post proves nothing. Per channel:
 
-- **Announcements**: every post logs the match it named (`named` event in `logs/announce/<date>.jsonl`), and its `response` 20 ticks later carries `named_outcome` (`settled`: a settlement with the named offer's whole structure: venue, maker, card, price, and for an ask the very asset; the feed's settlements carry no offer id; `v20_trade`) plus v20 listings and trades in the 20 ticks after vs before.
+- **Announcements**: every post logs the match it named (`named` event in `logs/announce/<date>.jsonl`), and its `response` 20 ticks later carries `named_outcome` (`candidate`: a settlement with the named offer's whole structure: venue, direction, card, price, and for an ask or swap the very asset and both legs; a candidate, not proof, since the feed's settlements carry no offer id; `v20_trade`) plus v20 listings and trades in the 20 ticks after vs before.
 - **La Celestina**: `--access-log` shows who read `/api/missing` and `/api/match`; success is a v20 listing or trade by that team within 40 ticks.
 - **Outreach**: `logs/outreach/<date>.jsonl` names the team, card and offer; success is that team listing, accepting or trading that card within 40 ticks.
 - **Overall**: other-team trades on v20 per hour (feed `settlement` with `venue: v20`, parties not t03), split by the channel that named that team and card last before the trade. Baseline: 0 per hour on Saturday.

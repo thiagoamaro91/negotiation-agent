@@ -26,8 +26,9 @@ venue's current book right before the post (still_live: open, not for one team, 
 ticks, the same side, card and price). Never one on another team's venue (unless --rival-venues), a card in --exclude
 (every card of the offer), Team 3, or a match named in the last MISSING_REPEAT posts. Holdings are said as history
 ("held a copy at tick N, reconstructed"). Nothing is recomputed here; a missing or stale file, or no match left, means
-no post. Each response says whether the named offer itself settled (named_outcome: venue, maker, card, price, asset;
-the feed's settlements carry no offer id) besides the trades on v20.
+no post. Each response says whether a settlement with the named offer's whole structure followed (named_outcome:
+direction, card, asset, price, venue; a candidate, never proof, since the feed's settlements carry no offer id)
+besides the trades on v20.
 
     python3 tools/announce.py plan                       # prints the next message and the request; sends nothing
     python3 tools/announce.py plan --variant missing     # the missing-card board from the matchmaker's last output
@@ -586,28 +587,53 @@ def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=()
     return text[:MAX_CHARS], match_key(m)
 
 
+ATTRIBUTION = "candidate: a settlement with the named offer's whole structure; the feed's settlements carry no offer id"
+
+
+def outcome_fits(pl: dict, named: dict) -> bool:
+    """A settlement payload with the named offer's whole structure: its venue; for a bid, exactly one card of the named
+    ref moving TO the maker at the named price; for an ask, exactly the named asset of that ref moving FROM the maker
+    at the named price; for a swap, exactly two cards, the named asset of the given ref from the maker and one card of
+    the wanted ref to the maker, both with the same counterparty."""
+    if pl.get("persona") or (pl.get("venue") or "rastro") != (named.get("venue") or "rastro"):
+        return False
+    items = [i for i in pl.get("items") or [] if isinstance(i, dict)]
+    if any(i.get("kind", "card") != "card" for i in items):
+        return False
+    maker, card, side = named.get("maker"), named.get("card"), named.get("side")
+    if side == "bid":
+        return len(items) == 1 and items[0].get("ref") == card and items[0].get("to") == maker \
+            and items[0].get("frm") not in (None, maker) and pl.get("price") == named.get("price")
+    if side == "ask":
+        return len(items) == 1 and items[0].get("id") == named.get("asset") and items[0].get("ref") == card \
+            and items[0].get("frm") == maker and items[0].get("to") not in (None, maker) \
+            and pl.get("price") == named.get("price")
+    if side == "swap":
+        if len(items) != 2 or (pl.get("price") or 0):
+            return False
+        out = [i for i in items if i.get("frm") == maker]
+        back = [i for i in items if i.get("to") == maker]
+        return len(out) == 1 and len(back) == 1 and out[0].get("id") == named.get("asset") \
+            and out[0].get("ref") == named.get("gives") and back[0].get("ref") == card \
+            and out[0].get("to") == back[0].get("frm") and out[0].get("to") not in (None, maker)
+    return False
+
+
 def named_outcome(events: list, t0: int, k: int, named: dict) -> dict:
-    """Did the named offer settle? The feed's settlements carry no offer id, so the offer is recognised by its whole
-    structure: in (t0, t0 + k], on its venue, with its maker as a party, moving the named card, at its price (a cash
-    offer), and for an ask or a swap moving the very asset it offered. `v20_trade`: any trade on v20 for that card."""
-    out = {"settled": False, "settled_tick": None, "v20_trade": False, "matched_on": "venue, maker, card, price, asset"}
+    """Did the named offer settle in (t0, t0 + k]? Without offer ids in the feed this is a candidate (outcome_fits),
+    never proof. `v20_trade`: any trade on v20 moving that card in the window."""
+    out = {"candidate": False, "candidate_tick": None, "attribution": ATTRIBUTION, "v20_trade": False}
     for e in events or []:
         t = e.get("tick") if isinstance(e, dict) else None
         if e.get("type") != "settlement" or not isinstance(t, int) or not t0 < t <= t0 + k:
             continue
         pl = e.get("payload") or {}
-        items = [i for i in pl.get("items") or [] if isinstance(i, dict)]
-        if named.get("card") not in {i.get("ref") for i in items} or pl.get("persona"):
+        if named.get("card") not in {i.get("ref") for i in pl.get("items") or [] if isinstance(i, dict)}:
             continue
-        if pl.get("venue") == VENUE:
+        if pl.get("venue") == VENUE and not pl.get("persona"):
             out["v20_trade"] = True
-        if (pl.get("venue") or "rastro") != (named.get("venue") or "rastro") or named.get("maker") not in (pl.get("parties") or []):
-            continue
-        if named.get("side") in ("bid", "ask") and pl.get("price") != named.get("price"):
-            continue
-        if named.get("side") in ("ask", "swap") and named.get("asset") not in {i.get("id") for i in items}:
-            continue
-        out.update(settled=True, settled_tick=t)
+        if not out["candidate"] and outcome_fits(pl, named):
+            out.update(candidate=True, candidate_tick=t)
     return out
 
 
@@ -1001,7 +1027,8 @@ def main(argv: list[str] | None = None) -> None:
             a = m.get("action") or {}
             picked.update(key=key, named={"card": m.get("card"), "offer": a.get("offer"), "venue": a.get("venue") or VENUE,
                                           "maker": a.get("maker") or m.get("team"), "tier": m.get("tier"),
-                                          "side": a.get("side"), "price": a.get("price"), "asset": a.get("asset")})
+                                          "side": a.get("side"), "price": a.get("price"), "asset": a.get("asset"),
+                                          "gives": a.get("gives")})
         else:
             text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
         return text, [o.get("id") for o in v20 if o.get("id") is not None and f"(offer {o.get('id')})" in text]
