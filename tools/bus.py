@@ -1,7 +1,7 @@
 """Team bus: messages between the team's Claude sessions across accounts and machines, carried on one GitHub issue.
 
 Claude Code's own messaging (ListAgents / SendMessage) only reaches sessions of the same Claude account, so Hector's
-sessions cannot reach Thiago's or Jay's. The bus can: every message is a comment on the bus issue of this repo. The
+sessions cannot reach Thiago's. The bus can: every message is a comment on the bus issue of this repo. The
 sender is the GitHub account that wrote the comment (nobody can post as someone else), every message is kept, and a
 person can read or answer from the GitHub app.
 
@@ -48,7 +48,7 @@ from pathlib import Path
 REPO = os.environ.get("TEAM_BUS_REPO", "thiagoamaro91/negotiation-agent")
 ISSUE = int(os.environ.get("TEAM_BUS_ISSUE", "25"))   # https://github.com/thiagoamaro91/negotiation-agent/issues/25
 STATE = Path(os.environ.get("TEAM_BUS_STATE", str(Path.home() / ".cache" / "team-bus")))
-TEAM = {"hector": "hector14mv", "thiago": "thiagoamaro91", "jay": "jpshankarpurieu2025-rgb"}
+TEAM = {"hector": "hector14mv", "thiago": "thiagoamaro91", "member3": "former-teammate"}
 KINDS = ("info", "ask", "done")                       # what `post` may send; claim/release have their own commands
 HEADER = re.compile(r"\A<!-- team-bus (\{[^\n]*\}) -->\n?")
 MENTION = re.compile(r"(?<![\w/])@([A-Za-z0-9][A-Za-z0-9-]*)")
@@ -60,7 +60,7 @@ FAILS_BEFORE_EXIT = 30                    # consecutive failed polls before wait
 
 
 def alias(login: str) -> str:
-    """Team name for a GitHub login (hector, thiago, jay), the login itself for anyone else."""
+    """Team name for a GitHub login (hector, thiago, member3), the login itself for anyone else."""
     return next((a for a, l in TEAM.items() if l.lower() == login.lower()), login)
 
 
@@ -443,7 +443,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("post", help="send a message")
     p.add_argument("text", help='the text, or "-" to read it from stdin')
-    p.add_argument("--to", action="append", default=[], help="all (default), hector, thiago, jay or a login; repeat or comma-separate")
+    p.add_argument("--to", action="append", default=[], help="all (default), hector, thiago, member3 or a login; repeat or comma-separate")
     p.add_argument("--kind", choices=KINDS, default="info")
     p.add_argument("--reply-to", type=int, default=None, help="the id of the message this answers")
     a = sub.add_parser("ask", help="post an ask and wait for its answer")

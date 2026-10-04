@@ -42,7 +42,7 @@ Hector runs `python3 tools/pitch_numbers.py --live --stage` on the demo laptop a
 2. **Dashboard tunnel for the La Celestina panel, yes or no.** The rest of that page carries our values; the public venue row says the same thing with no risk, so "no" costs little.
 3. **The new hook.** v3 opens on the judges' problem (two teams chasing each other) instead of v2's threat map line. The map line needed a re-score against a personal-data file at 14:50 and did not speak to Causa Prima. If you want it back, it goes in Q&A under v2's rules.
 
-v2's open decision still stands: "no model call on the money path" against the team's written "the model writes the words". v3 keeps v2's wording ("the AI does the work, the structure holds the money"; template lines Claude wrote). Tell Hector and Jay if you change it.
+v2's open decision still stands: "no model call on the money path" against the team's written "the model writes the words". v3 keeps v2's wording ("the AI does the work, the structure holds the money"; template lines Claude wrote). Tell Hector and a former teammate if you change it.
 
 ## 4. Seven anecdotes, with sources
 

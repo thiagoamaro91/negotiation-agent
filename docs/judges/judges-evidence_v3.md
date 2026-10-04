@@ -6,7 +6,7 @@ Companion to [`judges-story_v3.md`](judges-story_v3.md). What is on screen while
 
 - **Thiago** speaks. Does not drive a terminal on stage.
 - **Hector** drives the laptop: opens each screen on its cue, in the order below, from tabs prepared at 14:50.
-- **Jay** keeps time (signals at 1:00, 2:00, 2:40) and holds the backup: the screenshots folder, ready if a live screen fails.
+- **a former teammate** keeps time (signals at 1:00, 2:00, 2:40) and holds the backup: the screenshots folder, ready if a live screen fails.
 
 ## Safety tags
 
@@ -69,12 +69,14 @@ Version B is the default. Version A changes row 5 only.
 
 ## Backup plan
 
-1. **14:30, before the shutdown:** `factory.py status` screenshot for row 6. **14:52, after the numbers:** Hector takes one screenshot per remaining row (version B and, if it applies, 5A), cropped as the MASK notes say, and drops them in one folder on Jay's machine, named `01-title.png` ... `10-close.png`. Before saving each MASK screenshot, read it once for values, caps, team ids and tokens.
-2. **If the live laptop fails mid-pitch:** Jay shows the folder in order; Thiago does not stop talking.
+1. **14:30, before the shutdown:** `factory.py status` screenshot for row 6. **14:52, after the numbers:** Hector takes one screenshot per remaining row (version B and, if it applies, 5A), cropped as the MASK notes say, and drops them in one folder on a former teammate's machine, named `01-title.png` ... `10-close.png`. Before saving each MASK screenshot, read it once for values, caps, team ids and tokens.
+2. **If the live laptop fails mid-pitch:** A former teammate shows the folder in order; Thiago does not stop talking.
 3. **If there is no screen at all, or the slot is cut:** Thiago switches to the 60-second fallback (story section 4).
 4. **If the funnel or the tunnel is refused or down:** rows 5 and 7 use the public site and the screenshot; nothing else changes.
 
-## Before going on (from the freeze)
+## Before going on (archived rehearsal checklist)
+
+Archived early-Sunday rehearsal plan; its predicted freeze time and shutdown checklist were superseded. Use the final submission timeline for actual events.
 
 | Wall time | Step | Who |
 |---|---|---|

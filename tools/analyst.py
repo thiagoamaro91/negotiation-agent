@@ -697,6 +697,16 @@ def transcript_history(d: dict) -> dict:
 
 
 FACTORY_FLAGS = {"duel_ticks", "late_poll"}   # the factory's command line sets these; flags win over the JSON
+ROBUST_TAG = ";robust"   # agent/duel.py make_cfg appends it to days_best in run_start unless --days-confirmed
+
+
+def _as_run(k, st: dict):
+    """A run_start value as the params file would hold it: make_cfg's ROBUST tag on days_best is stripped, but only
+    when the run logged days_confirmed false (that is the one case make_cfg adds it)."""
+    v = st[k]
+    if k == "days_best" and st.get("days_confirmed") is False and isinstance(v, str) and v.endswith(ROBUST_TAG):
+        return v[: -len(ROBUST_TAG)]
+    return v
 
 
 def _same(x, y) -> bool:
@@ -723,7 +733,7 @@ def deployed_check(base: dict, log_rows: list, ids: set) -> tuple:
                 unlogged.add(k)
                 continue
             compared.add(k)
-            if not _same(st[k], v):
+            if not _same(_as_run(k, st), v):
                 diffs.append(f"{k}: file {v} vs run {st[k]} (run {st.get('run')})")
     if diffs:
         return False, "the baseline file is not what the bot ran: " + "; ".join(diffs[:6])

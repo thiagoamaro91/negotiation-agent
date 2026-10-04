@@ -156,10 +156,10 @@ function bandOf(id) {
   const m = META.nodes[id];
   if (m) return m.layer === 'claude' ? 'team' : m.layer;
   if (/^lane-/.test(id)) return 'team';
-  if (/^(thiago|hector|jay|bazaar)-/.test(id)) return 'sessions';
+  if (/^(thiago|hector|member3|bazaar)-/.test(id)) return 'sessions';
   return 'bots';
 }
-function labelOf(id) { if (/^d-/.test(id)) { const d = (META.data || {})[id]; return tr('data')[id] || (d ? d.label : id); } const m = META.nodes[id]; return m ? m.label : id.replace(/^thiago-/, 'T · ').replace(/^hector-/, 'H · ').replace(/^jay-/, 'J · '); }
+function labelOf(id) { if (/^d-/.test(id)) { const d = (META.data || {})[id]; return tr('data')[id] || (d ? d.label : id); } const m = META.nodes[id]; return m ? m.label : id.replace(/^thiago-/, 'T · ').replace(/^hector-/, 'H · ').replace(/^member3-/, 'M · '); }
 function subOf(id) {
   if (/^d-/.test(id)) { const d = (META.data || {})[id]; return d ? dataSub(d) : ''; }
   const m = META.nodes[id]; return m && (m.note || m.where) || '';
@@ -172,7 +172,7 @@ function dataSub(d) {
   return d.age_s == null ? `${tr('live_')} · ${key}` : `${key} · ${age(d.age_s)}`;
 }
 function staleness(d) { if (!d || d.kind === 'config' || d.age_s == null) return ''; const lim = d.kind === 'snapshot' ? 1800 : 600; return d.age_s > lim * 6 ? 'stale' : d.age_s > lim ? 'aging' : ''; }
-const ORDER = ['thiago', 'hector', 'jay', 'conductor', 'thiago-air-f8', 'mini-conductor', 'lane-a-venue', 'lane-b-mini', 'lane-c-trades', 'lane-d-ladder', 'lane-v-liveview', 'lane-duel', 'lane-market',
+const ORDER = ['thiago', 'hector', 'member3', 'conductor', 'thiago-air-f8', 'mini-conductor', 'lane-a-venue', 'lane-b-mini', 'lane-c-trades', 'lane-d-ladder', 'lane-v-liveview', 'lane-duel', 'lane-market',
   'bus', 'duel', 'broker', 'dealer-bots', 'announce', 'market-desk', 'rastro-seller', 'lease', 'concierge',
   'd-me', 'd-value', 'd-duels', 'd-books', 'd-v20', 'd-feed', 'd-params', 'd-floors', 'd-snap', 'd-decisions', 'teams', 'dealers', 'rastro', 'bench', 'game'];
 function ensureData() { Object.keys(META.data || {}).forEach(id => { ensure(id); nodes.get(id).seen = true; }); }

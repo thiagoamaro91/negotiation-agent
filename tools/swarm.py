@@ -67,7 +67,7 @@ BUS_HEADER = re.compile(r"<!-- team-bus (\{.*?\}) -->", re.S)
 NODES = {
     "thiago": {"label": "Thiago", "layer": "people"},
     "hector": {"label": "Hector", "layer": "people"},
-    "jay": {"label": "Jay", "layer": "people"},
+    "member3": {"label": "Teammate", "layer": "people"},
     "conductor": {"label": "Conductor f7", "layer": "claude", "where": "Thiago's Air", "note": "handed over to f8 at 18:34"},
     "thiago-air-f8": {"label": "Conductor f8", "layer": "claude", "where": "Thiago's Air", "note": "in charge since 18:34"},
     "mini-conductor": {"label": "Mini conductor", "layer": "claude", "where": "Mac Mini"},
@@ -90,8 +90,8 @@ NODES = {
 }
 ALIASES = {"team-lead": "conductor", "thiago-air-f7": "conductor", "thiago-mini-conductor": "mini-conductor",
            "bazaar-pr-steward": "thiago-air-prsteward"}
-PEOPLE = {"thiagoamaro91": "thiago", "hector14mv": "hector", "jpshankarpurieu2025-rgb": "jay",
-          "thiago": "thiago", "hector": "hector", "jay": "jay"}
+PEOPLE = {"thiagoamaro91": "thiago", "hector14mv": "hector", "former-teammate": "member3",
+          "thiago": "thiago", "hector": "hector", "member3": "member3"}
 DECISION_LANES = {"trades": "lane-c-trades", "ladder": "lane-d-ladder", "duel": "lane-duel", "market": "lane-market",
                   "conductor": "conductor"}
 # Rows logged with lane "conductor" belong to whoever conducted at that moment.
@@ -380,7 +380,7 @@ def bus_events(comments: list) -> list:
         reply = meta.get("reply_to")
         dst = sessions.get(str(reply)) if reply else None
         if dst is None:
-            dst = to[0] if len(to) == 1 and to[0] in ("thiago", "hector", "jay") else "bus"
+            dst = to[0] if len(to) == 1 and to[0] in ("thiago", "hector", "member3") else "bus"
         text = BUS_HEADER.sub("", body).strip()
         text = re.sub(r"^\*\*\w+\*\*[^\n]*\n", "", text).strip()
         ev = event("bus", cid, c.get("createdAt"), src, dst, "bus", f"[{meta.get('kind', 'info')}] {text}")

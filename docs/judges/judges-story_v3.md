@@ -25,7 +25,7 @@ What that means for the pitch:
 - They built the game as a model of their network: a neutral venue, private valuations, settlement by structure. Speak to that thesis once (hook and close), in plain terms. Do not explain their business to them.
 - They know the real numbers on every venue. Volume, adoption or rank we do not have would be checked in their heads within a second. Version B is a strong pitch; a stretched version A is not.
 - Judges are 40 of 100 points, "your ideas and your craft" (`kit/RULES.md` line 120). Each beat below is tagged **Idea** or **Craft**.
-- Pitch slot: about 15:00, after the 14:39 freeze (`docs/plans/sunday-night-handoff.md` on PR #66, line 57). Format still unconfirmed: v2 section 1's questions for the organisers stand.
+- Archived early-Sunday rehearsal plan; its predicted freeze time and shutdown checklist were superseded. Use the final submission timeline for actual events.
 
 ## 2. The angle in one line
 
@@ -85,7 +85,7 @@ Spoken pace about 150 words a minute. Limit: 4:00. With every bracket in, the lo
 
 **3:25 · The team behind it (Craft)**
 
-> We're three people, Jay, Hector and me, running Claude sessions like a trading firm: a conductor, a pull-request steward, overnight analysts[if merged #71: , one on duty today].
+> We're three people, a former teammate, Hector and me, running Claude sessions like a trading firm: a conductor, a pull-request steward, overnight analysts[if merged #71: , one on duty today].
 
 **3:35 · Close (Idea), ends about 3:49**
 

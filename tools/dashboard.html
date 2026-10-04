@@ -198,6 +198,11 @@ svg.scat g.pt:hover circle.m { stroke: var(--ink); stroke-width: 2; }
 .tlist { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .mktgrid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
 @media (max-width: 1000px) { .mktgrid { grid-template-columns: minmax(0, 1fr); } }
+/* Scoreboard by category: the official leaderboard one level down (Negotiating /30, Market /30, Judges /40). */
+.cats { margin-top: 14px; }
+.cats th.n { text-align: right; }
+.catgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1000px) { .catgrid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 700px) {
   body { padding: 12px 16px 28px; }
   .hs { display: none; }
@@ -242,6 +247,8 @@ svg.scat g.pt:hover circle.m { stroke: var(--ink); stroke-width: 2; }
     <div class="panel"><h2>Feed</h2><div class="feed" id="feed"></div></div>
   </div>
 </div>
+
+<div class="panel cats" id="cats"><h2>Scoreboard · by category</h2><span class="muted">connecting</span></div>
 
 <div class="panel riv" id="rivals"><h2>Rivals · all teams, public data</h2><span class="muted">connecting</span></div>
 
@@ -385,6 +392,75 @@ function renderLb(d) {
   const max = Math.max(1, ...d.leaderboard.map((t) => t.score || 0));
   $("lb").innerHTML = `<tr><th>#</th><th>Team</th><th class="n">Score</th><th></th><th class="n">Deals</th></tr>` + d.leaderboard.map((t) =>
     `<tr class="${t.team === "t03" ? "us" : ""}"><td class="n">${t.rank}</td><td>${esc(t.name)}</td><td class="n">${fmt(t.score, 2)}</td><td style="width:35%"><div class="lbbar" style="width:${(t.score || 0) / max * 100}%"></div></td><td class="n">${t.deals}</td></tr>`).join("");
+}
+
+/* Scoreboard by category: the leaderboard one level down. Negotiating and Market use competition ranking (1, 2, 2, 4)
+   on the 2-dp value, equal values listed by team id so rows do not jump between polls. The Judges board keeps the
+   official overall rank. Every number for us comes from the same leaderboard snapshot as the boards, so the summary
+   strip always matches them; /api/me only feeds the raw-inputs lines. */
+const CAT_MAX = { negotiating: 30, market: 30, judges: 40 };
+const catCents = (x) => (x === null || x === undefined || x === "" || !Number.isFinite(Number(x))) ? null : Math.round(Number(x) * 100);
+const catSigned = (c) => c === 0 ? "0.00" : (c > 0 ? "+" : "-") + (Math.abs(c) / 100).toFixed(2);
+const catByTeam = (a, b) => String(a.team).localeCompare(String(b.team), undefined, { numeric: true });
+
+function catRank(teams, key) {
+  const rows = teams.map((t) => ({ t, c: catCents(t[key]) }));
+  rows.sort((a, b) => (a.c === null) - (b.c === null) || (b.c ?? 0) - (a.c ?? 0) || catByTeam(a.t, b.t));
+  const lead = rows.length && rows[0].c !== null ? rows[0].c : null;
+  let rank = 0;
+  rows.forEach((r, i) => {
+    if (i === 0 || r.c !== rows[i - 1].c) rank = i + 1;
+    r.rank = r.c === null ? null : rank;
+    r.gap = r.c === null || lead === null ? null : r.c - lead;  // cents, 0 for the leader(s), negative below
+  });
+  return rows;
+}
+
+function catRaw(s, keys) {
+  const parts = keys.filter((k) => catCents(s[k]) !== null).map((k) => `${k} <b>${+Number(s[k]).toFixed(3)}</b>`);
+  return parts.length ? `<div class="rivnote">our raw inputs (server units): ${parts.join(" · ")}</div>` : "";
+}
+
+function catBoard(rows, key, label, raw) {
+  const max = CAT_MAX[key];
+  const body = rows.map((r) => {
+    const v = r.c === null ? null : r.c / 100;
+    const gap = r.gap === null ? "-" : r.gap === 0 ? "lead" : catSigned(r.gap);
+    const w = v === null ? 0 : Math.max(0, Math.min(100, v / max * 100));
+    return `<tr class="${r.t.team === "t03" ? "us" : ""}"><td class="n">${r.rank ?? "-"}</td><td>${esc(r.t.name || r.t.team)}</td><td class="n">${fmt(v, 2)}</td><td class="n">${gap}</td><td style="width:30%"><div class="lbbar" style="width:${w}%"></div></td></tr>`;
+  }).join("");
+  return `<div><p class="celsub">${label} · <b>out of ${max}</b></p><div class="tablewrap"><table><tr><th>#</th><th>Team</th><th class="n">Pts</th><th class="n" title="points behind the category leader">Gap</th><th></th></tr>${body}</table></div>${raw}</div>`;
+}
+
+function catStrip(name, rows) {
+  const r = rows.find((x) => x.t.team === "t03");
+  if (!r || r.c === null) return `${name} <b>-</b>`;
+  const tied = rows.filter((x) => x.c === r.c).length > 1;
+  const where = r.gap === 0 ? (tied ? "tied for the lead" : "leading") : `${(-r.gap / 100).toFixed(2)} behind the leader`;
+  return `${name} <b>${tied ? "tied " : ""}#${r.rank} of ${rows.length}</b> (${fmt(r.c / 100, 2)}, ${where})`;
+}
+
+function renderCats(d) {
+  const teams = (d.leaderboard || []).filter((t) => t && t.team);
+  const head = `<h2>Scoreboard · by category</h2>`;
+  if (!teams.length) { $("cats").innerHTML = `${head}<span class="muted">no leaderboard yet</span>`; return; }
+  const s = (d.me && d.me.score) || {};
+  const neg = catRank(teams, "negotiating"), mkt = catRank(teams, "market");
+  const rk = (t) => Number.isFinite(Number(t.rank)) && t.rank !== null ? Number(t.rank) : Infinity;
+  const off = teams.slice().sort((a, b) => (rk(a) - rk(b)) || ((catCents(b.score) ?? -1e9) - (catCents(a.score) ?? -1e9)) || catByTeam(a, b));
+  const us = teams.find((t) => t.team === "t03"), usC = us ? catCents(us.score) : null;
+  const overall = us && us.rank != null ? us.rank : s.rank;
+  const jBody = off.map((t) => {
+    const c = catCents(t.score);
+    const gap = t.team === "t03" ? "us" : (c === null || usC === null) ? "-" : catSigned(c - usC);
+    return `<tr class="${t.team === "t03" ? "us" : ""}"><td class="n">${t.rank ?? "-"}</td><td>${esc(t.name || t.team)}</td><td class="n muted">pending</td><td class="n">${gap}</td></tr>`;
+  }).join("");
+  const judges = `<div><p class="celsub">Judges · <b>out of ${CAT_MAX.judges}</b></p><div class="rivnote">Judges score at the end; nothing is published yet. Gap = their game score minus ours: <b>+</b> means they lead us by that much, the judge margin we would need to make up; <b>-</b> is the margin they would need over us.</div><div class="tablewrap"><table><tr><th>#</th><th>Team</th><th class="n">Judges</th><th class="n" title="their official game score minus ours">Game gap vs us</th></tr>${jBody}</table></div></div>`;
+  const strip = `Us: ${catStrip("Negotiating", neg)} · ${catStrip("Market", mkt)} · Judges <b>pending</b>, overall <b>${overall != null ? "#" + esc(overall) + " of " + teams.length : "-"}</b>`;
+  $("cats").innerHTML = `${head}<div class="rivnote">${strip}</div><div class="catgrid">`
+    + catBoard(neg, "negotiating", "Negotiating", catRaw(s, ["duel_points", "ladder_points", "neg_points"]))
+    + catBoard(mkt, "market", "Market", catRaw(s, ["mm_points", "bench_points"]))
+    + judges + `</div>`;
 }
 
 function renderSpark(d) {
@@ -763,6 +839,7 @@ function render(d) {
   $("round").innerHTML = `<b>${esc(c.round_name || "")}</b>`;
   $("tick").innerHTML = `tick <b>${c.tick}</b> · every ${c.tick_seconds}s · next in <b id="nt">${Math.round(c.next_tick_in || 0)}</b>s${c.paused ? " · PAUSED" : ""}`;
   $("closes").innerHTML = c.closes ? `closes <b>${new Date(c.closes).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</b>` : "";
+  try { renderCats(d); } catch (e) { $("cats").innerHTML = `<h2>Scoreboard · by category</h2><span class="err">${esc(String(e))}</span>`; }
   renderKpis(d); renderConvs(d); renderAlbum(d); renderBoard(d); renderLb(d); renderSpark(d); renderNext(d); renderFeed(d);
 }
 

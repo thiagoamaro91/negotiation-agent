@@ -1,0 +1,2351 @@
+[
+ {
+  "duel": 2314,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Verde",
+  "L": 64,
+  "pair": 2315,
+  "pairL": 79,
+  "softpie": 15,
+  "code_partner_found": false,
+  "start": 459,
+  "deadline": 475,
+  "status": "deal",
+  "price": 68,
+  "how": "we accepted",
+  "agree_tick": 474,
+  "agree_at": 15,
+  "surplus": 4,
+  "result": 3.8,
+  "rounds": 1,
+  "result_pred": 3.76,
+  "decay_loss": 0.2,
+  "share": 0.267,
+  "n_rival_msgs": 5,
+  "n_rival_prices": 5,
+  "n_ours": 1,
+  "ours": [
+   [
+    4,
+    100
+   ]
+  ],
+  "rival_first": 45,
+  "rival_last": 68,
+  "rival_last_at": 14,
+  "rival_best": 68,
+  "rival_best_surplus": 4,
+  "rival_first_inside_at": 14,
+  "rival_path": [
+   [
+    0,
+    45
+   ],
+   [
+    4,
+    50
+   ],
+   [
+    10,
+    58
+   ],
+   [
+    13,
+    64
+   ],
+   [
+    14,
+    68
+   ]
+  ],
+  "accept_kind": "endgame (1 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2315,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Sol",
+  "L": 79,
+  "pair": 2314,
+  "pairL": 64,
+  "softpie": 15,
+  "code_partner_found": false,
+  "start": 475,
+  "deadline": 491,
+  "status": "deal",
+  "price": 72,
+  "how": "we accepted",
+  "agree_tick": 489,
+  "agree_at": 14,
+  "surplus": 7,
+  "result": 6.6,
+  "rounds": 1,
+  "result_pred": 6.58,
+  "decay_loss": 0.4,
+  "share": 0.467,
+  "n_rival_msgs": 5,
+  "n_rival_prices": 5,
+  "n_ours": 1,
+  "ours": [
+   [
+    4,
+    50
+   ]
+  ],
+  "rival_first": 96,
+  "rival_last": 72,
+  "rival_last_at": 14,
+  "rival_best": 72,
+  "rival_best_surplus": 7,
+  "rival_first_inside_at": 13,
+  "rival_path": [
+   [
+    0,
+    96
+   ],
+   [
+    4,
+    90
+   ],
+   [
+    10,
+    84
+   ],
+   [
+    13,
+    76
+   ],
+   [
+    14,
+    72
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2328,
+  "role": "seller",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Sol",
+  "L": 91,
+  "pair": 2329,
+  "pairL": 146,
+  "softpie": 55,
+  "code_partner_found": false,
+  "start": 459,
+  "deadline": 475,
+  "status": "deal",
+  "price": 152,
+  "how": "we accepted",
+  "agree_tick": 472,
+  "agree_at": 13,
+  "surplus": 61,
+  "result": 61.0,
+  "rounds": 0,
+  "result_pred": 61.0,
+  "decay_loss": 0.0,
+  "share": 1.109,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 114,
+  "rival_last": 152,
+  "rival_last_at": 13,
+  "rival_best": 152,
+  "rival_best_surplus": 61,
+  "rival_first_inside_at": 0,
+  "rival_path": [
+   [
+    0,
+    114
+   ],
+   [
+    2,
+    115
+   ],
+   [
+    3,
+    116
+   ],
+   [
+    4,
+    117
+   ],
+   [
+    5,
+    119
+   ],
+   [
+    6,
+    121
+   ],
+   [
+    7,
+    124
+   ],
+   [
+    8,
+    127
+   ],
+   [
+    9,
+    134
+   ],
+   [
+    11,
+    138
+   ],
+   [
+    12,
+    146
+   ],
+   [
+    13,
+    152
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2329,
+  "role": "buyer",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Verde",
+  "L": 146,
+  "pair": 2328,
+  "pairL": 91,
+  "softpie": 55,
+  "code_partner_found": false,
+  "start": 459,
+  "deadline": 475,
+  "status": "deal",
+  "price": 95,
+  "how": "we accepted",
+  "agree_tick": 473,
+  "agree_at": 14,
+  "surplus": 51,
+  "result": 51.0,
+  "rounds": 0,
+  "result_pred": 51.0,
+  "decay_loss": 0.0,
+  "share": 0.927,
+  "n_rival_msgs": 14,
+  "n_rival_prices": 14,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 129,
+  "rival_last": 95,
+  "rival_last_at": 14,
+  "rival_best": 95,
+  "rival_best_surplus": 51,
+  "rival_first_inside_at": 0,
+  "rival_path": [
+   [
+    0,
+    129
+   ],
+   [
+    1,
+    128
+   ],
+   [
+    3,
+    127
+   ],
+   [
+    4,
+    126
+   ],
+   [
+    5,
+    125
+   ],
+   [
+    6,
+    123
+   ],
+   [
+    7,
+    121
+   ],
+   [
+    8,
+    118
+   ],
+   [
+    9,
+    115
+   ],
+   [
+    10,
+    113
+   ],
+   [
+    11,
+    109
+   ],
+   [
+    12,
+    105
+   ],
+   [
+    13,
+    100
+   ],
+   [
+    14,
+    95
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2336,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Verde",
+  "L": 80,
+  "pair": 2337,
+  "pairL": 135,
+  "softpie": 55,
+  "code_partner_found": false,
+  "start": 474,
+  "deadline": 490,
+  "status": "deal",
+  "price": 107,
+  "how": "we accepted",
+  "agree_tick": 487,
+  "agree_at": 13,
+  "surplus": 27,
+  "result": 25.4,
+  "rounds": 1,
+  "result_pred": 25.38,
+  "decay_loss": 1.6,
+  "share": 0.491,
+  "n_rival_msgs": 9,
+  "n_rival_prices": 9,
+  "n_ours": 1,
+  "ours": [
+   [
+    5,
+    124
+   ]
+  ],
+  "rival_first": 45,
+  "rival_last": 107,
+  "rival_last_at": 11,
+  "rival_best": 107,
+  "rival_best_surplus": 27,
+  "rival_first_inside_at": 9,
+  "rival_path": [
+   [
+    0,
+    45
+   ],
+   [
+    1,
+    49
+   ],
+   [
+    5,
+    55
+   ],
+   [
+    6,
+    62
+   ],
+   [
+    7,
+    70
+   ],
+   [
+    8,
+    79
+   ],
+   [
+    9,
+    88
+   ],
+   [
+    10,
+    97
+   ],
+   [
+    11,
+    107
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2337,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Verde",
+  "L": 135,
+  "pair": 2336,
+  "pairL": 80,
+  "softpie": 55,
+  "code_partner_found": false,
+  "start": 488,
+  "deadline": 504,
+  "status": "deal",
+  "price": 111,
+  "how": "we accepted",
+  "agree_tick": 501,
+  "agree_at": 13,
+  "surplus": 24,
+  "result": 24.0,
+  "rounds": 0,
+  "result_pred": 24.0,
+  "decay_loss": 0.0,
+  "share": 0.436,
+  "n_rival_msgs": 9,
+  "n_rival_prices": 9,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 223,
+  "rival_last": 111,
+  "rival_last_at": 8,
+  "rival_best": 111,
+  "rival_best_surplus": 24,
+  "rival_first_inside_at": 7,
+  "rival_path": [
+   [
+    0,
+    223
+   ],
+   [
+    1,
+    215
+   ],
+   [
+    2,
+    204
+   ],
+   [
+    3,
+    192
+   ],
+   [
+    4,
+    177
+   ],
+   [
+    5,
+    162
+   ],
+   [
+    6,
+    146
+   ],
+   [
+    7,
+    129
+   ],
+   [
+    8,
+    111
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2360,
+  "role": "seller",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Rojo",
+  "L": 154,
+  "pair": 2361,
+  "pairL": 140,
+  "softpie": -14,
+  "code_partner_found": false,
+  "start": 503,
+  "deadline": 519,
+  "status": "deal",
+  "price": 186,
+  "how": "we accepted",
+  "agree_tick": 517,
+  "agree_at": 14,
+  "surplus": 32,
+  "result": 32.0,
+  "rounds": 0,
+  "result_pred": 32.0,
+  "decay_loss": 0.0,
+  "share": null,
+  "n_rival_msgs": 15,
+  "n_rival_prices": 15,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 93,
+  "rival_last": 186,
+  "rival_last_at": 14,
+  "rival_best": 186,
+  "rival_best_surplus": 32,
+  "rival_first_inside_at": 13,
+  "rival_path": [
+   [
+    0,
+    93
+   ],
+   [
+    1,
+    94
+   ],
+   [
+    2,
+    96
+   ],
+   [
+    3,
+    99
+   ],
+   [
+    4,
+    102
+   ],
+   [
+    5,
+    106
+   ],
+   [
+    6,
+    111
+   ],
+   [
+    7,
+    116
+   ],
+   [
+    8,
+    122
+   ],
+   [
+    9,
+    129
+   ],
+   [
+    10,
+    137
+   ],
+   [
+    11,
+    145
+   ],
+   [
+    12,
+    154
+   ],
+   [
+    13,
+    164
+   ],
+   [
+    14,
+    186
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2361,
+  "role": "buyer",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Sol",
+  "L": 140,
+  "pair": 2360,
+  "pairL": 154,
+  "softpie": -14,
+  "code_partner_found": false,
+  "start": 518,
+  "deadline": 534,
+  "status": "deal",
+  "price": 106,
+  "how": "we accepted",
+  "agree_tick": 532,
+  "agree_at": 14,
+  "surplus": 34,
+  "result": 34.0,
+  "rounds": 0,
+  "result_pred": 34.0,
+  "decay_loss": 0.0,
+  "share": null,
+  "n_rival_msgs": 15,
+  "n_rival_prices": 15,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 158,
+  "rival_last": 106,
+  "rival_last_at": 14,
+  "rival_best": 106,
+  "rival_best_surplus": 34,
+  "rival_first_inside_at": 9,
+  "rival_path": [
+   [
+    0,
+    158
+   ],
+   [
+    1,
+    157
+   ],
+   [
+    2,
+    156
+   ],
+   [
+    3,
+    155
+   ],
+   [
+    4,
+    153
+   ],
+   [
+    5,
+    151
+   ],
+   [
+    6,
+    148
+   ],
+   [
+    7,
+    145
+   ],
+   [
+    8,
+    142
+   ],
+   [
+    9,
+    138
+   ],
+   [
+    10,
+    134
+   ],
+   [
+    11,
+    129
+   ],
+   [
+    12,
+    124
+   ],
+   [
+    13,
+    119
+   ],
+   [
+    14,
+    106
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2368,
+  "role": "seller",
+  "item": "Palacio de Cristal",
+  "rival": "Rival Oro",
+  "L": 78,
+  "pair": 2369,
+  "pairL": 95,
+  "softpie": 17,
+  "code_partner_found": false,
+  "start": 502,
+  "deadline": 518,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 1,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 1,
+  "n_rival_prices": 1,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    121
+   ],
+   [
+    14,
+    85
+   ]
+  ],
+  "rival_first": 51,
+  "rival_last": 51,
+  "rival_last_at": 0,
+  "rival_best": 51,
+  "rival_best_surplus": -27,
+  "rival_first_inside_at": null,
+  "rival_path": [
+   [
+    0,
+    51
+   ]
+  ],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2369,
+  "role": "buyer",
+  "item": "Palacio de Cristal",
+  "rival": "Rival Sol",
+  "L": 95,
+  "pair": 2368,
+  "pairL": 78,
+  "softpie": 17,
+  "code_partner_found": false,
+  "start": 518,
+  "deadline": 534,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    77
+   ],
+   [
+    14,
+    87
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2370,
+  "role": "seller",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Noche",
+  "L": 122,
+  "pair": 2371,
+  "pairL": 153,
+  "softpie": 31,
+  "code_partner_found": false,
+  "start": 533,
+  "deadline": 549,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    149
+   ],
+   [
+    14,
+    132
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2371,
+  "role": "buyer",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Azul",
+  "L": 153,
+  "pair": 2370,
+  "pairL": 122,
+  "softpie": 31,
+  "code_partner_found": false,
+  "start": 549,
+  "deadline": 565,
+  "status": "deal",
+  "price": 83,
+  "how": "we accepted",
+  "agree_tick": 562,
+  "agree_at": 13,
+  "surplus": 70,
+  "result": 70.0,
+  "rounds": 0,
+  "result_pred": 70.0,
+  "decay_loss": 0.0,
+  "share": 2.258,
+  "n_rival_msgs": 4,
+  "n_rival_prices": 4,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 97,
+  "rival_last": 83,
+  "rival_last_at": 13,
+  "rival_best": 83,
+  "rival_best_surplus": 70,
+  "rival_first_inside_at": 2,
+  "rival_path": [
+   [
+    2,
+    97
+   ],
+   [
+    3,
+    92
+   ],
+   [
+    4,
+    86
+   ],
+   [
+    13,
+    83
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2384,
+  "role": "seller",
+  "item": "Café en Goya",
+  "rival": "Rival Verde",
+  "L": 75,
+  "pair": 2385,
+  "pairL": 174,
+  "softpie": 99,
+  "code_partner_found": false,
+  "start": 490,
+  "deadline": 506,
+  "status": "deal",
+  "price": 92,
+  "how": "we accepted",
+  "agree_tick": 504,
+  "agree_at": 14,
+  "surplus": 17,
+  "result": 17.0,
+  "rounds": 0,
+  "result_pred": 17.0,
+  "decay_loss": 0.0,
+  "share": 0.172,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 74,
+  "rival_last": 92,
+  "rival_last_at": 11,
+  "rival_best": 92,
+  "rival_best_surplus": 17,
+  "rival_first_inside_at": 1,
+  "rival_path": [
+   [
+    0,
+    74
+   ],
+   [
+    1,
+    76
+   ],
+   [
+    2,
+    79
+   ],
+   [
+    3,
+    81
+   ],
+   [
+    4,
+    83
+   ],
+   [
+    5,
+    85
+   ],
+   [
+    6,
+    86
+   ],
+   [
+    7,
+    88
+   ],
+   [
+    8,
+    89
+   ],
+   [
+    9,
+    90
+   ],
+   [
+    10,
+    91
+   ],
+   [
+    11,
+    92
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2385,
+  "role": "buyer",
+  "item": "Café en Goya",
+  "rival": "Rival Rojo",
+  "L": 174,
+  "pair": 2384,
+  "pairL": 75,
+  "softpie": 99,
+  "code_partner_found": false,
+  "start": 505,
+  "deadline": 521,
+  "status": "deal",
+  "price": 140,
+  "how": "we accepted",
+  "agree_tick": 519,
+  "agree_at": 14,
+  "surplus": 34,
+  "result": 34.0,
+  "rounds": 0,
+  "result_pred": 34.0,
+  "decay_loss": 0.0,
+  "share": 0.343,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 164,
+  "rival_last": 140,
+  "rival_last_at": 11,
+  "rival_best": 140,
+  "rival_best_surplus": 34,
+  "rival_first_inside_at": 0,
+  "rival_path": [
+   [
+    0,
+    164
+   ],
+   [
+    1,
+    161
+   ],
+   [
+    2,
+    158
+   ],
+   [
+    3,
+    155
+   ],
+   [
+    4,
+    152
+   ],
+   [
+    5,
+    150
+   ],
+   [
+    6,
+    148
+   ],
+   [
+    7,
+    146
+   ],
+   [
+    8,
+    144
+   ],
+   [
+    9,
+    143
+   ],
+   [
+    10,
+    141
+   ],
+   [
+    11,
+    140
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2394,
+  "role": "seller",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Azul",
+  "L": 99,
+  "pair": 2395,
+  "pairL": 138,
+  "softpie": 39,
+  "code_partner_found": false,
+  "start": 534,
+  "deadline": 550,
+  "status": "deal",
+  "price": 109,
+  "how": "we accepted",
+  "agree_tick": 549,
+  "agree_at": 15,
+  "surplus": 10,
+  "result": 10.0,
+  "rounds": 0,
+  "result_pred": 10.0,
+  "decay_loss": 0.0,
+  "share": 0.256,
+  "n_rival_msgs": 13,
+  "n_rival_prices": 13,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 76,
+  "rival_last": 109,
+  "rival_last_at": 12,
+  "rival_best": 109,
+  "rival_best_surplus": 10,
+  "rival_first_inside_at": 9,
+  "rival_path": [
+   [
+    0,
+    76
+   ],
+   [
+    1,
+    79
+   ],
+   [
+    2,
+    82
+   ],
+   [
+    3,
+    84
+   ],
+   [
+    4,
+    87
+   ],
+   [
+    5,
+    90
+   ],
+   [
+    6,
+    93
+   ],
+   [
+    7,
+    96
+   ],
+   [
+    8,
+    98
+   ],
+   [
+    9,
+    101
+   ],
+   [
+    10,
+    104
+   ],
+   [
+    11,
+    107
+   ],
+   [
+    12,
+    109
+   ]
+  ],
+  "accept_kind": "endgame (1 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2395,
+  "role": "buyer",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Noche",
+  "L": 138,
+  "pair": 2394,
+  "pairL": 99,
+  "softpie": 39,
+  "code_partner_found": false,
+  "start": 550,
+  "deadline": 566,
+  "status": "deal",
+  "price": 127,
+  "how": "we accepted",
+  "agree_tick": 564,
+  "agree_at": 14,
+  "surplus": 11,
+  "result": 11.0,
+  "rounds": 0,
+  "result_pred": 11.0,
+  "decay_loss": 0.0,
+  "share": 0.282,
+  "n_rival_msgs": 13,
+  "n_rival_prices": 13,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 176,
+  "rival_last": 127,
+  "rival_last_at": 12,
+  "rival_best": 127,
+  "rival_best_surplus": 11,
+  "rival_first_inside_at": 10,
+  "rival_path": [
+   [
+    0,
+    176
+   ],
+   [
+    1,
+    172
+   ],
+   [
+    2,
+    168
+   ],
+   [
+    3,
+    164
+   ],
+   [
+    4,
+    159
+   ],
+   [
+    5,
+    155
+   ],
+   [
+    6,
+    151
+   ],
+   [
+    7,
+    147
+   ],
+   [
+    8,
+    143
+   ],
+   [
+    9,
+    139
+   ],
+   [
+    10,
+    134
+   ],
+   [
+    11,
+    130
+   ],
+   [
+    12,
+    127
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2396,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Sol",
+  "L": 136,
+  "pair": 2397,
+  "pairL": 111,
+  "softpie": -25,
+  "code_partner_found": false,
+  "start": 603,
+  "deadline": 619,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    166
+   ],
+   [
+    14,
+    147
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2397,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Noche",
+  "L": 111,
+  "pair": 2396,
+  "pairL": 136,
+  "softpie": -25,
+  "code_partner_found": false,
+  "start": 619,
+  "deadline": 635,
+  "status": "live",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": null,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 1,
+  "ours": [
+   [
+    4,
+    90
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2398,
+  "role": "buyer",
+  "item": "Café en Goya",
+  "rival": "Rival Sol",
+  "L": 151,
+  "pair": 2399,
+  "pairL": 53,
+  "softpie": 98,
+  "code_partner_found": false,
+  "start": 489,
+  "deadline": 505,
+  "status": "deal",
+  "price": 127,
+  "how": "we accepted",
+  "agree_tick": 502,
+  "agree_at": 13,
+  "surplus": 24,
+  "result": 22.6,
+  "rounds": 1,
+  "result_pred": 22.56,
+  "decay_loss": 1.4,
+  "share": 0.245,
+  "n_rival_msgs": 3,
+  "n_rival_prices": 3,
+  "n_ours": 1,
+  "ours": [
+   [
+    6,
+    97
+   ]
+  ],
+  "rival_first": 156,
+  "rival_last": 127,
+  "rival_last_at": 6,
+  "rival_best": 127,
+  "rival_best_surplus": 24,
+  "rival_first_inside_at": 2,
+  "rival_path": [
+   [
+    0,
+    156
+   ],
+   [
+    2,
+    135
+   ],
+   [
+    6,
+    127
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2399,
+  "role": "seller",
+  "item": "Café en Goya",
+  "rival": "Rival Plata",
+  "L": 53,
+  "pair": 2398,
+  "pairL": 151,
+  "softpie": 98,
+  "code_partner_found": false,
+  "start": 535,
+  "deadline": 551,
+  "status": "deal",
+  "price": 66,
+  "how": "we accepted",
+  "agree_tick": 548,
+  "agree_at": 13,
+  "surplus": 13,
+  "result": 12.2,
+  "rounds": 1,
+  "result_pred": 12.22,
+  "decay_loss": 0.8,
+  "share": 0.133,
+  "n_rival_msgs": 3,
+  "n_rival_prices": 3,
+  "n_ours": 1,
+  "ours": [
+   [
+    6,
+    83
+   ]
+  ],
+  "rival_first": 52,
+  "rival_last": 66,
+  "rival_last_at": 6,
+  "rival_best": 66,
+  "rival_best_surplus": 13,
+  "rival_first_inside_at": 2,
+  "rival_path": [
+   [
+    0,
+    52
+   ],
+   [
+    2,
+    62
+   ],
+   [
+    6,
+    66
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2412,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Noche",
+  "L": 99,
+  "pair": 2413,
+  "pairL": 50,
+  "softpie": -49,
+  "code_partner_found": false,
+  "start": 473,
+  "deadline": 489,
+  "status": "deal",
+  "price": 115,
+  "how": "we accepted",
+  "agree_tick": 488,
+  "agree_at": 15,
+  "surplus": 16,
+  "result": 16.0,
+  "rounds": 0,
+  "result_pred": 16.0,
+  "decay_loss": 0.0,
+  "share": null,
+  "n_rival_msgs": 16,
+  "n_rival_prices": 16,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 86,
+  "rival_last": 115,
+  "rival_last_at": 15,
+  "rival_best": 115,
+  "rival_best_surplus": 16,
+  "rival_first_inside_at": 3,
+  "rival_path": [
+   [
+    0,
+    86
+   ],
+   [
+    1,
+    93
+   ],
+   [
+    2,
+    98
+   ],
+   [
+    3,
+    102
+   ],
+   [
+    4,
+    105
+   ],
+   [
+    5,
+    107
+   ],
+   [
+    6,
+    109
+   ],
+   [
+    7,
+    110
+   ],
+   [
+    8,
+    111
+   ],
+   [
+    9,
+    112
+   ],
+   [
+    10,
+    113
+   ],
+   [
+    11,
+    114
+   ],
+   [
+    12,
+    115
+   ],
+   [
+    13,
+    115
+   ],
+   [
+    14,
+    115
+   ],
+   [
+    15,
+    115
+   ]
+  ],
+  "accept_kind": "endgame (1 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2413,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Verde",
+  "L": 50,
+  "pair": 2412,
+  "pairL": 99,
+  "softpie": -49,
+  "code_partner_found": false,
+  "start": 563,
+  "deadline": 579,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    40
+   ],
+   [
+    14,
+    46
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2436,
+  "role": "seller",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Sol",
+  "L": 96,
+  "pair": 2437,
+  "pairL": 181,
+  "softpie": 85,
+  "code_partner_found": false,
+  "start": 520,
+  "deadline": 536,
+  "status": "deal",
+  "price": 118,
+  "how": "rival accepted ours",
+  "agree_tick": 534,
+  "agree_at": 14,
+  "surplus": 22,
+  "result": 22.0,
+  "rounds": 0,
+  "result_pred": 22.0,
+  "decay_loss": 0.0,
+  "share": 0.259,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    118
+   ],
+   [
+    14,
+    104
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2437,
+  "role": "buyer",
+  "item": "Mercado de la Paz",
+  "rival": "Rival Rojo",
+  "L": 181,
+  "pair": 2436,
+  "pairL": 96,
+  "softpie": 85,
+  "code_partner_found": false,
+  "start": 581,
+  "deadline": 597,
+  "status": "deal",
+  "price": 148,
+  "how": "rival accepted ours",
+  "agree_tick": 593,
+  "agree_at": 12,
+  "surplus": 33,
+  "result": 33.0,
+  "rounds": 0,
+  "result_pred": 33.0,
+  "decay_loss": 0.0,
+  "share": 0.388,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 1,
+  "ours": [
+   [
+    4,
+    148
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2458,
+  "role": "seller",
+  "item": "Café en Goya",
+  "rival": "Rival Azul",
+  "L": 87,
+  "pair": 2459,
+  "pairL": 165,
+  "softpie": 78,
+  "code_partner_found": false,
+  "start": 567,
+  "deadline": 583,
+  "status": "deal",
+  "price": 101,
+  "how": "we accepted",
+  "agree_tick": 580,
+  "agree_at": 13,
+  "surplus": 14,
+  "result": 13.2,
+  "rounds": 1,
+  "result_pred": 13.16,
+  "decay_loss": 0.8,
+  "share": 0.179,
+  "n_rival_msgs": 3,
+  "n_rival_prices": 3,
+  "n_ours": 1,
+  "ours": [
+   [
+    12,
+    135
+   ]
+  ],
+  "rival_first": 60,
+  "rival_last": 101,
+  "rival_last_at": 8,
+  "rival_best": 101,
+  "rival_best_surplus": 14,
+  "rival_first_inside_at": 8,
+  "rival_path": [
+   [
+    2,
+    60
+   ],
+   [
+    5,
+    80
+   ],
+   [
+    8,
+    101
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2459,
+  "role": "buyer",
+  "item": "Café en Goya",
+  "rival": "Rival Azul",
+  "L": 165,
+  "pair": 2458,
+  "pairL": 87,
+  "softpie": 78,
+  "code_partner_found": false,
+  "start": 595,
+  "deadline": 611,
+  "status": "deal",
+  "price": 130,
+  "how": "we accepted",
+  "agree_tick": 608,
+  "agree_at": 13,
+  "surplus": 35,
+  "result": 35.0,
+  "rounds": 0,
+  "result_pred": 35.0,
+  "decay_loss": 0.0,
+  "share": 0.449,
+  "n_rival_msgs": 3,
+  "n_rival_prices": 3,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 174,
+  "rival_last": 130,
+  "rival_last_at": 8,
+  "rival_best": 130,
+  "rival_best_surplus": 35,
+  "rival_first_inside_at": 5,
+  "rival_path": [
+   [
+    2,
+    174
+   ],
+   [
+    5,
+    152
+   ],
+   [
+    8,
+    130
+   ]
+  ],
+  "accept_kind": "endgame (3 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2498,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Verde",
+  "L": 51,
+  "pair": 2499,
+  "pairL": 125,
+  "softpie": 74,
+  "code_partner_found": false,
+  "start": 579,
+  "deadline": 595,
+  "status": "deal",
+  "price": 56,
+  "how": "rival accepted ours",
+  "agree_tick": 594,
+  "agree_at": 15,
+  "surplus": 5,
+  "result": 4.4,
+  "rounds": 2,
+  "result_pred": 4.42,
+  "decay_loss": 0.6,
+  "share": 0.068,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    80
+   ],
+   [
+    14,
+    56
+   ]
+  ],
+  "rival_first": 39,
+  "rival_last": 39,
+  "rival_last_at": 14,
+  "rival_best": 39,
+  "rival_best_surplus": -12,
+  "rival_first_inside_at": null,
+  "rival_path": [
+   [
+    0,
+    39
+   ],
+   [
+    1,
+    39
+   ],
+   [
+    2,
+    39
+   ],
+   [
+    3,
+    39
+   ],
+   [
+    4,
+    39
+   ],
+   [
+    6,
+    39
+   ],
+   [
+    7,
+    39
+   ],
+   [
+    8,
+    39
+   ],
+   [
+    10,
+    39
+   ],
+   [
+    12,
+    39
+   ],
+   [
+    13,
+    39
+   ],
+   [
+    14,
+    39
+   ]
+  ],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2499,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Noche",
+  "L": 125,
+  "pair": 2498,
+  "pairL": 51,
+  "softpie": 74,
+  "code_partner_found": false,
+  "start": 579,
+  "deadline": 595,
+  "status": "deal",
+  "price": 115,
+  "how": "rival accepted ours",
+  "agree_tick": 594,
+  "agree_at": 15,
+  "surplus": 10,
+  "result": 8.8,
+  "rounds": 2,
+  "result_pred": 8.84,
+  "decay_loss": 1.2,
+  "share": 0.135,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    80
+   ],
+   [
+    14,
+    115
+   ]
+  ],
+  "rival_first": 157,
+  "rival_last": 157,
+  "rival_last_at": 14,
+  "rival_best": 157,
+  "rival_best_surplus": -32,
+  "rival_first_inside_at": null,
+  "rival_path": [
+   [
+    0,
+    157
+   ],
+   [
+    1,
+    157
+   ],
+   [
+    2,
+    157
+   ],
+   [
+    3,
+    157
+   ],
+   [
+    4,
+    157
+   ],
+   [
+    6,
+    157
+   ],
+   [
+    7,
+    157
+   ],
+   [
+    8,
+    157
+   ],
+   [
+    10,
+    157
+   ],
+   [
+    12,
+    157
+   ],
+   [
+    13,
+    157
+   ],
+   [
+    14,
+    157
+   ]
+  ],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2500,
+  "role": "seller",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Rojo",
+  "L": 135,
+  "pair": 2501,
+  "pairL": 120,
+  "softpie": -15,
+  "code_partner_found": false,
+  "start": 549,
+  "deadline": 565,
+  "status": "deal",
+  "price": 166,
+  "how": "we accepted",
+  "agree_tick": 563,
+  "agree_at": 14,
+  "surplus": 31,
+  "result": 31.0,
+  "rounds": 0,
+  "result_pred": 31.0,
+  "decay_loss": 0.0,
+  "share": null,
+  "n_rival_msgs": 15,
+  "n_rival_prices": 15,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 136,
+  "rival_last": 166,
+  "rival_last_at": 14,
+  "rival_best": 166,
+  "rival_best_surplus": 31,
+  "rival_first_inside_at": 0,
+  "rival_path": [
+   [
+    0,
+    136
+   ],
+   [
+    1,
+    139
+   ],
+   [
+    2,
+    142
+   ],
+   [
+    3,
+    145
+   ],
+   [
+    4,
+    147
+   ],
+   [
+    5,
+    150
+   ],
+   [
+    6,
+    153
+   ],
+   [
+    7,
+    155
+   ],
+   [
+    8,
+    157
+   ],
+   [
+    9,
+    160
+   ],
+   [
+    10,
+    162
+   ],
+   [
+    11,
+    164
+   ],
+   [
+    12,
+    165
+   ],
+   [
+    13,
+    166
+   ],
+   [
+    14,
+    166
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2501,
+  "role": "buyer",
+  "item": "La Heroína del Dos de Mayo",
+  "rival": "Rival Azul",
+  "L": 120,
+  "pair": 2500,
+  "pairL": 135,
+  "softpie": -15,
+  "code_partner_found": false,
+  "start": 564,
+  "deadline": 580,
+  "status": "deal",
+  "price": 102,
+  "how": "we accepted",
+  "agree_tick": 578,
+  "agree_at": 14,
+  "surplus": 18,
+  "result": 18.0,
+  "rounds": 0,
+  "result_pred": 18.0,
+  "decay_loss": 0.0,
+  "share": null,
+  "n_rival_msgs": 15,
+  "n_rival_prices": 15,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 120,
+  "rival_last": 102,
+  "rival_last_at": 14,
+  "rival_best": 102,
+  "rival_best_surplus": 18,
+  "rival_first_inside_at": 1,
+  "rival_path": [
+   [
+    0,
+    120
+   ],
+   [
+    1,
+    119
+   ],
+   [
+    2,
+    117
+   ],
+   [
+    3,
+    115
+   ],
+   [
+    4,
+    113
+   ],
+   [
+    5,
+    112
+   ],
+   [
+    6,
+    110
+   ],
+   [
+    7,
+    109
+   ],
+   [
+    8,
+    108
+   ],
+   [
+    9,
+    106
+   ],
+   [
+    10,
+    105
+   ],
+   [
+    11,
+    104
+   ],
+   [
+    12,
+    103
+   ],
+   [
+    13,
+    102
+   ],
+   [
+    14,
+    102
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2582,
+  "role": "seller",
+  "item": "Palacio de Cristal",
+  "rival": "Rival Plata",
+  "L": 79,
+  "pair": 2583,
+  "pairL": 56,
+  "softpie": -23,
+  "code_partner_found": false,
+  "start": 600,
+  "deadline": 616,
+  "status": "no_deal",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": 0.0,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 2,
+  "ours": [
+   [
+    4,
+    97
+   ],
+   [
+    14,
+    86
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2583,
+  "role": "buyer",
+  "item": "Palacio de Cristal",
+  "rival": "Rival Rojo",
+  "L": 56,
+  "pair": 2582,
+  "pairL": 79,
+  "softpie": -23,
+  "code_partner_found": false,
+  "start": 624,
+  "deadline": 640,
+  "status": "live",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": null,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 0,
+  "n_rival_prices": 0,
+  "n_ours": 1,
+  "ours": [
+   [
+    4,
+    45
+   ]
+  ],
+  "rival_first": null,
+  "rival_last": null,
+  "rival_last_at": null,
+  "rival_best": null,
+  "rival_best_surplus": null,
+  "rival_first_inside_at": null,
+  "rival_path": [],
+  "accept_kind": null,
+  "accept_late": null
+ },
+ {
+  "duel": 2586,
+  "role": "buyer",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Rojo",
+  "L": 129,
+  "pair": 2587,
+  "pairL": 78,
+  "softpie": 51,
+  "code_partner_found": false,
+  "start": 609,
+  "deadline": 625,
+  "status": "deal",
+  "price": 104,
+  "how": "we accepted",
+  "agree_tick": 623,
+  "agree_at": 14,
+  "surplus": 25,
+  "result": 25.0,
+  "rounds": 0,
+  "result_pred": 25.0,
+  "decay_loss": 0.0,
+  "share": 0.49,
+  "n_rival_msgs": 12,
+  "n_rival_prices": 12,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 137,
+  "rival_last": 104,
+  "rival_last_at": 14,
+  "rival_best": 104,
+  "rival_best_surplus": 25,
+  "rival_first_inside_at": 6,
+  "rival_path": [
+   [
+    3,
+    137
+   ],
+   [
+    4,
+    134
+   ],
+   [
+    5,
+    130
+   ],
+   [
+    6,
+    127
+   ],
+   [
+    7,
+    131
+   ],
+   [
+    8,
+    127
+   ],
+   [
+    9,
+    123
+   ],
+   [
+    10,
+    119
+   ],
+   [
+    11,
+    115
+   ],
+   [
+    12,
+    111
+   ],
+   [
+    13,
+    108
+   ],
+   [
+    14,
+    104
+   ]
+  ],
+  "accept_kind": "endgame (2 ticks left), inside limit",
+  "accept_late": true
+ },
+ {
+  "duel": 2587,
+  "role": "seller",
+  "item": "El Mesón de la Cava",
+  "rival": "Rival Noche",
+  "L": 78,
+  "pair": 2586,
+  "pairL": 129,
+  "softpie": 51,
+  "code_partner_found": false,
+  "start": 616,
+  "deadline": 632,
+  "status": "live",
+  "price": null,
+  "how": null,
+  "agree_tick": null,
+  "agree_at": null,
+  "surplus": null,
+  "result": null,
+  "rounds": 0,
+  "result_pred": null,
+  "decay_loss": null,
+  "share": null,
+  "n_rival_msgs": 2,
+  "n_rival_prices": 2,
+  "n_ours": 0,
+  "ours": [],
+  "rival_first": 50,
+  "rival_last": 53,
+  "rival_last_at": 4,
+  "rival_best": 53,
+  "rival_best_surplus": -25,
+  "rival_first_inside_at": null,
+  "rival_path": [
+   [
+    3,
+    50
+   ],
+   [
+    4,
+    53
+   ]
+  ],
+  "accept_kind": null,
+  "accept_late": null
+ }
+]

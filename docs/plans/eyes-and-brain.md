@@ -2,7 +2,7 @@
 
 **Lever.** Every desk decides on this data, and it is the backbone of the judges' story. Most of it exists in [pull request #3](https://github.com/thiagoamaro91/negotiation-agent/pull/3) and runs on the VM today; this plan is what it still needs for Saturday's 30-second ticks and Sunday's 15-second ones.
 
-**Suggested owner.** Hector + Claude; Jay on the analytics.
+**Suggested owner.** Hector + Claude; a former teammate on the analytics.
 
 ## What exists (PR #3, live on `fable-vm`)
 

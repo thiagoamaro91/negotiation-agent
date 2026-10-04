@@ -38,7 +38,7 @@ Our working assumption until the desk answers: a short live talk (3 minutes) wit
 
 Built on the game's own rule ("words persuade, structure binds", `kit/RULES.md` line 11) and on a fact judges may not expect: no model call sits on our money path. Claude researched, built, reviewed and tuned everything; in the market, code decides every number. Say that out loud before anyone asks "where is the AI?".
 
-**Decision for Thiago before v1 is final:** this contradicts the team's written principle ("the model writes the words", in `CLAUDE.md`, `docs/plans/HANDOFF.md` and `docs/plans/judges.md`). The truth in the code is stronger: the bots speak in template lines that Claude wrote, and no model call runs in `agent/`. It is also a bet at a Claude hackathon: a judge could hear "they did not use AI in the agent". Tell Hector and Jay before the pitch either way.
+**Decision for Thiago before v1 is final:** this contradicts the team's written principle ("the model writes the words", in `CLAUDE.md`, `docs/plans/HANDOFF.md` and `docs/plans/judges.md`). The truth in the code is stronger: the bots speak in template lines that Claude wrote, and no model call runs in `agent/`. It is also a bet at a Claude hackathon: a judge could hear "they did not use AI in the agent". Tell Hector and a former teammate before the pitch either way.
 
 ## 3. The 3-minute script
 
@@ -70,7 +70,7 @@ Spoken pace about 150 words a minute. Total 444 words, about 2:58 spoken, which 
 
 **2:05 to 2:40 · The team behind it (Craft)** · about 80 words
 
-> We're three people: Jay, Hector and me, running a set of Claude sessions like a team. One conducts the trading, one reviews and merges every pull request, others crunch the data overnight. We plant bugs on purpose to test our tests: 107 out of 108 caught. And this morning our own market bot got merged with a default that was too aggressive. Our second review caught it, and the fix merged 18 minutes later. The scariest agent in a market is your own.
+> We're three people: a former teammate, Hector and me, running a set of Claude sessions like a team. One conducts the trading, one reviews and merges every pull request, others crunch the data overnight. We plant bugs on purpose to test our tests: 107 out of 108 caught. And this morning our own market bot got merged with a default that was too aggressive. Our second review caught it, and the fix merged 18 minutes later. The scariest agent in a market is your own.
 
 **2:40 to 3:00 · Close (Idea)** · about 40 words
 
@@ -109,7 +109,7 @@ Other numbers in the script: "0 of 12" duels (`docs/analysis-friday/README.md` l
 - **"Where is the AI in your agent?"** No model call touches money. Claude wrote the code and the lines, ran the research, the reviews and the overnight analysis (four analyst sessions, one per Saturday decision: vault `career/context_hackathon-madrid-build-day-2.md` § Overnight analysis). The bots in the market are deterministic on purpose: nothing a rival types can change a number. Source: `agent/abuela.py` and `agent/chato.py` use template lines (`line()`, line 94 and 101); no API client in `agent/`.
 - **"Did anyone try prompt injection on you?"** Not that we have seen: zero injection phrasing and zero text-vs-structure mismatches in our 13 threads. Say the design makes it pointless; do **not** claim we blocked attacks.
 - **"How do you read other teams' values?"** Bayes over the 720 shuffles of set multipliers, from what each team buys, sells and accepts. Be honest: today its top pick is right 36 % of the time against 32 % for "repeat their favourite" (`python3 tools/value_inference.py check`). It is a working instrument, not a headline.
-- **"How do you stop a runaway bot?"** Code caps that can only lower our limit (`agent/abuela.py` line 159, `agent/chato.py` line 179); one accept per tick shared through a lease (`agent/lease.py`); a duel lock that pauses the other bots (`agent/duel.py` line 136); a STOP file for the market desk. Do not say "global kill switch": the dealer bots ignore STOP.
+- **"How do you stop a runaway bot?"** Code caps that can only lower our limit (`agent/abuela.py` line 159, `agent/chato.py` line 179); the server enforces one accept per team per tick; the desk uses a local lease (`agent/lease.py`); the duel bot writes a separate local lock that the desk and dealer guards check (`agent/duel.py` line 136); a STOP file for the market desk. Do not say "global kill switch": the dealer bots ignore STOP.
 - **"Would you have paid 90?"** Do not answer with a number. The bot only takes a dealer's final offer up to a cap we set before the conversation starts. What the code guarantees is that we never bid against ourselves and never climb past the ladder we set before the conversation.
 - **"Which bug did your tests miss?"** The market desk ignoring the STOP file (PR #6, 38 of 39). It is not a global kill switch either; say so before they find it.
 - **"Did the duel lab work live?"** Answer with the Duels I result once we have it; until then it is a simulation number.

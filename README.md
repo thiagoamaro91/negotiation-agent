@@ -1,5 +1,7 @@
 # negotiation-agent
 
+> **Judges and reviewers: start with [`SUBMISSION.md`](SUBMISSION.md).** One file with the architecture diagram, an index of where everything lives, the results, the decisions, the evals and every pull request.
+
 Team 3's agents for **The Bazaar · Cromos de Madrid**, the game of the Claude Community 48H Hackathon Madrid (2-4 Oct 2026, hosted by Causa Prima). Our agents collect cards, haggle with the card dealers, trade with other teams, duel, and (from level 2) run a market, all through the game's HTTP API with our team key.
 
 Score: Negotiating 30 + Market-making 30 + Judges 40. Full rules: [`kit/RULES.md`](kit/RULES.md).
@@ -8,7 +10,7 @@ Score: Negotiating 30 + Market-making 30 + Judges 40. Full rules: [`kit/RULES.md
 
 ```bash
 cp .env.example .env          # then put the team key in it (ask Thiago); .env is gitignored, never commit it
-export BAZAAR_OPERATOR=jay    # your name, so the logs say who ran what
+export BAZAAR_OPERATOR=thiago   # your name, so the logs say who ran what
 python3 agent/abuela.py plan  # read-only: what the Abuela agent would trade, with our private values
 ```
 
