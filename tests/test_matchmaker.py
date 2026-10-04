@@ -180,6 +180,54 @@ class Odds(unittest.TestCase):
         self.assertEqual(set(odds["p"].values()), {0.5})
 
 
+class Review67(unittest.TestCase):
+    """Review BLOCK on #67 (A2-A5): directed offers, the venue owner, every card of an offer, holdings as of a tick."""
+
+    def test_a_bid_addressed_to_one_team_is_for_that_team_only(self):
+        t07 = [ev(15, 0, "team.joined", team="t07", name="Team 7")]
+        bid = dict(bid_offer(78, "LAV-04", 80), to="t07")
+        res = build(T01 + T02 + t07 + [named(78, "t01")], values={}, books={"rastro": [bid]})
+        m = res["matches"][0]
+        self.assertEqual((m["action"]["to"], m["action"]["who"], m["holders"], m["tier"]), ("t07", ["t07"], [], 2))
+        bid = dict(bid_offer(78, "LAV-04", 80), to="t02")
+        m = build(T01 + T02 + [named(78, "t01")], values={}, books={"rastro": [bid]})["matches"][0]
+        self.assertEqual((m["action"]["who"], m["tier"]), (["t02"], 1))
+
+    def test_a_team_is_never_asked_to_accept_on_its_own_venue(self):
+        venues = [{"venue": "v07", "owner": "t02", "status": "open"}]
+        res = mm.build(JOIN + T01 + T02 + [named(80, "t01", "v07")], cat(), LB, {"v07": [bid_offer(80, "LAV-04", 90)]},
+                       venues, values={})
+        m = res["matches"][0]
+        self.assertNotIn("t02", m["action"]["who"])                      # the only holder owns v07
+        self.assertEqual(m["tier"], 2)
+        ask_v = [{"venue": "v05", "owner": "t01", "status": "open"}]     # the buyer owns the venue of the only ask
+        book = {"v05": [{"id": 1007, "maker": "m2", "status": "open", "give": {
+            "assets": [{"id": N + 1, "kind": "card", "ref": "LAV-04"}]}, "want": {"cash": 90}}]}
+        res = mm.build(JOIN + T01 + [ask(7, 6, "t02", N + 1, "LAV-04", 90, venue="v05", oid=1007)], cat(), LB, book,
+                       ask_v, values={})
+        self.assertEqual([m["tier"] for m in res["matches"]], [4])
+
+    def test_the_action_itself_never_names_the_owner_or_anyone_but_the_addressee(self):
+        o = {"offer": 1, "venue": "v07", "team": "t01", "price": 9, "fee": 0, "to": None}
+        self.assertEqual(mm.accept_action(o, "bid", ["t02", "t05"], {}, {"v07": "t02"})["who"], ["t05"])
+        self.assertEqual(mm.accept_action(dict(o, to="t06"), "bid", ["t05", "t06"], {}, {})["who"], ["t06"])
+
+    def test_a_swap_that_gives_an_excluded_card_never_appears(self):
+        swap = {"id": 79, "maker": "mS", "status": "open", "give": {"assets": [{"id": 1, "kind": "card", "ref": "LAV-01"}]},
+                "want": {"types": ["card:LAV-04"]}}
+        res = build(T01 + T02 + [named(79, "t01")], values={}, books={"v02": [swap]}, exclude=("LAV-01",))
+        self.assertEqual([m for m in res["matches"] if m["action"]], [])
+
+    def test_a_holding_from_public_trades_is_dated_and_a_live_ask_is_live(self):
+        m = build(T01 + T02, values={})["matches"][0]
+        self.assertEqual((m["holders"][0]["seen"], m["holders"][0]["as_of"]), ("reconstructed", 6))
+        self.assertIn("Team 2 ×2 at tick 6 (reconstructed)", mm.report(build(T01 + T02, values={})))
+        book = {"rastro": [{"id": 1007, "maker": "m2", "status": "open", "give": {
+            "assets": [{"id": N + 1, "kind": "card", "ref": "LAV-04"}]}, "want": {"cash": 90}}]}
+        m = build(T01 + [ask(7, 6, "t02", N + 1, "LAV-04", 90, oid=1007)], books=book, values={})["matches"][0]
+        self.assertEqual(m["holders"][0]["seen"], "live ask")
+
+
 class Books(unittest.TestCase):
     def test_offers_the_feed_cannot_name_or_ours_are_never_pointed_at(self):
         book = {"rastro": [

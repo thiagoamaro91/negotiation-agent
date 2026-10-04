@@ -28,8 +28,9 @@ What it computes, from public data only:
   - whether a live offer already exists on any venue (every open venue's public book plus El Rastro): an ask the
     buyer can accept, a bid of the buyer's a holder can accept;
   - the action (tiers 1-3: the live offer id, price, expiry and who should accept it) or the proposal (tier 4: the
-    exact POST /api/offers body each side would post on v20, 0 % fee, our broker crosses a bid and an ask at the
-    midpoint). Live offers expiring within MIN_TICKS_LEFT ticks, bids below what the dealers pay a holder and
+    exact POST /api/offers body each side would post on v20, 0 % fee; BROKER_TERMS says what our broker does with
+    them). Holdings are reconstructed from public trades as of the feed's last tick ("seen": "reconstructed"); only a
+    live ask proves present possession ("seen": "live ask"). Live offers expiring within MIN_TICKS_LEFT ticks, bids below what the dealers pay a holder and
     lopsided swaps are never tier 1.
 
 What it never shows. Team 3 is never a buyer or a holder here: our holdings, values and the cards we lack stay in
@@ -90,6 +91,10 @@ DEALERS_BUY = {"common": ("abuela", "picaros"), "uncommon": ("pilar", "abuela", 
 DEALER_NAMES = {"abuela": "Abuela", "chato": "El Chato", "pilar": "Doña Pilar", "picaros": "Los Pícaros",
                 "ernesto": "Don Ernesto", "banco": "Don Ernesto"}
 SNAPSHOTS = "snapshots.jsonl"
+# What our broker does, said the same way everywhere (announce, La Celestina, outreach): it pairs a bid and an ask from
+# two different teams when the bid covers the ask plus the fee, at the midpoint, a limited number of pairs per tick.
+BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
+                "the ask plus the fee, at the midpoint, as capacity allows")
 
 
 # ---------------------------------------------------------------- inputs
@@ -482,8 +487,11 @@ TIERS = {1: "live want, known supply", 2: "live want", 3: "live ask, inferred ne
 
 
 def accept_action(o: dict, side: str, who: list, names: dict, owners: dict | None = None) -> dict:
-    """The one action that completes a match: the counterparty accepts this live offer."""
-    act = {"offer": o["offer"], "venue": o["venue"], "venue_owner": (owners or {}).get(o["venue"]),
+    """The one action that completes a match: the counterparty accepts this live offer. Never the venue's owner (a
+    team cannot trade on its own venue); an offer addressed to one team (`to`) can only be accepted by that team."""
+    owner = (owners or {}).get(o["venue"])
+    who = [t for t in who if t != owner and (o.get("to") is None or t == o["to"])]
+    act = {"offer": o["offer"], "venue": o["venue"], "venue_owner": owner, "asset": o.get("asset"),
            "venue_class": venue_class(o["venue"]), "side": side, "price": o.get("price"), "fee": o.get("fee"),
            "expires_tick": o.get("expires_tick"), "maker": o["team"], "maker_name": names.get(o["team"], o["team"]),
            "to": o.get("to"), "who": who, "who_names": [names.get(t, t) for t in who],
@@ -568,7 +576,8 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
                 continue
             ids = (deck[other].get("assets") or {}).get(ref) or []
             out.append({"team": other, "name": names.get(other, other), "copies": h[ref], "spare": spare,
-                        "asset": ids[-1] if ids else None, "active": active(other)})
+                        "asset": ids[-1] if ids else None, "active": active(other), "as_of": now_tick,
+                        "seen": "reconstructed"})
         for a in (live.get(ref) or {}).get("asks", []):   # asking cash for it right now: holds it and sells it
             if a["team"] in (need, US) or a.get("to") not in (None, need):
                 continue
@@ -576,9 +585,10 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
             if row is None:
                 row = {"team": a["team"], "name": names.get(a["team"], a["team"]),
                        "copies": held.get(a["team"], {}).get(ref, 1) or 1, "spare": False, "asset": a.get("asset"),
-                       "active": True}
+                       "active": True, "as_of": now_tick}
                 out.append(row)
             row["asking"] = {"price": a["price"], "venue": a["venue"], "offer": a["offer"]}
+            row["seen"] = "live ask"
         out.sort(key=lambda x: ("asking" not in x, not x["active"], x["asset"] is None, not x["spare"], -x["copies"],
                                 x["team"]))
         return out
@@ -634,11 +644,13 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
         best = {}
         for side, rows in (("bid", live[ref]["bids"]), ("swap", live[ref]["swaps"])):
             for w in rows:
+                if w.get("gives") in skip or (w["to"] is not None and w["to"] == owners.get(w["venue"])):
+                    continue   # every card of an offer is checked; an offer to its venue's owner cannot be taken
                 k = (w["to"] is not None, venue_class(w["venue"]), -(w["price"] or 0))
                 if w["team"] not in best or k < best[w["team"]][0]:
                     best[w["team"]] = (k, side, w)
         for team, (_, side, w) in sorted(best.items()):
-            sup = suppliers(ref, team)
+            sup = [x for x in suppliers(ref, team) if x["team"] != owners.get(w["venue"])]
             if w.get("to"):
                 sup = [x for x in sup if x["team"] == w["to"]]
             who = [x["team"] for x in sup] or ([w["to"]] if w.get("to") else [])
@@ -655,7 +667,8 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
         if (team, ref) in explicit:
             continue                       # its own live bid already says it, better than an inference
         sup = suppliers(ref, team)
-        asks = [a for a in (live.get(ref) or {}).get("asks", []) if a["team"] != team and a.get("to") in (None, team)]
+        asks = [a for a in (live.get(ref) or {}).get("asks", []) if a["team"] != team and a.get("to") in (None, team)
+                and owners.get(a["venue"]) != team]
         base = need["p"] * gain(team, ref) * (1.0 if active(team) else IDLE_FACTOR)
         if asks:
             a = sorted(asks, key=lambda r: (venue_class(r["venue"]), r["price"] + r["fee"]))[0]
@@ -698,7 +711,8 @@ def report(res: dict, top: int = 15) -> str:
              "|---|---|---|---|---|---|---|---|"]
     for m in res["matches"][:top]:
         sup = "; ".join(x for x in (
-            ", ".join(f"{h['name']} ×{h['copies']}" + (f" (asks {h['asking']['price']})" if h.get("asking") else "")
+            ", ".join(f"{h['name']} " + (f"asks {h['asking']['price']} (live)" if h.get("asking") else
+                                         f"×{h['copies']} at tick {h.get('as_of')} (reconstructed)")
                       + ("" if h["active"] else " (idle)") for h in m["holders"]),
             ", ".join(f"{d['name']} ~{d['sells'].get('median')}" for d in m["dealers"][:2])) if x)
         if m["inferred"]:
