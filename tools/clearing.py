@@ -661,33 +661,40 @@ class Store:
             return {"id": tr["id"], "status": tr["status"], "offer": tr["offer"]}
 
     def watch_books(self) -> int:
-        """Pass offer ids along from the public books when a seller did not report: an open offer on the trade's
-        venue addressed to the buyer, giving that asset for that cash. Returns how many were filled in."""
+        """Pass offer ids along when a seller did not report: addressed offers never show on a venue's public
+        book, so read the public feed's offer.listed events (maker, to, give, want). Binds only an open offer from
+        the seller to the buyer, on that venue, giving exactly that asset for plain cash at the plan price, and only
+        for approved rounds. Returns how many were filled in."""
         with self.lock:
             pending = [t for r in self.state["rounds"] if r.get("status") == "approved"
                        for t in r["trades"] if t["status"] == "planned"]
-            venues = sorted({t["venue"] for t in pending})
+        if not pending:
+            return 0
+        try:
+            req = urllib.request.Request(GAME_URL + "/api/feed?limit=500", headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                feed = json.loads(r.read().decode("utf-8"))
+        except Exception:
+            return 0
         n = 0
-        for vid in venues:
-            try:
-                body = public_get(f"/api/venues/{vid}/offers")
-            except Exception:
+        for e in (feed or {}).get("events") or []:
+            if not isinstance(e, dict) or e.get("type") != "offer.listed":
                 continue
-            for o in (body or {}).get("offers") or []:
-                if not isinstance(o, dict) or o.get("status", "open") != "open":
-                    continue
-                give = o.get("give") or {}
-                assets = [a.get("id") if isinstance(a, dict) else a for a in (give.get("assets") or [])]
-                with self.lock:
-                    want = o.get("want") or {}
-                    if give.get("types") or give.get("cash") or want.get("assets") or want.get("types") \
-                            or len(assets) != 1 or not isinstance(want.get("cash"), int):
-                        continue                      # exactly one card for plain cash, the same shape check_buy demands
-                    for t in pending:
-                        if t["venue"] == vid and assets == [t["asset"]] and want["cash"] == t["price"] \
-                                and o.get("to") == t["buyer"] and t["status"] == "planned" and o.get("id"):
-                            t["offer"], t["status"], t["posted"] = int(o["id"]), "posted", now_iso()
-                            n += 1
+            o = (e.get("payload") or {}).get("offer") if isinstance(e.get("payload"), dict) else None
+            if not isinstance(o, dict) or o.get("status", "open") != "open":
+                continue
+            give, want = o.get("give") or {}, o.get("want") or {}
+            assets = [a.get("id") if isinstance(a, dict) else a for a in (give.get("assets") or [])]
+            if give.get("types") or give.get("cash") or want.get("assets") or want.get("types") \
+                    or len(assets) != 1 or not isinstance(want.get("cash"), int):
+                continue
+            with self.lock:
+                for t in pending:
+                    if t["venue"] == o.get("venue") and assets == [t["asset"]] and want["cash"] == t["price"] \
+                            and o.get("to") == t["buyer"] and o.get("maker") == t["seller"] \
+                            and t["status"] == "planned" and o.get("id"):
+                        t["offer"], t["status"], t["posted"] = int(o["id"]), "posted", now_iso()
+                        n += 1
         if n:
             self.save()
         return n

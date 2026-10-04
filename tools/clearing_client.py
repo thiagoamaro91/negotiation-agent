@@ -275,6 +275,27 @@ def venue_fee(venue: str, price: int) -> int | None:
     return int(math.ceil(price * bps / 10000)) + per
 
 
+def offer_from_feed(offer_id: int) -> tuple:
+    """The offer as the GAME published it: the public feed's offer.listed event (addressed offers never show on a
+    venue's public book, but the feed carries them with maker, to, give and want). Returns (offer, closed) where
+    closed is True if a later feed event for that id says it is no longer open. (None, False) if not in the last
+    500 events yet."""
+    feed = call(f"{GAME}/api/feed?limit=500")
+    events = feed.get("events") or [] if isinstance(feed, dict) else []
+    listed, closed = None, False
+    for e in sorted(events, key=lambda e: e.get("id") or 0):
+        if not isinstance(e, dict):
+            continue
+        o = (e.get("payload") or {}).get("offer") if isinstance(e.get("payload"), dict) else None
+        if not isinstance(o, dict) or o.get("id") != offer_id:
+            continue
+        if e.get("type") == "offer.listed":
+            listed = o
+        elif str(e.get("type", "")).startswith("offer.") or o.get("status", "open") != "open":
+            closed = True
+    return listed, closed
+
+
 def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: int) -> str | None:
     """Before accepting, read the offer from the game's PUBLIC book of that venue: it must be addressed to us, give
     exactly one card of the plan's ref, want only cash equal to the plan price. The fee comes from /api/venues (not
@@ -293,14 +314,23 @@ def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: i
     val = cur.get("your_value") if isinstance(cur, dict) else None
     me = call(f"{GAME}/api/me", key=key)
     cash = me.get("cash")
-    pub = call(f"{GAME}/api/venues/{x.get('venue')}/offers")
-    offer = next((o for o in (pub.get("offers") or []) if isinstance(o, dict) and o.get("id") == x.get("offer")), None)
+    offer, closed = offer_from_feed(int(x.get("offer") or 0))
     if offer is None:
-        return "offer not visible on that venue's public book (yet)"
-    if offer.get("status", "open") != "open":
-        return "offer is not open"
+        return "offer not visible in the public feed (yet)"
+    if closed or offer.get("status", "open") != "open":
+        return "offer is no longer open"
+    if offer.get("maker") != x.get("from"):
+        return f"offer maker {offer.get('maker')} is not the seller the plan names ({x.get('from')})"
     if offer.get("to") != team:
         return "offer is not addressed to me"
+    if offer.get("venue") != x.get("venue"):
+        return "offer is on another venue"
+    try:
+        tick = int((call(f"{GAME}/api/clock") or {}).get("tick") or 0)
+        if int(offer.get("expires_tick") or 0) <= tick:
+            return "offer has expired"
+    except Exception:
+        pass
     give, want = offer.get("give") or {}, offer.get("want") or {}
     assets = give.get("assets") or []
     refs = [a.get("ref") if isinstance(a, dict) else None for a in assets]
