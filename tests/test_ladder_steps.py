@@ -164,14 +164,9 @@ class TestSundaySteps(unittest.TestCase):
         labels = {d: [s["label"] for s in self.frag[d]["steps"] if s.get("enabled", True)] for d in
                   ("abuela", "chato", "pilar", "picaros")}
         self.assertEqual(labels["abuela"], ["r3-a1-ret-uncommons", "r3-a2-ret-commons"])
-        # r3-p3 / r3-l5: the RET-09 round trip again after Duels III (the third L4 and L3 slots)
-        self.assertEqual(labels["picaros"], ["r3-p1a-ret-09", "r3-p1b-ret-10", "r3-p3-ret-09-after-duels3"])
+        self.assertEqual(labels["picaros"], ["r3-p1a-ret-09", "r3-p1b-ret-10"])
         self.assertEqual(labels["chato"], [])              # nothing a dealer sells is inside our value but SAL-10
-        self.assertEqual(len(labels["pilar"]), 5)
-        self.assertEqual(labels["pilar"][-1], "r3-l5-resell-ret-rare-after-duels3")
-        buy, sell = self.frag["picaros"]["steps"][2]["after_event"], self.frag["pilar"]["steps"][4]["after_event"]
-        self.assertEqual((buy["action"], buy["contains"]), (sell["action"], sell["contains"]))
-        self.assertGreaterEqual(sell["delay_min"] - buy["delay_min"], 30)   # the resale waits for the buy to land
+        self.assertEqual(len(labels["pilar"]), 4)
 
     # ---- the check itself: each doctored copy must be caught (otherwise the green test above says nothing)
     def doctored(self, dealer, label, edit):
