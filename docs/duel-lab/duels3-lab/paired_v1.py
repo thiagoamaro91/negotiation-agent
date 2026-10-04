@@ -10,7 +10,7 @@ sys.path.insert(0, str(REPO / 'tools'))
 import duel_arena as A
 blend = {**json.load(open(REPO / 'docs/duel-lab/duel-params-duels2-blend.json')), 'late_poll': 4, 'duel_ticks': 12}
 v1 = json.load(open(REPO / 'docs/duel-lab/duels3-lab/v1-evals.json'))
-duels3 = json.load(open(REPO / 'docs/duel-lab/duel-params-duels3.json'))
+duels3 = {**json.load(open(REPO / 'docs/duel-lab/duel-params-duels3.json')), 'last_while_moving': True}   # blend + F4
 
 def run(job):
     name, p, slot, lo, hi = job
@@ -29,7 +29,7 @@ if __name__ == '__main__':
             for name, p in (('blend', blend), ('v1', v1), ('duels3', duels3)):
                 parts = pool.map(run, [(name, p, slot, lo, hi) for lo, hi in chunks])
                 out[name] = {k: v for d in parts for k, v in d.items()}
-        for name in ('v1', 'duels3'):
+        for name in ('v1', 'duels3'):   # 'duels3' here = the file with F4 forced on
             dd = [out[name][s] - out['blend'][s] for s in out['blend']]
             m = sum(dd) / len(dd); se = math.sqrt(sum((x - m) ** 2 for x in dd) / (len(dd) - 1) / len(dd))
             print(f'slot_busy {slot}: {name} - blend = {m:+.4f} +- {1.96 * se:.4f} (95 %), blend {sum(out["blend"].values()) / 1000:.4f}')

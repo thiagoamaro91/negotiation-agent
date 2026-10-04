@@ -5,6 +5,11 @@ process `duel`): `agent/duel.py run --params docs/duel-lab/duel-params-duels3.js
 --idle-ticks ... --until ...`. Flags win over the JSON. The file is the one that played Duels II
 (`duel-params-duels2-blend.json`) plus four keys. Decision matrix: [duels3-matrix.md](duels3-matrix.md).
 
+**F4 (`last_while_moving`) ships OFF for Sunday.** In the arena it is worth +0.0083 ± 0.0007 a duel. But one slow
+message can come back in the next tick and cost the late accept of another duel, a whole duel: the review
+reproduced it through the real kit client (headers and body each under the timeout). The arena does not model
+that. Test: `SundaySlowServer`.
+
 ## What the bot will do (12-tick duels, decay 0.10, up to 4 at once)
 
 - **Delivery day.** The file confirms Saturday's direction: `"days_best": "buyer:0,seller:10"`. As a seller we earn
@@ -19,8 +24,8 @@ process `duel`): `agent/duel.py run --params docs/duel-lab/duel-params-duels3.js
 - **When we open with a rival that speaks.** We stay silent while it moves toward us (listening is free). We anchor
   at 1.624 only when it has stalled for more than 3 ticks and its offer is below our limit, or thin (under 0.216 of
   what our anchor would bring). We send at most 2 messages. With 4 ticks left the last chance (1.155) goes to a
-  stalled rival and, **new (F4, `last_while_moving`), also to a rival still conceding whose offer we would not
-  accept**.
+  stalled rival only. A rival still conceding hears nothing from us, even when it ends outside our limit (F4 would
+  change that; it is off).
 - **When we accept.** We take any offer inside our limit worth at least 1 P in the last 6 ticks (half the duel).
   While the rival is still conceding, a lone duel waits for deadline-2 and keeps deadline-1 as the retry. We get one
   accept per tick across all duels: the allocator keeps the biggest surpluses that can all still get a tick. In the
@@ -32,13 +37,17 @@ process `duel`): `agent/duel.py run --params docs/duel-lab/duel-params-duels3.js
 | change | why | measured (arena, Duels II field at the Duels III shape, 1000 fresh sessions) |
 |---|---|---|
 | `days_best` in the file | The factory passes no `--days-best`. Without it, the bot plays robust mode: it takes every days cost at its worst over best day 0 and best day 10. Under the server's model that refuses many seller deals | robust mode costs **0.044-0.047 a duel** (matrix: 0.313 vs 0.357) |
-| F4 `last_while_moving` on (new flag in `agent/duel.py`, default off) | Duels II 5905: the rival conceded 2 P a tick at day 5 and ended 3 P outside our limit; we never spoke. In Duels II, rivals that had spoken took our last chance 10 times out of 21 | **+0.0083 ± 0.0007** a duel; +0.0092 if a deadline-1 accept never settles; positive in all 8 climb worlds |
+| F4 `last_while_moving` written in the file as **false** (new flag in `agent/duel.py`, default off) | Duels II 5905: the rival conceded 2 P a tick at day 5 and ended 3 P outside our limit; we never spoke. In Duels II, rivals that had spoken took our last chance 10 times out of 21. Off for Sunday: one slow message can lose another duel's late accept (above) | arena if on: **+0.0083 ± 0.0007** a duel; +0.0092 if a deadline-1 accept never settles; positive in all 8 climb worlds. Off, the file plays exactly as the blend did |
 | `duel_ticks` 12, `late_poll` 4 | Duels III shape; the factory passes both anyway | - |
 
-**Messages and the tick budget** (review of #72). With F4, several duels can take a message in the same tick. The
-run loop takes the tick's accept first. Each message then goes once, with no client retries, and its timeout is
-capped so it ends 1 s before the tick ends, or 5 s before when the tick has a late read. After that point nothing
-more is sent this tick (`say_budget` in the log), and the next tick decides again on fresh duels.
+**Messages and the tick budget** (review of #72; applies to every message, F4 or not). The run loop takes the
+tick's accept before any message. Each message goes once, with no client retries. Right before it is sent, the time
+left until its deadline is measured again: 1 s before the tick ends, or 5 s before when the tick has a late read.
+With less than 0.5 s left it is not sent; otherwise the client's timeout is lowered to that time, never raised.
+After that point nothing more is sent this tick (`say_budget` in the log), and the next tick decides again on fresh
+duels. **Limit:** the kit's timeout bounds each socket wait (connect, headers, body), not the whole request. So a
+slow server can hold one message up to about twice the time left, into the next tick. A total request deadline
+(threads) is out of scope for Sunday. That is why F4, which can send several messages in a late tick, is off.
 
 Where F4 loses (matrix): `llmfair` rivals alone -0.014, light day weights (0-1 P/day) -0.008. Neither matches the
 Duels II field (real weights 0.6-8.9 P/day). On the Duels II replay F4 is neutral (rivals there never accept, so a
@@ -177,7 +186,8 @@ Answers:
   depends on the slot. Over seeds 1100000-1100999 in the Duels II field it is +0.0031 ± 0.0012 against the blend
   with a free accept slot and -0.0020 ± 0.0013 with the slot busy 3 % of ticks. Either way it loses 0.084 when a
   deadline-1 accept never settles: rejected on that stress. Reproduce: `python3
-  docs/duel-lab/duels3-lab/paired_v1.py`. (The shipped file: +0.0082 and +0.0083 there.)
+  docs/duel-lab/duels3-lab/paired_v1.py`. (Blend + F4: +0.0082 and +0.0083 there; the shipped file has F4 off
+  and plays as the blend.)
 - **(c) Accept while the rival concedes, or wait.** Wait: accepting at once loses 0.15, and turning off the window
   wait loses 0.07. The levers that wait longer (`window_retry` 0, F1 without the counter, `accept_any_ticks` 3-4)
   gain up to +0.012 when deadline-1 settles. They lose 0.006 to 0.12 when it does not, and on the Duels II replay a
@@ -187,7 +197,8 @@ Answers:
   Buyers' weights are larger, so day 0 is usually the efficient day. Rival buyers kept day 0 in 22 of 31 duels,
   while rival sellers gave us day 0 in 13 of 29. The real lever was the days direction itself: confirming it in the
   file is worth 0.044-0.047 a duel.
-- **(e) Deadline-1 stress.** The shipped file gains +0.0092 there (it never relies on a deadline-1 accept).
+- **(e) Deadline-1 stress.** The shipped file plays as the blend there (0.315), which never relies on a deadline-1
+  accept; F4 on would add +0.0092.
   Everything that bets on deadline-1 is out.
 
 ## The search, and why its winner is not shipped

@@ -29,5 +29,5 @@
   "last_share": 0.3,
   "duel_ticks": 12,
   "days_best": "buyer:0,seller:10",
-  "last_while_moving": true
+  "last_while_moving": false
 }
