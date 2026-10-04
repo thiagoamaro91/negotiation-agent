@@ -17,7 +17,21 @@ Three variants rotate the order so the feed does not see the same words twice in
 return. Cards we are missing ourselves never appear (--exclude): pointing their sellers at v20, where we cannot buy,
 works against us. Offers addressed to one team (to: tXX) are left out: nobody else can take them.
 
+--variant missing (Sunday): ONE match per post from tools/matchmaker.py's output (--matches, default
+logs/matchmaker/latest.json, written by `matchmaker.py json --live --out ... --every 120`), in its order (explicit live
+wants first): the live offer (team, card, price, offer id, expiry) and the one action that completes it (POST
+/api/offers/<id>/accept), or, for a need that is only inferred, "appears to be missing ... not confirmed" and the v20
+bid and ask. A swap is accepted directly, never said to be crossed by our broker. The named offer is re-read in its
+venue's current book right before the post (still_live: open, not for one team, not expiring within MIN_TICKS_LEFT
+ticks, the same side, card and price). Never one on another team's venue (unless --rival-venues), a card in --exclude
+(every card of the offer), Team 3, or a match named in the last MISSING_REPEAT posts. Holdings are said as history
+("held a copy at tick N, reconstructed"). Nothing is recomputed here; a missing or stale file, or no match left, means
+no post. Each response says whether a settlement with the named offer's whole structure followed (named_outcome:
+direction, card, asset, price, venue; a candidate, never proof, since the feed's settlements carry no offer id)
+besides the trades on v20.
+
     python3 tools/announce.py plan                       # prints the next message and the request; sends nothing
+    python3 tools/announce.py plan --variant missing     # the missing-card board from the matchmaker's last output
     python3 tools/announce.py run --yes                  # posts one message with the broker key
     python3 tools/announce.py run --yes --every-min 12 --count 40
 
@@ -71,6 +85,11 @@ STATUS_RETRY_S = 60     # run: how often a failed schedule read is tried again (
 MISSING = ("LAV-09", "LAV-10", "LAT-03", "LAT-09", "SAL-02", "SAL-05", "SAL-09", "SAL-10",
            "MAL-03", "MAL-05", "MAL-09", "RET-01", "RET-03", "RET-04", "RET-05", "RET-07", "RET-08", "RET-09", "RET-10")
 STATE = ROOT / "logs" / "state" / "announce.json"
+MATCHES = ROOT / "logs" / "matchmaker" / "latest.json"   # tools/matchmaker.py json --live --out ... --every 120
+MATCHES_MAX_AGE_S = 900  # --variant missing: no post from a matchmaker file older than this
+MISSING_STATE = ROOT / "logs" / "state" / "announce_missing.json"   # the matches announced lately
+MISSING_REPEAT = 6       # --variant missing: a match is not announced again within this many posts
+OPEN_BAZAAR = "Open Bazaar · who needs which card"   # the name other teams see (Thiago's Sunday plan)
 
 
 def shape(o: dict):
@@ -403,6 +422,225 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     return (text.strip() + tail)[:MAX_CHARS]
 
 
+def load_matches(path: Path = MATCHES, now: float | None = None, max_age_s: float = MATCHES_MAX_AGE_S) -> dict:
+    """The matchmaker's last output (tools/matchmaker.py json --out). LookupError when it is missing, unreadable or
+    older than max_age_s: a stale match could name a card that has since been bought, so no post then."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        raise LookupError(f"no matchmaker output at {path} ({type(e).__name__})")
+    at = doc.get("generated_at") if isinstance(doc, dict) else None
+    if not isinstance(at, (int, float)) or (now if now is not None else time.time()) - at > max_age_s:
+        raise LookupError("the matchmaker output is stale")
+    return doc
+
+
+def _public(name, team) -> str | None:
+    """A team's public name ("Team 13") or None for Team 3 and anything that is not a team."""
+    if not (isinstance(team, str) and team[:1] == "t" and team[1:].isdigit()) or team == OURS:
+        return None
+    return name if isinstance(name, str) and name.strip() else team
+
+
+def match_key(m: dict) -> str:
+    a = m.get("action") or {}
+    return f"{m.get('team')}:{m.get('card')}:{a.get('offer') or VENUE}"
+
+
+def recent_matches(path: Path | None = None) -> list:
+    try:
+        return [k for k in json.loads((path or MISSING_STATE).read_text()).get("recent", []) if isinstance(k, str)]
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def remember_match(key: str, path: Path | None = None) -> None:
+    path = path or MISSING_STATE
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"recent": (recent_matches(path) + [key])[-MISSING_REPEAT:]}))
+    except OSError:
+        pass
+
+
+BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
+                "the ask plus the fee, at the midpoint, as capacity allows")   # the same words as tools/matchmaker.py
+MIN_TICKS_LEFT = 8       # --variant missing: a named offer must stand at least this many more ticks
+
+
+def still_live(a: dict, card: str, books: dict, tick=None) -> bool:
+    """The named offer, re-read in its venue's CURRENT book right before the post: open, not addressed to one team,
+    not expiring within MIN_TICKS_LEFT ticks of `tick`, and the same structure the matchmaker saw (the side, the card,
+    the price; for a swap the card it gives). Anything else and it is not named."""
+    o = next((x for x in (books or {}).get(a.get("venue") or "rastro") or []
+              if isinstance(x, dict) and x.get("id") == a.get("offer")), None)
+    if o is None or o.get("status", "open") != "open" or o.get("to") or a.get("to"):
+        return False
+    exp = o.get("expires_tick")
+    if isinstance(tick, int) and (not isinstance(exp, int) or exp - tick < MIN_TICKS_LEFT):
+        return False
+    sh = shape(o)
+    if a.get("side") == "swap":
+        return sh is not None and sh[0] == "swap" and sh[2] == card and sh[1] == a.get("gives")
+    return sh is not None and sh[0] == a.get("side") and sh[1] == card and sh[2] == a.get("price")
+
+
+def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False, tick=None):
+    """The one match a post names, in the matchmaker's order (explicit live wants first): never Team 3, never a card
+    in `exclude` (every card of the offer), never one announced in the last MISSING_REPEAT posts, never an offer that
+    no longer stands as the matchmaker saw it in its venue's current book (still_live), never an offer addressed to
+    one team (only that team could act), and (unless rival_venues) never an offer on another team's venue, where a
+    trade scores for that team. None when nothing is left."""
+    skip, recent = set(exclude or ()), set(recent or ())
+    for m in (doc or {}).get("matches") or []:
+        if not isinstance(m, dict) or _public(m.get("team_name"), m.get("team")) is None:
+            continue
+        if not isinstance(m.get("card"), str) or m["card"] in skip or match_key(m) in recent:
+            continue
+        a = m.get("action")
+        if a:
+            if not isinstance(a, dict) or a.get("gives") in skip or not still_live(a, m["card"], books, tick):
+                continue
+            if _public(a.get("maker_name"), a.get("maker")) is None:
+                continue
+            if a.get("venue") not in (VENUE, "rastro", None) and not rival_venues:
+                continue
+        elif not isinstance((m.get("proposal") or {}).get("buyer"), dict):
+            continue
+        return m
+    return None
+
+
+def _holders_txt(m: dict, n: int = 2, dealers: bool = False, owner=None) -> str:
+    """"Team 6 and Team 12 held a copy at tick 1445 (reconstructed from public trades)." Holdings from the feed are
+    history, never present-tense possession. Teams only (a dealer cannot accept a team's offer), never `owner` (the
+    venue's owner cannot trade there). With dealers=True, "Abuela sells it." is added."""
+    rows = [x for x in m.get("holders") or [] if isinstance(x, dict) and x.get("team") not in (m.get("team"), owner)]
+    hs = [h for h in (_public(x.get("name"), x.get("team")) for x in rows) if h][:n]
+    ticks = [x.get("as_of") for x in rows if isinstance(x.get("as_of"), int)]
+    out = ""
+    if hs:
+        who = " and ".join(hs) if len(hs) <= 2 else f"{', '.join(hs[:-1])} and {hs[-1]}"
+        at = f" at tick {max(ticks)}" if ticks else ""
+        out = f"{who} held a copy{at} (reconstructed from public trades, may have changed)."
+    ds = [d.get("name") for d in (m.get("dealers") or [])[:1] if isinstance(d, dict) and d.get("name")]
+    if dealers and ds:
+        out = (out + " " if out else "") + f"{ds[0]} sells it."
+    return out
+
+
+def missing_line(m: dict, fee=(0, 0)) -> str:
+    """One match in words: the live offer, the one action that completes it, and who held the card. An inferred
+    need is always said as one ("appears to be missing ... inferred from public trades, not confirmed")."""
+    card = m["card"] + (f" ({m['card_name']})" if m.get("card_name") else "")
+    buyer = _public(m.get("team_name"), m.get("team"))
+    page = m.get("set_name") or m.get("set") or "its"
+    inferred = f"{buyer} appears to be missing {m['card']} for the {page} page (inferred from public trades, not " \
+               f"confirmed)"
+    a = m.get("action")
+    if a:
+        where = "La Celestina (v20, 0 % fee)" if a["venue"] == VENUE else venue_name(a["venue"])
+        until = f", open until tick {a['expires_tick']}" if isinstance(a.get("expires_tick"), int) else ""
+        maker = _public(a.get("maker_name"), a.get("maker"))
+        owner = a.get("venue_owner") if _public(a.get("venue_owner"), a.get("venue_owner")) else None
+        not_owner = f" (not {owner}: a team cannot trade on its own venue)" if owner and a["side"] != "ask" else ""
+        if a["side"] == "bid":
+            head = f"{maker} bids {a['price']} P for {card} on {where}: offer #{a['offer']}{until}."
+            act = (f"A team with a copy{not_owner} sells it by accepting: POST /api/offers/{a['offer']}/accept with "
+                   f"{{\"assets\": [<your {m['card']} asset id>]}}.")
+        elif a["side"] == "swap":
+            head = f"{maker} gives {a.get('gives')} for any {card} on {where}: offer #{a['offer']}{until}."
+            act = (f"A team with a copy{not_owner} takes it by accepting it directly (a swap is accepted, never crossed "
+                   f"by a broker): POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}.")
+        else:
+            head = f"{maker} sells {card} for {a['price']} P on {where}: offer #{a['offer']}{until}."
+            act = f"{inferred}: POST /api/offers/{a['offer']}/accept."
+        bits = [head, act]
+        if a["side"] != "ask":
+            bits.append(_holders_txt(m, owner=a.get("venue_owner")))
+        return " ".join(b for b in bits if b)
+    pr = m["proposal"]
+    price = pr.get("price") or (pr["buyer"]["post"]["give"] or {}).get("cash")
+    bits = [f"{inferred}.", _holders_txt(m, dealers=True),
+            f"A bid on La Celestina (v20, {fee_txt(fee)}): {json.dumps({k: v for k, v in pr['buyer']['post'].items() if k != 'expires_in_ticks'})};",
+            f"a holder's ask: {{\"venue\": \"{VENUE}\", \"give\": {{\"assets\": [<your {m['card']} asset id>]}}, "
+            f"\"want\": {{\"cash\": {price}}}}}.",
+            BROKER_TERMS[0].upper() + BROKER_TERMS[1:] + "."]
+    return " ".join(b for b in bits if b)
+
+
+def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=(), names: dict | None = None,
+                 recent=(), rival_venues: bool = False, tick=None) -> tuple:
+    """The --variant missing message: ONE match (pick_match, re-checked against the current books at `tick`) and the
+    one action that completes it, then v20's own live offers when there is room (so an event post can still name the
+    new offer). (text, match key). LookupError when no match qualifies: nothing worth posting."""
+    m = pick_match(doc, books, exclude, recent, rival_venues, tick)
+    if m is None:
+        raise LookupError("no match to announce")
+    text = f"{OPEN_BAZAAR} (public data, La Celestina {VENUE}): " + missing_line(m, fee)
+    skip = set(exclude or ())
+    shown = [d for o in venue_offers or [] if not refs(o) & skip for d in [describe(o, names)] if d][:SHOW_OFFERS]
+    if shown:
+        tail = " Live on v20 now: " + "; ".join(shown) + "."
+        if len(text) + len(tail) <= MAX_CHARS:
+            text += tail
+    return text[:MAX_CHARS], match_key(m)
+
+
+ATTRIBUTION = "candidate: a settlement with the named offer's whole structure; the feed's settlements carry no offer id"
+
+
+def outcome_fits(pl: dict, named: dict) -> bool:
+    """A settlement payload with the named offer's whole structure: its venue; for a bid, exactly one card of the named
+    ref moving TO the maker at the named price; for an ask, exactly the named asset of that ref moving FROM the maker
+    at the named price; for a swap, exactly two cards, the named asset of the given ref from the maker and one card of
+    the wanted ref to the maker, both with the same counterparty."""
+    if pl.get("persona") or (pl.get("venue") or "rastro") != (named.get("venue") or "rastro"):
+        return False
+    items = [i for i in pl.get("items") or [] if isinstance(i, dict)]
+    if any(i.get("kind", "card") != "card" for i in items):
+        return False
+    maker, card, side = named.get("maker"), named.get("card"), named.get("side")
+    if side == "bid":
+        return len(items) == 1 and items[0].get("ref") == card and items[0].get("to") == maker \
+            and items[0].get("frm") not in (None, maker) and pl.get("price") == named.get("price")
+    if side == "ask":
+        return len(items) == 1 and items[0].get("id") == named.get("asset") and items[0].get("ref") == card \
+            and items[0].get("frm") == maker and items[0].get("to") not in (None, maker) \
+            and pl.get("price") == named.get("price")
+    if side == "swap":
+        if len(items) != 2 or (pl.get("price") or 0):
+            return False
+        out = [i for i in items if i.get("frm") == maker]
+        back = [i for i in items if i.get("to") == maker]
+        return len(out) == 1 and len(back) == 1 and out[0].get("id") == named.get("asset") \
+            and out[0].get("ref") == named.get("gives") and back[0].get("ref") == card \
+            and out[0].get("to") == back[0].get("frm") and out[0].get("to") not in (None, maker)
+    return False
+
+
+def named_outcome(events: list, t0: int, k: int, named: dict) -> dict:
+    """Did the named offer settle in (t0, t0 + k]? Without offer ids in the feed this is a candidate (outcome_fits),
+    never proof. `v20_trade`: any trade on v20 moving that card in the window."""
+    out = {"candidate": False, "candidate_tick": None, "attribution": ATTRIBUTION, "v20_trade": False}
+    for e in events or []:
+        t = e.get("tick") if isinstance(e, dict) else None
+        if e.get("type") != "settlement" or not isinstance(t, int) or not t0 < t <= t0 + k:
+            continue
+        pl = e.get("payload") or {}
+        if named.get("card") not in {i.get("ref") for i in pl.get("items") or [] if isinstance(i, dict)}:
+            continue
+        if pl.get("venue") == VENUE and not pl.get("persona"):
+            out["v20_trade"] = True
+        if not out["candidate"] and outcome_fits(pl, named):
+            out.update(candidate=True, candidate_tick=t)
+    return out
+
+
+def variant_label(variant) -> str | int:
+    return variant if variant == "missing" else int(variant) % 3
+
+
 class Announcer:
     """When to post, and what reached v20 after each post. Pure (the caller passes the clock, v20's book and the feed),
     so the tests drive it without a network.
@@ -452,12 +690,13 @@ class Announcer:
             return "slot"
         return None
 
-    def mark_posted(self, now: float, tick: int, why: str, fresh_ids=()) -> None:
+    def mark_posted(self, now: float, tick: int, why: str, fresh_ids=(), named: dict | None = None) -> None:
         self.posted += 1
         self.last_post, self.next_slot = now, now + self.every_s
         done = set(fresh_ids)   # only the offers this post actually advertised leave the queue
         self.queue = [o for o in self.queue if o.get("id") not in done]
-        self.pending.append({"post": self.posted, "tick": tick, "why": why, "fresh": list(fresh_ids)})
+        self.pending.append({"post": self.posted, "tick": tick, "why": why, "fresh": list(fresh_ids),
+                             **({"named": named} if named else {})})
 
     def give_up(self, tick: int, after: int = GIVE_UP_TICKS) -> list:
         """Posts whose response window closed more than `after` ticks ago and could not be measured (the feed kept
@@ -474,6 +713,8 @@ class Announcer:
                 keep.append(p)
                 continue
             r = dict(p, **window_counts(events, p["tick"], self.measure_ticks, names))
+            if p.get("named"):   # --variant missing: did the one action it named happen?
+                r["named_outcome"] = named_outcome(events, p["tick"], self.measure_ticks, p["named"])
             if v20_ids is not None:  # the announced orders no longer on v20 (taken, cancelled or expired)
                 r["fresh_left_book"] = [i for i in p.get("fresh", []) if i not in v20_ids]
             out.append(r)
@@ -874,7 +1115,11 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Announce La Celestina (v20) on the feed")
     ap.add_argument("cmd", choices=["plan", "run"])
     ap.add_argument("--yes", action="store_true", help="run only: really post")
-    ap.add_argument("--variant", type=int, default=None, help="0, 1 or 2 (default: rotate)")
+    ap.add_argument("--variant", default=None, help='0, 1, 2 or "missing" (the matchmaker\'s missing-card board, '
+                                                   'from --matches; default: rotate 0-2)')
+    ap.add_argument("--matches", default=str(MATCHES), help="--variant missing: tools/matchmaker.py's json output")
+    ap.add_argument("--rival-venues", action="store_true",
+                    help="--variant missing: also name offers on other teams' venues (a trade there scores for them)")
     ap.add_argument("--no-link", action="store_true", help="leave out the web link (the default has none)")
     ap.add_argument("--link", default=LINK, help="append this link (off by default: agents do not open pages)")
     ap.add_argument("--exclude", default=",".join(MISSING),
@@ -890,6 +1135,11 @@ def main(argv: list[str] | None = None) -> None:
                                                 'silences from /api/schedule are always kept)')
     ap.add_argument("--key-file", default=str(KEY_FILE))
     args = ap.parse_args(argv)
+    if args.variant is not None and args.variant != "missing":
+        try:
+            args.variant = int(args.variant)
+        except ValueError:
+            ap.error('--variant takes 0, 1, 2 or "missing"')
     link = None if args.no_link else args.link
     exclude = tuple(x.strip() for x in args.exclude.split(",") if x.strip())
     if args.cmd == "run" and not args.yes:
@@ -908,6 +1158,8 @@ def main(argv: list[str] | None = None) -> None:
         """Every request of a run goes through the gate (plan mode never has windows)."""
         gate.check()
         return get_json(url)
+
+    picked = {}   # --variant missing: the match the last compose chose (remembered only once it is posted)
 
     def compose(variant: int, first=()) -> tuple:
         """(text, ids of the v20 offers the text names). A failed feed read costs only the team names; a failed
@@ -943,13 +1195,29 @@ def main(argv: list[str] | None = None) -> None:
                 print(f"our offers unavailable ({type(e).__name__}); feed names and pseudonyms only", flush=True)
         firsts = {o.get("id") for o in first}
         v20 = sorted(books.get(VENUE, []), key=lambda o: o.get("id") not in firsts)  # the new offer leads
-        text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
+        if variant == "missing":   # the matchmaker's output, read as it is; LookupError = nothing fresh to post
+            doc = load_matches(Path(args.matches))
+            now_tick = api(f"{URL}/api/clock").get("tick")   # the offer must still stand at this tick
+            text, key = missing_text(doc, books, exclude, fee, v20, names, recent_matches(), args.rival_venues,
+                                     now_tick if isinstance(now_tick, int) else None)
+            m = next(x for x in doc.get("matches") or [] if isinstance(x, dict) and match_key(x) == key)
+            a = m.get("action") or {}
+            picked.update(key=key, named={"card": m.get("card"), "offer": a.get("offer"), "venue": a.get("venue") or VENUE,
+                                          "maker": a.get("maker") or m.get("team"), "tier": m.get("tier"),
+                                          "side": a.get("side"), "price": a.get("price"), "asset": a.get("asset"),
+                                          "gives": a.get("gives")})
+        else:
+            text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
         return text, [o.get("id") for o in v20 if o.get("id") is not None and f"(offer {o.get('id')})" in text]
 
     if args.cmd == "plan":
         variant = args.variant if args.variant is not None else next_variant()
-        text, _ = compose(variant)
-        print(f"variant {variant % 3}, {len(text)} chars:\n{text}")
+        try:
+            text, _ = compose(variant)
+        except LookupError as e:
+            print(f"variant {variant_label(variant)}: nothing to post ({e})")
+            return
+        print(f"variant {variant_label(variant)}, {len(text)} chars:\n{text}")
         print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
         return
 
@@ -1008,15 +1276,19 @@ def main(argv: list[str] | None = None) -> None:
                 time.sleep(POLL_S)
                 continue
             res = post_announce(text, key)
-            print(clean(f"[{time.strftime('%H:%M:%S')}] {why} post {ann.posted + 1}/{ann.count} variant {variant % 3} "
+            print(clean(f"[{time.strftime('%H:%M:%S')}] {why} post {ann.posted + 1}/{ann.count} variant {variant_label(variant)} "
                         f"-> {json.dumps(res, ensure_ascii=False)[:200]}\n{text}"), flush=True)
-            log.event("announce", why=why, variant=variant % 3, chars=len(text), text=text, result=clean(res),
+            log.event("announce", why=why, variant=variant_label(variant), chars=len(text), text=text, result=clean(res),
                       tick=tick, fresh=[o.get("id") for o in fresh], advertised=advertised)
             if "http_error" in res:
                 break
             done = [i for i in advertised if i in {o.get("id") for o in fresh}]
-            ann.mark_posted(time.time(), tick if isinstance(tick, int) else 0, why, done)
-            if why != "event":
+            named = picked.get("named") if variant == "missing" else None
+            ann.mark_posted(time.time(), tick if isinstance(tick, int) else 0, why, done, named)
+            if variant == "missing" and picked.get("key"):
+                remember_match(picked["key"])
+                log.event("named", key=picked["key"], **(named or {}))
+            if why != "event" and variant != "missing":
                 save_variant(variant + 1)
         if ann.pending and isinstance(tick, int) and any(tick >= p["tick"] + ann.measure_ticks for p in ann.pending):
             try:

@@ -1132,3 +1132,205 @@ class TestCli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+def match(team, card, set_="MAL", tier=4, holders=(("t05", "Team 5"),), dealers=("Abuela",), price=24, action=None):
+    """One entry of tools/matchmaker.py's output, as announce reads it. action: (side, offer, venue, price, maker,
+    expires, gives)."""
+    m = {"tier": tier, "inferred": tier >= 3, "team": team, "team_name": f"Team {int(team[1:])}", "set": set_,
+         "set_name": {"MAL": "Malasaña", "SAL": "Salamanca"}.get(set_, set_), "card": card, "card_name": None,
+         "holders": [{"team": t, "name": n, "as_of": 1445} for t, n in holders], "dealers": [{"name": d} for d in dealers],
+         "price": price, "action": None, "proposal": None}
+    if action:
+        side, oid, venue, p, maker, exp, gives = action
+        m["action"] = {"side": side, "offer": oid, "venue": venue, "price": p, "maker": maker,
+                       "maker_name": f"Team {int(maker[1:])}", "expires_tick": exp, "gives": gives}
+    else:
+        m["proposal"] = {"price": price, "buyer": {"team": team, "post": {"venue": "v20", "give": {"cash": price},
+                                                                         "want": {"cards": [card]},
+                                                                         "expires_in_ticks": 240}}}
+    return m
+
+
+class TestMissingVariant(unittest.TestCase):
+    BID = {"rastro": [dict(bid("SAL-06", 20, oid=20259), expires_tick=1505)]}
+
+    def test_a_live_bid_is_named_with_its_offer_expiry_and_the_one_action(self):
+        doc = {"matches": [match("t09", "SAL-06", "SAL", tier=1, action=("bid", 20259, "rastro", 20, "t09", 1505, None))]}
+        text, key = an.missing_text(doc, self.BID, tick=1400)
+        self.assertIn("Team 9 bids 20 P for SAL-06 on El Rastro: offer #20259, open until tick 1505.", text)
+        self.assertIn('POST /api/offers/20259/accept with {"assets": [<your SAL-06 asset id>]}', text)
+        self.assertIn("Team 5 held a copy at tick 1445 (reconstructed from public trades, may have changed).", text)
+        self.assertNotIn("Abuela", text)                                # a dealer cannot accept a team's offer
+        self.assertNotIn("appears", text)                               # an explicit want is no inference
+        self.assertEqual(key, "t09:SAL-06:20259")
+
+    def test_an_inferred_need_is_always_said_as_one_and_the_broker_is_not_oversold(self):
+        text, _ = an.missing_text({"matches": [match("t13", "MAL-08")]}, {})
+        self.assertIn("Team 13 appears to be missing MAL-08 for the Malasaña page (inferred from public trades, not "
+                      "confirmed).", text)
+        self.assertIn('A bid on La Celestina (v20, 0 % fee, 0 P per card): {"venue": "v20", "give": {"cash": 24}, '
+                      '"want": {"cards": ["MAL-08"]}}', text)
+        self.assertIn("Abuela sells it.", text)
+        self.assertIn("from two different teams when the bid covers the ask plus the fee, at the midpoint, as capacity "
+                      "allows.", text)
+        for oversold in ("any ask", "same tick", "the tick they meet"):
+            self.assertNotIn(oversold, text)
+        ask_book = {"rastro": [dict(ask("LAT-07", 30, oid=20218), expires_tick=1455)]}
+        doc = {"matches": [match("t14", "LAT-07", tier=3, action=("ask", 20218, "rastro", 30, "t06", 1455, None))]}
+        text, _ = an.missing_text(doc, ask_book, tick=1440)
+        self.assertIn("Team 6 sells LAT-07 for 30 P on El Rastro: offer #20218, open until tick 1455. Team 14 appears "
+                      "to be missing LAT-07", text)
+
+    def test_a_swap_is_accepted_directly_and_never_said_to_be_crossed(self):
+        doc = {"matches": [match("t06", "RET-12", tier=2, holders=(),
+                                 action=("swap", 20068, "rastro", 0, "t06", 1481, "SAL-02"))]}
+        text, _ = an.missing_text(doc, {"rastro": [swap("SAL-02", "RET-12", oid=20068)]})
+        self.assertIn("Team 6 gives SAL-02 for any RET-12 on El Rastro: offer #20068", text)
+        self.assertIn("accepting it directly (a swap is accepted, never crossed by a broker)", text)
+        self.assertNotIn("broker crosses", text)
+
+    def test_team_3_never_appears_as_buyer_holder_or_maker(self):
+        doc = {"matches": [match("t03", "MAL-08"),
+                           match("t09", "SAL-06", tier=1, action=("bid", 20259, "rastro", 20, "t03", 1505, None)),
+                           match("t13", "LAT-06", holders=(("t03", "Team 3"), ("t06", "Team 6")))]}
+        text, key = an.missing_text(doc, self.BID)
+        self.assertNotIn("Team 3 ", text)
+        self.assertNotIn("t03", text)
+        self.assertEqual(key, "t13:LAT-06:v20")
+        self.assertIn("Team 6 held a copy", text)
+
+    def test_an_excluded_card_never_appears_not_even_as_what_a_swap_gives(self):
+        doc = {"matches": [match("t13", "MAL-05"), match("t13", "MAL-08")]}
+        text, _ = an.missing_text(doc, {}, exclude=("MAL-05",))
+        self.assertNotIn("MAL-05", text)
+        with self.assertRaises(LookupError):                       # nothing left to say: no post
+            an.missing_text({"matches": [match("t13", "MAL-05")]}, {}, exclude=("MAL-05",))
+        sw = {"matches": [match("t06", "RET-12", tier=2, action=("swap", 9, "rastro", 0, "t06", 1481, "LAV-09"))]}
+        with self.assertRaises(LookupError):
+            an.missing_text(sw, {"rastro": [swap("LAV-09", "RET-12", oid=9)]}, exclude=("LAV-09",))
+
+    def test_the_named_offer_is_rechecked_in_its_current_book(self):
+        doc = {"matches": [match("t09", "SAL-06", tier=1, action=("bid", 20259, "rastro", 20, "t09", 1505, None)),
+                           match("t13", "MAL-08")]}
+        ok = dict(bid("SAL-06", 20, oid=20259), expires_tick=1505)
+        self.assertEqual(an.missing_text(doc, {"rastro": [ok]}, tick=1400)[1], "t09:SAL-06:20259")
+        for book, tick in (([], 1400),                                                     # gone
+                           ([dict(ok, status="accepted")], 1400),                          # taken
+                           ([ok], 1500),                                                   # about to expire
+                           ([dict(ok, give={"cash": 12, "assets": [], "types": []})], 1400),  # price changed
+                           ([dict(bid("SAL-07", 20, oid=20259), expires_tick=1505)], 1400),   # another card
+                           ([dict(ok, to="t05")], 1400)):                                  # now for one team only
+            self.assertEqual(an.missing_text(doc, {"rastro": book}, tick=tick)[1], "t13:MAL-08:v20", (book, tick))
+
+    def test_a_swap_that_now_gives_another_card_is_not_named(self):
+        doc = {"matches": [match("t06", "RET-12", tier=2, holders=(),
+                                 action=("swap", 20068, "rastro", 0, "t06", 1481, "SAL-02")), match("t13", "MAL-08")]}
+        self.assertEqual(an.missing_text(doc, {"rastro": [swap("SAL-03", "RET-12", oid=20068)]})[1], "t13:MAL-08:v20")
+
+    def test_an_offer_on_a_rival_venue_or_for_one_team_is_skipped(self):
+        doc = {"matches": [match("t06", "SAL-12", tier=2, action=("bid", 8, "v21", 450, "t06", 1488, None)),
+                           match("t09", "SAL-06", tier=1, action=("bid", 20259, "rastro", 20, "t09", 1505, None)),
+                           match("t13", "MAL-08")]}
+        books = {"v21": [bid("SAL-12", 450, oid=8, venue="v21")], "rastro": [dict(bid("SAL-06", 20, oid=20259), to="t05")]}
+        self.assertEqual(an.missing_text(doc, books)[1], "t13:MAL-08:v20")
+        self.assertEqual(an.missing_text(doc, books, rival_venues=True)[1], "t06:SAL-12:8")
+
+    def test_the_venue_owner_is_told_it_cannot_take_it(self):
+        m = match("t06", "SAL-12", tier=2, holders=(("t21", "Team 21"), ("t09", "Team 9")),
+                  action=("bid", 8, "v21", 450, "t06", 1488, None))
+        m["action"]["venue_owner"] = "t09"
+        text = an.missing_line(m)
+        self.assertIn("A team with a copy (not t09: a team cannot trade on its own venue)", text)
+        self.assertIn("Team 21 held a copy", text)
+        self.assertNotIn("Team 9 held", text)
+
+    def test_a_match_named_lately_is_not_named_again(self):
+        doc = {"matches": [match("t13", "MAL-08"), match("t14", "LAT-06", set_="LAT")]}
+        self.assertEqual(an.missing_text(doc, {}, recent=["t13:MAL-08:v20"])[1], "t14:LAT-06:v20")
+        with self.assertRaises(LookupError):
+            an.missing_text(doc, {}, recent=["t13:MAL-08:v20", "t14:LAT-06:v20"])
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "m.json"
+            for i in range(an.MISSING_REPEAT + 2):
+                an.remember_match(f"k{i}", path)
+            self.assertEqual(an.recent_matches(path), [f"k{i}" for i in range(2, an.MISSING_REPEAT + 2)])
+
+    def test_the_response_names_a_candidate_settlement_with_the_offers_whole_structure(self):
+        bid_named = {"card": "SAL-06", "offer": 20259, "venue": "rastro", "maker": "t09", "side": "bid", "price": 20}
+        ask_named = {"card": "LAT-07", "offer": 20218, "venue": "rastro", "maker": "t06", "side": "ask", "price": 30,
+                     "asset": 1133}
+        swap_named = {"card": "RET-12", "offer": 20068, "venue": "rastro", "maker": "t06", "side": "swap",
+                      "asset": 501, "gives": "SAL-02"}
+
+        def settle(tick, items, venue="rastro", price=20):
+            return {"type": "settlement", "tick": tick, "payload": {"venue": venue, "price": price, "items": [
+                {"kind": "card", "ref": r, "id": i, "frm": f, "to": to} for r, i, f, to in items]}}
+        ok = settle(105, [("SAL-06", 1, "t05", "t09")])
+        res = an.named_outcome([ok], 100, 20, bid_named)
+        self.assertEqual((res["candidate"], res["candidate_tick"]), (True, 105))
+        self.assertIn("no offer id", res["attribution"])
+        self.assertNotIn("settled", res)                                     # never presented as proof
+        for ev in (settle(99, [("SAL-06", 1, "t05", "t09")]),                           # before the post
+                   settle(105, [("SAL-06", 1, "t09", "t05")]),                          # t09 SELLS it: wrong way
+                   settle(105, [("SAL-07", 1, "t05", "t09")]),                          # another card
+                   settle(105, [("SAL-06", 1, "t05", "t09")], price=18),                # another price
+                   settle(105, [("SAL-06", 1, "t05", "t09")], venue="v02"),             # another venue
+                   settle(105, [("SAL-06", 1, "t05", "t09"), ("SAL-06", 2, "t05", "t09")])):   # two copies
+            self.assertFalse(an.named_outcome([ev], 100, 20, bid_named)["candidate"], ev)
+        self.assertTrue(an.named_outcome([settle(105, [("LAT-07", 1133, "t06", "t14")], price=30)], 100, 20,
+                                         ask_named)["candidate"])
+        for ev in (settle(105, [("LAT-07", 999, "t06", "t14")], price=30),              # another copy
+                   settle(105, [("LAT-07", 1133, "t14", "t06")], price=30)):            # the other way
+            self.assertFalse(an.named_outcome([ev], 100, 20, ask_named)["candidate"], ev)
+        self.assertTrue(an.named_outcome([settle(105, [("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")],
+                                                 price=0)], 100, 20, swap_named)["candidate"])
+        for items in ([("SAL-03", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")],     # the wrong card given
+                      [("SAL-02", 501, "t06", "t05"), ("RET-11", 7, "t05", "t06")],     # the wrong card got
+                      [("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t07", "t06")],     # two counterparties
+                      [("SAL-02", 501, "t06", "t05")]):                                 # one leg only
+            self.assertFalse(an.named_outcome([settle(105, items, price=0)], 100, 20, swap_named)["candidate"], items)
+        self.assertTrue(an.named_outcome([settle(110, [("SAL-06", 1, "t05", "t07")], venue="v20")], 100, 20,
+                                         bid_named)["v20_trade"])
+        fits = lambda items, price=0: an.outcome_fits(settle(105, items, price=price)["payload"], swap_named)
+        self.assertTrue(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")]))
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-11", 7, "t05", "t06")]))      # wanted card
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06"),
+                               ("LAV-01", 8, "t05", "t06")]))                                    # a third card
+        self.assertFalse(fits([("SAL-02", 501, "t06", "t05"), ("RET-12", 7, "t05", "t06")], price=5))  # cash too
+
+    def test_a_missing_or_stale_matchmaker_file_is_never_posted(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "latest.json"
+            with self.assertRaises(LookupError):
+                an.load_matches(path, now=100)
+            path.write_text(json.dumps({"generated_at": 100, "matches": []}))
+            self.assertEqual(an.load_matches(path, now=100 + an.MATCHES_MAX_AGE_S)["generated_at"], 100)
+            with self.assertRaises(LookupError):
+                an.load_matches(path, now=101 + an.MATCHES_MAX_AGE_S)
+
+    def test_run_names_one_match_per_post_never_twice_never_in_a_silence_never_from_a_stale_file(self):
+        import tempfile
+        import unittest.mock as um
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "latest.json"
+            path.write_text(json.dumps({"generated_at": 0, "matches": [match("t13", "MAL-08"),
+                                                                       match("t14", "LAT-06", set_="LAT")]}))
+            state, posts, logged = {"now": 0.0, "tick": 100}, [], []
+            with um.patch.object(an, "MISSING_STATE", Path(d) / "recent.json"):
+                run_loop(["run", "--yes", "--variant", "missing", "--matches", str(path), "--count", "4",
+                          "--every-min", "5", "--min-gap-min", "1", "--exclude", ""],
+                         market(state, bench_at_s=1200), state, posts, logged)
+        lo, hi = 1200 - an.QUIET_BEFORE_S, 1200 + an.QUIET_AFTER_S
+        self.assertEqual([t for t, _ in state["calls"] if lo <= t < hi], [])  # no request inside the Market Test
+        self.assertEqual([t for t, _ in posts if t > an.MATCHES_MAX_AGE_S], [])  # never from a stale file
+        self.assertEqual(len(posts), 2)                                      # two matches, each named once
+        self.assertIn("Team 13 appears to be missing MAL-08", posts[0][1])
+        self.assertIn("Team 14 appears to be missing LAT-06", posts[1][1])
+        self.assertEqual([d["key"] for e, d in logged if e == "named"], ["t13:MAL-08:v20", "t14:LAT-06:v20"])
+
+    def test_variant_takes_only_numbers_or_missing(self):
+        with self.assertRaises(SystemExit):
+            an.main(["plan", "--variant", "pairs"])

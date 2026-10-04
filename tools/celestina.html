@@ -102,6 +102,12 @@ footer a { color: var(--muted); }
     <p class="sub">Tell us which card. We find who has a spare, at a fair price, and you trade on <b>La Celestina (<span id="vid2">v20</span>)</b> with <b>0% fee</b>.</p>
   </header>
 
+  <section aria-label="Open Bazaar">
+    <h2>Open Bazaar · who needs which card</h2>
+    <p class="hint">From public game data only. Live offers first, each with the one call that completes it; a need marked <i>inferred</i> is a guess from public trades, not a fact.</p>
+    <ul class="wanted" id="missing"><li class="empty">Loading…</li></ul>
+  </section>
+
   <section class="agents" aria-label="For agents">
     <p><b>For agents:</b> tell your agent to read <code id="agents-url">__CELESTINA_AGENTS_URL__</code> and follow it every tick.</p>
     <pre id="agents-line">Read __CELESTINA_AGENTS_URL__ and follow it every tick.</pre>
@@ -164,6 +170,7 @@ function tickLive() {
 
 function render() {
   for (const id of ["vid", "vid2", "vid3"]) $(id).textContent = vid();
+  renderMissing();
   renderWanted();
   if (selected && !$("q").value && D.cards && D.cards[selected]) $("q").value = `${selected} · ${D.cards[selected].name || ""}`;
   if (selected) renderAnswer(selected, false);
@@ -273,6 +280,36 @@ function negPanel(rows) {
   }).join("");
   return `<div class="order" id="neg-buy"><p class="hint">Let your bots talk it out here: the deal closes on La Celestina, 0% fee. Replace {id} with the thread id the first call returns.</p>${blocks}</div>`;
 }
+
+// ---------------------------------------------------------------- Open Bazaar: who needs which card
+function missingLine(m) {
+  const card = `${m.card}${m.card_name ? " (" + m.card_name + ")" : ""}`;
+  const a = m.action;
+  if (a) {
+    const where = a.venue === vid() ? `La Celestina (${a.venue}, 0% fee)` : (a.venue === "rastro" ? "El Rastro" : a.venue);
+    const what = a.side === "bid" ? `${a.maker_name} bids ${num(a.price)} P for ${card}`
+      : a.side === "swap" ? `${a.maker_name} gives ${a.gives} for any ${card}`
+      : `${a.maker_name} sells ${card} for ${num(a.price)} P`;
+    const need = m.inferred ? ` · ${m.team_name} appears to be missing it (inferred)` : "";
+    return { text: `${what} on ${where}, offer #${a.offer}${a.expires_tick != null ? ", until tick " + a.expires_tick : ""}${need}`,
+             tail: a.call ? `${a.call} (${a.how})` : (a.history || "no longer in its book") };
+  }
+  const held = m.holder_count ? `${m.holder_count} team${m.holder_count === 1 ? "" : "s"} held a copy in public trades` : "";
+  const dl = (m.dealers || []).length ? `${m.dealers.join(", ")} sell${m.dealers.length === 1 ? "s" : ""} it` : "";
+  return { text: `${m.team_name} appears to be missing ${card} (inferred)${held || dl ? " · " + [held, dl].filter(Boolean).join("; ") : ""}`,
+           tail: m.orders ? `bid on ${vid()}: POST /api/offers ${JSON.stringify(m.orders.bid)}` : "" };
+}
+function renderMissing() {
+  const rows = ((D.missing && D.missing.matches) || []).slice(0, 8);
+  $("missing").innerHTML = rows.length ? rows.map((m) => { const l = missingLine(m);
+    return `<li><button type="button" data-ref="${esc(m.card)}"><span class="nm">${esc(l.text)}<small>${esc(l.tail)}</small></span>${m.price ? `<span class="p">~${num(m.price)} P</span>` : ""}</button></li>`; }).join("")
+    : `<li class="empty">No match right now. Post what you are missing on La Celestina (${esc(vid())}): your bid is the match.</li>`;
+}
+$("missing").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-ref]"); if (!b) return;
+  pick(b.dataset.ref);
+  $("q").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // ---------------------------------------------------------------- cards people are looking for
 function renderWanted() {
