@@ -1,0 +1,66 @@
+{
+ "duel": 11200,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.22,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 101,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 1902,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12548,
+  "price": 124,
+  "tick": 1899,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1891,
+   "from": "Rival Sol",
+   "text": "Hi there. 111 P from my side. Delivery on day 0.",
+   "price": 111,
+   "days": 0
+  },
+  {
+   "tick": 1894,
+   "from": "Rival Sol",
+   "text": "How about 119 P? Delivery on day 0.",
+   "price": 119,
+   "days": 0
+  },
+  {
+   "tick": 1896,
+   "from": "Rival Sol",
+   "text": "I can move to 115 P. Delivery on day 10.",
+   "price": 115,
+   "days": 10
+  },
+  {
+   "tick": 1898,
+   "from": "Rival Sol",
+   "text": "I can move to 130 P. Delivery on day 5.",
+   "price": 130,
+   "days": 5
+  },
+  {
+   "tick": 1899,
+   "from": "Rival Sol",
+   "text": "Meeting you partway: 124 P. Delivery on day 10.",
+   "price": 124,
+   "days": 10
+  }
+ ],
+ "result": 45.2,
+ "price": 124,
+ "days": 10
+}

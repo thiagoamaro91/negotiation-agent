@@ -1,0 +1,64 @@
+{
+ "duel": 11277,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.84,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 133,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1929,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 13196,
+  "price": 115,
+  "tick": 1926,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 13114,
+  "price": 109,
+  "tick": 1922,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1918,
+   "from": "Rival Rojo",
+   "text": "Rápido y justo: 127 P, día 10. ¿Qué día de entrega te va mejor? / Quick and fair: 127 P, day 10. Which delivery day suits you best?",
+   "price": 127,
+   "days": 10
+  },
+  {
+   "tick": 1922,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 81 P, delivery day 0.",
+   "price": 81,
+   "days": 0
+  },
+  {
+   "tick": 1922,
+   "from": "Rival Rojo",
+   "text": "Parece que el día te importa: 109 P con día 10. / It seems the day matters to you: 109 P, day 10.",
+   "price": 109,
+   "days": 10
+  },
+  {
+   "tick": 1926,
+   "from": "you",
+   "text": "Last word from me: 115 P, delivery day 0.",
+   "price": 115,
+   "days": 0
+  }
+ ],
+ "result": 14.6,
+ "price": 115,
+ "days": 0
+}

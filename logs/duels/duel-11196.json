@@ -1,0 +1,38 @@
+{
+ "duel": 11196,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.08,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 96,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1922,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12808,
+  "price": 123,
+  "tick": 1910,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1910,
+   "from": "Rival Plata",
+   "text": "Hola, Rival Azul, voy con prisa: 123 por San Isidro y cerramos ya. Entrega inmediata.",
+   "price": 123,
+   "days": 0
+  }
+ ],
+ "result": 27.0,
+ "price": 123,
+ "days": 0
+}
