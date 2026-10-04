@@ -8,9 +8,12 @@ reservation prices, nothing else.
     python3 clearing_client.py --server https://<clearing> execute [--until 13:50] [--dry-run]
     python3 clearing_client.py --server https://<clearing> plan
 
-book: your haves are every duplicate copy (one copy of each card stays) plus every card of --sell-sets, at
-min = ceil(your_value * (1 + margin)); your wants are every catalog card you do not hold with a value above --floor,
-at max = floor(your_value * (1 - margin)), from GET /api/me/value (which includes page bonuses). --keep never sells.
+book (full, the default): your haves are every duplicate copy (one copy of each card stays), every card of a set
+you value below book (your multiplier < 1: you are not collecting it) and every card of --sell-sets, at
+min = ceil(your_value * (1 + margin)); your wants are every page card with a value above --floor, held or not, at
+max = floor(your_value * (1 - margin)), from GET /api/me/value (which includes page bonuses). A full book is what
+lets the matcher find a profitable trade between almost any two teams (multipliers differ per team), which is
+what covers every venue. --keep never sells; --no-full keeps only duplicates and missing cards.
 execute: every 15 s reads your plan; posts each pending sell exactly once (addressed to the buyer) and reports the
 offer id; accepts each buy once the offer id is known, one accept per tick, if you have the cash. --dry-run prints.
 The token is kept in ~/.clearing_<team>.json."""
@@ -105,7 +108,10 @@ def cmd_book(a) -> None:
         if ref in keep:
             continue
         copies = sorted(copies, key=lambda c: (c.get("your_value") or 0, c["id"]))
-        spare = copies if ref[:3] in sell_sets else copies[:-1]      # one copy of each card stays unless the set is for sale
+        book_price = max(1.0, float(copies[-1].get("book") or 0) or 0.0)
+        mult = (float(copies[-1].get("your_value") or 0) / book_price) if copies[-1].get("book") else None
+        whole_set = ref[:3] in sell_sets or (a.full and mult is not None and mult < 1.0)
+        spare = copies if whole_set else copies[:-1]      # one copy of each card stays unless the set is for sale
         for c in spare:
             v = float(c.get("your_value") or 0)
             haves.append({"card": ref, "asset": int(c["id"]), "min": max(1, int(math.ceil(v * (1 + a.margin))))})
@@ -114,7 +120,7 @@ def cmd_book(a) -> None:
                    for c in (s.get("cards") or []) if isinstance(c, dict) and c.get("id") and c.get("page", True)})
     wants = []
     for ref in refs:
-        if ref in held or ref[:3] in sell_sets:
+        if (ref in held and not a.full) or ref[:3] in sell_sets:
             continue
         r = call(f"{GAME}/api/me/value?card={ref}", key=key)
         v = r.get("your_value") if isinstance(r, dict) else None
@@ -205,7 +211,9 @@ def main() -> None:
     b.add_argument("--sell-sets", default="", help="sets to sell entirely, e.g. MAL,CHA")
     b.add_argument("--keep", default="", help="cards never to sell, e.g. LAV-09,LAV-10")
     b.add_argument("--floor", type=float, default=5.0, help="want only cards worth at least this to you")
-    b.add_argument("--max-wants", type=int, default=40)
+    b.add_argument("--max-wants", type=int, default=60)
+    b.add_argument("--no-full", dest="full", action="store_false",
+                   help="only duplicates for sale and missing cards wanted (default: full book, see docstring)")
     b.add_argument("--dry-run", action="store_true")
     b.set_defaults(fn=cmd_book)
     sub.add_parser("plan").set_defaults(fn=cmd_plan)

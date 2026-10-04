@@ -157,19 +157,19 @@ def match(books: dict, venues: list, participants: dict, hosted: dict | None = N
                 for i, w in enumerate(bb.get("wants", [])):
                     if w["card"] != hv["card"] or w["max"] < hv["min"]:
                         continue
-                    cands.append((w["max"] - hv["min"], s, hv, t, i, w))
-    cands.sort(key=lambda c: (-c[0], c[1], c[2]["asset"], c[3], c[4]))
+                    cands.append({"surplus": w["max"] - hv["min"], "seller": s, "buyer": t, "card": hv["card"],
+                                  "asset": hv["asset"], "min": hv["min"], "max": w["max"], "want": (t, i),
+                                  "qty": w.get("qty", 1)})
+    cands.sort(key=lambda c: (-c["surplus"], c["seller"], c["asset"], c["buyer"], c["want"][1]))
     used_assets, want_left, trades = set(), {}, []
-    for surplus, s, hv, t, i, w in cands:
-        if hv["asset"] in used_assets:
-            continue
-        left = want_left.get((t, i), w.get("qty", 1))
-        if left <= 0:
-            continue
-        used_assets.add(hv["asset"])
-        want_left[(t, i)] = left - 1
-        trades.append({"seller": s, "buyer": t, "card": hv["card"], "asset": hv["asset"], "min": hv["min"],
-                       "max": w["max"], "surplus": surplus})
+
+    def take(c) -> bool:
+        if c["asset"] in used_assets or want_left.get(c["want"], c["qty"]) <= 0:
+            return False
+        used_assets.add(c["asset"])
+        want_left[c["want"]] = want_left.get(c["want"], c["qty"]) - 1
+        trades.append({k: c[k] for k in ("seller", "buyer", "card", "asset", "min", "max", "surplus")})
+        return True
 
     def price_on(tr: dict, venue: dict):
         lo, hi = tr["min"], tr["max"]
@@ -186,8 +186,22 @@ def match(books: dict, venues: list, participants: dict, hosted: dict | None = N
     def can_host(vid: str, tr: dict) -> bool:
         return by_id[vid].get("owner") not in (tr["seller"], tr["buyer"]) and price_on(tr, by_id[vid]) is not None
 
-    # coverage: one trade per participant venue, by augmenting paths (sizes are tiny)
     pvenues = sorted(set(own.values()))
+    # coverage first, from ALL candidates: each participant venue, least hosted first, takes the best-surplus
+    # candidate it can host; then every team gets a trade as a side if one is left; then the rest by surplus
+    for vid in sorted(pvenues, key=lambda v: (load[v], v)):
+        for c in cands:
+            if can_host(vid, c) and take(c):
+                break
+    for team in sorted(active):
+        if any(team in (tr["seller"], tr["buyer"]) for tr in trades):
+            continue
+        for c in cands:
+            if team in (c["seller"], c["buyer"]) and take(c):
+                break
+    for c in cands:
+        take(c)
+    # venue assignment: one trade per participant venue by augmenting paths (sizes are tiny)
     assigned: dict = {}            # trade index -> venue
     match_of: dict = {}            # venue -> trade index
 
@@ -519,8 +533,11 @@ trades. Then each side gets exactly one thing to do:
 - Every round is for everyone or it does not run: the matcher first gives every participant's venue one trade
   (a trade cannot sit on a venue owned by one of its two sides). If some participant's venue would host nothing, the
   round is held and /api/clearing/status says who would be left out; it is retried every 2 minutes.
-- Nothing guarantees a cross: a trade exists only where a card someone sells is a card someone else wants at a
-  price both accept. The more cards in the books (every spare, every missing page card), the more crosses. A held
+- A cross exists only where a card someone sells is a card someone else wants at a price both accept. Every
+  team values the six neighbourhoods differently (multipliers from 0.5 to 1.6), so between almost any two teams
+  there is a card one holds at 0.5 that the other values at 1.6: the client's default FULL book (every spare, every
+  card of a set you are not collecting, every page card you value) is what lets the matcher find those and cover
+  every venue. A thin book (only duplicates and missing cards) is what makes a round hold. A held
   round still held at {anyway} runs with the trades that exist, uncovered venues first in the allocation, so a
   venue nobody can serve never blocks everyone until the stalls close. The status explains each held round.
 - The remaining trades go to the venue with the least value hosted so far today, so a venue that hosted little in
@@ -742,7 +759,10 @@ def selftest() -> None:
     parts = {"t03": "v20", "t07": "v29", "t18": "v28"}
     res = match(books, venues, parts)
     trades = res["trades"]
-    assert len(trades) == 2 and res["uncovered"] == ["t03", "t07"], res     # both trades are t03<->t07: only v28 can host
+    # coverage first: v20 takes t18 -> t07 MAL-06 (surplus 6) over t03 -> t07 (surplus 12), since t03 cannot host its own
+    assert len(trades) == 2 and res["uncovered"] == ["t07"], res            # t07 is in every trade: v29 cannot be covered
+    mal = next(t for t in trades if t["card"] == "MAL-06")
+    assert mal["seller"] == "t18" and mal["buyer"] == "t07" and mal["venue"] == "v20", mal
     sal = next(t for t in trades if t["card"] == "SAL-10")
     assert sal["seller"] == "t07" and sal["buyer"] == "t03" and sal["price"] == 75 and sal["venue"] == "v28", sal
     # a third trade t18 -> t07 lets v20 host it, and v29 is still uncovered (t07 is in every trade)
@@ -805,8 +825,8 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/run", {"admin": "wrong"})
         assert st == 403
         st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
-        assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t03", "t07"], r
-        assert r["why"]["t07"]["trades_not_involving_it"] == 0 and r["why"]["t03"]["its_haves_nobody_wants"] == [], r
+        assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t07"], r
+        assert r["why"]["t07"]["trades_not_involving_it"] == 0, r
         st, r = call("GET", "/api/clearing/status")
         assert r["last_attempt"]["held"] and r["rounds"] == [], r
         st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13", "invite": "c11"})
