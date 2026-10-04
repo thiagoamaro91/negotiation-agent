@@ -24,8 +24,10 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import math
 import statistics
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -180,6 +182,70 @@ def bench_verdict(r: dict) -> tuple:
     return ("stall behaved" if not probs else "something is wrong: " + "; ".join(probs)), probs
 
 
+def run_last_ticks(states: list, run_of) -> dict:
+    """{bench run: last tick it showed an offer} over every recorded book state, finished or not."""
+    out = {}
+    for tick, book in states:
+        for o in book.get("bench_offers") or []:
+            out[run_of(o["id"])] = tick
+    return out
+
+
+def pick_session(requested, sessions: dict, excluded: dict, run_last: dict, feed_starts: list) -> tuple:
+    """(session name or None, why). 'latest' is the newest run in the log, finished or not, and nothing older: an
+    unfinished newest run, or a Market Test the feed shows started after it with no book in the log (not pushed yet,
+    or our broker missed it), gives None, never the previous session's verdict."""
+    if requested not in (None, "", "latest"):
+        if requested in sessions:
+            return requested, ""
+        if requested in excluded:
+            return None, f"session {requested}: {excluded[requested]}"
+        return None, f"session {requested} is not in the broker log"
+    if not run_last:
+        return None, "no Market Test session in the broker log"
+    newest = max(run_last, key=lambda r: run_last[r])
+    if newest not in sessions:
+        return None, f"newest session {newest}: {excluded.get(newest, 'not finished')}"
+    first = sessions[newest]["states"][0][0]
+    later = sorted(st for st in feed_starts if st[0] > first + 2)
+    if later:
+        return None, (f"the feed shows Market Test session {later[-1][2]} starting at tick {later[-1][0]}, after "
+                      f"{newest}, and the broker log has no book for it (not pushed yet, or our broker missed it)")
+    return newest, ""
+
+
+def run_end_expiries(rows: list, ids: set) -> dict:
+    """{offer id: {"expires": tick}} from the broker's bench_run_end rows (each trader's path, as the tracker kept it)."""
+    out = {}
+    for r in rows:
+        if r.get("event") == "bench_run_end":
+            for t in r.get("traders") or []:
+                if isinstance(t, dict) and t.get("id") in ids:
+                    out[t["id"]] = {"expires": t.get("expires")}
+    return out
+
+
+def ours_risk_note(path: Path = ROOT / "evals/broker/narrative.md") -> str:
+    """The eval's own row for the expiry-exact counterfactual (our repo file, not game text)."""
+    try:
+        for line in path.read_text().splitlines():
+            if line.startswith("| fitted_expiry_exact"):
+                cells = [c.strip() for c in line.strip("|").split("|")]
+                return (f"evals/broker/narrative.md, fitted_expiry_exact: delta bench_score {cells[2]}, 95% CI {cells[3]},"
+                        f" dropped crossable pairs {cells[4]} (ours drops pairs the stall would match)")
+    except OSError:
+        pass
+    return "evals/broker/narrative.md: ours +0.030 bench_score on fitted_expiry_exact but 3 crossable pairs dropped"
+
+
+OURS_SWITCH = [  # what a human runs on the Mini, BETWEEN two Market Tests (never during one)
+    "tmux kill-window -t factory:broker",
+    "edit tools/factory_sunday.json: broker \"cmd\" \"--policy\", \"stall\" -> \"--policy\", \"ours\"",
+    "python3 tools/factory.py up --yes",
+    "check: tail -1 logs/broker/$(date +%F).jsonl shows run_start with \"policy\": \"ours\"",
+]
+
+
 def cmd_bench(a, events) -> tuple:
     import broker as brk
     import eval_broker as ebr
@@ -190,13 +256,11 @@ def cmd_bench(a, events) -> tuple:
         return f"no broker log at {path}", [], 0, {}
     states, live, ended = ebr.read_log(path)
     sessions, excluded = ebr.real_sessions(states, live, ended)
-    if not sessions:
-        return "no finished Market Test session in the broker log", [f"excluded: {excluded}"], 0, {}
-    name = a.session
-    if name in (None, "", "latest"):
-        name = max(sessions, key=lambda r: sessions[r]["states"][-1][0])
-    if name not in sessions:
-        return f"session {name} not found", [f"sessions: {', '.join(sorted(sessions))}; excluded {excluded}"], 0, {}
+    name, why = pick_session(a.session, sessions, excluded, run_last_ticks(states, brk.run_of), bench_starts(events))
+    if name is None:
+        last = max((t for t, _ in states), default=0)
+        return (f"bench: pending / insufficient data: {why}", [f"finished sessions in the log: "
+                f"{', '.join(sorted(sessions)) or 'none'}; rerun in 3 minutes after the Mini pushes"], last, {})
     sess = sessions[name]
     tr = sess["traders"]
     t_first, t_last = sess["states"][0][0], sess["states"][-1][0]
@@ -218,7 +282,8 @@ def cmd_bench(a, events) -> tuple:
     lo, hi = (min(ts_books), max(ts_books)) if ts_books else ("", "")
     read_errors = [r for r in rows if r.get("event") in ("read_error", "bad_book", "error") and lo <= r.get("ts", "") <= hi]
     lat = latency(live_pairs, first_cross(sess["states"], ebr.crossing_edges))
-    exp = expiry_read(tr, end)
+    exp = expiry_read({**run_end_expiries(rows, set(tr)), **{k: v for k, v in tr.items() if v.get("expires")
+                                                           is not None}}, end)
     after = ebr.score_around(Path(a.logs) / "score.jsonl", sess)
     r = {"best": best, "ceil": ceil, "live_gain": live_gain, "replay_gain": replay_gain, "ours_gain": ours_gain,
          "live_n": len(live_pairs), "replay_n": perf_stall["matches"], "ours_n": perf_ours["matches"],
@@ -246,11 +311,15 @@ def cmd_bench(a, events) -> tuple:
         f"{exp['distinct']}, session end {exp['ref_end']}, {exp['early']} earlier than the end",
     ]
     if exp["differs"]:
-        lines.append("=> per-offer expiries differ from the session end: `--policy ours` is a CANDIDATE for the next "
-                     f"test (its replay here: {ours_gain:.0f} P vs stall {replay_gain:.0f} P). Needs a human yes; "
-                     "the live policy is not changed by this tool.")
+        lines.append("=> RECOMMENDATION (needs a human yes): per-offer expiries differ from the session end, so "
+                     "`--policy ours` (agent/broker.py BenchPolicy: the stall's rule when blind, timing-aware when "
+                     "expiries are shown and confirmed by departures) is worth switching to for the next tests. "
+                     f"Its replay here: {ours_gain:.0f} P vs stall {replay_gain:.0f} P. Risk: {ours_risk_note()}. "
+                     "Switch only BETWEEN tests (after this one ends, at least 5 minutes before the next; Sunday "
+                     "09:55-10:45, 10:55-11:45, 11:55-13:45), never during one. Default stays stall.")
+        lines += [f"  {c}" for c in OURS_SWITCH]
     else:
-        lines.append("=> expiries carry no extra information: keep `--policy stall`.")
+        lines.append("=> per-offer expiries all at the session end (as on Saturday): keep `--policy stall`.")
     if after:
         lines.append(f"official bench_points around the session (score.jsonl): before {after.get('bench_points_before')}"
                      f", after {after.get('bench_points_after')}")
@@ -440,9 +509,25 @@ def candidates_from(base: dict, hits: list, extra: dict) -> dict:
     return dict(list(out.items())[:MAX_CANDIDATES])
 
 
+def expected_cells(focus: str, guard_rows: list) -> set:
+    """Every (world, mode) cell a verdict needs: the focus world in both modes, each mix guard in both modes, each d1
+    guard in robust mode (duel_matrix --d1-stress runs d1 rows robust only)."""
+    need = {(focus, "robust"), (focus, "confirmed")}
+    for g in guard_rows:
+        need |= {(g, "robust"), (g, "confirmed")} if g.startswith("mix:") else {(g, "robust")}
+    return need
+
+
+def _finite(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+
 def pick_winner(cells: list, base: str, focus: str, guard_rows: list) -> tuple:
-    """(winner or None, why). A candidate wins when it beats `base` on the `focus` world by more than SE_RULE standard
-    errors and is not more than SE_RULE SE worse on any guard world (the D-1 stress and the observed mixes)."""
+    """(winner or None, why). A candidate wins when it beats `base` on the `focus` world by MORE than SE_RULE standard
+    errors in robust AND confirmed mode and is not more than SE_RULE SE worse on any guard cell (the D-1 stress and the
+    observed mixes). Decided on the statistics as given (duel_matrix writes them unrounded). A candidate with any
+    expected cell missing or non-finite never wins."""
+    need = expected_cells(focus, guard_rows)
     by = collections.defaultdict(dict)
     for c in cells:
         by[c["policy"]][(c["world"], c["mode"])] = c
@@ -450,20 +535,23 @@ def pick_winner(cells: list, base: str, focus: str, guard_rows: list) -> tuple:
     for pol, cs in by.items():
         if pol == base:
             continue
-        f = [c for (w, _m), c in cs.items() if w == focus]
-        if not f:
-            why.append(f"{pol}: focus world missing")
+        missing = sorted(need - set(cs))
+        bad = sorted(k for k in need & set(cs) if not _finite(cs[k].get("delta")) or not _finite(cs[k].get("se"))
+                     or cs[k]["se"] < 0)
+        if missing or bad:
+            why.append(f"{pol}: incomplete matrix (missing {missing}, non-finite {bad}): no verdict")
             continue
+        f = [cs[(focus, m)] for m in ("robust", "confirmed")]
         gain = min(c["delta"] - SE_RULE * c["se"] for c in f)
-        worse = [f"{w} ({m}) {c['delta']:+.3f}±{c['se']:.3f}" for (w, m), c in cs.items()
-                 if w in guard_rows and c["delta"] < -SE_RULE * c["se"]]
+        worse = [f"{w} ({m}) {cs[(w, m)]['delta']:+.3f}±{cs[(w, m)]['se']:.3f}" for (w, m) in sorted(need)
+                 if w in guard_rows and cs[(w, m)]["delta"] < -SE_RULE * cs[(w, m)]["se"]]
         if gain <= 0:
-            got = ", ".join("%+.3f±%.3f" % (c["delta"], c["se"]) for c in f)
-            why.append(f"{pol}: not 2 SE better on {focus} ({got})")
+            got = ", ".join("%+.4f±%.4f" % (c["delta"], c["se"]) for c in f)
+            why.append(f"{pol}: not more than 2 SE better on {focus} in both modes ({got})")
         elif worse:
             why.append(f"{pol}: 2 SE worse on {'; '.join(worse)}")
         else:
-            d = max(c["delta"] for c in f)
+            d = min(c["delta"] for c in f)
             why.append(f"{pol}: WINS {d:+.3f} on {focus}")
             if best is None or d > best[1]:
                 best = (pol, d)
@@ -474,12 +562,16 @@ def params_delta(base: dict, new: dict) -> dict:
     return {k: (base.get(k), new.get(k)) for k in sorted(set(base) | set(new)) if base.get(k) != new.get(k)}
 
 
+DEPLOYED_PARAMS = ROOT / "docs/duel-lab/duel-params-duels3.json"   # what the factory's duel run reads
+
+
 def base_params_path(a) -> Path:
-    for p in [a.base_params, ROOT / "docs/duel-lab/duel-params-duels3.json",
-              ROOT / "docs/duel-lab/duel-params-duels2-final.json"]:
-        if p and Path(p).exists():
-            return Path(p)
-    raise SystemExit("no base params file")
+    """The deployed Duels III params (or --base-params). No fallback: a missing baseline stops the matrix."""
+    p = Path(a.base_params).expanduser() if a.base_params else DEPLOYED_PARAMS
+    if not p.exists():
+        raise SystemExit(f"baseline params {p} missing: the matrix compares candidates with the DEPLOYED Duels III "
+                         "params; pass --base-params FILE only if that is what the duel bot runs")
+    return p
 
 
 def run_matrix(a, base_path: Path, cands: dict, mix_file: Path, mix_name: str, out_dir: Path) -> list:
@@ -497,21 +589,93 @@ def run_matrix(a, base_path: Path, cands: dict, mix_file: Path, mix_name: str, o
     return json.loads((out_dir / "matrix.json").read_text())["cells"]
 
 
+EXPECTED_DUELS = {1: 34, 2: 68, 3: 68, 4: 34}   # per team: duel_arena.SESSIONS[s]["duels"]
+SESSION_TICKS = {1: 16, 2: 16, 3: 12, 4: 12}
+
+
+def completeness(rows: list, log_ids: set, expected: int) -> tuple:
+    """(complete, why): every expected duel finished (deal or no_deal) and each one seen in our duel bot's log."""
+    done = [r for r in rows if r["status"] in ("deal", "no_deal")]
+    if len(done) < expected:
+        return False, f"{len(done)}/{expected} duels completed ({len(rows) - len(done)} still live)"
+    missing = [r["duel"] for r in done if r["duel"] not in log_ids]
+    if missing:
+        return False, f"the duel log covers {len(done) - len(missing)}/{len(done)} completed duels (missing {missing[:5]})"
+    return True, f"{len(done)}/{expected} duels completed, all in the duel log"
+
+
+AFTER_MARGIN = 60   # ticks: a score snapshot later than this after the wave may already hold the next wave's points
+
+
+def realised_per_duel(score_rows: list, t0: int, t1: int, n: int) -> tuple:
+    """(duel_points gained over the wave / n, why): the last score row before tick t0 against the first at or after t1,
+    which must come within AFTER_MARGIN ticks of t1 (a later one may include the next wave).
+    duel_points is read as the sum of per-duel scores in the arena's unit (share of the pie x decay^rounds): Duels I
+    gave 16.24 over 34 duels."""
+    before = [r for r in score_rows if isinstance(r.get("tick"), int) and r["tick"] < t0]
+    after = [r for r in score_rows if isinstance(r.get("tick"), int) and t1 <= r["tick"] <= t1 + AFTER_MARGIN]
+    dp = (lambda r: (r.get("score") or {}).get("duel_points"))
+    if not before or not after or not _finite(dp(before[-1])) or not _finite(dp(after[0])) or n <= 0:
+        return None, f"no score snapshot before the wave and within {AFTER_MARGIN} ticks after it"
+    return (dp(after[0]) - dp(before[-1])) / n, f"duel_points {dp(before[-1])} (tick {before[-1]['tick']}) -> " \
+                                                f"{dp(after[0])} (tick {after[0]['tick']})"
+
+
+def matrix_md_value(text: str, world: str = "mix: likely field", mode: str = "robust"):
+    """The first policy column of a duel_matrix markdown row, or None."""
+    for line in text.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 3 and cells[0] == world and cells[1] == mode:
+            try:
+                return float(cells[2].split()[0])
+            except ValueError:
+                return None
+    return None
+
+
+def predicted_per_duel(a, base_path: Path | None) -> tuple:
+    """(predicted score per duel, deal rate or None, source): WP1's docs/duel-lab/duels3-matrix.md (likely field,
+    robust, first column) when it exists, else one arena run of the deployed params on the likely field."""
+    md = ROOT / "docs/duel-lab/duels3-matrix.md"
+    if md.exists():
+        v = matrix_md_value(md.read_text())
+        if v is not None:
+            return v, None, "docs/duel-lab/duels3-matrix.md (likely field, robust)"
+    if base_path is None or a.predict_sessions <= 0:
+        return None, None, "no prediction (no duels3-matrix.md; arena run off)"
+    import duel_arena as arena
+    saved = (arena.PAIR_SEEN, arena.ARENA_DAYS)
+    arena.PAIR_SEEN, arena.ARENA_DAYS = 0.0, ""
+    try:
+        w = arena.FIELD_WEIGHTS
+        res = arena.evaluate(json.loads(base_path.read_text()), range(980000, 980000 + a.predict_sessions),
+                             a.session, kinds=[k for k in arena.KINDS if w.get(k, 0) > 0], weights=w)
+    finally:
+        arena.PAIR_SEEN, arena.ARENA_DAYS = saved
+    st = arena.summary(res)["all"]
+    return st["mean"], st["deal_rate"], f"arena, {base_path.name}, likely field, robust, {a.predict_sessions} sessions"
+
+
 def cmd_duels(a, events) -> tuple:
     import duel_field_read as dfr
     logs = Path(a.logs)
-    rows = [classify_duel(d) for d in duel_files(logs / "duels", a.session)]
+    files = duel_files(logs / "duels", a.session)
+    rows = [classify_duel(d) for d in files]
     if not rows:
-        return f"no duel files for session {a.session} (server session {a.session + DUEL_SESSION_OFFSET})", [], 0, {}
+        return (f"duels session {a.session}: pending / insufficient data: no duel files (server session "
+                f"{a.session + DUEL_SESSION_OFFSET})"), [], 0, {}
     ids = {r["duel"] for r in rows}
     log = logs / "duel" / f"{a.date or time.strftime('%Y-%m-%d')}.jsonl"
     log_rows = {k: v for k, v in dfr.load(log, "").items() if k in ids} if log.exists() else {}
+    expected = EXPECTED_DUELS.get(a.session, len(rows))
+    complete, cwhy = completeness(rows, set(log_rows), expected)
     s = duel_summary(rows)
     doc = ROOT / "docs/duel-lab/duels3-params.md"
     doc_text = doc.read_text() if doc.exists() else ""
     hits = lever_hits(rows, doc_text)
-    tick = max((r.get("deadline_tick") or 0 for r in duel_files(logs / "duels", a.session)), default=0)
-    lines = [f"{s['n']} duels, {s['deals']} deals, our surplus {s['surplus']} P; "
+    tick = max((d.get("deadline_tick") or 0 for d in files), default=0)
+    lines = [("complete: " if complete else "PARTIAL: ") + cwhy,
+             f"{s['n']} duels, {s['deals']} deals, our surplus {s['surplus']} P; "
              + ", ".join(f"{role}: {v[0]} deals / {v[1]} no-deals" for role, v in sorted(s["by_role"].items())),
              "no-deals by cause: " + (", ".join(f"{k} {v}" for k, v in sorted(s["losses"].items())) or "none"),
              "day term: deals by delivery day " + (", ".join(f"d{k}: {v}" for k, v in sorted(s["days"].items())) or "-")
@@ -538,17 +702,39 @@ def cmd_duels(a, events) -> tuple:
     weights = field_weights(log_rows, {r["duel"]: r["status"] for r in rows}) if log_rows else {}
     lines.append("field refit (duel_field_read shapes -> arena kinds): " + (json.dumps(weights) if weights
                                                                                else "no duel log for this session"))
+    extra = {"summary": s, "weights": weights, "hits": [list(h[:5]) for h in hits], "complete": complete}
+    if not complete:
+        lines.append("=> no prediction check and no params recommendation on a partial wave: rerun when it is complete")
+        return (f"duels session {a.session}: PARTIAL ({cwhy}): {s['deals']} deals so far; no params recommendation",
+                lines, tick, extra)
     verdict = f"duels session {a.session}: {s['deals']}/{s['n']} deals, {s['surplus']} P"
-    extra = {"summary": s, "weights": weights, "hits": [list(h[:5]) for h in hits]}
+    # the pitch line: what the lab predicted per duel against what the live wave gave
+    base_path = None
+    try:
+        base_path = base_params_path(a)
+    except SystemExit as e:
+        lines.append(f"baseline: {e}")
+    pred, pred_rate, psrc = predicted_per_duel(a, base_path)
+    t1 = tick
+    t0 = min((d.get("deadline_tick") or t1 for d in files), default=t1) - SESSION_TICKS.get(a.session, 12)
+    real, rsrc = realised_per_duel(read_jsonl(logs / "score.jsonl"), t0, t1, expected)
+    extra.update(predicted=pred, realised=real)
+    lines.append("pitch: the lab predicted " + (f"{pred:.3f} per duel" if pred is not None else "n/a")
+                 + (f" (deal rate {pred_rate:.0%})" if pred_rate is not None else "")
+                 + "; the live wave gave " + (f"{real:.3f} per duel" if real is not None else "n/a")
+                 + f" (deal rate {s['deals'] / max(1, s['n']):.0%}), field seen {json.dumps(weights)}"
+                 + f" [prediction: {psrc}; live: {rsrc}]")
     if a.matrix:
         if not weights:
             lines.append("matrix skipped: no field to refit")
+        elif base_path is None:
+            lines.append("matrix skipped: no deployed baseline params")
+            verdict += "; Final params: no verdict (baseline missing)"
         else:
-            out_dir = Path(a.out) / f"matrix-s{a.session}"
+            out_dir = Path(a.out) / f"matrix-s{a.session}" if a.write else Path(tempfile.mkdtemp(prefix="analyst-"))
             out_dir.mkdir(parents=True, exist_ok=True)
             mix_file = out_dir / "field.json"
             mix_file.write_text(json.dumps(weights, indent=1) + "\n")
-            base_path = base_params_path(a)
             base = json.loads(base_path.read_text())
             extra_c = {}
             for spec in a.candidate:
@@ -571,8 +757,9 @@ def cmd_duels(a, events) -> tuple:
                     target = ROOT / "docs/duel-lab/duel-params-final.json"
                     if a.write:
                         target.write_text(json.dumps(new, indent=2) + "\n")
-                    lines.append(f"=> Final params delta {params_delta(base, new)}: written to {target.relative_to(ROOT)}"
-                                 " (a human copies it to the factory's params path; nothing live changes here)")
+                    lines.append(f"=> Final params delta {params_delta(base, new)}: "
+                                 + (f"written to {target.relative_to(ROOT)}" if a.write else "not written (--no-write)")
+                                 + " (applied only by a human: docs/plans/sunday-analyst.md, 'Applying a change')")
                     verdict += f"; Final params: CHANGE {params_delta(base, new)}"
                 else:
                     lines.append("=> keep the Duels III params for the Final")
@@ -648,21 +835,25 @@ def dealer_deals(events: list, since: int, team: str = US) -> list:
 
 
 def ladder_slots(deals: list, values: dict) -> dict:
-    """{level: {"deals": [...], "best": [...top 3 by gain], "zero": [...wrong side of our value], "check": [...]}}.
-    A deal's gain at our private value: buy = value - price, sell = price - value; a gain below 0 scores 0 (the value
-    gate). A sale below the value of the copy we still hold goes to "check", not "zero": the copy sold was a spare,
-    which may be worth less to us. values: our_values()."""
-    out = {lv: {"deals": [], "best": [], "zero": [], "check": []} for lv in sorted(set(DEALER_LEVEL.values()))}
+    """{level: {"deals", "best", "zero", "unverified"}}. A deal's gain at our private value: buy = value - price,
+    sell = price - value. Only a value our bot logged for that card and side at or before the settlement ("bot") is a
+    settlement-time value: such a deal with gain >= 0 is a CONFIRMED slot ("best", top 3 by gain), below 0 it scored 0
+    (the value gate, "zero"). A deal valued only by the copy we hold now ("held") or not at all is "unverified": it
+    never counts as a filled slot, and its level stays on the to-do list until someone checks its value."""
+    out = {lv: {"deals": [], "best": [], "zero": [], "unverified": []} for lv in sorted(set(DEALER_LEVEL.values()))}
     for d in deals:
         v, src = value_at(values, d["ref"], d["side"], d.get("ts"))
         d = dict(d, value=v, source=src, gain=None if v is None or d["price"] is None
                  else round((v - d["price"]) if d["side"] == "buy" else (d["price"] - v), 1))
-        out[d["level"]]["deals"].append(d)
-        if d["gain"] is not None and d["gain"] < 0:
-            out[d["level"]]["check" if d["side"] == "sell" and src == "held" else "zero"].append(d)
+        s = out[d["level"]]
+        s["deals"].append(d)
+        if src != "bot" or d["gain"] is None:
+            s["unverified"].append(d)
+        elif d["gain"] < 0:
+            s["zero"].append(d)
     for lv, s in out.items():
-        ok = [d for d in s["deals"] if d not in s["zero"]]
-        s["best"] = sorted(ok, key=lambda d: -(d["gain"] if d["gain"] is not None else -1e9))[:SLOTS_PER_LEVEL]
+        ok = [d for d in s["deals"] if d not in s["zero"] and d not in s["unverified"]]
+        s["best"] = sorted(ok, key=lambda d: -d["gain"])[:SLOTS_PER_LEVEL]
     return out
 
 
@@ -671,27 +862,29 @@ def cmd_ladder(a, events) -> tuple:
     deals = dealer_deals(events, start)
     slots = ladder_slots(deals, our_values(Path(a.logs)))
     filled = sum(len(s["best"]) for s in slots.values())
+    unver = sum(len(s["unverified"]) for s in slots.values())
     lines = [f"round {no} {name!s} since tick {start}: {len(deals)} dealer deals of ours"]
     names = {v: k for k, v in DEALER_LEVEL.items()}
     todo = []
     for lv, s in slots.items():
         got = len(s["best"])
-        lines.append(f"  L{lv} {names[lv]}: {got}/{SLOTS_PER_LEVEL} slots"
+        lines.append(f"  L{lv} {names[lv]}: {got}/{SLOTS_PER_LEVEL} confirmed slots"
                      + ("".join(f"; {d['side']} {d['ref']} @ {d['price']} (value {_f(d['value'])}, gain "
                                 f"{_f(d['gain'])})" for d in s["best"])))
         for d in s["zero"]:
             lines.append(f"    scored 0 (wrong side of value): tick {d['tick']} {d['side']} {d['ref']} @ {d['price']}"
                          f" vs value {_f(d['value'])}")
-        for d in s["check"]:
-            lines.append(f"    check: tick {d['tick']} sold {d['ref']} @ {d['price']} below the {_f(d['value'])} of the "
-                         "copy we hold (a spare may be worth less; scored 0 if not)")
+        for d in s["unverified"]:
+            lines.append(f"    unverified: tick {d['tick']} {d['side']} {d['ref']} @ {d['price']} (no settlement-time "
+                         f"value; the copy we hold is worth {_f(d['value'])}): not counted")
         if got < SLOTS_PER_LEVEL:
-            todo.append(f"{SLOTS_PER_LEVEL - got} x L{lv} {names[lv]}")
-    lines.append("left before 14:00: " + (", ".join(todo) if todo else "nothing: 15/15 filled")
+            todo.append(f"{SLOTS_PER_LEVEL - got} x L{lv} {names[lv]}"
+                        + (f" ({len(s['unverified'])} unverified deal(s) to check)" if s["unverified"] else ""))
+    lines.append("left before 14:00: " + (", ".join(todo) if todo else "nothing: 15/15 confirmed")
                  + " (higher levels weigh more; every deal must clear our value)")
     zero = sum(len(s["zero"]) for s in slots.values())
-    return (f"ladder: {filled}/15 slots filled, {zero} deal(s) scored 0", lines, last_tick(events),
-            {"filled": filled, "zero": zero, "todo": todo})
+    return (f"ladder: {filled}/15 slots confirmed, {unver} unverified, {zero} deal(s) scored 0", lines,
+            last_tick(events), {"filled": filled, "zero": zero, "unverified": unver, "todo": todo})
 
 
 # ---------------------------------------------------------------- market (other teams on v20)
@@ -843,7 +1036,7 @@ def write_report(out: Path, trigger: str, tick: int, verdict: str, lines: list) 
     return f
 
 
-def rebuild_latest(out: Path, newest: Path | None = None) -> None:
+def rebuild_latest(out: Path, newest: Path | None = None, write: bool = True) -> str:
     """LATEST.md: the session's handoff (HANDOFF.md, if written), the newest verdict per trigger (one line each), then
     the newest report in full."""
     per = {}
@@ -861,7 +1054,10 @@ def rebuild_latest(out: Path, newest: Path | None = None) -> None:
         rows.append(f"| {trig} | {f.name} | {verdict.replace('|', '/')} |")
     if newest is not None:
         rows += ["", "---", "", newest.read_text()]
-    (out / "LATEST.md").write_text("\n".join(rows) + "\n")
+    text = "\n".join(rows) + "\n"
+    if write:
+        (out / "LATEST.md").write_text(text)
+    return text
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -880,6 +1076,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--sessions", type=int, default=60, help="duels: arena sessions per matrix cell")
     ap.add_argument("--base-params", default=None, help="duels: baseline params (default duel-params-duels3.json)")
     ap.add_argument("--candidate", action="append", default=[], help="duels: NAME=FILE extra candidate")
+    ap.add_argument("--predict-sessions", type=int, default=60, help="duels: arena sessions for the predicted "
+                    "per-duel score when docs/duel-lab/duels3-matrix.md is absent (0: skip)")
     ap.add_argument("--window", type=int, default=40, help="market: ticks an announcement/outreach counts before")
     ap.add_argument("--since-tick", type=int, default=None, help="score: delta against this tick, not the last run")
     return ap
@@ -888,6 +1086,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
     if a.cmd == "latest":
+        if not a.write:
+            print(rebuild_latest(Path(a.out), write=False) if Path(a.out).is_dir() else "(no reports yet)")
+            return 0
         Path(a.out).mkdir(parents=True, exist_ok=True)
         rebuild_latest(Path(a.out))
         print(f"-> {Path(a.out) / 'LATEST.md'}")

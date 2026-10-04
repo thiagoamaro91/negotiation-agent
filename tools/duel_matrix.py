@@ -97,6 +97,13 @@ def paired(a: dict, b: dict) -> tuple:
     return m, sd / n ** 0.5
 
 
+def json_cell(row: str, col: str, policy: str, c: dict, delta: float, se: float) -> dict:
+    """One --out-json cell. delta and se stay unrounded: a reader applying the 2 SE rule must decide on full precision
+    (rounding to 4 places can turn 0.01006 +- 0.005049, which fails, into 0.0101 +- 0.0050, which passes)."""
+    return {"world": row, "mode": col, "policy": policy, "mean": c["mean"], "delta": float(delta), "se": float(se),
+            "deal_rate": c["deal_rate"], "rounds": c["rounds"]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--session", type=int, default=2, choices=sorted(arena.SESSIONS))
@@ -146,11 +153,9 @@ def main() -> None:
                 m, se = paired(per_seed[(row, col, n)], per_seed[(row, col, base)])
                 mark = "**" if m > 2 * se else ("_" if m < -2 * se else "")
                 txt += f" ({mark}{m:+.3f}{mark} ±{se:.3f})"
-                out_json.append({"world": row, "mode": col, "policy": n, "mean": c["mean"], "delta": round(m, 4),
-                                 "se": round(se, 4), "deal_rate": c["deal_rate"], "rounds": c["rounds"]})
+                out_json.append(json_cell(row, col, n, c, m, se))
             else:
-                out_json.append({"world": row, "mode": col, "policy": n, "mean": c["mean"], "delta": 0.0,
-                                 "se": 0.0, "deal_rate": c["deal_rate"], "rounds": c["rounds"]})
+                out_json.append(json_cell(row, col, n, c, 0.0, 0.0))
             parts.append(txt)
         lines.append(f"| {row} | {col} | " + " | ".join(parts) + " |")
     lines += ["", "Duels I replay (real rival price paths; rivals do not react or accept):", ""]
