@@ -67,9 +67,16 @@ def load_env() -> None:
                 os.environ.setdefault(k.strip(), v.strip())
 
 
-def get_json(path: str, timeout: float = 15.0) -> dict:
-    with urllib.request.urlopen(f"{BASE}/api/{path}", timeout=timeout) as r:   # keyless public GET
-        return json.loads(r.read().decode())
+def get_json(path: str, timeout: float = 15.0, tries: int = 3, pause_s: float = 5.0) -> dict:
+    """Keyless public GET, tried 3 times 5 s apart: a non-zero exit fails the factory step for good."""
+    for n in range(tries):
+        try:
+            with urllib.request.urlopen(f"{BASE}/api/{path}", timeout=timeout) as r:
+                return json.loads(r.read().decode())
+        except Exception:  # noqa: BLE001
+            if n == tries - 1:
+                raise
+            time.sleep(pause_s)
 
 
 def holds(me: dict, ref: str = REF) -> bool:
@@ -205,6 +212,8 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 def main(argv=None) -> int:
+    global SPAWNED
+    SPAWNED = False
     a = parse_args(argv)
     load_env()
     clock, events = get_json("clock"), (get_json("schedule").get("upcoming") or [])
@@ -235,6 +244,19 @@ def main(argv=None) -> int:
         run.event("refused", why=why, t_hours=h)
         return EXIT_WINDOW
     write_yield(tick)
+    try:      # until chato is spawned, any failure must give the bid back to the desk (nobody clears it by hand today)
+        return after_yield(a, run, tick, events)
+    except BaseException:
+        if not SPAWNED:
+            drop_yield()
+        raise
+
+
+SPAWNED = False
+
+
+def after_yield(a: argparse.Namespace, run, tick: int, events: list) -> int:
+    global SPAWNED
     run.event("yield_written", path=rel(YIELD), tick=tick)
     ack = wait_ack(tick, lambda: int(get_json("clock").get("tick")), a.ack_ticks, a.ack_wall_s)
     if ack is None:
@@ -261,6 +283,7 @@ def main(argv=None) -> int:
     offset = log.stat().st_size if log.exists() else 0
     argv = chato_argv(a)
     run.event("chato_start", argv=argv[1:])
+    SPAWNED = True
     rc = subprocess.call(argv, cwd=ROOT)
     res = outcome(rc, read_rows(log, offset))
     if res == "deal":

@@ -177,6 +177,22 @@ class Run(unittest.TestCase):
             self.assertEqual(s.main(["run"]), 6)
         self.assertTrue(s.YIELD.exists())
 
+    def test_a_failed_clock_read_after_the_ack_gives_the_bid_back(self):
+        ack = {"ref": "SAL-10", "tick": 2001, "open_bid": False}
+        reads = iter([{"t_hours": 20.40, "tick": 2000}, {"upcoming": SCHED}])
+
+        def api(path):
+            try:
+                return next(reads)
+            except StopIteration:
+                raise OSError("timeout") from None
+        with mock.patch.object(s, "get_json", side_effect=api), mock.patch.object(s, "wait_ack", return_value=ack), \
+                mock.patch.object(s, "other_picaros_runs", return_value=[]), mock.patch.object(s.subprocess, "call") as call:
+            with self.assertRaises(OSError):
+                s.main(["run"])
+            call.assert_not_called()
+        self.assertFalse(s.YIELD.exists())
+
     def test_too_late_for_the_market_test_writes_no_yield(self):
         with mock.patch.object(s, "get_json", side_effect=lambda p: {"clock": {"t_hours": 20.8, "tick": 2000},
                                                                       "schedule": {"upcoming": SCHED}}[p]):
