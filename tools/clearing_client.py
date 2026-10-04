@@ -28,6 +28,7 @@ The token is kept in ~/.clearing_<team>.json."""
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -162,12 +163,26 @@ def cmd_plan(a) -> None:
               file=sys.stderr)
 
 
+def my_commitment(plan: dict) -> str:
+    """Computed HERE from the plan I read (never copied blindly from the server): SHA-256 of team, round, version
+    and my actions of the open proposal, same canonical form as the server."""
+    team, rid, ver = plan.get("team"), plan.get("round"), plan.get("version")
+    mine = [x for x in (plan.get("actions") or []) if x.get("round_status") == plan.get("round_status")]
+    rows = sorted((x["id"], x["role"], x["card"], x.get("asset"), x["price"], x["venue"], x.get("to") or x.get("from"))
+                  for x in mine)
+    return hashlib.sha256(json.dumps([team, rid, ver, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def cmd_vote(a) -> None:
     cfg = load_cfg(a)
     if a.ok == a.no:
         sys.exit("say --ok or --no")
     plan = call(f"{cfg['server']}/api/clearing/plan?token={cfg['token']}")
     body = {"token": cfg["token"], "ok": bool(a.ok), "version": plan.get("version")}
+    if a.ok:
+        body["commitment"] = my_commitment(plan)
+        if body["commitment"] != plan.get("commitment"):
+            sys.exit("the server's commitment hash does not match what I computed from my own plan: NOT voting")
     if a.no:
         body["why"] = a.why or "no reason given"
         if a.trades:
@@ -286,7 +301,8 @@ def cmd_execute(a) -> None:
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: dry run, NOT voting")
                 elif a.auto_approve and key_v not in voted:
                     voted.add(key_v)
-                    r = call(f"{cfg['server']}/api/clearing/vote", {"token": cfg["token"], "ok": True, "version": key_v[1]})
+                    r = call(f"{cfg['server']}/api/clearing/vote", {"token": cfg["token"], "ok": True, "version": key_v[1],
+                                                                     "commitment": my_commitment(plan)})
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: auto-approved -> {r.get('status')}, waiting for {r.get('waiting_for')}")
                 elif key_v not in voted:
                     voted.add(key_v)

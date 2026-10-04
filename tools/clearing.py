@@ -73,6 +73,14 @@ def h(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def commitment(team: str, rid, version, actions: list) -> str:
+    """SHA-256 of exactly what a team approves: its team id, the round, the version and its actions (id, role,
+    card, asset, price, venue, counterparty) in a canonical order. The client computes the same from its plan."""
+    rows = sorted((a["id"], a["role"], a["card"], a.get("asset"), a["price"], a["venue"], a.get("to") or a.get("from"))
+                  for a in actions)
+    return hashlib.sha256(json.dumps([team, rid, version, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 class Refused(Exception):
     def __init__(self, status: int, code: str, message: str = ""):
         super().__init__(message or code)
@@ -360,7 +368,7 @@ class Store:
                     "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
                             "the venue with the least value hosted today; a side that did not execute sits out the next round",
                     "hosting": hosting, "ledger": ledger, "last_attempt": self.state.get("last_attempt"),
-                    "policy": self.state.get("policy"),
+                    "policy": self.state.get("policy"), "reliability": self.reliability(),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
                     "cards_offered": sorted({x["card"] for v in teams.values() for x in v["haves"]}),
@@ -520,7 +528,13 @@ class Store:
             if ver is not None and ver != r.get("version", 1):
                 raise Refused(409, "stale_version", f"the open proposal is version {r.get('version', 1)}; re-read your plan")
             if ok is True:
-                r["votes"][team] = {"ok": True, "at": now_iso(), "version": r.get("version", 1)}
+                mine = self._actions_of(team, r)
+                want = commitment(team, r["id"], r.get("version", 1), mine)
+                got = body.get("commitment")
+                if not (isinstance(got, str) and hmac.compare_digest(got, want)):
+                    raise Refused(409, "bad_commitment", "your OK must carry the commitment hash of the plan you read "
+                                                          "(GET plan -> \"commitment\"); re-read your plan and vote again")
+                r["votes"][team] = {"ok": True, "at": now_iso(), "version": r.get("version", 1), "commitment": want}
                 approved = self._maybe_approve(r)
                 self.save()
                 return {"round": r["id"], "version": r["version"], "status": r["status"], "your_vote": "ok",
@@ -551,6 +565,42 @@ class Store:
             res["note"] = "re-proposal held; the vetoed trades are gone and all votes were cleared"
         return {"your_vote": "not ok", "why": why, "rejected": [t["id"] for t in rejected], "reproposed": res}
 
+    @staticmethod
+    def _actions_of(team: str, r: dict) -> list:
+        out = []
+        for tr in r["trades"]:
+            if tr["seller"] == team:
+                out.append({"id": tr["id"], "role": "sell", "card": tr["card"], "asset": tr["asset"], "price": tr["price"],
+                            "venue": tr["venue"], "to": tr["buyer"]})
+            elif tr["buyer"] == team:
+                out.append({"id": tr["id"], "role": "buy", "card": tr["card"], "price": tr["price"], "venue": tr["venue"],
+                            "from": tr["seller"]})
+        return out
+
+    def reliability(self) -> dict:
+        """Public, per team: commitments signed, kept (every committed trade settled) and broken (a committed trade
+        the team did not execute: a seller that never posted, a buyer that never accepted)."""
+        out: dict = {}
+        for r in self.state["rounds"]:
+            if r.get("status") not in ("approved", "closed"):
+                continue
+            for team, v in r.get("votes", {}).items():
+                if not v.get("ok"):
+                    continue
+                rec = out.setdefault(team, {"signed": 0, "kept": 0, "broken": 0, "broken_trades": []})
+                rec["signed"] += 1
+                mine = [t for t in r["trades"] if team in (t["seller"], t["buyer"])]
+                broke = [t["id"] for t in mine if (t["status"] == "planned" and t["seller"] == team) or
+                         (t["status"] == "posted" and t["buyer"] == team) or
+                         (t["status"] == "failed" and str(t.get("error") or "").startswith("not executed") and
+                          ((t.get("offer") is None and t["seller"] == team) or (t.get("offer") and t["buyer"] == team)))]
+                if broke:
+                    rec["broken"] += 1
+                    rec["broken_trades"] += broke
+                elif r.get("status") == "closed" and all(t["status"] in ("settled", "failed") for t in mine):
+                    rec["kept"] += 1
+        return out
+
     def plan(self, token) -> dict:
         team = self.team_of(token)
         with self.lock:
@@ -577,7 +627,10 @@ class Store:
                                     "accept": None if tr["offer"] is None else f"POST /api/offers/{tr['offer']}/accept"})
             for a in out:
                 a["round_status"] = next(r["status"] for r in self.state["rounds"] if any(t["id"] == a["id"] for t in r["trades"]))
+            mine_now = [a for a in out if a["round_status"] == cur["status"] and
+                        any(t["id"] == a["id"] for t in cur["trades"])]
             return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
+                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now),
                     "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
                     "votes": {t: v.get("ok") for t, v in cur.get("votes", {}).items()},
                     "rejections": cur.get("rejections", []),
@@ -675,6 +728,12 @@ round and the Cámara proposes again (new version, all votes cleared, the reason
 is approved, and only then executable, when every team in it has said OK; a team silent for {vote} minutes has
 its trades dropped and the rest goes ahead. The client does this for you: `vote --ok`, `vote --no --why "..."`,
 or `execute --auto-approve` if you trust your own numbers (every price is inside them).
+
+## Your OK is a signed commitment
+`plan` carries a `commitment`: the SHA-256 of exactly what you are approving (your team, round, version, your
+actions). Your OK must carry it back, or it is refused: nobody can approve something they did not read. The
+status page shows, per team, commitments signed, kept and broken (an approved trade you did not post or accept).
+A broken commitment is public, stays, and sits you out of the next round. The client does the hashing for you.
 
 ## Which venue, and what binds
 - Every round is for everyone or it does not run: the matcher first gives every participant's venue one trade
@@ -1026,13 +1085,14 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/report", {"token": toks["t07"], "action": sell["id"], "offer": 4567})
         assert st == 409, r
         buy07 = next(x for x in acts if x["role"] == "buy")
-        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1})
+        st, pl = call("GET", f"/api/clearing/plan?token={toks['t03']}")
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1, "commitment": pl["commitment"]})
         assert st == 200, r
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": False, "why": "too dear", "trades": [buy07["id"]]})
         assert st == 200 and r["rejected"] == [buy07["id"]] and r["reproposed"]["version"] == 2, r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][-1]["votes"] == {}, r                              # t03's earlier OK no longer counts
-        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1})
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1, "commitment": pl["commitment"]})
         assert st == 409 and r["error"] == "stale_version", r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"][0]["why"] == "too dear", r
@@ -1042,8 +1102,11 @@ def selftest() -> None:
         # everyone says OK -> approved, books consumed
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t16"] if "t16" in toks else "zz-zz-zz-zz", "ok": True})
         assert st == 401, r
+        st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": True})
+        assert st == 409 and r["error"] == "bad_commitment", r
         for t in need:
-            st, r = call("POST", "/api/clearing/vote", {"token": toks[t], "ok": True})
+            st, pl = call("GET", f"/api/clearing/plan?token={toks[t]}")
+            st, r = call("POST", "/api/clearing/vote", {"token": toks[t], "ok": True, "commitment": pl["commitment"]})
             assert st == 200 or r.get("error") == "not_involved", r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][-1]["status"] == "approved", r
@@ -1061,6 +1124,9 @@ def selftest() -> None:
         assert st == 200 and r["sat_out"], r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][0]["status"] == "closed" and r["rounds"][-1]["status"] == "proposed", r
+        rel = r["reliability"]
+        assert rel["t07"]["signed"] == 1 and rel["t07"]["broken"] == 0, rel         # t07 posted; t03 accepted
+        assert any(v["broken"] == 1 for v in rel.values()), rel                      # someone left a trade undone
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/agents.md", timeout=5) as r:
             assert r.status == 200 and b"clearing_client.py" in r.read()
         srv.shutdown()
