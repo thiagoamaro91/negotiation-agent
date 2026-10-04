@@ -585,13 +585,13 @@
   "filled": 43,
   "slots": 60
  },
- "tick": 2351,
+ "tick": 2379,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 32.39,
-  "negotiating": 24.24,
+  "score": 32.58,
+  "negotiating": 24.43,
   "market": 8.15,
   "neg_points": 86.5,
   "mm_points": 0.0,

@@ -85,3 +85,11 @@
 {"ts": "2026-10-04T13:02:29", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2350, "asked": 1, "got": 1, "why": null}
 {"ts": "2026-10-04T13:02:49", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2351, "asked": 1, "got": 1, "why": null}
 {"ts": "2026-10-04T13:03:07", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2352, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T13:09:18", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2377, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T13:09:25", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "accept", "tick": 2377, "priority": "market", "ticks_left": null, "ref": "offer 27074 RET-07", "why": null, "holder": null}
+{"ts": "2026-10-04T13:09:26", "run": "20261004-130918-2488", "agent": "lease", "event": "release", "desk": "market", "kind": "accept", "tick": 2377, "why": "write_check: tick moved 2377 -> 2378"}
+{"ts": "2026-10-04T13:09:50", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2379, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T13:09:55", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "accept", "tick": 2379, "priority": "market", "ticks_left": null, "ref": "offer 27074 RET-07", "why": null, "holder": null}
+{"ts": "2026-10-04T13:10:38", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2382, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T13:11:33", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2386, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T13:11:34", "run": "20261004-130918-2488", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2386, "asked": 1, "got": 1, "why": null}

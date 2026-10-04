@@ -244,7 +244,7 @@
      "flavour": "Alphabetised by mood.",
      "book": 25,
      "print_run": 90,
-     "minted": 26,
+     "minted": 27,
      "hidden": false,
      "page": true
     },
@@ -539,7 +539,7 @@
      "flavour": "Price on request.",
      "book": 25,
      "print_run": 90,
-     "minted": 20,
+     "minted": 22,
      "hidden": false,
      "page": true
     },
@@ -692,7 +692,7 @@
      "flavour": "Yes, it is an artichoke.",
      "book": 25,
      "print_run": 90,
-     "minted": 20,
+     "minted": 21,
      "hidden": false,
      "page": true
     },
@@ -703,7 +703,7 @@
      "flavour": "Bricks of two colours, art of every kind.",
      "book": 25,
      "print_run": 90,
-     "minted": 21,
+     "minted": 22,
      "hidden": false,
      "page": true
     },
