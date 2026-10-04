@@ -208,20 +208,24 @@ The matchmaker picks the newest snapshot by itself at its next 2-minute build; n
 ## The same guards on La Celestina and outreach (follow-up PR)
 
 The public board (`/api/missing`, the `missing` key of `/api/celestina.json` and `/api/match`, the page) now applies
-the announcer's two guards:
+the announcer's two guards, with the same fail-closed rule:
 
 - **The cards we lack.** `celestina.py serve --exclude-from FILES|DIR` reads our account snapshots. A directory means
-  its `me*.json` files, and the one with the highest game tick wins. The file is re-read at every 15 s refresh and
-  aged against the snapshot's tick (`--exclude-max-age-min`, default 60). No flag or no file falls back to
-  `announce.MISSING`; a stale file adds `announce.MISSING` to its own list. The exclusion covers the board, the
-  public view's matches, invitations, our venue's book and the demand list. The per-card books stay (they are every
-  venue's public book), and the JSON keys are unchanged.
-- **Confident needs only.** An inferred need (tier 3-4) is shown only at `p_missing >= --min-p` (0.8) and never for a
-  deck marked `consistent: false`. Live wants (tiers 1-2) are unchanged.
+  its `me*.json` files. Only a valid snapshot of ours counts, and the highest game tick wins. It is re-read at every
+  15 s refresh and aged in game time (`--exclude-max-age-min`).
+- **Fail closed.** No flag, no trusted file, a file too old, or no catalog yet: every page card is hidden. The board
+  then lists only epic and legendary wants, no swaps, and its `about` adds "Page-card matches (commons, uncommons,
+  rares) are paused right now". The fallback is never `announce.MISSING` alone.
+- **Where it applies.** The exclusion covers the board and the public view's matches, invitations, our venue's book
+  and the demand list. The per-card books stay, and the JSON keys are unchanged.
+- **Confident needs only.** An inferred need (tier 3-4) needs a real `p_missing >= --min-p` (default 0.8; the value
+  is validated) and a deck not marked `consistent: false`.
 
-`outreach.py` now reads the same exclusion by default (`--exclude-from logs/state`, falling back to MISSING) and
-applies the same threshold (`--min-p`, 0.8).
+`outreach.py` follows the same rules:
+- It reads `--exclude-from logs/state` by default and fails closed to every page card.
+- Without a catalog it sends nothing.
+- It applies the same probability check.
 
-On the VM (main checkout), add to the serve command: `--exclude-from logs/state --exclude-max-age-min 90`.
-`--min-p` is already 0.8 by default. The VM's `logs/state/me.json` changes only when someone pushes a fresh one. A
-file more than 90 min of game time old falls back to its cards plus MISSING, so it hides more, never less.
+On the VM (main checkout), add to the serve command: `--exclude-from logs/state --exclude-max-age-min 90`. The VM's
+`logs/state/me.json` changes only when someone pushes a fresh one. Once it is more than 90 min of play old, page-card
+matches pause until a fresh one arrives.

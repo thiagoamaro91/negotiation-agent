@@ -398,20 +398,41 @@ class Guards(unittest.TestCase):
         sw = m("t06", "RET-12", 1, action=("swap", 9, "rastro", 0, "t06"), who=("t05",))   # gives SAL-02
         self.assertEqual(out.targets({"matches": [sw]}, {}, "d", 3, exclude=("SAL-02",)), [])
 
-    def test_the_default_reads_our_account_and_falls_back_to_the_built_in_list(self):
+    def test_the_default_reads_our_account_and_fails_closed_without_it(self):
         import argparse
+        import value_inference
         fallback = ("NOT-01",)
         with tempfile.TemporaryDirectory() as d:
-            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 1500, "assets": [
+            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 1500, "tick_seconds": 15, "assets": [
                 {"id": 1, "kind": "card", "ref": "MAL-08"}]}))
             with um.patch("builtins.print"):
                 got = out.lacking(argparse.Namespace(exclude_from=d, exclude_max_age_min=60), {"tick": 1500}, fallback)
                 none = out.lacking(argparse.Namespace(exclude_from=d + "/nope", exclude_max_age_min=60),
                                    {"tick": 1500}, fallback)
+                off = out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1500}, fallback)
         self.assertIn("MAL-07", got)                               # a page card we do not hold
         self.assertNotIn("MAL-08", got)                            # one we hold
-        self.assertNotIn("NOT-01", got)                            # a fresh file needs no built-in list
-        self.assertEqual(none, set(fallback))                      # no file: the built-in list
+        self.assertNotIn("NOT-01", got)                            # a trusted file needs no built-in list
+        every = {c["id"] for c in value_inference.catalog()["sets"][0]["cards"] if c.get("page")}
+        for closed in (none, off):                                 # no trusted file: every page card, not MISSING alone
+            self.assertTrue(every <= closed)
+            self.assertIn("MAL-08", closed)
         src = (ROOT / "tools" / "outreach.py").read_text(encoding="utf-8")
         self.assertIn('ap.add_argument("--exclude-from", default=str(ACCOUNT_DIR),', src)
         self.assertEqual(out.ACCOUNT_DIR, ROOT / "logs" / "state")
+
+
+class SolRound1(unittest.TestCase):
+    def test_only_a_real_probability_is_messaged(self):
+        for bad in (float("nan"), True, 1.5, -0.1):
+            x = m("t13", "MAL-08", 4)
+            x["p_missing"] = bad
+            with self.subTest(bad=bad):
+                self.assertEqual(out.targets({"matches": [x]}, {}, "d", 3, min_p=0.0), [])
+
+    def test_no_catalog_means_nothing_is_sent(self):
+        import argparse
+        import value_inference
+        with um.patch.object(value_inference, "catalog", um.MagicMock(side_effect=OSError("down"))), \
+                self.assertRaises(LookupError):
+            out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1}, ())

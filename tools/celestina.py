@@ -27,12 +27,14 @@ The holder map is Team 3's edge, so the output has two sides:
     python3 tools/celestina.py serve --exclude-from <dir>          # never point anyone at a page card WE lack
 
 The public side never names a page card Team 3 lacks (pointing its holders at another buyer works against us):
---exclude-from (files, or a directory of me*.json: our account as tools/snapshot.py saves it; the highest tick wins,
-re-read at every refresh; only the list of cards we lack is kept, nothing else of the file) gives the list, tools/matchmaker.py exclude_from(); without it, or when the file is missing, foreign
-or stale (--exclude-max-age-min of game time), announce.MISSING is used (stale: both). It is applied to the Open
-Bazaar board and to the public view's matches, invitations, our venue's book and demand (the raw per-card books stay:
-they are every venue's public book). The Open Bazaar board shows an inferred need (tier 3-4) only at p_missing >=
---min-p (0.8, docs/plans/matchmaker-validation.md) and never for a team whose deck contradicts the leaderboard.
+--exclude-from (files, or a directory of me*.json: our account as tools/snapshot.py saves it; only a valid one of
+ours counts, the highest game tick wins, re-read at every refresh, aged in game time; only the list of cards we lack
+is kept) gives the list (tools/matchmaker.py exclude_state()). It FAILS CLOSED: without the flag, or with no trusted
+file (missing, foreign, malformed, older than --exclude-max-age-min of play), every page card is hidden and the
+board's `about` says page-card matches are paused. It is applied to the Open Bazaar board and to the public view's
+matches, invitations, our venue's book and demand (the raw per-card books stay: they are every venue's public book).
+The Open Bazaar board shows an inferred need (tier 3-4) only at p_missing >= --min-p (0.8,
+docs/plans/matchmaker-validation.md) and never for a team whose deck contradicts the leaderboard.
 
 The agent API (public side, keyless, read-only, CORS open; built from the public view only, so the holder map cannot
 reach it):
@@ -66,6 +68,7 @@ import collections
 import html
 import ipaddress
 import json
+import math
 import re
 import sys
 import threading
@@ -891,26 +894,43 @@ def excluded(refs, exclude) -> bool:
     return any(isinstance(r, str) and r in skip for r in refs)
 
 
+def min_p_arg(raw: str) -> float:
+    try:
+        v = probability(float(raw))
+    except ValueError:
+        v = None
+    if v is None:
+        raise argparse.ArgumentTypeError(f"--min-p takes a number in [0, 1], not {raw!r}")
+    return v
+
+
 class PublicExclude:
-    """The page cards Team 3 lacks, never shown on the public side. Configured by serve (--exclude-from), refreshed at
-    every engine refresh against the snapshot's tick; `cards` is replaced whole (a reader never sees half a set).
-    Unconfigured (unit tests, `once`): nothing. The log line carries counts and the file, never the cards."""
+    """The page cards Team 3 lacks, never shown on the public side (matchmaker.exclude_state). Configured by serve,
+    refreshed at every engine refresh against the snapshot's tick; `cards` is replaced whole. FAILS CLOSED: until a
+    trusted snapshot of our account is read (no --exclude-from, no valid file, too old), `suppress` is on: every page
+    card is hidden (the catalog's, once known; before that, any entry that is not an epic or a legendary).
+    Unconfigured (unit tests, `once`): nothing hidden. The log line carries counts and the file, never the cards."""
 
     def __init__(self):
-        self.paths, self.max_age, self.fallback, self.cards, self.line = None, 60.0, (), frozenset(), None
+        self.paths, self.max_age, self.fallback, self.line = None, 60.0, (), None
+        self.cards, self.suppress = frozenset(), False
 
     def configure(self, paths, max_age_min: float, fallback) -> None:
         self.paths, self.max_age, self.fallback = list(paths or []), max_age_min, tuple(fallback or ())
-        self.cards = frozenset(self.fallback)
+        self.cards, self.suppress = frozenset(self.fallback), True
 
     def refresh(self, catalog: dict | None, tick=None) -> frozenset:
-        if self.paths and isinstance(catalog, dict) and catalog.get("sets"):
-            cards, line = matchmaker.exclude_from(self.paths, catalog, self.fallback, self.max_age,
-                                                  now_tick=tick if isinstance(tick, int) else None, say=lambda m: None)
-            self.cards = frozenset(cards)
-            if line != self.line:
-                print(f"[{time.strftime('%H:%M:%S')}] {line}", file=sys.stderr, flush=True)
-                self.line = line
+        if self.paths is None:
+            return self.cards
+        if not (isinstance(catalog, dict) and catalog.get("sets")):
+            self.suppress = True
+            return self.cards
+        st = matchmaker.exclude_state(self.paths, catalog, self.fallback, self.max_age,
+                                      now_tick=tick if isinstance(tick, int) and not isinstance(tick, bool) else None)
+        self.cards, self.suppress = frozenset(st["cards"]), not st["trusted"]
+        if st["line"] != self.line:
+            print(f"[{time.strftime('%H:%M:%S')}] {st['line']}", file=sys.stderr, flush=True)
+            self.line = st["line"]
         return self.cards
 
 
@@ -1008,21 +1028,35 @@ def missing_entry(m: dict, team: str | None = None, index: dict | None = None, t
     return e
 
 
+def probability(x) -> float | None:
+    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not 0 <= x <= 1:
+        return None
+    return float(x)
+
+
 def confident(m: dict, teams: dict, min_p: float = MIN_P) -> bool:
-    """A live want (tier 1-2, inferred False) always; an inference only at p_missing >= min_p and from a deck that fits
-    the leaderboard (the matchmaker's teams[team].consistent). A malformed entry counts as an inference."""
+    """A live want (tier 1-2, inferred False) always; an inference only at a real p_missing >= min_p and from a deck
+    that fits the leaderboard (the matchmaker's teams[team].consistent). A malformed entry counts as an inference."""
     if m.get("inferred") is False and (m.get("tier") or 0) < 3:
         return True
-    pm = m.get("p_missing")
-    return isinstance(pm, (int, float)) and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+    pm = probability(m.get("p_missing"))
+    return pm is not None and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+
+
+NON_PAGE = ("epic", "legendary")
+PAUSED_NOTE = (" Page-card matches (commons, uncommons, rares) are paused right now; epic and legendary wants are "
+               "still listed.")
 
 
 def missing_view(doc, team: str | None = None, now: float | None = None, max_age: float = MATCHES_MAX_AGE,
-                 pub: dict | None = None, exclude=(), min_p: float = MIN_P) -> dict:
+                 pub: dict | None = None, exclude=(), min_p: float = MIN_P, suppress_pages: bool = False) -> dict:
     """GET /api/missing: the board from the matchmaker's output, best first, every named offer re-checked against the
     current public snapshot `pub`. With `team`, only the matches where that team is the buyer: nothing here says who
     holds what (anyone can pass any team id). Never a card in `exclude` (the card, or the card a swap gives), never
-    an inferred need below `min_p` or from a deck that contradicts the leaderboard (confident())."""
+    an inferred need below `min_p` or from a deck that contradicts the leaderboard (confident()). With
+    `suppress_pages` (no trusted holdings of ours: fail closed) only epic and legendary wants are listed, and no swap
+    (the card it gives could be one we lack); `about` says page-card matches are paused."""
     now = time.time() if now is None else now
     at = doc.get("generated_at") if isinstance(doc, dict) else None
     stale = not isinstance(at, (int, float)) or now - at > max_age
@@ -1034,6 +1068,9 @@ def missing_view(doc, team: str | None = None, now: float | None = None, max_age
                 (m.get("card"), (m.get("action") or {}).get("gives") if isinstance(m.get("action"), dict) else None),
                 exclude):
             continue
+        if suppress_pages and (m.get("rarity") not in NON_PAGE or (isinstance(m.get("action"), dict)
+                                                                  and m["action"].get("gives") is not None)):
+            continue
         e = missing_entry(m, team, index, tick)
         if e is None or (team and not e["yours"]):
             continue
@@ -1043,7 +1080,8 @@ def missing_view(doc, team: str | None = None, now: float | None = None, max_age
     return {"name": "Open Bazaar · who needs which card",
             "about": "A free public directory of who needs which card, from public game data only: explicit live wants "
                      "first, each with the one call that completes it while the offer still stands; a need marked "
-                     f"inferred is a guess from public trades, not a fact. Zero-fee matching on La Celestina ({VENUE}).",
+                     f"inferred is a guess from public trades, not a fact. Zero-fee matching on La Celestina ({VENUE})."
+                     + (PAUSED_NOTE if suppress_pages else ""),
             "tick": doc.get("tick") if isinstance(doc, dict) else None, "checked_at_tick": tick,
             "live_checked": index is not None,
             "generated_at": at, "stale": stale, "team": team, "matches": rows}
@@ -1950,13 +1988,13 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 if team is not None and not MATCH_TEAM_RE.match(team):
                     return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
                 return self._json(200, missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
-                                                    min_p=PUBLIC_MIN_P[0]))
+                                                    min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
                 if scope == "public":    # the board first, recomputed now: no cached live claim outlives its snapshot
                     bazaar = json.dumps(missing_view(MISSING.load(), pub=live, exclude=EXCLUDE.cards,
-                                                     min_p=PUBLIC_MIN_P[0]))
+                                                     min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress))
                     rest = body.decode()
                     merged = '{"missing": ' + bazaar + (", " + rest[1:] if rest.strip() not in ("{}", "") else "}")
                     return self._send(200, merged.encode(), "application/json", True)
@@ -1975,7 +2013,7 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
                         view = {"missing": missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
-                                                        min_p=PUBLIC_MIN_P[0])["matches"], **view}
+                                                        min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)
@@ -2069,7 +2107,7 @@ def main() -> None:
                         "or when it is missing/foreign: announce.MISSING; stale: both")
     s.add_argument("--exclude-max-age-min", type=float, default=matchmaker.EXCLUDE_MAX_AGE_MIN,
                    help="--exclude-from: older than this (game time) is stale")
-    s.add_argument("--min-p", type=float, default=MIN_P, help="Open Bazaar: lowest p_missing at which an inferred "
+    s.add_argument("--min-p", type=min_p_arg, default=MIN_P, help="Open Bazaar: lowest p_missing at which an inferred "
                                                              "need is shown")
     s.add_argument("--access-log", type=Path, default=None, help="append one JSONL line per public request (no "
                                                                   "bodies, no keys; /healthz skipped) to this file")
@@ -2091,7 +2129,7 @@ def main() -> None:
     if args.cmd == "serve":
         MISSING.path = args.matches
         EXCLUDE.configure(args.exclude_from.split(",") if args.exclude_from else [], args.exclude_max_age_min,
-                          matchmaker.announce_missing())
+                          matchmaker.announce_missing())   # no flag or no trusted file: page cards suppressed
         PUBLIC_MIN_P[0] = args.min_p
         args.private_port = args.port + 1 if args.private_port is None else args.private_port
         serve(args)

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -127,7 +128,8 @@ def confident(m: dict, teams: dict, min_p: float = MIN_P) -> bool:
     if m.get("inferred") is False and (m.get("tier") or 0) < 3:
         return True
     pm = m.get("p_missing")
-    return isinstance(pm, (int, float)) and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
+    real = isinstance(pm, (int, float)) and not isinstance(pm, bool) and math.isfinite(pm) and 0 <= pm <= 1
+    return real and pm >= min_p and (teams.get(m.get("team")) or {}).get("consistent") is not False
 
 
 def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=(), min_p: float = MIN_P) -> list:
@@ -284,22 +286,21 @@ def recover(client, state: dict, state_path: Path, log, gate) -> str | None:
 
 
 def lacking(args, doc: dict, fallback) -> set:
-    """The page cards we lack, from our freshest account snapshot (matchmaker.exclude_from, aged against the
-    matchmaker's tick); announce.MISSING when there is none. Printed as a count, never the cards."""
+    """The page cards we lack, from our freshest TRUSTED account snapshot (matchmaker.exclude_state, aged against the
+    matchmaker's tick). Fails closed: without --exclude-from or a trusted file, every page card (plus `fallback`,
+    which only ever adds). LookupError without a catalog (nothing is sent then). Printed as a count, never the cards."""
     import matchmaker      # noqa: E402  (keyless)
     import value_inference  # noqa: E402
-    if not args.exclude_from:
-        return set(fallback)
     try:
         cat = value_inference.catalog()
     except (OSError, ValueError) as e:
-        print(f"exclude-from: WARNING no catalog ({type(e).__name__}); using the built-in list ({len(fallback)} cards)")
-        return set(fallback)
-    cards, line = matchmaker.exclude_from(args.exclude_from.split(","), cat, fallback, args.exclude_max_age_min,
-                                          now_tick=(doc or {}).get("tick") if isinstance((doc or {}).get("tick"), int)
-                                          else None, say=print)
-    print(line)
-    return set(cards)
+        raise LookupError(f"no catalog ({type(e).__name__}): no message without the list of cards we lack")
+    tick = (doc or {}).get("tick")
+    st = matchmaker.exclude_state([x for x in (args.exclude_from or "").split(",") if x.strip()], cat, fallback,
+                                  args.exclude_max_age_min,
+                                  now_tick=tick if isinstance(tick, int) and not isinstance(tick, bool) else None)
+    print(st["line"])
+    return set(st["cards"])
 
 
 def main(argv=None) -> None:
@@ -359,7 +360,11 @@ def main(argv=None) -> None:
     except (OSError, ValueError, LookupError) as e:
         print(f"nothing to send: {type(e).__name__}: {e}")
         return stop("no fresh matches") if session else None
-    exclude = tuple(sorted(set(exclude) | lacking(args, doc, announce.MISSING)))
+    try:
+        exclude = tuple(sorted(set(exclude) | lacking(args, doc, announce.MISSING)))
+    except LookupError as e:
+        print(f"nothing to send: {e}")
+        return stop("no catalog") if session else None
     plan = targets(doc, state, day, max(0, args.max_teams), exclude, args.min_p)
     print(f"{NAME} outreach, matchmaker tick {doc.get('tick')}: {len(plan)} message(s), one thread at a time.")
     print(f"slot budget: {MAX_THREADS} threads per team; each send holds 1 for a few seconds (open, one message, "

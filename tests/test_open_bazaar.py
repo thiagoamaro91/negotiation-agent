@@ -9,6 +9,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+import unittest.mock as um
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -272,20 +273,70 @@ class PublicGuards(unittest.TestCase):
 class PublicExcludeFile(unittest.TestCase):
     CAT = {"sets": [{"id": "MAL", "released": True, "cards": [
         {"id": f"MAL-0{i}", "rarity": "common", "page": True} for i in range(1, 5)]}]}
+    ALL = frozenset({"MAL-01", "MAL-02", "MAL-03", "MAL-04", "RET-01"})
 
-    def test_refresh_reads_the_newest_account_file_in_a_directory(self):
+    def account(self, d, tick=100, **extra):
+        body = {"id": "t03", "tick": tick, "tick_seconds": 15, "assets": [{"id": 1, "kind": "card", "ref": "MAL-01"}]}
+        body.update(extra)
+        (Path(d) / "me.json").write_text(json.dumps(body))
+
+    def test_a_trusted_snapshot_hides_exactly_the_cards_we_lack(self):
         ex = cel.PublicExclude()
-        self.assertEqual(ex.refresh(self.CAT, 100), frozenset())           # unconfigured (once, unit tests): nothing
+        self.assertEqual((ex.refresh(self.CAT, 100), ex.suppress), (frozenset(), False))   # unconfigured: nothing
         with tempfile.TemporaryDirectory() as d:
-            (Path(d) / "me.json").write_text(json.dumps({"id": "t03", "tick": 100, "assets": [
-                {"id": 1, "kind": "card", "ref": "MAL-01"}]}))
+            self.account(d)
             ex.configure([d], 60, ("RET-01",))
-            self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"MAL-02", "MAL-03", "MAL-04"}))
-            self.assertEqual(ex.refresh(self.CAT, 100 + 61 * 4), frozenset({"MAL-02", "MAL-03", "MAL-04", "RET-01"}))
-        ex.configure(["/nonexistent"], 60, ("RET-01",))
-        self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"RET-01"}))  # no file: the built-in list
-        ex.configure([], 60, ("RET-01",))
-        self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"RET-01"}))  # no flag when served: the built-in list
+            self.assertTrue(ex.suppress)                                 # before the first refresh: closed
+            with um.patch("sys.stderr"):
+                self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"MAL-02", "MAL-03", "MAL-04"}))
+                self.assertFalse(ex.suppress)
+                ex.refresh(None, 120)                                    # a refresh without a catalog: closed again
+                self.assertTrue(ex.suppress)
+
+    def test_no_trusted_snapshot_fails_closed_never_to_the_built_in_list_alone(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.account(d, tick_seconds="bad")
+            cases = {"no flag": [], "no file": ["/nonexistent"], "malformed": [d]}
+            for why, paths in cases.items():
+                with self.subTest(why), um.patch("sys.stderr"):
+                    ex = cel.PublicExclude()
+                    ex.configure(paths, 60, ("RET-01",))
+                    self.assertEqual(ex.refresh(self.CAT, 110), self.ALL)   # every page card, not RET-01 alone
+                    self.assertTrue(ex.suppress)
+            self.account(d)
+            ex = cel.PublicExclude()
+            ex.configure([d], 60, ("RET-01",))
+            with um.patch("sys.stderr"):
+                self.assertEqual(ex.refresh(self.CAT, 100 + 241), self.ALL)  # stale: 60.25 min of play
+                self.assertTrue(ex.suppress)
+                ex.refresh(None, 110)                                       # no catalog: stays closed
+            self.assertTrue(ex.suppress)
+
+    def test_a_suppressed_board_lists_only_epic_and_legendary_wants_and_says_so(self):
+        epic = m("t06", "SAL-12", tier=2, inferred=False, holders=())
+        epic["rarity"] = "legendary"
+        swap = m("t06", "LAV-12", tier=2, inferred=False, action=("swap", 9, "rastro", 0, "t06"))
+        swap["rarity"] = "legendary"
+        unknown = m("t06", "RET-12", tier=2, inferred=False, holders=())
+        unknown["rarity"] = None
+        doc = {"generated_at": NOW - 60, "matches": DOC["matches"] + [epic, swap, unknown]}
+        open_ = cel.missing_view(doc, now=NOW, pub=PUB)
+        self.assertNotIn("paused", open_["about"])
+        closed = cel.missing_view(doc, now=NOW, pub=PUB, suppress_pages=True)
+        self.assertEqual([e["card"] for e in closed["matches"]], ["SAL-12"])   # no page card, no swap, no unknown
+        self.assertIn("Page-card matches (commons, uncommons, rares) are paused", closed["about"])
+        self.assertEqual(sorted(closed), sorted(open_))                        # same keys
+
+    def test_only_a_real_probability_passes(self):
+        for bad in (float("nan"), True, 1.5, -0.1, "0.9"):
+            x = m("t13", "MAL-08")
+            x["p_missing"] = bad
+            with self.subTest(bad=bad):
+                self.assertEqual(cel.missing_view({"generated_at": NOW - 60, "matches": [x]}, now=NOW,
+                                                  min_p=0.0)["matches"], [])
+        import argparse
+        with self.assertRaises(argparse.ArgumentTypeError):
+            cel.min_p_arg("nan")
 
 
 class GuardedRoutes(unittest.TestCase):
@@ -309,6 +360,16 @@ class GuardedRoutes(unittest.TestCase):
     def get(self):
         with urllib.request.urlopen(self.base + "/api/missing") as r:
             return [e["card"] for e in json.loads(r.read())["matches"]]
+
+    def test_the_served_board_is_paused_for_page_cards_while_untrusted(self):
+        cel.EXCLUDE.suppress = True
+        try:
+            with urllib.request.urlopen(self.base + "/api/missing") as r:
+                body = json.loads(r.read())
+        finally:
+            cel.EXCLUDE.suppress = False
+        self.assertEqual(body["matches"], [])                  # SAL-06 and MAL-08 are uncommons: page cards
+        self.assertIn("paused", body["about"])
 
     def test_the_served_board_applies_the_configured_exclusion_and_threshold(self):
         self.assertEqual(self.get(), ["SAL-06", "MAL-08"])
