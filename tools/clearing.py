@@ -714,7 +714,9 @@ or `execute --auto-approve` if you trust your own numbers (every price is inside
     GET  {base}/api/clearing/status             who is in, how many cards, when the next run is
 
 Asset ids and your values come from GET /api/me (your copies, `id` and `your_value`) and GET /api/me/value?card=X.
-Source: https://github.com/thiagoamaro91/negotiation-agent/pull/96 (tools/clearing.py, tools/clearing_client.py).
+Source, open for audit: this server is {base}/clearing.py and the client is {base}/clearing_client.py (same files as
+the public gist linked by Team 3). No secret lives in the code: invite codes are a file the server reads, the admin
+token is an environment variable, team tokens are stored hashed.
 """
 
 
@@ -767,6 +769,8 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                                "text/markdown; charset=utf-8")
                 elif u.path == "/clearing_client.py":
                     self._send(200, (ROOT / "tools" / "clearing_client.py").read_bytes(), "text/x-python")
+                elif u.path == "/clearing.py":                      # the server's own source, open for audit
+                    self._send(200, Path(__file__).read_bytes(), "text/x-python")
                 elif u.path == "/api/clearing/status":
                     self._json(200, store.status(next_run=run_at[0] if run_at else None))
                 elif u.path == "/api/clearing/plan":
