@@ -21,10 +21,13 @@ works against us. Offers addressed to one team (to: tXX) are left out: nobody el
 logs/matchmaker/latest.json, written by `matchmaker.py json --live --out ... --every 120`), in its order (explicit live
 wants first): the live offer (team, card, price, offer id, expiry) and the one action that completes it (POST
 /api/offers/<id>/accept), or, for a need that is only inferred, "appears to be missing ... not confirmed" and the v20
-bid and ask. A swap is accepted directly, never said to be crossed by our broker. Never an offer that has left its
-book, one on another team's venue (unless --rival-venues), a card in --exclude, Team 3, or a match named in the last
-MISSING_REPEAT posts. Nothing is recomputed here; a missing or stale file, or no match left, means no post. Each
-post's response then says whether the named offer was taken (named_outcome) besides the trades on v20.
+bid and ask. A swap is accepted directly, never said to be crossed by our broker. The named offer is re-read in its
+venue's current book right before the post (still_live: open, not for one team, not expiring within MIN_TICKS_LEFT
+ticks, the same side, card and price). Never one on another team's venue (unless --rival-venues), a card in --exclude
+(every card of the offer), Team 3, or a match named in the last MISSING_REPEAT posts. Holdings are said as history
+("held a copy at tick N, reconstructed"). Nothing is recomputed here; a missing or stale file, or no match left, means
+no post. Each response says whether the named offer itself settled (named_outcome: venue, maker, card, price, asset;
+the feed's settlements carry no offer id) besides the trades on v20.
 
     python3 tools/announce.py plan                       # prints the next message and the request; sends nothing
     python3 tools/announce.py plan --variant missing     # the missing-card board from the matchmaker's last output
@@ -459,13 +462,35 @@ def remember_match(key: str, path: Path | None = None) -> None:
         pass
 
 
-def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False):
+BROKER_TERMS = ("our broker crosses a bid and an ask for the same card from two different teams when the bid covers "
+                "the ask plus the fee, at the midpoint, as capacity allows")   # the same words as tools/matchmaker.py
+MIN_TICKS_LEFT = 8       # --variant missing: a named offer must stand at least this many more ticks
+
+
+def still_live(a: dict, card: str, books: dict, tick=None) -> bool:
+    """The named offer, re-read in its venue's CURRENT book right before the post: open, not addressed to one team,
+    not expiring within MIN_TICKS_LEFT ticks of `tick`, and the same structure the matchmaker saw (the side, the card,
+    the price; for a swap the card it gives). Anything else and it is not named."""
+    o = next((x for x in (books or {}).get(a.get("venue") or "rastro") or []
+              if isinstance(x, dict) and x.get("id") == a.get("offer")), None)
+    if o is None or o.get("status", "open") != "open" or o.get("to") or a.get("to"):
+        return False
+    exp = o.get("expires_tick")
+    if isinstance(tick, int) and (not isinstance(exp, int) or exp - tick < MIN_TICKS_LEFT):
+        return False
+    sh = shape(o)
+    if a.get("side") == "swap":
+        return sh is not None and sh[0] == "swap" and sh[2] == card and sh[1] == a.get("gives")
+    return sh is not None and sh[0] == a.get("side") and sh[1] == card and sh[2] == a.get("price")
+
+
+def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False, tick=None):
     """The one match a post names, in the matchmaker's order (explicit live wants first): never Team 3, never a card
-    in `exclude`, never one announced in the last MISSING_REPEAT posts, never a live offer that has left its venue's
-    current book, and (unless rival_venues) never an offer on another team's venue, where a trade scores for that team.
-    None when nothing is left."""
+    in `exclude` (every card of the offer), never one announced in the last MISSING_REPEAT posts, never an offer that
+    no longer stands as the matchmaker saw it in its venue's current book (still_live), never an offer addressed to
+    one team (only that team could act), and (unless rival_venues) never an offer on another team's venue, where a
+    trade scores for that team. None when nothing is left."""
     skip, recent = set(exclude or ()), set(recent or ())
-    live = {(v, o.get("id")) for v, book in (books or {}).items() for o in book or [] if isinstance(o, dict)}
     for m in (doc or {}).get("matches") or []:
         if not isinstance(m, dict) or _public(m.get("team_name"), m.get("team")) is None:
             continue
@@ -473,7 +498,7 @@ def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool
             continue
         a = m.get("action")
         if a:
-            if not isinstance(a, dict) or (a.get("venue"), a.get("offer")) not in live:
+            if not isinstance(a, dict) or a.get("gives") in skip or not still_live(a, m["card"], books, tick):
                 continue
             if _public(a.get("maker_name"), a.get("maker")) is None:
                 continue
@@ -485,15 +510,18 @@ def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool
     return None
 
 
-def _holders_txt(m: dict, n: int = 2, dealers: bool = False) -> str:
-    """"Team 6 and Team 12 hold copies (seen in public trades)." Teams only: a dealer cannot accept a team's offer.
-    With dealers=True, "Abuela sells it." is added (an inferred need can be met there too)."""
-    hs = [h for h in (_public(x.get("name"), x.get("team")) for x in m.get("holders") or []
-                      if isinstance(x, dict) and x.get("team") != m.get("team")) if h][:n]
+def _holders_txt(m: dict, n: int = 2, dealers: bool = False, owner=None) -> str:
+    """"Team 6 and Team 12 held a copy at tick 1445 (reconstructed from public trades)." Holdings from the feed are
+    history, never present-tense possession. Teams only (a dealer cannot accept a team's offer), never `owner` (the
+    venue's owner cannot trade there). With dealers=True, "Abuela sells it." is added."""
+    rows = [x for x in m.get("holders") or [] if isinstance(x, dict) and x.get("team") not in (m.get("team"), owner)]
+    hs = [h for h in (_public(x.get("name"), x.get("team")) for x in rows) if h][:n]
+    ticks = [x.get("as_of") for x in rows if isinstance(x.get("as_of"), int)]
     out = ""
     if hs:
         who = " and ".join(hs) if len(hs) <= 2 else f"{', '.join(hs[:-1])} and {hs[-1]}"
-        out = f"{who} hold{'s a copy' if len(hs) == 1 else ' copies'} (seen in public trades)."
+        at = f" at tick {max(ticks)}" if ticks else ""
+        out = f"{who} held a copy{at} (reconstructed from public trades, may have changed)."
     ds = [d.get("name") for d in (m.get("dealers") or [])[:1] if isinstance(d, dict) and d.get("name")]
     if dealers and ds:
         out = (out + " " if out else "") + f"{ds[0]} sells it."
@@ -501,7 +529,7 @@ def _holders_txt(m: dict, n: int = 2, dealers: bool = False) -> str:
 
 
 def missing_line(m: dict, fee=(0, 0)) -> str:
-    """One match in words: the live offer, the one action that completes it, and who holds the card. An inferred
+    """One match in words: the live offer, the one action that completes it, and who held the card. An inferred
     need is always said as one ("appears to be missing ... inferred from public trades, not confirmed")."""
     card = m["card"] + (f" ({m['card_name']})" if m.get("card_name") else "")
     buyer = _public(m.get("team_name"), m.get("team"))
@@ -513,20 +541,22 @@ def missing_line(m: dict, fee=(0, 0)) -> str:
         where = "La Celestina (v20, 0 % fee)" if a["venue"] == VENUE else venue_name(a["venue"])
         until = f", open until tick {a['expires_tick']}" if isinstance(a.get("expires_tick"), int) else ""
         maker = _public(a.get("maker_name"), a.get("maker"))
+        owner = a.get("venue_owner") if _public(a.get("venue_owner"), a.get("venue_owner")) else None
+        not_owner = f" (not {owner}: a team cannot trade on its own venue)" if owner and a["side"] != "ask" else ""
         if a["side"] == "bid":
             head = f"{maker} bids {a['price']} P for {card} on {where}: offer #{a['offer']}{until}."
-            act = (f"A team with a copy sells it by accepting: POST /api/offers/{a['offer']}/accept with "
+            act = (f"A team with a copy{not_owner} sells it by accepting: POST /api/offers/{a['offer']}/accept with "
                    f"{{\"assets\": [<your {m['card']} asset id>]}}.")
         elif a["side"] == "swap":
             head = f"{maker} gives {a.get('gives')} for any {card} on {where}: offer #{a['offer']}{until}."
-            act = (f"A team with a copy takes it by accepting it directly (a swap is accepted, never crossed by a "
-                   f"broker): POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}.")
+            act = (f"A team with a copy{not_owner} takes it by accepting it directly (a swap is accepted, never crossed "
+                   f"by a broker): POST /api/offers/{a['offer']}/accept with {{\"assets\": [<your {m['card']} asset id>]}}.")
         else:
             head = f"{maker} sells {card} for {a['price']} P on {where}: offer #{a['offer']}{until}."
             act = f"{inferred}: POST /api/offers/{a['offer']}/accept."
         bits = [head, act]
         if a["side"] != "ask":
-            bits.append(_holders_txt(m))
+            bits.append(_holders_txt(m, owner=a.get("venue_owner")))
         return " ".join(b for b in bits if b)
     pr = m["proposal"]
     price = pr.get("price") or (pr["buyer"]["post"]["give"] or {}).get("cash")
@@ -534,16 +564,16 @@ def missing_line(m: dict, fee=(0, 0)) -> str:
             f"A bid on La Celestina (v20, {fee_txt(fee)}): {json.dumps({k: v for k, v in pr['buyer']['post'].items() if k != 'expires_in_ticks'})};",
             f"a holder's ask: {{\"venue\": \"{VENUE}\", \"give\": {{\"assets\": [<your {m['card']} asset id>]}}, "
             f"\"want\": {{\"cash\": {price}}}}}.",
-            "Our broker crosses a bid and an ask for the same card at the midpoint the tick they meet."]
+            BROKER_TERMS[0].upper() + BROKER_TERMS[1:] + "."]
     return " ".join(b for b in bits if b)
 
 
 def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=(), names: dict | None = None,
-                 recent=(), rival_venues: bool = False) -> tuple:
-    """The --variant missing message: ONE match (pick_match) and the one action that completes it, then v20's own live
-    offers when there is room (so an event post can still name the new offer). (text, match key). LookupError when
-    no match qualifies: nothing worth posting."""
-    m = pick_match(doc, books, exclude, recent, rival_venues)
+                 recent=(), rival_venues: bool = False, tick=None) -> tuple:
+    """The --variant missing message: ONE match (pick_match, re-checked against the current books at `tick`) and the
+    one action that completes it, then v20's own live offers when there is room (so an event post can still name the
+    new offer). (text, match key). LookupError when no match qualifies: nothing worth posting."""
+    m = pick_match(doc, books, exclude, recent, rival_venues, tick)
     if m is None:
         raise LookupError("no match to announce")
     text = f"{OPEN_BAZAAR} (public data, La Celestina {VENUE}): " + missing_line(m, fee)
@@ -557,21 +587,27 @@ def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=()
 
 
 def named_outcome(events: list, t0: int, k: int, named: dict) -> dict:
-    """Did the announced action happen? A settlement in (t0, t0 + k] on the named offer's venue that moves the named
-    card with the offer's maker as a party (the counterparty accepted it), and any trade on v20 for that card."""
-    out = {"settled": False, "settled_tick": None, "v20_trade": False}
+    """Did the named offer settle? The feed's settlements carry no offer id, so the offer is recognised by its whole
+    structure: in (t0, t0 + k], on its venue, with its maker as a party, moving the named card, at its price (a cash
+    offer), and for an ask or a swap moving the very asset it offered. `v20_trade`: any trade on v20 for that card."""
+    out = {"settled": False, "settled_tick": None, "v20_trade": False, "matched_on": "venue, maker, card, price, asset"}
     for e in events or []:
         t = e.get("tick") if isinstance(e, dict) else None
         if e.get("type") != "settlement" or not isinstance(t, int) or not t0 < t <= t0 + k:
             continue
         pl = e.get("payload") or {}
-        refs_ = {i.get("ref") for i in pl.get("items") or [] if isinstance(i, dict)}
-        if named.get("card") not in refs_ or pl.get("persona"):
+        items = [i for i in pl.get("items") or [] if isinstance(i, dict)]
+        if named.get("card") not in {i.get("ref") for i in items} or pl.get("persona"):
             continue
-        if (pl.get("venue") or "rastro") == (named.get("venue") or "rastro") and named.get("maker") in (pl.get("parties") or []):
-            out.update(settled=True, settled_tick=t)
         if pl.get("venue") == VENUE:
             out["v20_trade"] = True
+        if (pl.get("venue") or "rastro") != (named.get("venue") or "rastro") or named.get("maker") not in (pl.get("parties") or []):
+            continue
+        if named.get("side") in ("bid", "ask") and pl.get("price") != named.get("price"):
+            continue
+        if named.get("side") in ("ask", "swap") and named.get("asset") not in {i.get("id") for i in items}:
+            continue
+        out.update(settled=True, settled_tick=t)
     return out
 
 
@@ -958,11 +994,14 @@ def main(argv: list[str] | None = None) -> None:
         v20 = sorted(books.get(VENUE, []), key=lambda o: o.get("id") not in firsts)  # the new offer leads
         if variant == "missing":   # the matchmaker's output, read as it is; LookupError = nothing fresh to post
             doc = load_matches(Path(args.matches))
-            text, key = missing_text(doc, books, exclude, fee, v20, names, recent_matches(), args.rival_venues)
+            now_tick = api(f"{URL}/api/clock").get("tick")   # the offer must still stand at this tick
+            text, key = missing_text(doc, books, exclude, fee, v20, names, recent_matches(), args.rival_venues,
+                                     now_tick if isinstance(now_tick, int) else None)
             m = next(x for x in doc.get("matches") or [] if isinstance(x, dict) and match_key(x) == key)
             a = m.get("action") or {}
             picked.update(key=key, named={"card": m.get("card"), "offer": a.get("offer"), "venue": a.get("venue") or VENUE,
-                                          "maker": a.get("maker") or m.get("team"), "tier": m.get("tier")})
+                                          "maker": a.get("maker") or m.get("team"), "tier": m.get("tier"),
+                                          "side": a.get("side"), "price": a.get("price"), "asset": a.get("asset")})
         else:
             text = build_text(offers, variant, link, exclude, v20, names, fee, firsts)
         return text, [o.get("id") for o in v20 if o.get("id") is not None and f"(offer {o.get('id')})" in text]
