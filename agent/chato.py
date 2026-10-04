@@ -90,6 +90,7 @@ sys.path.insert(0, str(ROOT / "kit"))
 from bazaar_sdk import BazaarError  # noqa: E402
 # the kit client with wait_on_tick off and a pause-safe wait_tick (agent/dealer_client.py); kit/ stays unchanged
 from dealer_client import DealerBazaar as Bazaar  # noqa: E402
+from dealer_client import retry_rate_limited  # noqa: E402
 from dealer_client import (ACCEPTED, CLOSE_TRIES, DEFERRED, END_ACCEPTS, EXIT_CLOCK_LOST,  # noqa: E402,F401
                            EXIT_CLOSE_FAILED, EXIT_COOLOFF, EXIT_LOCK_TIMEOUT, EXIT_RESERVE, EXIT_UNSETTLED, MAX_DEFER_TICKS,
                            MAX_FAILED_WAITS, MAX_WAIT_TICKS,
@@ -276,7 +277,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
     resumed = bool(resume)  # a resumed buy never goes on above what it may spend now (see below)
     if not resume:
         try:   # priced from the holdings of this moment, before a thread takes the dealer's only slot
-            live0, why0 = live_limit(b.me(), target)
+            live0, why0 = live_limit(retry_rate_limited(b.me), target)
         except BazaarError as e:
             log("open_refused", item=item, side=side, code=e.code, msg=e.message)
             return {"result": "refused", "code": e.code}
@@ -284,7 +285,7 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             log("open_refused", item=item, side=side, code=why0, msg="no limit can be computed from /api/me")
             return {"result": "refused", "code": why0}
         try:
-            th = b.open_thread(DEALER, topic=topic)
+            th = retry_rate_limited(lambda: b.open_thread(DEALER, topic=topic))
         except BazaarError as e:
             log("open_refused", item=item, side=side, code=e.code, msg=e.message, until_tick=until_tick_of(e))
             return {"result": "refused", "code": e.code, "until_tick": until_tick_of(e)}
