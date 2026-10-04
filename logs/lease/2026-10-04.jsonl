@@ -64,3 +64,12 @@
 {"ts": "2026-10-04T12:42:04", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2269, "asked": 5, "got": 5, "why": null}
 {"ts": "2026-10-04T12:42:52", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2272, "asked": 1, "got": 1, "why": null}
 {"ts": "2026-10-04T12:43:00", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2273, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:49:51", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2300, "asked": 5, "got": 5, "why": null}
+{"ts": "2026-10-04T12:50:44", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2303, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:50:56", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2304, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:52:00", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2308, "asked": 2, "got": 2, "why": null}
+{"ts": "2026-10-04T12:52:20", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2310, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:54:57", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2320, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:54:58", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2320, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:56:32", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2326, "asked": 1, "got": 1, "why": null}
+{"ts": "2026-10-04T12:56:33", "run": "20261004-120222-fa0a", "agent": "lease", "event": "grant", "desk": "market", "kind": "listings", "tick": 2326, "asked": 1, "got": 1, "why": null}

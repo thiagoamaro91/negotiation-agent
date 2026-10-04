@@ -8,3 +8,36 @@
 {"ts": "2026-10-04T12:11:22", "run": "20261004-121007-f9f5", "agent": "chato", "event": "accept", "thread": 3108, "price": 13, "why": "crossed", "ours": 15, "round": 5}
 {"ts": "2026-10-04T12:11:36", "run": "20261004-121007-f9f5", "agent": "chato", "event": "result", "thread": 3108, "status": "deal", "price": 13, "reason": null}
 {"ts": "2026-10-04T12:11:36", "run": "20261004-121007-f9f5", "agent": "chato", "event": "run_end", "cash": 288, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 44, "ladder_points": 0.315, "score": 31.88, "rank": 5}
+{"ts": "2026-10-04T12:46:56", "run": "20261004-124655-2963", "agent": "chato", "event": "run_start", "operator": "thiago", "argv": ["run", "--dealer", "chato", "--only", "sell:1193", "--allow-single", "--floor", "20", "--sell-anchor", "30", "--reserve", "40", "--max-deals", "1", "--max-rounds", "14", "--max-wait-ticks", "20", "--until", "13:50"], "cash": 280, "level": 5, "deals": 45, "reserve": 40, "cap": null, "plan": [{"side": "sell", "item": "MAL-06", "asset_id": 1193, "value": 20, "private": 17.5, "ladder_value": null, "ladder_floor": 18}], "dealer": "chato", "allow_single": true, "sell_anchor": 30, "sell_step": 2, "floor": 20}
+{"ts": "2026-10-04T12:46:58", "run": "20261004-124655-2963", "agent": "chato", "event": "open", "thread": 3458, "side": "sell", "item": "MAL-06", "value": 20, "private": 17.5, "ladder_floor": 18}
+{"ts": "2026-10-04T12:47:12", "run": "20261004-124655-2963", "agent": "chato", "event": "her", "thread": 3458, "price": 13, "final": false, "round": 1}
+{"ts": "2026-10-04T12:47:12", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 30, "her": 13}
+{"ts": "2026-10-04T12:47:32", "run": "20261004-124655-2963", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:47:35", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 28, "her": 13}
+{"ts": "2026-10-04T12:47:42", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 26, "her": 13}
+{"ts": "2026-10-04T12:47:59", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 24, "her": 13}
+{"ts": "2026-10-04T12:48:13", "run": "20261004-124655-2963", "agent": "chato", "event": "her", "thread": 3458, "price": 14, "final": false, "round": 5}
+{"ts": "2026-10-04T12:48:14", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 22, "her": 14}
+{"ts": "2026-10-04T12:48:32", "run": "20261004-124655-2963", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:48:36", "run": "20261004-124655-2963", "agent": "chato", "event": "her", "thread": 3458, "price": 15, "final": false, "round": 6}
+{"ts": "2026-10-04T12:48:37", "run": "20261004-124655-2963", "agent": "chato", "event": "say", "thread": 3458, "price": 20, "her": 15}
+{"ts": "2026-10-04T12:48:43", "run": "20261004-124655-2963", "agent": "chato", "event": "her", "thread": 3458, "price": 16, "final": false, "round": 7}
+{"ts": "2026-10-04T12:50:04", "run": "20261004-124655-2963", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:50:32", "run": "20261004-124655-2963", "agent": "chato", "event": "max_rounds", "thread": 3458, "ours": 20, "her": 16}
+{"ts": "2026-10-04T12:50:32", "run": "20261004-124655-2963", "agent": "chato", "event": "run_end", "cash": 280, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 45, "ladder_points": 0.334, "score": 32.38, "rank": 5}
+{"ts": "2026-10-04T12:50:43", "run": "20261004-125042-b3d6", "agent": "chato", "event": "run_start", "operator": "thiago", "argv": ["run", "--dealer", "chato", "--only", "sell:898", "--allow-single", "--floor", "20", "--sell-anchor", "30", "--reserve", "40", "--max-deals", "1", "--max-rounds", "14", "--max-wait-ticks", "20", "--until", "13:50"], "cash": 280, "level": 5, "deals": 45, "reserve": 40, "cap": null, "plan": [{"side": "sell", "item": "MAL-07", "asset_id": 898, "value": 20, "private": 17.5, "ladder_value": null, "ladder_floor": 18}], "dealer": "chato", "allow_single": true, "sell_anchor": 30, "sell_step": 2, "floor": 20}
+{"ts": "2026-10-04T12:50:43", "run": "20261004-125042-b3d6", "agent": "chato", "event": "open", "thread": 3512, "side": "sell", "item": "MAL-07", "value": 20, "private": 17.5, "ladder_floor": 18}
+{"ts": "2026-10-04T12:50:49", "run": "20261004-125042-b3d6", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:50:52", "run": "20261004-125042-b3d6", "agent": "chato", "event": "her", "thread": 3512, "price": 13, "final": false, "round": 1}
+{"ts": "2026-10-04T12:50:52", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 30, "her": 13}
+{"ts": "2026-10-04T12:51:00", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 28, "her": 13}
+{"ts": "2026-10-04T12:51:18", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 26, "her": 13}
+{"ts": "2026-10-04T12:51:33", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 24, "her": 13}
+{"ts": "2026-10-04T12:51:46", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 22, "her": 13}
+{"ts": "2026-10-04T12:52:00", "run": "20261004-125042-b3d6", "agent": "chato", "event": "her", "thread": 3512, "price": 14, "final": false, "round": 6}
+{"ts": "2026-10-04T12:52:01", "run": "20261004-125042-b3d6", "agent": "chato", "event": "say", "thread": 3512, "price": 20, "her": 14}
+{"ts": "2026-10-04T12:52:15", "run": "20261004-125042-b3d6", "agent": "chato", "event": "her", "thread": 3512, "price": 15, "final": false, "round": 7}
+{"ts": "2026-10-04T12:52:35", "run": "20261004-125042-b3d6", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:53:36", "run": "20261004-125042-b3d6", "agent": "chato", "event": "clock_wait", "kind": "clock_unreadable", "tick": null, "waited": 0}
+{"ts": "2026-10-04T12:54:05", "run": "20261004-125042-b3d6", "agent": "chato", "event": "max_rounds", "thread": 3512, "ours": 20, "her": 15}
+{"ts": "2026-10-04T12:54:06", "run": "20261004-125042-b3d6", "agent": "chato", "event": "run_end", "cash": 259, "level": 5, "unlocked": ["abuela", "chato", "pilar", "picaros", "banco"], "deals": 46, "ladder_points": 0.336, "score": 32.38, "rank": 5}

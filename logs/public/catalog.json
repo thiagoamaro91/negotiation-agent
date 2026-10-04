@@ -102,7 +102,7 @@
      "flavour": "A factory that learned to make art.",
      "book": 25,
      "print_run": 90,
-     "minted": 24,
+     "minted": 25,
      "hidden": false,
      "page": true
     },
@@ -124,7 +124,7 @@
      "flavour": "Curtain at eight, argument at eleven.",
      "book": 25,
      "print_run": 90,
-     "minted": 27,
+     "minted": 28,
      "hidden": false,
      "page": true
     },
@@ -135,7 +135,7 @@
      "flavour": "The films are old; the queue is new.",
      "book": 70,
      "print_run": 30,
-     "minted": 16,
+     "minted": 17,
      "hidden": false,
      "page": true
     },
@@ -222,7 +222,7 @@
      "flavour": "No refunds.",
      "book": 10,
      "print_run": 300,
-     "minted": 26,
+     "minted": 27,
      "hidden": false,
      "page": true
     },
@@ -233,7 +233,7 @@
      "flavour": "Open until the churros arrive.",
      "book": 10,
      "print_run": 300,
-     "minted": 22,
+     "minted": 23,
      "hidden": false,
      "page": true
     },
@@ -255,7 +255,7 @@
      "flavour": "Three floors of food, one of noise.",
      "book": 25,
      "print_run": 90,
-     "minted": 18,
+     "minted": 19,
      "hidden": false,
      "page": true
     },
@@ -408,7 +408,7 @@
      "flavour": "The best sunset, free of charge.",
      "book": 25,
      "print_run": 90,
-     "minted": 20,
+     "minted": 21,
      "hidden": false,
      "page": true
     },
@@ -484,7 +484,7 @@
      "flavour": "Look, don't touch.",
      "book": 10,
      "print_run": 300,
-     "minted": 24,
+     "minted": 25,
      "hidden": false,
      "page": true
     },
@@ -506,7 +506,7 @@
      "flavour": "Better dressed than you.",
      "book": 10,
      "print_run": 300,
-     "minted": 28,
+     "minted": 29,
      "hidden": false,
      "page": true
     },
@@ -528,7 +528,7 @@
      "flavour": "The red stripe says it all.",
      "book": 10,
      "print_run": 300,
-     "minted": 22,
+     "minted": 23,
      "hidden": false,
      "page": true
     },
@@ -561,7 +561,7 @@
      "flavour": "Fitted by hand since 1890.",
      "book": 25,
      "print_run": 90,
-     "minted": 24,
+     "minted": 25,
      "hidden": false,
      "page": true
     },
@@ -626,7 +626,7 @@
      "flavour": "Rowing in circles, happily.",
      "book": 10,
      "print_run": 300,
-     "minted": 19,
+     "minted": 20,
      "hidden": false,
      "page": true
     },
@@ -637,7 +637,7 @@
      "flavour": "Warm hands, warmer gossip.",
      "book": 10,
      "print_run": 300,
-     "minted": 14,
+     "minted": 15,
      "hidden": false,
      "page": true
     },
@@ -670,7 +670,7 @@
      "flavour": "Accepts nuts, rejects offers.",
      "book": 10,
      "print_run": 300,
-     "minted": 15,
+     "minted": 16,
      "hidden": false,
      "page": true
     },
@@ -681,7 +681,7 @@
      "flavour": "Four thousand roses, one bench free.",
      "book": 25,
      "print_run": 90,
-     "minted": 17,
+     "minted": 19,
      "hidden": false,
      "page": true
     },
@@ -714,7 +714,7 @@
      "flavour": "Exactly 666 metres above the sea.",
      "book": 70,
      "print_run": 30,
-     "minted": 17,
+     "minted": 18,
      "hidden": false,
      "page": true
     },
@@ -736,7 +736,7 @@
      "flavour": "A greenhouse that forgot the plants.",
      "book": 180,
      "print_run": 9,
-     "minted": 6,
+     "minted": 7,
      "hidden": false,
      "page": false
     },
@@ -768,7 +768,7 @@
      "flavour": "Mind the gap.",
      "book": 10,
      "print_run": 300,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
@@ -779,7 +779,7 @@
      "flavour": "Every headline, one opinion.",
      "book": 10,
      "print_run": 300,
-     "minted": 8,
+     "minted": 9,
      "hidden": false,
      "page": true
     },
@@ -790,7 +790,7 @@
      "flavour": "Chocolate thick enough to stand a spoon.",
      "book": 10,
      "print_run": 300,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
@@ -823,7 +823,7 @@
      "flavour": "Closed in 1966, opened again for you.",
      "book": 25,
      "print_run": 90,
-     "minted": 7,
+     "minted": 8,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 8,
+     "minted": 9,
      "hidden": false,
      "page": true
     },

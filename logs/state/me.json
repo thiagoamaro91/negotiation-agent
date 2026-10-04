@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 288,
+ "cash": 280,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -495,9 +495,20 @@
    "print_run": 90,
    "name": "Palacio de Velázquez",
    "your_value": 22.5
+  },
+  {
+   "id": 1376,
+   "kind": "card",
+   "ref": "RET-02",
+   "serial": 15,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "La Castañera",
+   "your_value": 9.0
   }
  ],
- "collection_value": 1845.5,
+ "collection_value": 1854.5,
  "album": {
   "pages": [
    {
@@ -535,7 +546,7 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 6,
+    "have": 7,
     "of": 10,
     "complete": false,
     "master": false
@@ -549,26 +560,26 @@
     "master": false
    }
   ],
-  "filled": 40,
+  "filled": 41,
   "slots": 60
  },
- "tick": 2281,
+ "tick": 2300,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
-  "score": 32.28,
-  "negotiating": 24.13,
+  "score": 32.23,
+  "negotiating": 24.08,
   "market": 8.15,
   "neg_points": 86.5,
   "mm_points": 0.0,
   "duel_points": 27.94,
-  "ladder_points": 0.315,
+  "ladder_points": 0.334,
   "bench_efficiency": 0.89,
   "bench_points": 0.5,
   "bench_venue": "v20",
   "level": 5,
-  "album_filled": 40,
+  "album_filled": 41,
   "album_slots": 60,
   "pages_complete": 3,
   "rarest": {
@@ -579,7 +590,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 44,
+  "deals": 45,
   "badges": [
    "Sharp ear"
   ],
@@ -614,5 +625,7 @@
   "description": "Zero fees. Our broker crosses every matching bid and ask, card by card, every tick.",
   "opened_tick": 269
  },
- "open_threads": []
+ "open_threads": [
+  3458
+ ]
 }
