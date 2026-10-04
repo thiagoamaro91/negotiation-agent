@@ -1,0 +1,87 @@
+{
+ "duel": 11416,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.48,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 130,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Luna",
+ "deadline_tick": 1962,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13979,
+  "price": 158,
+  "tick": 1959,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1952,
+   "from": "Rival Luna",
+   "text": "We can do 124 P, delivery on day 0. Thank you for the talk.",
+   "price": 124,
+   "days": 0
+  },
+  {
+   "tick": 1953,
+   "from": "Rival Luna",
+   "text": "139 P, delivery on day 0 works well for us.",
+   "price": 139,
+   "days": 0
+  },
+  {
+   "tick": 1954,
+   "from": "Rival Luna",
+   "text": "Our offer is 143 P, delivery on day 0.",
+   "price": 143,
+   "days": 0
+  },
+  {
+   "tick": 1955,
+   "from": "Rival Luna",
+   "text": "Let's meet at 144 P, delivery on day 0, fair for both.",
+   "price": 144,
+   "days": 0
+  },
+  {
+   "tick": 1956,
+   "from": "Rival Luna",
+   "text": "149 P, delivery on day 0, and we close now.",
+   "price": 149,
+   "days": 0
+  },
+  {
+   "tick": 1957,
+   "from": "Rival Luna",
+   "text": "We move to 152 P, delivery on day 0.",
+   "price": 152,
+   "days": 0
+  },
+  {
+   "tick": 1958,
+   "from": "Rival Luna",
+   "text": "We can do 154 P, delivery on day 0. Thank you for the talk.",
+   "price": 154,
+   "days": 0
+  },
+  {
+   "tick": 1959,
+   "from": "Rival Luna",
+   "text": "158 P, delivery on day 0 works well for us.",
+   "price": 158,
+   "days": 0
+  }
+ ],
+ "result": 28.0,
+ "price": 158,
+ "days": 0
+}

@@ -1,0 +1,45 @@
+{
+ "duel": 11272,
+ "session": 4,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.54,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 104,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 1960,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": {
+  "id": 13898,
+  "price": 121,
+  "tick": 1956,
+  "days": 10
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1951,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 136 P, delivery day 10.",
+   "price": 136,
+   "days": 10
+  },
+  {
+   "tick": 1956,
+   "from": "you",
+   "text": "Last word from me: 121 P, delivery day 10.",
+   "price": 121,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

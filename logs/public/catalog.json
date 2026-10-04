@@ -244,7 +244,7 @@
      "flavour": "Alphabetised by mood.",
      "book": 25,
      "print_run": 90,
-     "minted": 25,
+     "minted": 26,
      "hidden": false,
      "page": true
     },
@@ -725,7 +725,7 @@
      "flavour": "A king, a lake, a lot of steps.",
      "book": 70,
      "print_run": 30,
-     "minted": 13,
+     "minted": 14,
      "hidden": false,
      "page": true
     },
@@ -736,7 +736,7 @@
      "flavour": "A greenhouse that forgot the plants.",
      "book": 180,
      "print_run": 9,
-     "minted": 4,
+     "minted": 5,
      "hidden": false,
      "page": false
     },

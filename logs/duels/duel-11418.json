@@ -1,0 +1,71 @@
+{
+ "duel": 11418,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.44,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 174,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1952,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 13705,
+  "price": 150,
+  "tick": 1948,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 13770,
+  "price": 157,
+  "tick": 1950,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1942,
+   "from": "Rival Luna",
+   "text": "Hello, and thank you for meeting me. I would propose 181 P with delivery on day 10.",
+   "price": 181,
+   "days": 10
+  },
+  {
+   "tick": 1944,
+   "from": "Rival Luna",
+   "text": "I appreciate it, thank you. Could we close at 155 P, delivery on day 10, please?",
+   "price": 155,
+   "days": 10
+  },
+  {
+   "tick": 1948,
+   "from": "you",
+   "text": "Last word from me: 150 P, delivery day 0.",
+   "price": 150,
+   "days": 0
+  },
+  {
+   "tick": 1948,
+   "from": "Rival Luna",
+   "text": "Fair enough, thank you. I will meet you partway: 144 P with delivery on day 10.",
+   "price": 144,
+   "days": 10
+  },
+  {
+   "tick": 1950,
+   "from": "Rival Luna",
+   "text": "Thank you, we are getting close. 157 P and delivery on day 0 works for me.",
+   "price": 157,
+   "days": 0
+  }
+ ],
+ "result": 15.3,
+ "price": 157,
+ "days": 0
+}

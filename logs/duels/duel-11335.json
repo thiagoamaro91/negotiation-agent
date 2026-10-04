@@ -1,0 +1,94 @@
+{
+ "duel": 11335,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.96,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 99,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 1941,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13472,
+  "price": 58,
+  "tick": 1937,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1929,
+   "from": "Rival Sol",
+   "text": "Propuesta justa para cerrar pronto: 84 P y 10 días.",
+   "price": 84,
+   "days": 10
+  },
+  {
+   "tick": 1930,
+   "from": "Rival Sol",
+   "text": "Me muevo para acercarnos: 81 P con 10 días.",
+   "price": 81,
+   "days": 10
+  },
+  {
+   "tick": 1931,
+   "from": "Rival Sol",
+   "text": "Yo ya me he movido. Propongo 77 P y 10 días.",
+   "price": 77,
+   "days": 10
+  },
+  {
+   "tick": 1932,
+   "from": "Rival Sol",
+   "text": "Propuesta justa para cerrar pronto: 74 P y 10 días.",
+   "price": 74,
+   "days": 10
+  },
+  {
+   "tick": 1933,
+   "from": "Rival Sol",
+   "text": "Me muevo para acercarnos: 71 P con 10 días.",
+   "price": 71,
+   "days": 10
+  },
+  {
+   "tick": 1934,
+   "from": "Rival Sol",
+   "text": "Yo ya me he movido. Propongo 67 P y 10 días.",
+   "price": 67,
+   "days": 10
+  },
+  {
+   "tick": 1935,
+   "from": "Rival Sol",
+   "text": "Propuesta justa para cerrar pronto: 64 P y 10 días.",
+   "price": 64,
+   "days": 10
+  },
+  {
+   "tick": 1936,
+   "from": "Rival Sol",
+   "text": "Me muevo para acercarnos: 61 P con 10 días.",
+   "price": 61,
+   "days": 10
+  },
+  {
+   "tick": 1937,
+   "from": "Rival Sol",
+   "text": "Yo ya me he movido. Propongo 58 P y 10 días.",
+   "price": 58,
+   "days": 10
+  }
+ ],
+ "result": 31.4,
+ "price": 58,
+ "days": 10
+}

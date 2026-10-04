@@ -1,0 +1,101 @@
+{
+ "duel": 11332,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.53,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 97,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 1942,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13513,
+  "price": 143,
+  "tick": 1939,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1930,
+   "from": "Rival Plata",
+   "text": "110 with delivery on day 0. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 110,
+   "days": 0
+  },
+  {
+   "tick": 1931,
+   "from": "Rival Plata",
+   "text": "114 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 114,
+   "days": 0
+  },
+  {
+   "tick": 1932,
+   "from": "Rival Plata",
+   "text": "118 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 118,
+   "days": 0
+  },
+  {
+   "tick": 1933,
+   "from": "Rival Plata",
+   "text": "122 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 122,
+   "days": 0
+  },
+  {
+   "tick": 1934,
+   "from": "Rival Plata",
+   "text": "126 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 126,
+   "days": 0
+  },
+  {
+   "tick": 1935,
+   "from": "Rival Plata",
+   "text": "130 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 130,
+   "days": 0
+  },
+  {
+   "tick": 1936,
+   "from": "Rival Plata",
+   "text": "134 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 134,
+   "days": 0
+  },
+  {
+   "tick": 1937,
+   "from": "Rival Plata",
+   "text": "138 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 138,
+   "days": 0
+  },
+  {
+   "tick": 1938,
+   "from": "Rival Plata",
+   "text": "142 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 142,
+   "days": 0
+  },
+  {
+   "tick": 1939,
+   "from": "Rival Plata",
+   "text": "143 with delivery on day 0. Fast deal before the pie shrinks?",
+   "price": 143,
+   "days": 0
+  }
+ ],
+ "result": 46.0,
+ "price": 143,
+ "days": 0
+}
