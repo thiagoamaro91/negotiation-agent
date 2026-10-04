@@ -275,25 +275,37 @@ def venue_fee(venue: str, price: int) -> int | None:
     return int(math.ceil(price * bps / 10000)) + per
 
 
+def offer_state_from_feed(events: list) -> dict:
+    """Reconstruct every offer's state from the feed: {id: {"offer": listing or None, "open": bool}}. A listing
+    opens it; any later offer.* event naming that id (payload.offer as an int, or a dict with id, e.g.
+    offer.cancelled / offer.filled / offer.expired) closes it. Shared shape with the server's watcher."""
+    state: dict = {}
+    for e in sorted((x for x in events if isinstance(x, dict)), key=lambda e: e.get("id") or 0):
+        typ, pay = str(e.get("type") or ""), e.get("payload")
+        if not typ.startswith("offer.") or not isinstance(pay, dict):
+            continue
+        o = pay.get("offer")
+        oid = o.get("id") if isinstance(o, dict) else o
+        if not isinstance(oid, int):
+            continue
+        st = state.setdefault(oid, {"offer": None, "open": False})
+        if typ == "offer.listed" and isinstance(o, dict):
+            st["offer"], st["open"] = o, o.get("status", "open") == "open"
+        else:
+            st["open"] = False
+    return state
+
+
 def offer_from_feed(offer_id: int) -> tuple:
-    """The offer as the GAME published it: the public feed's offer.listed event (addressed offers never show on a
-    venue's public book, but the feed carries them with maker, to, give and want). Returns (offer, closed) where
-    closed is True if a later feed event for that id says it is no longer open. (None, False) if not in the last
-    500 events yet."""
+    """The offer as the GAME published it (addressed offers never show on a venue's public book, but the feed's
+    offer.listed event carries maker, to, give and want). Returns (listing, closed); (None, False) when not in the
+    last 500 events (yet)."""
     feed = call(f"{GAME}/api/feed?limit=500")
     events = feed.get("events") or [] if isinstance(feed, dict) else []
-    listed, closed = None, False
-    for e in sorted(events, key=lambda e: e.get("id") or 0):
-        if not isinstance(e, dict):
-            continue
-        o = (e.get("payload") or {}).get("offer") if isinstance(e.get("payload"), dict) else None
-        if not isinstance(o, dict) or o.get("id") != offer_id:
-            continue
-        if e.get("type") == "offer.listed":
-            listed = o
-        elif str(e.get("type", "")).startswith("offer.") or o.get("status", "open") != "open":
-            closed = True
-    return listed, closed
+    st = offer_state_from_feed(events).get(offer_id)
+    if st is None:
+        return None, False
+    return st["offer"], not st["open"]
 
 
 def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: int) -> str | None:
@@ -327,10 +339,12 @@ def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: i
         return "offer is on another venue"
     try:
         tick = int((call(f"{GAME}/api/clock") or {}).get("tick") or 0)
-        if int(offer.get("expires_tick") or 0) <= tick:
-            return "offer has expired"
     except Exception:
-        pass
+        tick = 0
+    if tick <= 0:
+        return "clock unreadable (yet)"            # never accept without knowing the offer is unexpired
+    if int(offer.get("expires_tick") or 0) <= tick:
+        return "offer has expired"
     give, want = offer.get("give") or {}, offer.get("want") or {}
     assets = give.get("assets") or []
     refs = [a.get("ref") if isinstance(a, dict) else None for a in assets]
