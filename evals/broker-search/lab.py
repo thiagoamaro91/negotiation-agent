@@ -1,6 +1,6 @@
 """Overnight broker search lab (WP11): paired evaluation of a candidate bench policy against the free stall's rule.
 
-Acceptance rule (fixed before any run, 4 Oct 02:40 Madrid; it is printed at the top of leaderboard.md):
+Acceptance rule (fixed before the first search run, 4 Oct 02:30 Madrid; it is printed at the top of leaderboard.md):
   - "recommendable for the hard test": beats `stall` on `hard` by more than 2 SE, AND is not worse than `stall` beyond
     noise (diff + 1.96 SE < 0) on ANY other scenario, the five real-session refits included, AND drops no pair the
     stall would have crossed (dropped_vs_stall = 0: a pair the stall matched in the paired session whose two traders

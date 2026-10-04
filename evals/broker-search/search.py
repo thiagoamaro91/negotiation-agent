@@ -55,7 +55,7 @@ SCREEN_SEEDS, CONFIRM_SEEDS, HOLDOUT_SEEDS, CHUNK = 200, 1000, 2000, 250
 FIRST = ["hard", "standard", "refit all"]
 BOARD_EVERY = 30 * 60
 
-ACCEPTANCE = """**Acceptance rule (fixed at 02:40 Madrid, before any search run).** A candidate is *recommendable for the hard
+ACCEPTANCE = """**Acceptance rule (fixed at 02:30 Madrid, before the first search run at 02:36).** A candidate is *recommendable for the hard
 test* only if it beats `stall` on `hard` by more than 2 SE, AND is not worse than `stall` beyond noise (diff + 1.96 SE
 < 0) on ANY other scenario, the five real-session refits included, AND drops no pair the stall would have crossed
 (`dropped_vs_stall` = 0: a pair the stall matched in the paired session whose two traders both leave unmatched under the
@@ -183,6 +183,12 @@ def partial_margin(rec: dict) -> float:
     return min(rows["hard"]["z"] - 2.0, *(rows[k]["z"] + 1.96 for k in FIRST[1:])) - 100.0
 
 
+def signature(rec: dict) -> tuple:
+    """Screen results rounded: two members with the same signature behaved identically on the screen seeds (a key
+    the mechanism ignores was changed)."""
+    return (rec["family"],) + tuple(round(r["diff"], 7) for _, r in sorted(rec["rows"].items()))
+
+
 def top(recs: list, family: str, k: int) -> list:
     """The family's best screened members: fully screened first (by margin), then the rest (by first-step margin)."""
     fam = [r for r in recs if r["family"] == family]
@@ -266,7 +272,8 @@ def write_board(started: float | None = None, note: str = "") -> None:
         out.append(line(f"ref: {name}", c))
     hold = [c for c in conf if c["prefix"] == "holdout"]
     if hold:
-        out += ["", "## Holdout runs (2,000 `holdout` seeds, only for candidates the unseen run called recommendable)",
+        out += ["", "## TEST: holdout runs (2,000 `holdout` seeds: the best member of each family, chosen on its "
+                "unseen run, plus any candidate the unseen run called recommendable)",
                 "", head, "|" + "---|" * (len(labels) + 4)]
         out += [line(f"{c['family']} `{c['sid']}`", c) for c in hold]
     out += ["", "## Best members (parameters, and why the rule says what it says)", ""]
@@ -335,9 +342,18 @@ def cmd_run(args) -> int:
         print(f"round {rnd}: screened {len(specs)} in {time.time() - t0:.0f}s; total {len(recs)}", flush=True)
         done = {(c["sid"], c["prefix"]) for c in read_jsonl(CONFIRM)}
         if time.time() - last_board >= BOARD_EVERY - 300 or rnd == 1:
+            sig_done = {signature(r) for r in recs if (r["sid"], "unseen") in done}
             for fam in FAMILIES:
-                for r in top(recs, fam, args.confirm_top):
-                    if (r["sid"], "unseen") in done or time.time() > deadline - args.margin / 2:
+                picks = []
+                for r in top(recs, fam, 50):  # skip members that behave exactly like one already confirmed
+                    if (r["sid"], "unseen") in done or signature(r) in sig_done:
+                        continue
+                    sig_done.add(signature(r))
+                    picks.append(r)
+                    if len(picks) == args.confirm_top:
+                        break
+                for r in picks:
+                    if time.time() > deadline - args.margin / 2:
                         continue
                     sp = {"family": fam, "params": r["params"]}
                     c = confirm(pool, sp)
@@ -350,6 +366,23 @@ def cmd_run(args) -> int:
     write_board(note="Search finished.")
     if pool:
         pool.close()
+    return 0
+
+
+def cmd_test(args) -> int:
+    """The final TEST: the best confirmed member of each family (by its unseen run) on the `holdout` seeds, whatever
+    its verdict, so every family has numbers no selection step has seen."""
+    import multiprocessing as mp
+    pool = mp.Pool(args.procs) if args.procs > 1 else None
+    conf = read_jsonl(CONFIRM)
+    done = {(c["sid"], c["prefix"]) for c in conf}
+    for fam in FAMILIES:
+        c = best_confirmed(conf, fam)
+        if c is None or (c["sid"], "holdout") in done:
+            continue
+        h = confirm(pool, {"family": fam, "params": c["params"]}, "holdout", args.seeds)
+        print(f"TEST {fam} {c['sid']}: unseen {c['verdict']}; holdout {h['verdict']}", flush=True)
+    write_board(note=args.note)
     return 0
 
 
@@ -380,6 +413,10 @@ def main(argv=None) -> int:
     c.add_argument("--prefix", default="unseen")
     c.add_argument("--seeds", type=int, default=CONFIRM_SEEDS)
     c.add_argument("--procs", type=int, default=3)
+    te = sub.add_parser("test")
+    te.add_argument("--seeds", type=int, default=HOLDOUT_SEEDS)
+    te.add_argument("--procs", type=int, default=3)
+    te.add_argument("--note", default="Final TEST done.")
     sub.add_parser("board")
     sub.add_parser("plan")
     args = ap.parse_args(argv)
@@ -393,7 +430,7 @@ def main(argv=None) -> int:
         print("battery:", lab.battery())
         print(f"seeds: screen {SCREEN_SEEDS}, unseen {CONFIRM_SEEDS}, holdout {HOLDOUT_SEEDS}")
         return 0
-    return {"run": cmd_run, "confirm": cmd_confirm}[args.mode](args)
+    return {"run": cmd_run, "confirm": cmd_confirm, "test": cmd_test}[args.mode](args)
 
 
 if __name__ == "__main__":
