@@ -1,0 +1,52 @@
+{
+ "duel": 11207,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.25,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 129,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 1906,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12534,
+  "price": 91,
+  "tick": 1898,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1896,
+   "from": "Rival Plata",
+   "text": "We can do 103 P, delivery on day 10. Thank you for the talk.",
+   "price": 103,
+   "days": 10
+  },
+  {
+   "tick": 1897,
+   "from": "Rival Plata",
+   "text": "92 P, delivery on day 10 works well for us.",
+   "price": 92,
+   "days": 10
+  },
+  {
+   "tick": 1898,
+   "from": "Rival Plata",
+   "text": "Our offer is 91 P, delivery on day 10.",
+   "price": 91,
+   "days": 10
+  }
+ ],
+ "result": 25.5,
+ "price": 91,
+ "days": 10
+}

@@ -1,0 +1,108 @@
+{
+ "duel": 11333,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.94,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 199,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1973,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14244,
+  "price": 126,
+  "tick": 1971,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1961,
+   "from": "Rival Verde",
+   "text": "142 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 142,
+   "days": 10
+  },
+  {
+   "tick": 1962,
+   "from": "Rival Verde",
+   "text": "140 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 140,
+   "days": 10
+  },
+  {
+   "tick": 1963,
+   "from": "Rival Verde",
+   "text": "139 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 139,
+   "days": 10
+  },
+  {
+   "tick": 1964,
+   "from": "Rival Verde",
+   "text": "138 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 138,
+   "days": 10
+  },
+  {
+   "tick": 1965,
+   "from": "Rival Verde",
+   "text": "137 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 137,
+   "days": 10
+  },
+  {
+   "tick": 1966,
+   "from": "Rival Verde",
+   "text": "135 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 135,
+   "days": 10
+  },
+  {
+   "tick": 1967,
+   "from": "Rival Verde",
+   "text": "134 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 134,
+   "days": 10
+  },
+  {
+   "tick": 1968,
+   "from": "Rival Verde",
+   "text": "133 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 133,
+   "days": 10
+  },
+  {
+   "tick": 1969,
+   "from": "Rival Verde",
+   "text": "132 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 132,
+   "days": 10
+  },
+  {
+   "tick": 1970,
+   "from": "Rival Verde",
+   "text": "131 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 131,
+   "days": 10
+  },
+  {
+   "tick": 1971,
+   "from": "Rival Verde",
+   "text": "126 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 126,
+   "days": 10
+  }
+ ],
+ "result": 63.6,
+ "price": 126,
+ "days": 10
+}

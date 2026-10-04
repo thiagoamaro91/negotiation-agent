@@ -1,0 +1,45 @@
+{
+ "duel": 11363,
+ "session": 4,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 6.76,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 74,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 1953,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": {
+  "id": 13733,
+  "price": 64,
+  "tick": 1949,
+  "days": 0
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1944,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 56 P, delivery day 0.",
+   "price": 56,
+   "days": 0
+  },
+  {
+   "tick": 1949,
+   "from": "you",
+   "text": "Last word from me: 64 P, delivery day 0.",
+   "price": 64,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

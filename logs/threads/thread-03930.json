@@ -1,0 +1,650 @@
+{
+ "id": 3930,
+ "kind": "persona",
+ "team": "t03",
+ "with": "chato",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1193
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 2483,
+ "messages": [
+  {
+   "id": 18437,
+   "tick": 2484,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 26 P.",
+   "offer": {
+    "id": 27690,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 26,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2492,
+    "created_tick": 2484,
+    "final": false
+   }
+  },
+  {
+   "id": 18436,
+   "tick": 2484,
+   "sender": "chato",
+   "text": "Tienda de Discos. Thirteen. You want it or you want to stand there looking at it?",
+   "offer": {
+    "id": 27689,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2492,
+    "created_tick": 2484,
+    "final": false
+   }
+  },
+  {
+   "id": 18438,
+   "tick": 2485,
+   "sender": "chato",
+   "text": "13 P.",
+   "offer": {
+    "id": 27691,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2493,
+    "created_tick": 2485,
+    "final": false
+   }
+  },
+  {
+   "id": 18439,
+   "tick": 2485,
+   "sender": "t03",
+   "text": "I move, you move. 25 P.",
+   "offer": {
+    "id": 27694,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 25,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2493,
+    "created_tick": 2485,
+    "final": false
+   }
+  },
+  {
+   "id": 18441,
+   "tick": 2486,
+   "sender": "t03",
+   "text": "Coming down: 24 P.",
+   "offer": {
+    "id": 27699,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 24,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2494,
+    "created_tick": 2486,
+    "final": false
+   }
+  },
+  {
+   "id": 18440,
+   "tick": 2486,
+   "sender": "chato",
+   "text": "You moved one peseta. That is not moving, that is breathing. Thirteen. Same as before.",
+   "offer": {
+    "id": 27698,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2494,
+    "created_tick": 2486,
+    "final": false
+   }
+  },
+  {
+   "id": 18443,
+   "tick": 2487,
+   "sender": "chato",
+   "text": "No. 13 P, and I'm being generous.",
+   "offer": {
+    "id": 27700,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 13,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2495,
+    "created_tick": 2487,
+    "final": false
+   }
+  },
+  {
+   "id": 18445,
+   "tick": 2487,
+   "sender": "t03",
+   "text": "Fair is fair. 23 P.",
+   "offer": {
+    "id": 27702,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 23,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2495,
+    "created_tick": 2487,
+    "final": false
+   }
+  },
+  {
+   "id": 18447,
+   "tick": 2488,
+   "sender": "t03",
+   "text": "No theatre. 22 P and it is yours.",
+   "offer": {
+    "id": 27705,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 22,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2496,
+    "created_tick": 2488,
+    "final": false
+   }
+  },
+  {
+   "id": 18446,
+   "tick": 2488,
+   "sender": "chato",
+   "text": "You moved one. I move one. Fourteen. That's how it works, amigo.",
+   "offer": {
+    "id": 27704,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 14,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2496,
+    "created_tick": 2488,
+    "final": false
+   }
+  },
+  {
+   "id": 18450,
+   "tick": 2489,
+   "sender": "chato",
+   "text": "15 P.",
+   "offer": {
+    "id": 27713,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 15,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2497,
+    "created_tick": 2489,
+    "final": false
+   }
+  },
+  {
+   "id": 18451,
+   "tick": 2489,
+   "sender": "t03",
+   "text": "Another step down: 21 P.",
+   "offer": {
+    "id": 27714,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 21,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2497,
+    "created_tick": 2489,
+    "final": false
+   }
+  },
+  {
+   "id": 18457,
+   "tick": 2490,
+   "sender": "t03",
+   "text": "20 P. Your turn.",
+   "offer": {
+    "id": 27720,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 20,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2498,
+    "created_tick": 2490,
+    "final": false
+   }
+  },
+  {
+   "id": 18452,
+   "tick": 2490,
+   "sender": "chato",
+   "text": "Sixteen. You moved one, I moved one. Tienda de Discos, that's the price. Keep stepping, amigo.",
+   "offer": {
+    "id": 27719,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 16,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2498,
+    "created_tick": 2490,
+    "final": false
+   }
+  },
+  {
+   "id": 18458,
+   "tick": 2491,
+   "sender": "chato",
+   "text": "17 P.",
+   "offer": {
+    "id": 27722,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 17,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2499,
+    "created_tick": 2491,
+    "final": false
+   }
+  },
+  {
+   "id": 18459,
+   "tick": 2491,
+   "sender": "t03",
+   "text": "Down again, 19 P.",
+   "offer": {
+    "id": 27723,
+    "maker": "t03",
+    "to": "chato",
+    "venue": null,
+    "thread": 3930,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 19,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2499,
+    "created_tick": 2491,
+    "final": false
+   }
+  },
+  {
+   "id": 18461,
+   "tick": 2492,
+   "sender": "chato",
+   "text": "Eighteen. Last one, amigo. You say no, I pack up and we both go home with nothing.",
+   "offer": {
+    "id": 27725,
+    "maker": "chato",
+    "to": "t03",
+    "venue": null,
+    "thread": 3930,
+    "status": "settled",
+    "give": {
+     "cash": 18,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1193,
+       "kind": "card",
+       "ref": "MAL-06",
+       "serial": 24,
+       "rarity": "uncommon",
+       "set": "MAL",
+       "print_run": 90
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2500,
+    "created_tick": 2492,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Tienda de Discos",
+ "closed_reason": null
+}

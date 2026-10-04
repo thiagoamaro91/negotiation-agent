@@ -1,0 +1,87 @@
+{
+ "duel": 11659,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.95,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 199,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 2043,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15643,
+  "price": 118,
+  "tick": 2038,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2031,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 172 with delivery on day 10.",
+   "price": 172,
+   "days": 10
+  },
+  {
+   "tick": 2032,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 147, delivery day 10.",
+   "price": 147,
+   "days": 10
+  },
+  {
+   "tick": 2033,
+   "from": "Rival Sol",
+   "text": "Let me move closer: 128, day 10.",
+   "price": 128,
+   "days": 10
+  },
+  {
+   "tick": 2034,
+   "from": "Rival Sol",
+   "text": "I'd like to close this: 118 with day 10.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2035,
+   "from": "Rival Sol",
+   "text": "Meeting you halfway: 118, delivered day 10.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2036,
+   "from": "Rival Sol",
+   "text": "Final stretch from me: 118, day 10.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2037,
+   "from": "Rival Sol",
+   "text": "Hello! I can do 118 with delivery on day 10.",
+   "price": 118,
+   "days": 10
+  },
+  {
+   "tick": 2038,
+   "from": "Rival Sol",
+   "text": "Thanks for the reply. 118, delivery day 10.",
+   "price": 118,
+   "days": 10
+  }
+ ],
+ "result": 71.5,
+ "price": 118,
+ "days": 10
+}

@@ -1,0 +1,101 @@
+{
+ "duel": 15975,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.55,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 228,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2661,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18182,
+  "price": 149,
+  "tick": 2659,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2649,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 211 primas y entrega en 10 días; me cuesta bajar más.",
+   "price": 211,
+   "days": 10
+  },
+  {
+   "tick": 2650,
+   "from": "Rival Azul",
+   "text": "208 primas y entrega en 0 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 208,
+   "days": 0
+  },
+  {
+   "tick": 2651,
+   "from": "Rival Azul",
+   "text": "Mi propuesta: 202 primas y entrega en 0 días. Dime una cifra concreta y la miro.",
+   "price": 202,
+   "days": 0
+  },
+  {
+   "tick": 2652,
+   "from": "Rival Azul",
+   "text": "Es una pieza que merece su precio: 195 primas y entrega en 0 días.",
+   "price": 195,
+   "days": 0
+  },
+  {
+   "tick": 2653,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 189 primas y entrega en 0 días; me cuesta bajar más.",
+   "price": 189,
+   "days": 0
+  },
+  {
+   "tick": 2654,
+   "from": "Rival Azul",
+   "text": "186 primas y entrega en 0 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 186,
+   "days": 0
+  },
+  {
+   "tick": 2656,
+   "from": "Rival Azul",
+   "text": "Mi propuesta: 177 primas y entrega en 0 días. Dime una cifra concreta y la miro.",
+   "price": 177,
+   "days": 0
+  },
+  {
+   "tick": 2657,
+   "from": "Rival Azul",
+   "text": "Es una pieza que merece su precio: 176 primas y entrega en 0 días.",
+   "price": 176,
+   "days": 0
+  },
+  {
+   "tick": 2658,
+   "from": "Rival Azul",
+   "text": "Te la dejo en 176 primas y entrega en 0 días; me cuesta bajar más.",
+   "price": 176,
+   "days": 0
+  },
+  {
+   "tick": 2659,
+   "from": "Rival Azul",
+   "text": "149 primas y entrega en 0 días. Me muevo poco ya, pero si tú te mueves, cerramos.",
+   "price": 149,
+   "days": 0
+  }
+ ],
+ "result": 79.0,
+ "price": 149,
+ "days": 0
+}

@@ -1,0 +1,64 @@
+{
+ "duel": 11623,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.5,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 152,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 2033,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 15557,
+  "price": 131,
+  "tick": 2030,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 15507,
+  "price": 142,
+  "tick": 2026,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2021,
+   "from": "Rival Oro",
+   "text": "Hola, Rival Plata, voy con prisa: Cine Doré por 160 y cerramos ya. Entrega en 10 días.",
+   "price": 160,
+   "days": 10
+  },
+  {
+   "tick": 2025,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 93 P, delivery day 0.",
+   "price": 93,
+   "days": 0
+  },
+  {
+   "tick": 2026,
+   "from": "Rival Oro",
+   "text": "142 y lo cerramos ahora. Entrega en 10 días.",
+   "price": 142,
+   "days": 10
+  },
+  {
+   "tick": 2030,
+   "from": "you",
+   "text": "Last word from me: 131 P, delivery day 0.",
+   "price": 131,
+   "days": 0
+  }
+ ],
+ "result": 17.0,
+ "price": 131,
+ "days": 0
+}

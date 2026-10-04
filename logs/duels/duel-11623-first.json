@@ -1,0 +1,38 @@
+{
+ "duel": 11623,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.5,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 152,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Oro",
+ "deadline_tick": 2033,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15439,
+  "price": 160,
+  "tick": 2021,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2021,
+   "from": "Rival Oro",
+   "text": "Hola, Rival Plata, voy con prisa: Cine Doré por 160 y cerramos ya. Entrega en 10 días.",
+   "price": 160,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

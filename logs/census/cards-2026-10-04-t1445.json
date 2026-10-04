@@ -1,0 +1,10534 @@
+{
+ "meta": {
+  "tool": "tools/census.py",
+  "mode": "run",
+  "url": "https://bazaar.causaprima.ai",
+  "started": "2026-10-04T08:35:56+0200",
+  "tick_start": 1445,
+  "doors_start": "closed",
+  "ids_walked": 1246,
+  "found": 1186,
+  "not_found": 60,
+  "resumed_ids": 0,
+  "end": "404_run",
+  "highest_found": 1186,
+  "stop_after": 60,
+  "max_id": 3000,
+  "expect_max": 0,
+  "unparsed_ids": [],
+  "errors": [],
+  "partial": "/Users/thiago/bazaar/logs/census/cards-2026-10-04-partial.jsonl",
+  "status_refreshes": 3,
+  "tick_end": 1445,
+  "ended": "2026-10-04T08:41:26+0200",
+  "requests": 1256,
+  "keyed": true,
+  "quiet_paused_s": 0,
+  "cards_total": 1049,
+  "cards_team_owned": 31,
+  "packs_total": 137,
+  "teams_total": 1
+ },
+ "cards": [
+  {
+   "id": 1,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 2,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 3,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 4,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 5,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 6,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 7,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 8,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 9,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 10,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 11,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "burned"
+  },
+  {
+   "id": 12,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 13,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 14,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 15,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "t03"
+  },
+  {
+   "id": 16,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 17,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "abuela"
+  },
+  {
+   "id": 18,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "abuela"
+  },
+  {
+   "id": 19,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 20,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 21,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 22,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 23,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "abuela"
+  },
+  {
+   "id": 24,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 25,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 26,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 27,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 28,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "pilar"
+  },
+  {
+   "id": 29,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 30,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 31,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "t03"
+  },
+  {
+   "id": 32,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "t03"
+  },
+  {
+   "id": 33,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "t03"
+  },
+  {
+   "id": 34,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "t03"
+  },
+  {
+   "id": 35,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "t03"
+  },
+  {
+   "id": 36,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "abuela"
+  },
+  {
+   "id": 37,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "t03"
+  },
+  {
+   "id": 38,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "t03"
+  },
+  {
+   "id": 39,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "t03"
+  },
+  {
+   "id": 40,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 41,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "burned"
+  },
+  {
+   "id": 42,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "pilar"
+  },
+  {
+   "id": 43,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "chato"
+  },
+  {
+   "id": 44,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "pilar"
+  },
+  {
+   "id": 45,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "t03"
+  },
+  {
+   "id": 46,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "abuela"
+  },
+  {
+   "id": 47,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 48,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 49,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 50,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 51,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 52,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "abuela"
+  },
+  {
+   "id": 53,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 54,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 55,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 56,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "abuela"
+  },
+  {
+   "id": 57,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 58,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "pilar"
+  },
+  {
+   "id": 59,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 60,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 61,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 62,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 63,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 64,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 65,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 66,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 67,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 68,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "abuela"
+  },
+  {
+   "id": 69,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 70,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 71,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 72,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 73,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 74,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 75,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 76,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 77,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 78,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 79,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 80,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 81,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "burned"
+  },
+  {
+   "id": 82,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 83,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 84,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 85,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 86,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 87,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 88,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 89,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 90,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 91,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 92,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "abuela"
+  },
+  {
+   "id": 93,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 94,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 95,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "burned"
+  },
+  {
+   "id": 96,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 97,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 98,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 99,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 100,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "abuela"
+  },
+  {
+   "id": 101,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 102,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 103,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 104,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "pilar"
+  },
+  {
+   "id": 105,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 106,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 107,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "abuela"
+  },
+  {
+   "id": 108,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 109,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "abuela"
+  },
+  {
+   "id": 110,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 111,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 112,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 113,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 114,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 115,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 116,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 117,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 118,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 119,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "pilar"
+  },
+  {
+   "id": 120,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 121,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 122,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 123,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 124,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 125,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 126,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 127,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 128,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 129,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 130,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 131,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 132,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 133,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "pilar"
+  },
+  {
+   "id": 134,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "chato"
+  },
+  {
+   "id": 135,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 136,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "abuela"
+  },
+  {
+   "id": 137,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 138,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 139,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "abuela"
+  },
+  {
+   "id": 140,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "burned"
+  },
+  {
+   "id": 141,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 142,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 143,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 144,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 145,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 146,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 147,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "chato"
+  },
+  {
+   "id": 148,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 149,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "pilar"
+  },
+  {
+   "id": 150,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 151,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 152,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 153,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 154,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 155,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 156,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 157,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 158,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 159,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 160,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 161,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 162,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 163,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 164,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 165,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 166,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 167,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 168,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 169,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 170,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 171,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 172,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 173,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 174,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 175,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 176,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 177,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "pilar"
+  },
+  {
+   "id": 178,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 179,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "pilar"
+  },
+  {
+   "id": 180,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 181,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "abuela"
+  },
+  {
+   "id": 182,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 183,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 184,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 185,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 186,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 187,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 188,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "burned"
+  },
+  {
+   "id": 189,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 190,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "burned"
+  },
+  {
+   "id": 191,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "abuela"
+  },
+  {
+   "id": 192,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 193,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 194,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 195,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 196,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 197,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 198,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 199,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 200,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 201,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 202,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 203,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "burned"
+  },
+  {
+   "id": 204,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "burned"
+  },
+  {
+   "id": 205,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 206,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "burned"
+  },
+  {
+   "id": 207,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 208,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 209,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 210,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 211,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 212,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 213,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 214,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "abuela"
+  },
+  {
+   "id": 215,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 216,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 217,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 218,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "abuela"
+  },
+  {
+   "id": 219,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "t03"
+  },
+  {
+   "id": 220,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 221,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "abuela"
+  },
+  {
+   "id": 222,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 223,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 224,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 225,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 226,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 227,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 228,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 229,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "burned"
+  },
+  {
+   "id": 230,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 231,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 232,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "burned"
+  },
+  {
+   "id": 233,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "abuela"
+  },
+  {
+   "id": 234,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 235,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "abuela"
+  },
+  {
+   "id": 236,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "burned"
+  },
+  {
+   "id": 237,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 238,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 239,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 240,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 241,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 242,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 243,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 244,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 245,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "burned"
+  },
+  {
+   "id": 246,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "abuela"
+  },
+  {
+   "id": 247,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 248,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "burned"
+  },
+  {
+   "id": 249,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 250,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "burned"
+  },
+  {
+   "id": 251,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 252,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 253,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "abuela"
+  },
+  {
+   "id": 254,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 255,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 256,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 257,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 258,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 259,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 260,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 261,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "burned"
+  },
+  {
+   "id": 262,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 263,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "burned"
+  },
+  {
+   "id": 264,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 265,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "abuela"
+  },
+  {
+   "id": 266,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 267,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 268,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 269,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 270,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 273,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 274,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 275,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "abuela"
+  },
+  {
+   "id": 276,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 277,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 278,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 282,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 283,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 284,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "abuela"
+  },
+  {
+   "id": 285,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 286,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 287,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 288,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 289,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "abuela"
+  },
+  {
+   "id": 290,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "burned"
+  },
+  {
+   "id": 291,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 293,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 294,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 295,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 296,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 297,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 298,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 299,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 300,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 301,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 303,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "burned"
+  },
+  {
+   "id": 304,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "picaros"
+  },
+  {
+   "id": 305,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 307,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "t03"
+  },
+  {
+   "id": 308,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "abuela"
+  },
+  {
+   "id": 309,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 310,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 312,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 313,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 314,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "chato"
+  },
+  {
+   "id": 315,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 316,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 317,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "burned"
+  },
+  {
+   "id": 318,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 321,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 323,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 324,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 325,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 326,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 327,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "burned"
+  },
+  {
+   "id": 328,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "abuela"
+  },
+  {
+   "id": 329,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 330,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 331,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 333,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 334,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 335,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 336,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 337,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 338,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 339,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "t03"
+  },
+  {
+   "id": 340,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 341,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "burned"
+  },
+  {
+   "id": 342,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 344,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 345,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 346,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "abuela"
+  },
+  {
+   "id": 347,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "abuela"
+  },
+  {
+   "id": 348,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 349,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 350,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 352,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "t03"
+  },
+  {
+   "id": 354,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "burned"
+  },
+  {
+   "id": 355,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 356,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 358,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 359,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 360,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 361,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 362,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 363,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 364,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "t03"
+  },
+  {
+   "id": 365,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 366,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 367,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 368,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 370,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 371,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 372,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 373,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 374,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "burned"
+  },
+  {
+   "id": 375,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 376,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "abuela"
+  },
+  {
+   "id": 377,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 378,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 379,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 380,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "abuela"
+  },
+  {
+   "id": 381,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 382,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "t03"
+  },
+  {
+   "id": 383,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 385,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "abuela"
+  },
+  {
+   "id": 386,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 387,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 389,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 390,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "abuela"
+  },
+  {
+   "id": 391,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 392,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "t03"
+  },
+  {
+   "id": 393,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 395,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 396,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "t03"
+  },
+  {
+   "id": 397,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "abuela"
+  },
+  {
+   "id": 398,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 400,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 401,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 402,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 404,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 405,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 406,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 407,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 410,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "abuela"
+  },
+  {
+   "id": 411,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 412,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 413,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "t03"
+  },
+  {
+   "id": 414,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 415,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 418,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 419,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 420,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 421,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "pilar"
+  },
+  {
+   "id": 422,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "burned"
+  },
+  {
+   "id": 423,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 424,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 437,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "pilar"
+  },
+  {
+   "id": 438,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 439,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 440,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 441,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 442,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 443,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 444,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 446,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 447,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "chato"
+  },
+  {
+   "id": 448,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 449,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 450,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 451,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 452,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 453,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 454,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 455,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 457,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 458,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 459,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 460,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 461,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 463,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "pilar"
+  },
+  {
+   "id": 465,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 466,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "abuela"
+  },
+  {
+   "id": 467,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "pilar"
+  },
+  {
+   "id": 468,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 469,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 471,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 472,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "chato"
+  },
+  {
+   "id": 473,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "chato"
+  },
+  {
+   "id": 474,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 475,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "picaros"
+  },
+  {
+   "id": 476,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "t03"
+  },
+  {
+   "id": 477,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 478,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 479,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 480,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 481,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 483,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 484,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "burned"
+  },
+  {
+   "id": 485,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "burned"
+  },
+  {
+   "id": 486,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 487,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 488,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 489,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "chato"
+  },
+  {
+   "id": 490,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "t03"
+  },
+  {
+   "id": 491,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "t03"
+  },
+  {
+   "id": 493,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 494,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 495,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "chato"
+  },
+  {
+   "id": 496,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 497,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 498,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 499,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 500,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "chato"
+  },
+  {
+   "id": 501,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 502,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "abuela"
+  },
+  {
+   "id": 503,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 505,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 506,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 507,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 508,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 509,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 510,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 511,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 512,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "t03"
+  },
+  {
+   "id": 514,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "picaros"
+  },
+  {
+   "id": 515,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 516,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 517,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 518,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 519,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 520,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 521,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "burned"
+  },
+  {
+   "id": 522,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 523,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 524,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 525,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "t03"
+  },
+  {
+   "id": 526,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 527,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 528,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 529,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 531,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 532,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 533,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "pilar"
+  },
+  {
+   "id": 534,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 535,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 536,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "chato"
+  },
+  {
+   "id": 539,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 24,
+   "owner": "burned"
+  },
+  {
+   "id": 540,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 541,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "abuela"
+  },
+  {
+   "id": 542,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "abuela"
+  },
+  {
+   "id": 543,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 544,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 545,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 546,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 565,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 566,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 567,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 568,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "t03"
+  },
+  {
+   "id": 569,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 570,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 571,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 572,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 573,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 574,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 25,
+   "owner": "abuela"
+  },
+  {
+   "id": 575,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 576,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 577,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 578,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 579,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 26,
+   "owner": "burned"
+  },
+  {
+   "id": 580,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "t03"
+  },
+  {
+   "id": 581,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 582,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 583,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 584,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 585,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 587,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "abuela"
+  },
+  {
+   "id": 588,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 589,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 590,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 591,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 592,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 593,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 594,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "t03"
+  },
+  {
+   "id": 595,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 596,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 597,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 598,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 599,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "burned"
+  },
+  {
+   "id": 600,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 602,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 603,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 604,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 605,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 2,
+   "owner": "pilar"
+  },
+  {
+   "id": 606,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 607,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 609,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 610,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 611,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 612,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 2,
+   "owner": "pilar"
+  },
+  {
+   "id": 613,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 614,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 615,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 616,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 617,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "t03"
+  },
+  {
+   "id": 618,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 2,
+   "owner": "picaros"
+  },
+  {
+   "id": 619,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 620,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "pilar"
+  },
+  {
+   "id": 621,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 622,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 623,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 624,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 625,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 626,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 627,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 628,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 629,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 630,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 631,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 632,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 633,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 634,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 635,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 636,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 638,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "picaros"
+  },
+  {
+   "id": 639,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 640,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 641,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 642,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 643,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 644,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 645,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 646,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 647,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 648,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 649,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 650,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 651,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 652,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 653,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 654,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 655,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 27,
+   "owner": "abuela"
+  },
+  {
+   "id": 656,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 657,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "abuela"
+  },
+  {
+   "id": 658,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 659,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 660,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "abuela"
+  },
+  {
+   "id": 661,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 662,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 663,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 664,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "chato"
+  },
+  {
+   "id": 666,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 667,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 668,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 670,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 671,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 28,
+   "owner": "picaros"
+  },
+  {
+   "id": 672,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 673,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 674,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 675,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 676,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 677,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 678,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 29,
+   "owner": "picaros"
+  },
+  {
+   "id": 679,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "chato"
+  },
+  {
+   "id": 680,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 681,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 682,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 683,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 684,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 685,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 686,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 687,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 688,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "chato"
+  },
+  {
+   "id": 689,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 690,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 691,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 692,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 6,
+   "owner": "pilar"
+  },
+  {
+   "id": 693,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 694,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "abuela"
+  },
+  {
+   "id": 695,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 696,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 697,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 698,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 699,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 700,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 701,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 702,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 703,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 704,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "chato"
+  },
+  {
+   "id": 705,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 706,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 707,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 708,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 709,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 710,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 711,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 7,
+   "owner": "pilar"
+  },
+  {
+   "id": 713,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 714,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 715,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 716,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 717,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 718,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 719,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 720,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 721,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 722,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 723,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 724,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 725,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 726,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 727,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 728,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 729,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "pilar"
+  },
+  {
+   "id": 730,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 731,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 732,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 733,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 734,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 735,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "chato"
+  },
+  {
+   "id": 736,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 737,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 738,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 739,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 740,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 741,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 743,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 25,
+   "owner": "burned"
+  },
+  {
+   "id": 744,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 745,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "picaros"
+  },
+  {
+   "id": 747,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 748,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 749,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 750,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 768,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 769,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 770,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 771,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "pilar"
+  },
+  {
+   "id": 772,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "pilar"
+  },
+  {
+   "id": 773,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 774,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 775,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 776,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "pilar"
+  },
+  {
+   "id": 777,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 778,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 779,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 780,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "pilar"
+  },
+  {
+   "id": 781,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 782,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "pilar"
+  },
+  {
+   "id": 783,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 784,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "burned"
+  },
+  {
+   "id": 785,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 786,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 787,
+   "ref": "LAV-11",
+   "name": "La Casa Encendida",
+   "rarity": "epic",
+   "set": "LAV",
+   "serial": 1,
+   "owner": "pilar"
+  },
+  {
+   "id": 788,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 789,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 30,
+   "owner": "a team"
+  },
+  {
+   "id": 790,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 791,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 792,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 793,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 794,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 795,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 796,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 797,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 798,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 799,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 31,
+   "owner": "abuela"
+  },
+  {
+   "id": 800,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 801,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 802,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 803,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 24,
+   "owner": "abuela"
+  },
+  {
+   "id": 804,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 805,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 806,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 807,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 808,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "abuela"
+  },
+  {
+   "id": 809,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 810,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "abuela"
+  },
+  {
+   "id": 811,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 812,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 813,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "pilar"
+  },
+  {
+   "id": 814,
+   "ref": "LAT-11",
+   "name": "San Francisco el Grande",
+   "rarity": "epic",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 815,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 816,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 817,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 818,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 5,
+   "owner": "pilar"
+  },
+  {
+   "id": 819,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 820,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 822,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 25,
+   "owner": "burned"
+  },
+  {
+   "id": 823,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 824,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 825,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "abuela"
+  },
+  {
+   "id": 826,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 32,
+   "owner": "burned"
+  },
+  {
+   "id": 827,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 828,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 829,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 830,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "abuela"
+  },
+  {
+   "id": 831,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 832,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 833,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 835,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 836,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 837,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 838,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 839,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "pilar"
+  },
+  {
+   "id": 840,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 841,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 842,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 843,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 844,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 845,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 846,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "chato"
+  },
+  {
+   "id": 847,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 848,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "pilar"
+  },
+  {
+   "id": 849,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 9,
+   "owner": "picaros"
+  },
+  {
+   "id": 850,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 851,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 852,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 853,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 854,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 855,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 856,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 857,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 858,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 6,
+   "owner": "chato"
+  },
+  {
+   "id": 859,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 13,
+   "owner": "picaros"
+  },
+  {
+   "id": 860,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "pilar"
+  },
+  {
+   "id": 861,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 862,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 864,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 865,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 866,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 867,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 868,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 28,
+   "owner": "burned"
+  },
+  {
+   "id": 869,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "chato"
+  },
+  {
+   "id": 870,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "pilar"
+  },
+  {
+   "id": 871,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 872,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "pilar"
+  },
+  {
+   "id": 873,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 874,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "picaros"
+  },
+  {
+   "id": 875,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "picaros"
+  },
+  {
+   "id": 876,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 877,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "chato"
+  },
+  {
+   "id": 878,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 879,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 880,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 5,
+   "owner": "a team"
+  },
+  {
+   "id": 881,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 882,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "pilar"
+  },
+  {
+   "id": 883,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 884,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 885,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 886,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 887,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 888,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 889,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 22,
+   "owner": "chato"
+  },
+  {
+   "id": 890,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 891,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "abuela"
+  },
+  {
+   "id": 892,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 29,
+   "owner": "burned"
+  },
+  {
+   "id": 893,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 894,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "pilar"
+  },
+  {
+   "id": 895,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 896,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 897,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 898,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 899,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 900,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 919,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 920,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 921,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 922,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 24,
+   "owner": "burned"
+  },
+  {
+   "id": 923,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 924,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 30,
+   "owner": "abuela"
+  },
+  {
+   "id": 925,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 926,
+   "ref": "SAL-01",
+   "name": "Escaparate de Serrano",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 927,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 928,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 929,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "burned"
+  },
+  {
+   "id": 930,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 931,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 932,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 933,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 934,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 25,
+   "owner": "burned"
+  },
+  {
+   "id": 935,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 936,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 937,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 938,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 939,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 940,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 31,
+   "owner": "a team"
+  },
+  {
+   "id": 941,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 942,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 943,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 944,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 26,
+   "owner": "picaros"
+  },
+  {
+   "id": 945,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 32,
+   "owner": "abuela"
+  },
+  {
+   "id": 946,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 947,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 948,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 949,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 26,
+   "owner": "burned"
+  },
+  {
+   "id": 950,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 33,
+   "owner": "burned"
+  },
+  {
+   "id": 951,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 952,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 34,
+   "owner": "picaros"
+  },
+  {
+   "id": 953,
+   "ref": "LAT-04",
+   "name": "Mercado de la Cebada",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 954,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "picaros"
+  },
+  {
+   "id": 955,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 956,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 24,
+   "owner": "pilar"
+  },
+  {
+   "id": 957,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 10,
+   "owner": "pilar"
+  },
+  {
+   "id": 958,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 959,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 960,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 12,
+   "owner": "picaros"
+  },
+  {
+   "id": 961,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 962,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 963,
+   "ref": "MAL-05",
+   "name": "Café de Madrugada",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 964,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 965,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 966,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 15,
+   "owner": "chato"
+  },
+  {
+   "id": 967,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "t03"
+  },
+  {
+   "id": 968,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 969,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 970,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "pilar"
+  },
+  {
+   "id": 971,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "abuela"
+  },
+  {
+   "id": 972,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 973,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 20,
+   "owner": "abuela"
+  },
+  {
+   "id": 974,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "pilar"
+  },
+  {
+   "id": 975,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 976,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 977,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 978,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 979,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 1,
+   "owner": "banco"
+  },
+  {
+   "id": 980,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 981,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 982,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 983,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 984,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 985,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 986,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 987,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 6,
+   "owner": "a team"
+  },
+  {
+   "id": 988,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "pilar"
+  },
+  {
+   "id": 989,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 990,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 991,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 992,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 2,
+   "owner": "pilar"
+  },
+  {
+   "id": 993,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 994,
+   "ref": "MAL-02",
+   "name": "Plaza del Dos de Mayo",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 33,
+   "owner": "a team"
+  },
+  {
+   "id": 995,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 996,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 997,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 998,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 999,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 1000,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 35,
+   "owner": "burned"
+  },
+  {
+   "id": 1001,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 21,
+   "owner": "picaros"
+  },
+  {
+   "id": 1002,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 1003,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1004,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1005,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 1006,
+   "ref": "LAV-01",
+   "name": "La Corrala",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 1007,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 21,
+   "owner": "abuela"
+  },
+  {
+   "id": 1008,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 1009,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1018,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 1019,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "burned"
+  },
+  {
+   "id": 1020,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 19,
+   "owner": "pilar"
+  },
+  {
+   "id": 1021,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1022,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 1023,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 28,
+   "owner": "burned"
+  },
+  {
+   "id": 1024,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 1025,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 15,
+   "owner": "abuela"
+  },
+  {
+   "id": 1026,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 1027,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 1028,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 24,
+   "owner": "burned"
+  },
+  {
+   "id": 1029,
+   "ref": "RET-02",
+   "name": "La Castañera",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 1030,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "abuela"
+  },
+  {
+   "id": 1031,
+   "ref": "LAV-07",
+   "name": "Samosas de la Plaza",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1032,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 1033,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 1034,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 1035,
+   "ref": "LAT-01",
+   "name": "Caña en la Cava Baja",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 24,
+   "owner": "burned"
+  },
+  {
+   "id": 1036,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 24,
+   "owner": "pilar"
+  },
+  {
+   "id": 1037,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 17,
+   "owner": "picaros"
+  },
+  {
+   "id": 1038,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "pilar"
+  },
+  {
+   "id": 1039,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 29,
+   "owner": "a team"
+  },
+  {
+   "id": 1041,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 14,
+   "owner": "pilar"
+  },
+  {
+   "id": 1042,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 1043,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 1044,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "pilar"
+  },
+  {
+   "id": 1045,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 1046,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1047,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 1048,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 22,
+   "owner": "abuela"
+  },
+  {
+   "id": 1049,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 26,
+   "owner": "abuela"
+  },
+  {
+   "id": 1050,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1051,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 1052,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 1053,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 1054,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1055,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 1056,
+   "ref": "LAT-13",
+   "name": "La Chulapa Dorada",
+   "rarity": "legendary",
+   "set": "LAT",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 1057,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 1058,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 1059,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 1060,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1061,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1062,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 1063,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 1064,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 1065,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 1066,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1067,
+   "ref": "LAV-11",
+   "name": "La Casa Encendida",
+   "rarity": "epic",
+   "set": "LAV",
+   "serial": 2,
+   "owner": "banco"
+  },
+  {
+   "id": 1068,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 1069,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 1070,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 1071,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 1072,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 1073,
+   "ref": "SAL-03",
+   "name": "Perrito con Abrigo",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 28,
+   "owner": "picaros"
+  },
+  {
+   "id": 1074,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 1075,
+   "ref": "SAL-04",
+   "name": "Café en Goya",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 28,
+   "owner": "burned"
+  },
+  {
+   "id": 1076,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1078,
+   "ref": "RET-04",
+   "name": "Paseo de Coches",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 17,
+   "owner": "burned"
+  },
+  {
+   "id": 1079,
+   "ref": "MAL-03",
+   "name": "Cartel de Conciertos",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "burned"
+  },
+  {
+   "id": 1080,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1081,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 1082,
+   "ref": "LAT-11",
+   "name": "San Francisco el Grande",
+   "rarity": "epic",
+   "set": "LAT",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 1083,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 15,
+   "owner": "pilar"
+  },
+  {
+   "id": 1092,
+   "ref": "LAV-03",
+   "name": "Té Moruno",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 1093,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 36,
+   "owner": "a team"
+  },
+  {
+   "id": 1094,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1095,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 1096,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1097,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 1098,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 23,
+   "owner": "picaros"
+  },
+  {
+   "id": 1099,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 17,
+   "owner": "pilar"
+  },
+  {
+   "id": 1100,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 1101,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "chato"
+  },
+  {
+   "id": 1102,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "pilar"
+  },
+  {
+   "id": 1103,
+   "ref": "LAT-02",
+   "name": "Puesto del Rastro",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 1104,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1105,
+   "ref": "LAT-06",
+   "name": "La Chulapa",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1106,
+   "ref": "RET-07",
+   "name": "Fuente de la Alcachofa",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 1107,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "pilar"
+  },
+  {
+   "id": 1108,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 1109,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 4,
+   "owner": "pilar"
+  },
+  {
+   "id": 1110,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 1111,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "pilar"
+  },
+  {
+   "id": 1112,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 1113,
+   "ref": "MAL-11",
+   "name": "La Sala Pentagrama",
+   "rarity": "epic",
+   "set": "MAL",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 1114,
+   "ref": "RET-03",
+   "name": "El Titiritero",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1115,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 1116,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1117,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 16,
+   "owner": "pilar"
+  },
+  {
+   "id": 1118,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1119,
+   "ref": "LAT-03",
+   "name": "Huevos Rotos",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 1120,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 5,
+   "owner": "pilar"
+  },
+  {
+   "id": 1121,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 21,
+   "owner": "pilar"
+  },
+  {
+   "id": 1122,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 22,
+   "owner": "pilar"
+  },
+  {
+   "id": 1123,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "pilar"
+  },
+  {
+   "id": 1124,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 21,
+   "owner": "a team"
+  },
+  {
+   "id": 1125,
+   "ref": "MAL-04",
+   "name": "El Tatuador",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 1126,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 27,
+   "owner": "a team"
+  },
+  {
+   "id": 1127,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 1128,
+   "ref": "LAT-08",
+   "name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 19,
+   "owner": "chato"
+  },
+  {
+   "id": 1129,
+   "ref": "MAL-10",
+   "name": "Noche de Movida",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1130,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "pilar"
+  },
+  {
+   "id": 1131,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 10,
+   "owner": "a team"
+  },
+  {
+   "id": 1132,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 15,
+   "owner": "burned"
+  },
+  {
+   "id": 1133,
+   "ref": "LAT-07",
+   "name": "Vermut del Domingo",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 1134,
+   "ref": "RET-11",
+   "name": "Palacio de Cristal",
+   "rarity": "epic",
+   "set": "RET",
+   "serial": 1,
+   "owner": "a team"
+  },
+  {
+   "id": 1135,
+   "ref": "MAL-09",
+   "name": "La Heroína del Dos de Mayo",
+   "rarity": "rare",
+   "set": "MAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1136,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 6,
+   "owner": "banco"
+  },
+  {
+   "id": 1137,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 7,
+   "owner": "a team"
+  },
+  {
+   "id": 1138,
+   "ref": "LAV-04",
+   "name": "Mural de la Esquina",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 30,
+   "owner": "burned"
+  },
+  {
+   "id": 1139,
+   "ref": "RET-11",
+   "name": "Palacio de Cristal",
+   "rarity": "epic",
+   "set": "RET",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 1140,
+   "ref": "LAV-11",
+   "name": "La Casa Encendida",
+   "rarity": "epic",
+   "set": "LAV",
+   "serial": 3,
+   "owner": "t03"
+  },
+  {
+   "id": 1141,
+   "ref": "LAV-11",
+   "name": "La Casa Encendida",
+   "rarity": "epic",
+   "set": "LAV",
+   "serial": 4,
+   "owner": "a team"
+  },
+  {
+   "id": 1142,
+   "ref": "MAL-11",
+   "name": "La Sala Pentagrama",
+   "rarity": "epic",
+   "set": "MAL",
+   "serial": 2,
+   "owner": "a team"
+  },
+  {
+   "id": 1143,
+   "ref": "RET-10",
+   "name": "Monumento a Alfonso XII",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 11,
+   "owner": "a team"
+  },
+  {
+   "id": 1144,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 8,
+   "owner": "a team"
+  },
+  {
+   "id": 1145,
+   "ref": "SAL-11",
+   "name": "La Puerta de Alcalá",
+   "rarity": "epic",
+   "set": "SAL",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1146,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 1147,
+   "ref": "SAL-10",
+   "name": "Museo Lázaro Galdiano",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "a team"
+  },
+  {
+   "id": 1148,
+   "ref": "LAV-09",
+   "name": "Cine Doré",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 15,
+   "owner": "a team"
+  },
+  {
+   "id": 1149,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 25,
+   "owner": "pilar"
+  },
+  {
+   "id": 1150,
+   "ref": "LAV-10",
+   "name": "Fiesta de San Cayetano",
+   "rarity": "rare",
+   "set": "LAV",
+   "serial": 12,
+   "owner": "a team"
+  },
+  {
+   "id": 1151,
+   "ref": "RET-08",
+   "name": "Palacio de Velázquez",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 1152,
+   "ref": "MAL-07",
+   "name": "Mercado de San Ildefonso",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 18,
+   "owner": "burned"
+  },
+  {
+   "id": 1153,
+   "ref": "LAV-02",
+   "name": "El Frutero de Argumosa",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 28,
+   "owner": "a team"
+  },
+  {
+   "id": 1154,
+   "ref": "LAT-10",
+   "name": "El Mesón de la Cava",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1155,
+   "ref": "SAL-08",
+   "name": "Guantería Antigua",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 1156,
+   "ref": "LAV-06",
+   "name": "La Tabacalera",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 23,
+   "owner": "burned"
+  },
+  {
+   "id": 1157,
+   "ref": "RET-09",
+   "name": "El Ángel Caído",
+   "rarity": "rare",
+   "set": "RET",
+   "serial": 14,
+   "owner": "a team"
+  },
+  {
+   "id": 1158,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 24,
+   "owner": "a team"
+  },
+  {
+   "id": 1160,
+   "ref": "SAL-02",
+   "name": "El Portero",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 25,
+   "owner": "burned"
+  },
+  {
+   "id": 1161,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 16,
+   "owner": "a team"
+  },
+  {
+   "id": 1162,
+   "ref": "LAT-05",
+   "name": "El Organillero",
+   "rarity": "common",
+   "set": "LAT",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 1163,
+   "ref": "MAL-08",
+   "name": "La Vía Láctea",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 26,
+   "owner": "picaros"
+  },
+  {
+   "id": 1164,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 26,
+   "owner": "pilar"
+  },
+  {
+   "id": 1165,
+   "ref": "SAL-07",
+   "name": "Mercado de la Paz",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "a team"
+  },
+  {
+   "id": 1166,
+   "ref": "LAT-09",
+   "name": "San Isidro",
+   "rarity": "rare",
+   "set": "LAT",
+   "serial": 9,
+   "owner": "a team"
+  },
+  {
+   "id": 1168,
+   "ref": "RET-01",
+   "name": "Barca del Estanque",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1169,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 37,
+   "owner": "a team"
+  },
+  {
+   "id": 1170,
+   "ref": "MAL-01",
+   "name": "Vinilo de la Movida",
+   "rarity": "common",
+   "set": "MAL",
+   "serial": 38,
+   "owner": "a team"
+  },
+  {
+   "id": 1171,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 22,
+   "owner": "a team"
+  },
+  {
+   "id": 1172,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 27,
+   "owner": "t03"
+  },
+  {
+   "id": 1173,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 18,
+   "owner": "a team"
+  },
+  {
+   "id": 1174,
+   "ref": "MAL-06",
+   "name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "serial": 23,
+   "owner": "a team"
+  },
+  {
+   "id": 1175,
+   "ref": "SAL-06",
+   "name": "La Galería",
+   "rarity": "uncommon",
+   "set": "SAL",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1176,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 28,
+   "owner": "pilar"
+  },
+  {
+   "id": 1177,
+   "ref": "MAL-11",
+   "name": "La Sala Pentagrama",
+   "rarity": "epic",
+   "set": "MAL",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 1178,
+   "ref": "LAV-08",
+   "name": "Teatro Valle-Inclán",
+   "rarity": "uncommon",
+   "set": "LAV",
+   "serial": 25,
+   "owner": "a team"
+  },
+  {
+   "id": 1180,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 19,
+   "owner": "burned"
+  },
+  {
+   "id": 1181,
+   "ref": "SAL-05",
+   "name": "Taxi Blanco",
+   "rarity": "common",
+   "set": "SAL",
+   "serial": 20,
+   "owner": "burned"
+  },
+  {
+   "id": 1182,
+   "ref": "LAV-05",
+   "name": "Bici de Reparto",
+   "rarity": "common",
+   "set": "LAV",
+   "serial": 26,
+   "owner": "a team"
+  },
+  {
+   "id": 1183,
+   "ref": "RET-06",
+   "name": "La Rosaleda",
+   "rarity": "uncommon",
+   "set": "RET",
+   "serial": 17,
+   "owner": "a team"
+  },
+  {
+   "id": 1184,
+   "ref": "RET-11",
+   "name": "Palacio de Cristal",
+   "rarity": "epic",
+   "set": "RET",
+   "serial": 3,
+   "owner": "a team"
+  },
+  {
+   "id": 1185,
+   "ref": "RET-05",
+   "name": "La Ardilla",
+   "rarity": "common",
+   "set": "RET",
+   "serial": 13,
+   "owner": "a team"
+  },
+  {
+   "id": 1186,
+   "ref": "SAL-09",
+   "name": "El Marqués",
+   "rarity": "rare",
+   "set": "SAL",
+   "serial": 29,
+   "owner": "a team"
+  }
+ ],
+ "packs": [
+  {
+   "id": 271,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 272,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 279,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 280,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 281,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 292,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 302,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 306,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 311,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 319,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 320,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 322,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 332,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 343,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 351,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 353,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 357,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 369,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 384,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 388,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 394,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 399,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 403,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 408,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 409,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 416,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 417,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 425,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 426,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 427,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 428,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 429,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 430,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 431,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 432,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 433,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 434,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 435,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 436,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 445,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 456,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 462,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 464,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 470,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 482,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 492,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 504,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 513,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 530,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 537,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "a team"
+  },
+  {
+   "id": 538,
+   "ref": "sobre_bienvenida",
+   "name": "Welcome pack",
+   "owner": "burned"
+  },
+  {
+   "id": 547,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 548,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 549,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 550,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 551,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 552,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 553,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 554,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 555,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 556,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 557,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "a team"
+  },
+  {
+   "id": 558,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 559,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 560,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 561,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 562,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 563,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 564,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 586,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 601,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 608,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 637,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 665,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 669,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 712,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 742,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 746,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 751,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 752,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 753,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 754,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 755,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 756,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 757,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 758,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 759,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 760,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 761,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 762,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 763,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 764,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 765,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 766,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 767,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 821,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 834,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 863,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 901,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 902,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 903,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "t03"
+  },
+  {
+   "id": 904,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 905,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 906,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 907,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 908,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 909,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "a team"
+  },
+  {
+   "id": 910,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 911,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "a team"
+  },
+  {
+   "id": 912,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 913,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 914,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 915,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 916,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 917,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 918,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1010,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1011,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1012,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "t03"
+  },
+  {
+   "id": 1013,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 1014,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1015,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1016,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 1017,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1040,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1077,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1084,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1085,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1086,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1087,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 1088,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 1089,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1090,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "a team"
+  },
+  {
+   "id": 1091,
+   "ref": "sobre_plata",
+   "name": "Silver pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1159,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1167,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  },
+  {
+   "id": 1179,
+   "ref": "sobre_barrio",
+   "name": "Neighbourhood pack",
+   "owner": "burned"
+  }
+ ],
+ "teams": {
+  "t03": {
+   "cards": 31,
+   "by_ref": {
+    "LAT-01": 1,
+    "LAT-02": 1,
+    "LAT-03": 1,
+    "LAT-04": 1,
+    "LAT-05": 1,
+    "LAT-06": 1,
+    "LAT-07": 1,
+    "LAT-08": 1,
+    "LAT-09": 1,
+    "LAT-10": 1,
+    "LAV-01": 1,
+    "LAV-02": 1,
+    "LAV-03": 1,
+    "LAV-04": 1,
+    "LAV-05": 1,
+    "LAV-06": 1,
+    "LAV-07": 1,
+    "LAV-08": 1,
+    "LAV-09": 1,
+    "LAV-10": 1,
+    "LAV-11": 1,
+    "MAL-02": 1,
+    "SAL-01": 1,
+    "SAL-02": 1,
+    "SAL-03": 1,
+    "SAL-04": 1,
+    "SAL-05": 1,
+    "SAL-06": 1,
+    "SAL-07": 1,
+    "SAL-08": 1,
+    "SAL-09": 1
+   }
+  }
+ },
+ "other_owners": {
+  "a team": {
+   "cards": 654,
+   "by_ref": {
+    "LAT-01": 14,
+    "LAT-02": 16,
+    "LAT-03": 12,
+    "LAT-04": 13,
+    "LAT-05": 14,
+    "LAT-06": 10,
+    "LAT-07": 8,
+    "LAT-08": 10,
+    "LAT-09": 8,
+    "LAT-10": 7,
+    "LAT-11": 2,
+    "LAT-13": 1,
+    "LAV-01": 14,
+    "LAV-02": 18,
+    "LAV-03": 15,
+    "LAV-04": 17,
+    "LAV-05": 16,
+    "LAV-06": 13,
+    "LAV-07": 11,
+    "LAV-08": 12,
+    "LAV-09": 12,
+    "LAV-10": 11,
+    "LAV-11": 1,
+    "MAL-01": 19,
+    "MAL-02": 15,
+    "MAL-03": 14,
+    "MAL-04": 14,
+    "MAL-05": 14,
+    "MAL-06": 10,
+    "MAL-07": 11,
+    "MAL-08": 11,
+    "MAL-09": 8,
+    "MAL-10": 8,
+    "MAL-11": 3,
+    "RET-01": 15,
+    "RET-02": 11,
+    "RET-03": 13,
+    "RET-04": 15,
+    "RET-05": 13,
+    "RET-06": 12,
+    "RET-07": 13,
+    "RET-08": 15,
+    "RET-09": 13,
+    "RET-10": 11,
+    "RET-11": 3,
+    "SAL-01": 14,
+    "SAL-02": 16,
+    "SAL-03": 17,
+    "SAL-04": 16,
+    "SAL-05": 15,
+    "SAL-06": 11,
+    "SAL-07": 11,
+    "SAL-08": 11,
+    "SAL-09": 13,
+    "SAL-10": 10,
+    "SAL-11": 4
+   }
+  },
+  "abuela": {
+   "cards": 98,
+   "by_ref": {
+    "LAT-01": 4,
+    "LAT-02": 5,
+    "LAT-03": 6,
+    "LAT-04": 5,
+    "LAT-05": 6,
+    "LAT-07": 2,
+    "LAV-01": 6,
+    "LAV-02": 4,
+    "LAV-03": 7,
+    "LAV-04": 2,
+    "LAV-05": 6,
+    "LAV-08": 1,
+    "MAL-01": 7,
+    "MAL-02": 8,
+    "MAL-03": 3,
+    "MAL-04": 5,
+    "MAL-05": 3,
+    "MAL-07": 1,
+    "MAL-08": 2,
+    "RET-07": 1,
+    "SAL-01": 4,
+    "SAL-02": 3,
+    "SAL-03": 4,
+    "SAL-04": 3
+   }
+  },
+  "banco": {
+   "cards": 3,
+   "by_ref": {
+    "LAV-11": 1,
+    "SAL-11": 2
+   }
+  },
+  "burned": {
+   "cards": 102,
+   "by_ref": {
+    "LAT-01": 4,
+    "LAT-02": 5,
+    "LAT-03": 1,
+    "LAT-04": 7,
+    "LAT-05": 2,
+    "LAV-01": 5,
+    "LAV-02": 4,
+    "LAV-03": 3,
+    "LAV-04": 9,
+    "LAV-05": 3,
+    "LAV-06": 1,
+    "MAL-01": 11,
+    "MAL-02": 7,
+    "MAL-03": 3,
+    "MAL-04": 4,
+    "MAL-05": 4,
+    "MAL-07": 1,
+    "RET-01": 1,
+    "RET-04": 1,
+    "RET-08": 1,
+    "SAL-01": 5,
+    "SAL-02": 5,
+    "SAL-03": 4,
+    "SAL-04": 7,
+    "SAL-05": 4
+   }
+  },
+  "chato": {
+   "cards": 24,
+   "by_ref": {
+    "LAT-06": 1,
+    "LAT-07": 1,
+    "LAT-08": 4,
+    "LAV-06": 2,
+    "LAV-08": 2,
+    "MAL-06": 4,
+    "MAL-07": 1,
+    "MAL-08": 6,
+    "MAL-10": 1,
+    "SAL-08": 1,
+    "SAL-09": 1
+   }
+  },
+  "picaros": {
+   "cards": 21,
+   "by_ref": {
+    "LAT-01": 1,
+    "LAV-02": 1,
+    "LAV-03": 1,
+    "LAV-04": 1,
+    "LAV-06": 1,
+    "LAV-07": 1,
+    "LAV-08": 1,
+    "MAL-01": 1,
+    "MAL-02": 2,
+    "MAL-03": 1,
+    "MAL-04": 1,
+    "MAL-08": 1,
+    "RET-01": 1,
+    "RET-02": 1,
+    "RET-04": 1,
+    "RET-06": 1,
+    "RET-08": 1,
+    "SAL-03": 2,
+    "SAL-04": 1
+   }
+  },
+  "pilar": {
+   "cards": 116,
+   "by_ref": {
+    "LAT-06": 4,
+    "LAT-07": 6,
+    "LAT-08": 4,
+    "LAT-10": 1,
+    "LAV-06": 5,
+    "LAV-07": 4,
+    "LAV-08": 8,
+    "LAV-09": 2,
+    "LAV-11": 1,
+    "MAL-06": 9,
+    "MAL-07": 4,
+    "MAL-08": 6,
+    "MAL-09": 1,
+    "RET-06": 4,
+    "RET-07": 4,
+    "RET-08": 3,
+    "RET-09": 1,
+    "SAL-06": 5,
+    "SAL-07": 7,
+    "SAL-08": 10,
+    "SAL-09": 14,
+    "SAL-10": 10,
+    "SAL-11": 3
+   }
+  }
+ }
+}

@@ -1,0 +1,45 @@
+{
+ "duel": 11091,
+ "session": 4,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.07,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 168,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 1874,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": {
+  "id": 11880,
+  "price": 115,
+  "tick": 1870,
+  "days": 10
+ },
+ "rival_offer": null,
+ "messages": [
+  {
+   "tick": 1865,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 98 P, delivery day 10.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 1870,
+   "from": "you",
+   "text": "Last word from me: 115 P, delivery day 10.",
+   "price": 115,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

@@ -1,0 +1,87 @@
+{
+ "duel": 15909,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.88,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 233,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 2639,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17592,
+  "price": 145,
+  "tick": 2636,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2627,
+   "from": "Rival Plata",
+   "text": "167 with delivery on day 10. How much does each day of delay cost or earn you? Tell me your number per day and the day goes to whoever cares more; we split the gain.",
+   "price": 167,
+   "days": 10
+  },
+  {
+   "tick": 2629,
+   "from": "Rival Plata",
+   "text": "164 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 164,
+   "days": 10
+  },
+  {
+   "tick": 2630,
+   "from": "Rival Plata",
+   "text": "160 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 160,
+   "days": 10
+  },
+  {
+   "tick": 2631,
+   "from": "Rival Plata",
+   "text": "156 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 156,
+   "days": 10
+  },
+  {
+   "tick": 2632,
+   "from": "Rival Plata",
+   "text": "152 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 152,
+   "days": 10
+  },
+  {
+   "tick": 2633,
+   "from": "Rival Plata",
+   "text": "149 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 149,
+   "days": 10
+  },
+  {
+   "tick": 2635,
+   "from": "Rival Plata",
+   "text": "147 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 147,
+   "days": 10
+  },
+  {
+   "tick": 2636,
+   "from": "Rival Plata",
+   "text": "145 with delivery on day 10. Fast deal before the pie shrinks?",
+   "price": 145,
+   "days": 10
+  }
+ ],
+ "result": 79.2,
+ "price": 145,
+ "days": 10
+}

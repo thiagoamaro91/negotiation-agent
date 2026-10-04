@@ -1,0 +1,38 @@
+{
+ "duel": 16080,
+ "session": 5,
+ "status": "live",
+ "role": "buyer",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.48,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 145,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2668,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18095,
+  "price": 154,
+  "tick": 2656,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2656,
+   "from": "Rival Azul",
+   "text": "Hello, and thank you for meeting me. I would propose 154 P with delivery on day 10.",
+   "price": 154,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

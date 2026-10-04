@@ -225,6 +225,51 @@ def offer_price(o: dict) -> int:
     return int((o.get("want") or {}).get("cash") or (o.get("give") or {}).get("cash") or 0)
 
 
+_FLAGGED = set()
+
+
+def _card_names() -> dict:
+    try:
+        cat = json.loads((ROOT / "logs" / "public" / "catalog.json").read_text())
+        return {c["id"]: c.get("name") or "" for s in cat.get("sets", []) for c in s.get("cards", [])}
+    except Exception:
+        return {}
+
+
+def flag_switch(b, thread: dict, o: dict, item: str) -> None:
+    """Flag the dealer message carrying a switched-card offer, only when its words name the card we negotiated
+    (ref or name) and do not name the card the structure actually gives. Any doubt: no flag (a wrong flag costs)."""
+    try:
+        gives = [x.split(":", 1)[1] for x in ((o.get("give") or {}).get("types") or []) if x.startswith("card:")]
+        if not gives or item in gives:
+            return
+        msgs = thread.get("messages") or []
+        if not any((m.get("offer") or {}).get("id") == o.get("id") for m in msgs):
+            msgs = (b.thread(int(thread.get("id") or o.get("thread"))) or {}).get("messages") or []
+        msg = next((m for m in msgs if (m.get("offer") or {}).get("id") == o.get("id")), None)
+        if msg is None:
+            log("flag_skipped", offer=o.get("id"), why="message not found")
+            return
+        if msg is None or msg.get("id") in _FLAGGED:
+            return
+        text = (msg.get("text") or "").lower()
+        names = _card_names()
+        def words(ref):   # distinctive words of a card name (5+ letters)
+            return {w for w in re.findall(r"[^\W\d_]+", (names.get(ref) or "").lower()) if len(w) >= 5}
+        theirs_words = set().union(*(words(g) for g in gives))
+        says_ours = item.lower() in text or any(w in text for w in words(item) - theirs_words)
+        says_theirs = any(g.lower() in text for g in gives) or any(w in text for w in theirs_words - words(item))
+        if not says_ours or says_theirs:
+            log("flag_skipped", message=msg.get("id"), offer=o.get("id"), says_ours=bool(says_ours), says_theirs=says_theirs)
+            return
+        _FLAGGED.add(msg.get("id"))
+        r = b.flag(int(msg["id"]), f"Bait and switch: the words promise {item} ({names.get(item, '')}), "
+                                   f"the structured offer {o.get('id')} gives {', '.join(gives)}.")
+        log("flagged", message=msg.get("id"), offer=o.get("id"), result=r)
+    except Exception as e:   # flagging is a bonus: it must never take the negotiation down
+        log("flag_error", error=f"{type(e).__name__}: {e}"[:200])
+
+
 def offer_matches(o: dict, side: str, item: str, asset_id: int | None) -> bool:
     """Read the structure, not the words: the offer must be exactly the deal we negotiated (agent/dealer_client.py
     exact_offer): the one card for cash only, or our one copy for cash only. An extra card of ours riding on an offer for
@@ -340,9 +385,14 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
             log("closed", thread=tid, status=status, reason=t.get("closed_reason"), ours=ours, her=last_her)
             return {"result": status, "thread": tid, "ours": ours, "her": last_her}
         o = her_open_offer(t)
+        switched = False
         if o is not None and not offer_matches(o, side, item, asset_id):
             log("mismatch", thread=tid, offer=o)  # a switched item: never accept it
-            o = None
+            if side == "buy":
+                switched = True   # keep stepping our number so he keeps moving; flag the words if they lie
+                flag_switch(b, t, o, item)
+            else:
+                o = None
         if o is None:
             if spent:
                 r = close("max_rounds", "max_rounds", ours=ours, her=last_her)
@@ -386,6 +436,36 @@ def negotiate(b: Bazaar, target: dict, first_deal: bool, resume: int | None = No
 
         def good(p: int) -> bool:
             return p <= reservation if side == "buy" else p >= reservation
+
+        if switched:   # a switched card is never accepted: answer with our next number, or end on budget / final
+            if spent or final:
+                r = close("switched_end", "max_rounds", ours=ours, her=her)
+                if r:
+                    return r
+                continue
+            if o["id"] == answered:
+                rounds.wait()
+                continue
+            if ours is None:
+                nxt = int(ANCHOR_ABS) if ANCHOR_ABS is not None else int(her * ANCHOR_FRAC)
+            else:
+                nxt = ours + STEP
+            nxt = int(min(nxt, reservation))
+            if MAX_BID is not None:
+                nxt = min(nxt, int(MAX_BID))
+            if ours is not None and nxt <= ours:
+                rounds.wait()
+                continue
+            try:
+                b.say(tid, line(BUY_LINES, said, nxt), price=nxt)
+            except BazaarError as e:
+                log("say_refused", thread=tid, price=nxt, code=e.code, msg=e.message, round=rounds.used)
+                rounds.wait()
+                continue
+            ours, answered, said, stall = nxt, o["id"], said + 1, 0
+            log("say", thread=tid, price=ours, her=her, switched=True)
+            rounds.wait()
+            continue
 
         # our bid sits at --max-bid (at or below our reservation) while his offer is still above it
         at_max_bid = (side == "buy" and MAX_BID is not None and ours is not None and ours >= int(MAX_BID)

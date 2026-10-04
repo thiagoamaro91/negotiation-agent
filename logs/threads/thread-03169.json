@@ -1,0 +1,135 @@
+{
+ "id": 3169,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "MAL-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 2166,
+ "messages": [
+  {
+   "id": 16340,
+   "tick": 2167,
+   "sender": "t03",
+   "text": "Buenas. Straight offer, cash ready: 8 P.",
+   "offer": {
+    "id": 25270,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3169,
+    "status": "cancelled",
+    "give": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2175,
+    "created_tick": 2167,
+    "final": false
+   }
+  },
+  {
+   "id": 16338,
+   "tick": 2167,
+   "sender": "picaros",
+   "text": "\"¡Amigo, amigo! Come, come, look quick — La Heroína del Dos de Mayo, genuine, beautiful, seventy-three pesetas and she's yours.\" \"Nando, show him the shine!\" \"The shine, sí! But fast, eh — the police... I mean, our taxi, it's waiting at the corner, motor running. Decide now, guapo!\"",
+   "offer": {
+    "id": 25268,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3169,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2175,
+    "created_tick": 2167,
+    "final": false
+   }
+  },
+  {
+   "id": 16343,
+   "tick": 2168,
+   "sender": "picaros",
+   "text": "Oh, you're killing us. 67 P. The team next door wants it, but we like you better.",
+   "offer": {
+    "id": 25275,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 3169,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "want": {
+     "cash": 67,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2176,
+    "created_tick": 2168,
+    "final": false
+   }
+  },
+  {
+   "id": 16345,
+   "tick": 2168,
+   "sender": "t03",
+   "text": "I hear you. I move, you move: 9 P.",
+   "offer": {
+    "id": 25277,
+    "maker": "t03",
+    "to": "picaros",
+    "venue": null,
+    "thread": 3169,
+    "status": "cancelled",
+    "give": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:MAL-09"
+     ]
+    },
+    "expires_tick": 2176,
+    "created_tick": 2168,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Heroína del Dos de Mayo",
+ "closed_reason": null
+}

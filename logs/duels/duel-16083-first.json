@@ -1,0 +1,38 @@
+{
+ "duel": 16083,
+ "session": 5,
+ "status": "live",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.68,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 92,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2594,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 16127,
+  "price": 102,
+  "tick": 2582,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2582,
+   "from": "Rival Azul",
+   "text": "Hello! I can do 102 with delivery on day 10.",
+   "price": 102,
+   "days": 10
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

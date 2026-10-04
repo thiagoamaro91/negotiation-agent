@@ -1,0 +1,66 @@
+{
+ "duel": 16080,
+ "session": 5,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 7.48,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 145,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2668,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18300,
+  "price": 115,
+  "tick": 2665,
+  "days": 4
+ },
+ "messages": [
+  {
+   "tick": 2656,
+   "from": "Rival Azul",
+   "text": "Hello, and thank you for meeting me. I would propose 154 P with delivery on day 10.",
+   "price": 154,
+   "days": 10
+  },
+  {
+   "tick": 2658,
+   "from": "Rival Azul",
+   "text": "I appreciate it, thank you. Could we close at 128 P, delivery on day 10, please?",
+   "price": 128,
+   "days": 10
+  },
+  {
+   "tick": 2660,
+   "from": "Rival Azul",
+   "text": "Fair enough, thank you. I will meet you partway: 117 P with delivery on day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 2662,
+   "from": "Rival Azul",
+   "text": "Thank you, we are getting close. 115 P and delivery on day 8 works for me.",
+   "price": 115,
+   "days": 8
+  },
+  {
+   "tick": 2665,
+   "from": "Rival Azul",
+   "text": "Thank you for your offer. I can do 115 P with delivery on day 4.",
+   "price": 115,
+   "days": 4
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

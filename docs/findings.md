@@ -122,6 +122,15 @@ What `tools/ledger.py` needed to rebuild all 18 teams' cash from the public feed
 - **No dealer deals of ours during the wave** (ladder unchanged at 5/15 from tick 1809 to 2117).
 - **The server slowed down around midday (tick ~2230-2290, 12:31-12:43).** Our broker logged 38 read timeouts in 12 minutes (26 on `GET /api/clock`, 12 on `GET /api/broker/book`), all single misses (`in_a_row` 1, once 2), against 1 timeout during the 10:37 test. The 12:37 Market Test (b156) still had a book row for every tick and lost no match (7 matches, 100 % of the quote-respecting ceiling), so the retry-next-tick handling held.
 
+## Sunday final hours (bazaar-final-conductor, 4 Oct)
+
+- Tick ~2100 (12:02): a correct flag on a Picaros bait-and-switch message (words name the card we asked for, the
+  structured offer gives a different one) scored +10 neg_points at once. Only the first 3 flags of the day scored;
+  7 further correct flags (ticks ~2190) were accepted (`flagged: true`) and scored 0.
+- Tick ~2420 (13:19): a +50 capped team trade (RET-07 page closer at about 30 vs live value 82.1) moved the board about +1.27.
+- tools/factory.py keepers match a running copy by command-line substring: any shell whose command line contains
+  `agent/market_desk.py run` (a wait loop) blocks the desk relaunch ("another copy runs outside the factory").
+
 ## Grand Final and the close (ticks 2578-2816)
 
 - **Grand Final (server session 5, finished tick 2692, 14:28):** 34/34 complete, 25 deals (buyer 13/17, seller 12/17), our surplus 657.3 P; duel_points 27.94 -> 40.19, 0.360 per duel against the lab's 0.420 and Duels III's 0.411. The delivery-day term cost us 79.2 P over the 25 deals (11 deals at day 10), where in Duels III it was worth +1.7 P. The Final field read linear 17, fast 7, tit-for-tat 3, one-shot 3, absent 3, steady 1.

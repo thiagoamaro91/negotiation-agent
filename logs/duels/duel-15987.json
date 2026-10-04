@@ -1,0 +1,80 @@
+{
+ "duel": 15987,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.69,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 260,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 2657,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18065,
+  "price": 185,
+  "tick": 2654,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2645,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto: 273 P y 10 días.",
+   "price": 273,
+   "days": 10
+  },
+  {
+   "tick": 2646,
+   "from": "Rival Noche",
+   "text": "Me muevo para acercarnos: 262 P con 10 días.",
+   "price": 262,
+   "days": 10
+  },
+  {
+   "tick": 2648,
+   "from": "Rival Noche",
+   "text": "Yo ya me he movido. Propongo 240 P y 10 días.",
+   "price": 240,
+   "days": 10
+  },
+  {
+   "tick": 2649,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto: 229 P y 10 días.",
+   "price": 229,
+   "days": 10
+  },
+  {
+   "tick": 2650,
+   "from": "Rival Noche",
+   "text": "Me muevo para acercarnos: 218 P con 10 días.",
+   "price": 218,
+   "days": 10
+  },
+  {
+   "tick": 2652,
+   "from": "Rival Noche",
+   "text": "Yo ya me he movido. Propongo 196 P y 10 días.",
+   "price": 196,
+   "days": 10
+  },
+  {
+   "tick": 2654,
+   "from": "Rival Noche",
+   "text": "Propuesta justa para cerrar pronto: 185 P y 10 días.",
+   "price": 185,
+   "days": 10
+  }
+ ],
+ "result": 68.1,
+ "price": 185,
+ "days": 10
+}

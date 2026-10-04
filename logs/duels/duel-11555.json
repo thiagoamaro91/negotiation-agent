@@ -1,0 +1,38 @@
+{
+ "duel": 11555,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.03,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 160,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 1997,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14591,
+  "price": 113,
+  "tick": 1986,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1986,
+   "from": "Rival Azul",
+   "text": "Rápido y justo: 113 P, día 10. ¿Qué día de entrega te va mejor? / Quick and fair: 113 P, day 10. Which delivery day suits you best?",
+   "price": 113,
+   "days": 10
+  }
+ ],
+ "result": 36.7,
+ "price": 113,
+ "days": 10
+}

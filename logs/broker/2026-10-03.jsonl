@@ -1259,3 +1259,8 @@
 {"ts": "2026-10-03T22:58:58", "run": "20261003-200651-c7a2", "agent": "broker", "event": "book", "tick": 1443, "same_reads_before": 51, "book": {"venue": "v20", "status": "open", "fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": [], "recent": []}}
 {"ts": "2026-10-03T22:59:28", "run": "20261003-200651-c7a2", "agent": "broker", "event": "book", "tick": 1444, "same_reads_before": 51, "book": {"venue": "v20", "status": "open", "fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": [], "recent": []}}
 {"ts": "2026-10-03T22:59:58", "run": "20261003-200651-c7a2", "agent": "broker", "event": "book", "tick": 1445, "same_reads_before": 51, "book": {"venue": "v20", "status": "open", "fee_bps": 0, "fee_per_card": 0, "offers": [], "bench_offers": [], "recent": []}}
+{"ts": "2026-10-03T23:06:21", "run": "20261003-200651-c7a2", "agent": "broker", "event": "read_error", "error": "BazaarError: http_502: Bad Gateway", "in_a_row": 1}
+{"ts": "2026-10-03T23:06:22", "run": "20261003-200651-c7a2", "agent": "broker", "event": "read_error", "error": "BazaarError: http_502: Bad Gateway", "in_a_row": 2}
+{"ts": "2026-10-03T23:06:23", "run": "20261003-200651-c7a2", "agent": "broker", "event": "read_error", "error": "BazaarError: http_502: Bad Gateway", "in_a_row": 3}
+{"ts": "2026-10-03T23:06:25", "run": "20261003-200651-c7a2", "agent": "broker", "event": "read_error", "error": "BazaarError: http_502: Bad Gateway", "in_a_row": 4}
+{"ts": "2026-10-03T23:58:33", "run": "20261003-200651-c7a2", "agent": "broker", "event": "run_end", "sent": 4, "accepted": 4, "refused": 0, "dropped": 0}

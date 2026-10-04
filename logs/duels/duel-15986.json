@@ -1,0 +1,87 @@
+{
+ "duel": 15986,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.86,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 144,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 2634,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17449,
+  "price": 211,
+  "tick": 2631,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2622,
+   "from": "Rival Verde",
+   "text": "Propuesta justa para cerrar pronto: 139 P y 0 días.",
+   "price": 139,
+   "days": 0
+  },
+  {
+   "tick": 2624,
+   "from": "Rival Verde",
+   "text": "Me muevo para acercarnos: 157 P con 0 días.",
+   "price": 157,
+   "days": 0
+  },
+  {
+   "tick": 2625,
+   "from": "Rival Verde",
+   "text": "Yo ya me he movido. Propongo 166 P y 0 días.",
+   "price": 166,
+   "days": 0
+  },
+  {
+   "tick": 2626,
+   "from": "Rival Verde",
+   "text": "Propuesta justa para cerrar pronto: 175 P y 0 días.",
+   "price": 175,
+   "days": 0
+  },
+  {
+   "tick": 2628,
+   "from": "Rival Verde",
+   "text": "Me muevo para acercarnos: 194 P con 0 días.",
+   "price": 194,
+   "days": 0
+  },
+  {
+   "tick": 2629,
+   "from": "Rival Verde",
+   "text": "Yo ya me he movido. Propongo 203 P y 0 días.",
+   "price": 203,
+   "days": 0
+  },
+  {
+   "tick": 2630,
+   "from": "Rival Verde",
+   "text": "Propuesta justa para cerrar pronto: 210 P y 0 días.",
+   "price": 210,
+   "days": 0
+  },
+  {
+   "tick": 2631,
+   "from": "Rival Verde",
+   "text": "Me muevo para acercarnos: 211 P con 0 días.",
+   "price": 211,
+   "days": 0
+  }
+ ],
+ "result": 67.0,
+ "price": 211,
+ "days": 0
+}

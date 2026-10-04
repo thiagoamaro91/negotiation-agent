@@ -1,0 +1,71 @@
+{
+ "duel": 16088,
+ "session": 5,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "Mural de la Esquina",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.88,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 75,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 2594,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 16368,
+  "price": 87,
+  "tick": 2592,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 16398,
+  "price": 60,
+  "tick": 2592,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2582,
+   "from": "Rival Rojo",
+   "text": "Hola, Rival Plata, voy con prisa: 26 por Mural de la Esquina y cerramos ya. Entrega inmediata.",
+   "price": 26,
+   "days": 0
+  },
+  {
+   "tick": 2586,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 122 P, delivery day 10.",
+   "price": 122,
+   "days": 10
+  },
+  {
+   "tick": 2587,
+   "from": "Rival Rojo",
+   "text": "Venga, 44; no tengo mucho tiempo. Entrega en 10 días.",
+   "price": 44,
+   "days": 10
+  },
+  {
+   "tick": 2592,
+   "from": "you",
+   "text": "Last word from me: 87 P, delivery day 10.",
+   "price": 87,
+   "days": 10
+  },
+  {
+   "tick": 2592,
+   "from": "Rival Rojo",
+   "text": "60 y lo cerramos ahora. Entrega en 10 días.",
+   "price": 60,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

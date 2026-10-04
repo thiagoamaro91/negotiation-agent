@@ -1,0 +1,50 @@
+{
+ "duel": 16116,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.79,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 46,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 2601,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 16375,
+  "price": 61,
+  "tick": 2592,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 16371,
+  "price": 57,
+  "tick": 2592,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2592,
+   "from": "Rival Verde",
+   "text": "57 P con entrega el día 0 y cerramos ahora.",
+   "price": 57,
+   "days": 0
+  },
+  {
+   "tick": 2592,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 61 P, delivery day 10.",
+   "price": 61,
+   "days": 10
+  }
+ ],
+ "result": 65.6,
+ "price": 61,
+ "days": 10
+}

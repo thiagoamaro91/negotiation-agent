@@ -1,0 +1,64 @@
+{
+ "duel": 16102,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.18,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 63,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Azul",
+ "deadline_tick": 2650,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 17858,
+  "price": 73,
+  "tick": 2646,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 17912,
+  "price": 80,
+  "tick": 2648,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2640,
+   "from": "Rival Azul",
+   "text": "I can move to 56 P. Delivery on day 0.",
+   "price": 56,
+   "days": 0
+  },
+  {
+   "tick": 2646,
+   "from": "you",
+   "text": "Last word from me: 73 P, delivery day 10.",
+   "price": 73,
+   "days": 10
+  },
+  {
+   "tick": 2647,
+   "from": "Rival Azul",
+   "text": "Meeting you partway: 70 P. Delivery on day 0.",
+   "price": 70,
+   "days": 0
+  },
+  {
+   "tick": 2648,
+   "from": "Rival Azul",
+   "text": "I can move to 80 P. Delivery on day 0.",
+   "price": 80,
+   "days": 0
+  }
+ ],
+ "result": 15.3,
+ "price": 80,
+ "days": 0
+}

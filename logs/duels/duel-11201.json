@@ -1,0 +1,66 @@
+{
+ "duel": 11201,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.57,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 94,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Verde",
+ "deadline_tick": 1918,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12937,
+  "price": 75,
+  "tick": 1915,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1906,
+   "from": "Rival Verde",
+   "text": "Hi there. 88 P and it is yours. Delivery on day 10.",
+   "price": 88,
+   "days": 10
+  },
+  {
+   "tick": 1909,
+   "from": "Rival Verde",
+   "text": "How about 85 P? Delivery on day 10.",
+   "price": 85,
+   "days": 10
+  },
+  {
+   "tick": 1912,
+   "from": "Rival Verde",
+   "text": "Meeting you partway: 85 P. Delivery on day 0.",
+   "price": 85,
+   "days": 0
+  },
+  {
+   "tick": 1914,
+   "from": "Rival Verde",
+   "text": "Meeting you partway: 74 P. Delivery on day 5.",
+   "price": 74,
+   "days": 5
+  },
+  {
+   "tick": 1915,
+   "from": "Rival Verde",
+   "text": "I can move to 75 P. Delivery on day 0.",
+   "price": 75,
+   "days": 0
+  }
+ ],
+ "result": 19.0,
+ "price": 75,
+ "days": 0
+}

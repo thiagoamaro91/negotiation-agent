@@ -1,0 +1,57 @@
+{
+ "duel": 15879,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.11,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 141,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 2616,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 16868,
+  "price": 60,
+  "tick": 2609,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 16870,
+  "price": 99,
+  "tick": 2610,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2605,
+   "from": "Rival Sol",
+   "text": "Rápido y justo: 124 P, día 10. ¿Qué día de entrega te va mejor? / Quick and fair: 124 P, day 10. Which delivery day suits you best?",
+   "price": 124,
+   "days": 10
+  },
+  {
+   "tick": 2609,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 60 P, delivery day 10.",
+   "price": 60,
+   "days": 10
+  },
+  {
+   "tick": 2610,
+   "from": "Rival Sol",
+   "text": "Parece que el día te importa: 99 P con día 10. / It seems the day matters to you: 99 P, day 10.",
+   "price": 99,
+   "days": 10
+  }
+ ],
+ "result": 5.3,
+ "price": 124,
+ "days": 10
+}

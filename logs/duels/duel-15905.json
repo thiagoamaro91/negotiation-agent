@@ -1,0 +1,92 @@
+{
+ "duel": 15905,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Castañera",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.18,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 113,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 2623,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 17014,
+  "price": 69,
+  "tick": 2615,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 17176,
+  "price": 37,
+  "tick": 2620,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2611,
+   "from": "Rival Plata",
+   "text": "Hello, thanks for meeting us. We can do 78 P with delivery on day 10.",
+   "price": 78,
+   "days": 10
+  },
+  {
+   "tick": 2612,
+   "from": "Rival Plata",
+   "text": "Hello, thanks for meeting us. We can do 78 P with delivery on day 10.",
+   "price": 78,
+   "days": 10
+  },
+  {
+   "tick": 2615,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 69 P, delivery day 0.",
+   "price": 69,
+   "days": 0
+  },
+  {
+   "tick": 2616,
+   "from": "Rival Plata",
+   "text": "Thanks for moving. We can do 61 P with delivery on day 10; that is a fair close for both of us.",
+   "price": 61,
+   "days": 10
+  },
+  {
+   "tick": 2617,
+   "from": "Rival Plata",
+   "text": "I can do 138 with delivery on day 10. That is a fair deal for both of us.",
+   "price": 138,
+   "days": 10
+  },
+  {
+   "tick": 2618,
+   "from": "Rival Plata",
+   "text": "Thanks for moving. We can do 50 P with delivery on day 10; that is a fair close for both of us.",
+   "price": 50,
+   "days": 10
+  },
+  {
+   "tick": 2619,
+   "from": "Rival Plata",
+   "text": "I can do 99 with delivery on day 10. That is a fair deal for both of us.",
+   "price": 99,
+   "days": 10
+  },
+  {
+   "tick": 2620,
+   "from": "Rival Plata",
+   "text": "Thanks for moving. We can do 37 P with delivery on day 10; that is a fair close for both of us.",
+   "price": 37,
+   "days": 10
+  }
+ ],
+ "result": 30.8,
+ "price": 37,
+ "days": 10
+}

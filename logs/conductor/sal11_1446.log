@@ -1,0 +1,5 @@
+14:46:14 SAL-11 live value 234
+config ok
+14:46:14 kill desk 3754
+14:46:20 desk now 9658
+14:46:19 [factory] start /opt/homebrew/opt/python@3.14/bin/python3.14 -u agent/market_desk.py run --no-team-venues --page SAL-11:228:216 --page-step 4 --page-st

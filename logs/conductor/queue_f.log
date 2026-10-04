@@ -1,0 +1,56 @@
+12:46:55 START sell:1193
+Team 3 cash=280 level=5 deals=45
+  sell MAL-06  limit=  20.0 private=  17.5 ladder_floor=18  Tienda de Discos  asset=1193 LAST COPY
+reserve=40 (spendable 240 P) anchor=0.4 x her ask step=1 cap=None
+dealer=chato (El Chato) buys=uncommon,rare first ask=30 sell_step=2 allow_single=True
+  asks MAL-06 (asset 1193) if she bids 13: 30 28 26 24 22 20 (then her final; take it if >= 20)
+[12:46:56] run_start operator=thiago argv=['run', '--dealer', 'chato', '--only', 'sell:1193', '--allow-single', '--floor', '20', '--sell-anchor', '30', '--reserve', '40', '--max-deals', '1', '--max-rounds', '14', '--max-wait-ticks', '20', '--until', '13:50'] cash=280 level=5 deals=45 reserve=40 cap=None plan=[{'side': 'sell', 'item': 'MAL-06', 'asset_id': 1193, 'value': 20, 'private': 17.5, 'ladder_value': None, 'ladder_floor': 18}] dealer=chato allow_single=True sell_anchor=30 sell_step=2 floor=20
+[12:46:58] open thread=3458 side=sell item=MAL-06 value=20 private=17.5 ladder_floor=18
+[12:47:12] her thread=3458 price=13 final=False round=1
+[12:47:12] say thread=3458 price=30 her=13
+[12:47:32] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:47:35] say thread=3458 price=28 her=13
+[12:47:42] say thread=3458 price=26 her=13
+[12:47:59] say thread=3458 price=24 her=13
+[12:48:13] her thread=3458 price=14 final=False round=5
+[12:48:14] say thread=3458 price=22 her=14
+[12:48:32] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:48:36] her thread=3458 price=15 final=False round=6
+[12:48:37] say thread=3458 price=20 her=15
+[12:48:43] her thread=3458 price=16 final=False round=7
+[12:50:04] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:50:32] max_rounds thread=3458 ours=20 her=16
+[12:50:32] run_end cash=280 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=45 ladder_points=0.334 score=32.38 rank=5
+12:50:33 EXIT 0
+{'score': 32.38, 'rank': 5, 'negotiating': 24.23, 'neg_points': 86.5, 'ladder_points': 0.334, 'market': 8.15, 'duel_points': 27.94} cash 280
+12:50:42 START sell:898
+Team 3 cash=280 level=5 deals=45
+  sell MAL-07  limit=  20.0 private=  17.5 ladder_floor=18  Mercado de San Ildefonso  asset=898 LAST COPY
+reserve=40 (spendable 240 P) anchor=0.4 x her ask step=1 cap=None
+dealer=chato (El Chato) buys=uncommon,rare first ask=30 sell_step=2 allow_single=True
+  asks MAL-07 (asset 898) if she bids 13: 30 28 26 24 22 20 (then her final; take it if >= 20)
+[12:50:43] run_start operator=thiago argv=['run', '--dealer', 'chato', '--only', 'sell:898', '--allow-single', '--floor', '20', '--sell-anchor', '30', '--reserve', '40', '--max-deals', '1', '--max-rounds', '14', '--max-wait-ticks', '20', '--until', '13:50'] cash=280 level=5 deals=45 reserve=40 cap=None plan=[{'side': 'sell', 'item': 'MAL-07', 'asset_id': 898, 'value': 20, 'private': 17.5, 'ladder_value': None, 'ladder_floor': 18}] dealer=chato allow_single=True sell_anchor=30 sell_step=2 floor=20
+[12:50:43] open thread=3512 side=sell item=MAL-07 value=20 private=17.5 ladder_floor=18
+[12:50:49] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:50:52] her thread=3512 price=13 final=False round=1
+[12:50:52] say thread=3512 price=30 her=13
+[12:51:00] say thread=3512 price=28 her=13
+[12:51:18] say thread=3512 price=26 her=13
+[12:51:33] say thread=3512 price=24 her=13
+[12:51:46] say thread=3512 price=22 her=13
+[12:52:00] her thread=3512 price=14 final=False round=6
+[12:52:01] say thread=3512 price=20 her=14
+[12:52:15] her thread=3512 price=15 final=False round=7
+[12:52:35] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:53:36] clock_wait kind=clock_unreadable tick=None waited=0
+waiting: clock unreadable at tick ?, 0 s so far (no round is spent while waiting)
+[12:54:05] max_rounds thread=3512 ours=20 her=15
+[12:54:06] run_end cash=259 level=5 unlocked=['abuela', 'chato', 'pilar', 'picaros', 'banco'] deals=46 ladder_points=0.336 score=32.38 rank=5
+12:54:06 EXIT 0
+{'score': 32.38, 'rank': 5, 'negotiating': 24.23, 'neg_points': 86.5, 'ladder_points': 0.336, 'market': 8.15, 'duel_points': 27.94} cash 259
+12:54:07 QUEUE F DONE

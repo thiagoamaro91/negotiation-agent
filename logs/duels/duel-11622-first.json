@@ -1,0 +1,38 @@
+{
+ "duel": 11622,
+ "session": 4,
+ "status": "live",
+ "role": "seller",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.22,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 120,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 2033,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15437,
+  "price": 122,
+  "tick": 2021,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2021,
+   "from": "Rival Noche",
+   "text": "Hola, Rival Azul, voy con prisa: 122 por Cine Doré y cerramos ya. Entrega inmediata.",
+   "price": 122,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

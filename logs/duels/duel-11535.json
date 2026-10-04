@@ -1,0 +1,57 @@
+{
+ "duel": 11535,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.93,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 144,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 2030,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 15505,
+  "price": 124,
+  "tick": 2026,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 15449,
+  "price": 155,
+  "tick": 2021,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2021,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 110 P, delivery day 0.",
+   "price": 110,
+   "days": 0
+  },
+  {
+   "tick": 2021,
+   "from": "Rival Plata",
+   "text": "I can do 155 P with delivery in 0 days.",
+   "price": 155,
+   "days": 0
+  },
+  {
+   "tick": 2026,
+   "from": "you",
+   "text": "Last word from me: 124 P, delivery day 0.",
+   "price": 124,
+   "days": 0
+  }
+ ],
+ "result": 18.0,
+ "price": 124,
+ "days": 0
+}

@@ -1,0 +1,502 @@
+{
+ "id": 2394,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1241
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 1575,
+ "messages": [
+  {
+   "id": 13719,
+   "tick": 1576,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 85 P.",
+   "offer": {
+    "id": 21324,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 85,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1584,
+    "created_tick": 1576,
+    "final": false
+   }
+  },
+  {
+   "id": 13718,
+   "tick": 1576,
+   "sender": "pilar",
+   "text": "Buenas tardes. A pleasure. I see you carry El Ángel Caído — El Retiro, my beloved park. I know that print run well. I offer you 61 P for it, and that is a generous figure.",
+   "offer": {
+    "id": 21323,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 61,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1584,
+    "created_tick": 1576,
+    "final": false
+   }
+  },
+  {
+   "id": 13730,
+   "tick": 1577,
+   "sender": "pilar",
+   "text": "I think 63 P is more appropriate.",
+   "offer": {
+    "id": 21337,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 63,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1585,
+    "created_tick": 1577,
+    "final": false
+   }
+  },
+  {
+   "id": 13731,
+   "tick": 1577,
+   "sender": "t03",
+   "text": "I move, you move. 83 P.",
+   "offer": {
+    "id": 21338,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 83,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1585,
+    "created_tick": 1577,
+    "final": false
+   }
+  },
+  {
+   "id": 13737,
+   "tick": 1578,
+   "sender": "t03",
+   "text": "Coming down: 81 P.",
+   "offer": {
+    "id": 21344,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 81,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1586,
+    "created_tick": 1578,
+    "final": false
+   }
+  },
+  {
+   "id": 13736,
+   "tick": 1578,
+   "sender": "pilar",
+   "text": "You move little, señor. Still, I am patient and fond of El Retiro. Sixty-five pesetas — that is me moving again, politely. The angel deserves my album, not your pocket.",
+   "offer": {
+    "id": 21343,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 65,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1586,
+    "created_tick": 1578,
+    "final": false
+   }
+  },
+  {
+   "id": 13748,
+   "tick": 1579,
+   "sender": "pilar",
+   "text": "I think 67 P is more appropriate.",
+   "offer": {
+    "id": 21354,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 67,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1587,
+    "created_tick": 1579,
+    "final": false
+   }
+  },
+  {
+   "id": 13750,
+   "tick": 1579,
+   "sender": "t03",
+   "text": "Fair is fair. 79 P.",
+   "offer": {
+    "id": 21356,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 79,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1587,
+    "created_tick": 1579,
+    "final": false
+   }
+  },
+  {
+   "id": 13762,
+   "tick": 1580,
+   "sender": "t03",
+   "text": "No theatre. 77 P and it is yours.",
+   "offer": {
+    "id": 21368,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 77,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1588,
+    "created_tick": 1580,
+    "final": false
+   }
+  },
+  {
+   "id": 13759,
+   "tick": 1580,
+   "sender": "pilar",
+   "text": "Sixty-nine pesetas, señor. I move each time, you barely stir. The angel belongs in my album, beside the rest of El Retiro. Shall we finish this elegantly, before the afternoon escapes us?",
+   "offer": {
+    "id": 21365,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 69,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1588,
+    "created_tick": 1580,
+    "final": false
+   }
+  },
+  {
+   "id": 13766,
+   "tick": 1581,
+   "sender": "pilar",
+   "text": "Let us be civilised: 71 P.",
+   "offer": {
+    "id": 21374,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 71,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1589,
+    "created_tick": 1581,
+    "final": false
+   }
+  },
+  {
+   "id": 13769,
+   "tick": 1581,
+   "sender": "t03",
+   "text": "Another step down: 75 P.",
+   "offer": {
+    "id": 21377,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 2394,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 75,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1589,
+    "created_tick": 1581,
+    "final": false
+   }
+  },
+  {
+   "id": 13775,
+   "tick": 1582,
+   "sender": "pilar",
+   "text": "Setenta y tres pesetas, señor. That is my last word — I will not move again. Accept it, and the angel rests in my album tonight; refuse, and I close my purse and wish you good afternoon.",
+   "offer": {
+    "id": 21383,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 2394,
+    "status": "settled",
+    "give": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1241,
+       "kind": "card",
+       "ref": "RET-09",
+       "serial": 15,
+       "rarity": "rare",
+       "set": "RET",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 1590,
+    "created_tick": 1582,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Ángel Caído",
+ "closed_reason": null
+}

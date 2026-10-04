@@ -1,0 +1,57 @@
+{
+ "duel": 11510,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.2,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 82,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1909,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 12596,
+  "price": 134,
+  "tick": 1901,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 12606,
+  "price": 83,
+  "tick": 1901,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1897,
+   "from": "Rival Rojo",
+   "text": "I'd like to propose 81 P with delivery on day 0.",
+   "price": 81,
+   "days": 0
+  },
+  {
+   "tick": 1901,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 134 P, delivery day 10.",
+   "price": 134,
+   "days": 10
+  },
+  {
+   "tick": 1901,
+   "from": "Rival Rojo",
+   "text": "Entiendo, pero veo una brecha grande. Ofrezco 83 P con entrega en día 10.",
+   "price": 83,
+   "days": 10
+  }
+ ],
+ "result": 20.7,
+ "price": 83,
+ "days": 10
+}
