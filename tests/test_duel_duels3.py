@@ -64,5 +64,37 @@ class LastWhileMoving(unittest.TestCase):
         self.assertGreaterEqual(duel.surplus(d, dec["price"], dec["days"], "buyer:0"), 1)
 
 
+DUELS3 = ROOT / "docs" / "duel-lab" / "duel-params-duels3.json"
+BLEND = ROOT / "docs" / "duel-lab" / "duel-params-duels2-blend.json"
+# the factory's command (tools/factory_sunday.json, process "duel"): flags win over the JSON, and it passes no
+# --days-best and no --days-confirmed
+FACTORY = ["--params", str(DUELS3), "--duel-ticks", "12", "--late-poll", "4"]
+
+
+class ParamsFile(unittest.TestCase):
+    def test_what_changed_from_the_file_that_played_duels2(self):
+        new, old = json.loads(DUELS3.read_text()), json.loads(BLEND.read_text())
+        changed = {k: (old.get(k), v) for k, v in new.items() if old.get(k) != v}
+        self.assertEqual(changed, {"late_poll": (8, 4), "duel_ticks": (16, 12),
+                                   "days_best": (None, "buyer:0,seller:10"), "last_while_moving": (None, True)})
+        self.assertLessEqual(set(old), set(new))
+
+    def test_the_factory_command_runs_it_with_the_days_confirmed_for_both_roles(self):
+        c = duel.make_cfg(["run", *FACTORY])
+        self.assertEqual((c.duel_ticks, c.late_poll, c.last_while_moving), (12, 4, True))
+        for role, best in (("buyer", 0), ("seller", 10)):
+            d = conceding(role=role, day=5)
+            self.assertFalse(duel.days_unconfirmed(d, c.days_best), role)    # no robust mode: it costs 0.047 a duel
+            self.assertEqual(duel.days_profile(d, c.days_best)[0], best)
+        seller = conceding(role="seller", limit=100, day=5)
+        self.assertEqual(duel.surplus(seller, 100, 10, c.days_best), 32.3)   # the server pays a seller w per day
+
+    def test_it_passes_the_selftest_simulation(self):
+        c = duel.make_cfg(["selftest", *FACTORY])
+        res = duel.simulate(duel, c, n_duels=600, seed=5, ticks=12)
+        self.assertEqual(res["violations"], [])
+        self.assertLessEqual(res["max_sends"], c.max_msgs)
+
+
 if __name__ == "__main__":
     unittest.main()
