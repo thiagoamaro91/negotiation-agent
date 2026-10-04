@@ -26,7 +26,8 @@ uses 2,000 more (`holdout`) that no selection step saw.
 From 02:36 to 06:15 Madrid the driver screened **6,648 candidates** (1,662 per family; about 45 seconds per round
 of 24, half drawn at random, half mutations of the best so far), sent 1,845 of them through the whole 15-scenario
 battery, and confirmed 63 members on the unseen seeds (plus 8 reference rows). The final TEST ran the best member of
-each family on the holdout seeds.
+each family on the holdout seeds. A second phase (06:15–07:38 Madrid) screened 2,376 more candidates (9,024 in all) and
+confirmed 16 more members on the unseen seeds; none was recommendable and none displaced a family's best member.
 
 1. **Blind estimates**: our own `BenchPolicy` (estimated limits plus a patience prior; it holds traders it believes are
    patient) with every prior swept: shading, firm and first-sight shades, the impatient share and both patience

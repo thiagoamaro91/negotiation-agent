@@ -1,6 +1,6 @@
 # Broker overnight search: leaderboard
 
-Updated 06:21 Madrid (6672 candidates screened, 75 confirmed runs).
+Updated 07:33 Madrid (9024 candidates screened, 91 confirmed runs). Search finished.
 
 **Acceptance rule (fixed at 02:30 Madrid, before the first search run at 02:36).** A candidate is *recommendable for the hard
 test* only if it beats `stall` on `hard` by more than 2 SE, AND is not worse than `stall` beyond noise (diff + 1.96 SE
@@ -40,13 +40,13 @@ Cells: candidate − stall in efficiency (share of the best possible gains), 95 
 
 ## Best members (parameters, and why the rule says what it says)
 
-- **1 blind estimates (BenchPolicy, BLIND=policy)**: 1668 screened, 432 passed the first screen step, 20 confirmed.
+- **1 blind estimates (BenchPolicy, BLIND=policy)**: 2256 screened, 591 passed the first screen step, 24 confirmed.
   best `8cfbaa8061` {"expiry_margin": 1, "firm_shade": 0.028, "first_shade": 0.053, "future": 0.483, "imp": [2, 4], "imp_share": 0.982, "min_edge": 0.5, "pat": [7, 14], "slope": "prior", "smax": 0.112}: not recommended (hard +0.0005 is not > 2 SE (0.0010); worse beyond noise on arrive_late, refit b36, refit b53, refit b70; drops pairs the stall crossed on hard, standard, firm_50, all_impatient, short_patience, thin_overlap, wide_overlap, arrive_all0, arrive_late, refit b36, refit b53, refit b70, refit b88, refit b104)
-- **2 timing rules without expiries**: 1668 screened, 615 passed the first screen step, 12 confirmed.
+- **2 timing rules without expiries**: 2256 screened, 809 passed the first screen step, 16 confirmed.
   best `79977000b8` {"delta": 0.099, "end_margin": 1, "hi": 0.5, "lo": 0.0, "max_swaps": 1, "mech": "second", "refill": false, "rho_fast": 0.09, "rho_slow": 0.09, "sides": "buy", "u_firm": 1.0, "u_first": 1.0}: not recommended (hard +0.0005 is not > 2 SE (0.0006))
-- **3 hybrid: stall + leave classifier swap**: 1668 screened, 522 passed the first screen step, 18 confirmed.
+- **3 hybrid: stall + leave classifier swap**: 2256 screened, 691 passed the first screen step, 22 confirmed.
   best `23548db80f` {"delta": 0.149, "hi": 0.86, "lo": 0.163, "max_swaps": 3, "model": "sim", "refill": true, "sides": "sell"}: not recommended (hard +0.0000 is not > 2 SE (0.0000))
-- **3b hybrid: leave classifier inside BenchPolicy**: 1668 screened, 282 passed the first screen step, 13 confirmed.
+- **3b hybrid: leave classifier inside BenchPolicy**: 2256 screened, 366 passed the first screen step, 17 confirmed.
   best `59f17ee96d` {"firm_shade": 0.034, "first_shade": 0.03, "future": 1.105, "leave_scale": 2.083, "min_edge": 0.0, "model": "sim_hard", "smax": 0.156}: not recommended (hard +0.0006 is not > 2 SE (0.0009); worse beyond noise on arrive_late, refit b36, refit b53, refit b70, refit b88, refit b104; drops pairs the stall crossed on standard, all_impatient, short_patience, thin_overlap, arrive_all0, refit b36, refit b53, refit b70, refit b88, refit b104)
 
 ## Every confirmed run
@@ -128,3 +128,19 @@ Cells: candidate − stall in efficiency (share of the best possible gains), 95 
 | hybrid `a95a32a127` | unseen | not recommended | -0.0004 ±0.0004 | -0.0000 ±0.0004 | -4.0 | refit b53 -4.0 | 0 |
 | hybrid_est `dc89066586` | unseen | not recommended | +0.0001 ±0.0009 | -0.0006 ±0.0008 | -4.4 | refit b53 -4.4 | 43 |
 | hybrid_est `a3401b3e7f` | unseen | not recommended | +0.0001 ±0.0009 | -0.0006 ±0.0008 | -4.4 | refit b53 -4.4 | 46 |
+| blind_est `e73b803508` | unseen | not recommended | +0.0005 ±0.0009 | +0.0006 ±0.0009 | -3.3 | refit b53 -3.3 | 129 |
+| blind_est `76800ab595` | unseen | not recommended | +0.0006 ±0.0011 | +0.0015 ±0.0011 | -3.2 | refit b53 -3.2 | 235 |
+| timing `1d9f2a07d9` | unseen | not recommended | +0.0004 ±0.0007 | -0.0001 ±0.0008 | -1.4 | refit b70 -1.4 | 0 |
+| timing `b06ecf52e3` | unseen | not recommended | +0.0003 ±0.0006 | -0.0002 ±0.0008 | -1.2 | refit b70 -1.2 | 0 |
+| hybrid `c9205af577` | unseen | not recommended | -0.0004 ±0.0004 | +0.0001 ±0.0004 | -3.3 | refit b53 -3.3 | 0 |
+| hybrid `74b5b4ab76` | unseen | not recommended | -0.0004 ±0.0004 | -0.0000 ±0.0004 | -4.1 | refit b53 -4.1 | 0 |
+| hybrid_est `34df34ea3f` | unseen | not recommended | +0.0000 ±0.0009 | -0.0006 ±0.0008 | -4.4 | refit b53 -4.4 | 50 |
+| hybrid_est `9c413bb266` | unseen | not recommended | +0.0000 ±0.0009 | -0.0006 ±0.0008 | -4.5 | refit b53 -4.5 | 50 |
+| blind_est `7b617b0315` | unseen | not recommended | -0.0001 ±0.0012 | +0.0014 ±0.0011 | -3.2 | refit b53 -3.2 | 273 |
+| blind_est `20858fe5c2` | unseen | not recommended | +0.0002 ±0.0012 | +0.0015 ±0.0011 | -3.0 | refit b53 -3.0 | 271 |
+| timing `443c862052` | unseen | not recommended | +0.0004 ±0.0007 | -0.0001 ±0.0008 | -1.4 | refit b70 -1.4 | 0 |
+| timing `50c04a6c49` | unseen | not recommended | +0.0004 ±0.0007 | -0.0002 ±0.0008 | -1.4 | refit b70 -1.4 | 0 |
+| hybrid `3d78d741d1` | unseen | not recommended | -0.0008 ±0.0005 | -0.0002 ±0.0004 | -3.8 | refit b53 -3.8 | 0 |
+| hybrid `a1bc06f1b7` | unseen | not recommended | -0.0004 ±0.0004 | +0.0001 ±0.0004 | -3.8 | refit b53 -3.8 | 0 |
+| hybrid_est `92fc11bdff` | unseen | not recommended | +0.0001 ±0.0009 | -0.0006 ±0.0008 | -4.5 | refit b53 -4.5 | 45 |
+| hybrid_est `abdffbd045` | unseen | not recommended | +0.0000 ±0.0009 | -0.0006 ±0.0008 | -4.5 | refit b53 -4.5 | 53 |
