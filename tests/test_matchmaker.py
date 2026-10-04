@@ -431,7 +431,15 @@ class Census(unittest.TestCase):
                "unfinished": census(10, self.CARDS, tick_end=None),
                "bad ref": census(10, self.CARDS + [(103, "nope", "t02")]),
                "id not an int": census(10, self.CARDS + [("104", "LAV-04", "t02")]),
-               "owner not a string": census(10, self.CARDS + [(105, "LAV-04", 7)])}
+               "owner not a string": census(10, self.CARDS + [(105, "LAV-04", 7)]),
+               # Sunday's live census: the server shows "a team" for every rival's card, names only ours
+               "owners redacted": census(10, [(1, "LAV-01", "a team"), (2, "LAV-02", "a team"),
+                                               (100, "LAV-04", "a team"), (101, "LAV-04", "t03"),
+                                               (102, "LAV-04", "abuela")]),
+               "only our own cards named": census(10, [(1, "LAV-01", "t03"), (2, "LAV-02", "t03"),
+                                                        (100, "LAV-04", "t03"), (102, "LAV-04", "abuela")]),
+               "one rival team only": census(10, [(1, "LAV-01", "t01"), (2, "LAV-02", "t01"),
+                                                   (3, "LAV-03", "t01"), (102, "LAV-04", "abuela")])}
         for why, snap in bad.items():
             with self.subTest(why):
                 res = build(T01 + T02, values={}, lb=lb(t01=(3, 0), t02=(1, 0)), census=snap)
