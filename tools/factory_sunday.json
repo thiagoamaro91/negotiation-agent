@@ -223,7 +223,7 @@
       "match": ["agent/market_desk.py", "run"],
       "log": "logs/market/{date}.jsonl",
       "stale_ticks": null,
-      "note": "Page mode: SAL-10 from a team, El Rastro only, bid 80 -> 110 over 64 ticks (docs/plans/pages-sunday.md). Starts at 09:00, not after the allowance: cash 253 covers the 110 cap, the dealers get +150 at 10:40. No other bids (--no-bids). Every Chato and Picaros SAL-10 step stays off: a second copy is worth 22.75."
+      "note": "Page mode: SAL-10 from a team, El Rastro only, bid 80 -> 110 over 64 ticks (docs/plans/pages-sunday.md). Needs PR #70 on main (the --page flags). FALLBACK if `grep -c 'add_argument(\"--page\",' agent/market_desk.py` prints 0 at 08:00 (the desk would crash-loop on unknown flags): replace this cmd with `python3 agent/market_desk.py run --no-team-venues --no-bids --min-cash 40 --until 15:05` (plain buys only, no page bid; as a list: [\"{python}\", \"-u\", \"agent/market_desk.py\", \"run\", \"--no-team-venues\", \"--no-bids\", \"--min-cash\", \"40\", \"--until\", \"{until}\"]) or set enabled to false. Starts at 09:00, not after the allowance: cash 253 covers the 110 cap, the dealers get +150 at 10:40. No other bids (--no-bids). Every Chato and Picaros SAL-10 step stays off: a second copy is worth 22.75."
     },
     {
       "name": "watchdog",

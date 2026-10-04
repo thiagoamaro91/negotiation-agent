@@ -4,7 +4,7 @@ Ten checks, one line each (check 1 also pulls when behind), then the 08:55 comma
 
 Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/factory_sunday.json` (the line is in the handoff, section "What needs you"). Without it the watchdog still prints problems in its tmux window but sends nothing to your phone.
 
-1. **The Mini is on the `origin/main` head.** Expect the head named in the handoff, then `0`. Do not assume an auto-pull ran (Thiago's own doc says there is none; Hector says one was enabled): if the count is not `0`, pull, then rerun this check, check 2 and the self-test (expect `OK`). If the pull refuses because of local changes, say so in the team chat; do not reset.
+1. **The Mini is on the `origin/main` head.** Expect `0` (no commit on `origin/main` that the Mini lacks). Do not assume an auto-pull ran (Thiago's own doc says there is none; Hector says one was enabled): if the count is not `0`, pull, then rerun this check, check 2 and the self-test (expect `OK`). If the pull refuses because of local changes, say so in the team chat; do not reset.
    ```bash
    cd ~/bazaar && git fetch -q && git log -1 --format='%h %s' && git rev-list --count HEAD..origin/main
    git pull --ff-only && python3 -m unittest tests.test_factory 2>&1 | tail -1
@@ -47,6 +47,16 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
 
 The team key sits in `~/bazaar/.env` and the bots read it themselves; the factory never passes a key to a bot. The dashboard's duel and broker panels read the folder named by `BROKER_ROOT` in `~/bazaar-dashboard/.env`; for the factory's bots it must be `~/bazaar` (`grep '^BROKER_ROOT=' ~/bazaar-dashboard/.env`), otherwise those panels stay empty.
+
+## If a pull request did not land by 08:00
+
+- **#70 (desk page mode).** `grep -c 'add_argument("--page",' agent/market_desk.py` must print `1`. If it prints `0`, the desk's page flags are unknown and it would crash-loop. In `tools/factory_sunday.json`, replace `market_desk.cmd` with the fallback below, or set `"enabled": false` to keep the cash for the dealers. SAL-10 then waits for the 13:30 decision.
+  ```bash
+  python3 agent/market_desk.py run --no-team-venues --no-bids --min-cash 40 --until 15:05
+  ```
+  As a `cmd` list: `["{python}", "-u", "agent/market_desk.py", "run", "--no-team-venues", "--no-bids", "--min-cash", "40", "--until", "{until}"]` (plain buys only, no page bid).
+- **#72 (duel params).** Check 2 prints `MISSING input file docs/duel-lab/duel-params-duels3.json`. Set `duel.params` in the config to `docs/duel-lab/duel-params-duels2-final.json` (Duels II's set). Never copy one params file over another.
+- **#67 (matchmaker), #64 (announce fix).** Nothing in the factory depends on them: skip the 09:05 test thread and keep `tools/announce.py` off.
 
 ## 08:55: start
 
@@ -103,7 +113,7 @@ The watchdog window sends one message when its set of problems changes, and "all
 |---|---|
 | `<name> is down` | `python3 tools/factory.py up --yes` (starts only what is missing) |
 | `<name> exited rc=N, restart K pending` | the keeper restarts it in 5 to 120 s; if it repeats, read the end of `results/factory/<name>.out` and post it on the bus |
-| `<dealer>: step <label> exited rc=N: not relaunched` | read `logs/<dealer>/<date>.jsonl`, decide, then `up --yes` (reruns that step) |
+| `<dealer>: step <label> exited rc=N: not relaunched` | read `logs/<dealer>/<date>.jsonl`, decide, then `up --yes` (reruns that step). `rc=8`: the step could not wait out a dealer's cooloff: re-run `up --yes` once the cooloff is over, do not edit params |
 | `<dealer>: step <label> ran N times without a deal or nothing-to-do marker` | read the dealer's window and log; rerun by hand or `up --yes` |
 | `duel stale during Duels III` (or the Final) | `tmux kill-window -t factory:duel`, then `up --yes` |
 | `<name>: missing input <file>` | restore the file, then `up --yes` |
@@ -116,4 +126,4 @@ The watchdog window sends one message when its set of problems changes, and "all
 | `rate_limited` in a dealer log (`logs/<dealer>/<date>.jsonl`) | four dealer bots and the desk share the key's 5 requests per second: stagger the steps (raise `after_event.delay_min` of the later ones in `tools/factory_sunday.json`; a keeper re-reads it before its next start) |
 | `clock unreachable` | `curl -s https://bazaar.causaprima.ai/api/clock`; the keepers wait on their own |
 
-Nothing changes during a duel wave or a Market Test: no restart, no edit, no hand-started bot. Restart one bot between them with `tmux kill-window -t factory:<name>` and `up --yes`. After 15:00: `tmux kill-session -t factory`.
+Open the two held packs between dealer steps and before 10:39, never while a step runs. Nothing changes during a duel wave or a Market Test: no restart, no edit, no hand-started bot. Restart one bot between them with `tmux kill-window -t factory:<name>` and `up --yes`. After 15:00: `tmux kill-session -t factory`.
