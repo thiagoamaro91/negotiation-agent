@@ -89,6 +89,9 @@ MATCHES = ROOT / "logs" / "matchmaker" / "latest.json"   # tools/matchmaker.py j
 MATCHES_MAX_AGE_S = 900  # --variant missing: no post from a matchmaker file older than this
 MISSING_STATE = ROOT / "logs" / "state" / "announce_missing.json"   # the matches announced lately
 MISSING_REPEAT = 6       # --variant missing: a match is not announced again within this many posts
+MIN_P_ANNOUNCE = 0.8     # --variant missing: an inferred need (tier 3-4) is named only at p_missing >= this. Checked on
+                         # our own account (docs/plans/matchmaker-validation.md): of the unnamed page cards with p >= 0.8,
+                         # 91 % were really missing; 0.5-0.8 only 62 %, 0.15-0.5 51 %: a coin flip is no announcement
 OPEN_BAZAAR = "Open Bazaar · who needs which card"   # the name other teams see (Thiago's Sunday plan)
 
 
@@ -371,7 +374,7 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     offers); `venue_offers`: v20's live offers; `names`: {offer id: team} from the feed. variant 0: v20's book first;
     1: the near pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
     `exclude` never appear. `fee`: v20's (bps, P per card), counted in every order and every "crosses" claim."""
-    skip = set(exclude or ())
+    skip = as_skip(exclude)
     names = names or {}
     live = [o for o in venue_offers or [] if not refs(o) & skip]
     lead = set(lead or ())
@@ -485,16 +488,49 @@ def still_live(a: dict, card: str, books: dict, tick=None) -> bool:
     return sh is not None and sh[0] == a.get("side") and sh[1] == card and sh[2] == a.get("price")
 
 
-def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False, tick=None):
+def as_skip(exclude):
+    """matchmaker.Exclusion (it has `allow`) as it is, so its fail-closed rule holds; anything else as a set."""
+    return exclude if hasattr(exclude, "allow") else set(exclude or ())
+
+
+def probability(x) -> float | None:
+    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None. A huge JSON integer
+    is refused before any float conversion (it would overflow)."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)):
+        return None
+    if isinstance(x, int):
+        return float(x) if 0 <= x <= 1 else None
+    return float(x) if math.isfinite(x) and 0 <= x <= 1 else None
+
+
+def min_p_arg(raw: str) -> float:
+    """--min-p: a probability, or argparse refuses it."""
+    try:
+        v = probability(float(raw))
+    except (ValueError, OverflowError):
+        v = None
+    if v is None:
+        raise argparse.ArgumentTypeError(f"--min-p takes a number in [0, 1], not {raw!r}")
+    return v
+
+
+def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool = False, tick=None,
+               min_p: float = MIN_P_ANNOUNCE):
     """The one match a post names, in the matchmaker's order (explicit live wants first): never Team 3, never a card
     in `exclude` (every card of the offer), never one announced in the last MISSING_REPEAT posts, never an offer that
     no longer stands as the matchmaker saw it in its venue's current book (still_live), never an offer addressed to
     one team (only that team could act), and (unless rival_venues) never an offer on another team's venue, where a
-    trade scores for that team. None when nothing is left."""
-    skip, recent = set(exclude or ()), set(recent or ())
+    trade scores for that team. An inferred need (tier 3-4) only at p_missing >= `min_p`, and never for a team whose
+    rebuilt deck contradicts the leaderboard (the matchmaker's teams[...].consistent). None when nothing is left."""
+    skip, recent = as_skip(exclude), set(recent or ())
+    teams = (doc or {}).get("teams") or {}
     for m in (doc or {}).get("matches") or []:
         if not isinstance(m, dict) or _public(m.get("team_name"), m.get("team")) is None:
             continue
+        if m.get("inferred") is not False or (m.get("tier") or 0) >= 3:   # an inference: fail closed below min_p
+            pm = probability(m.get("p_missing"))
+            if pm is None or pm < min_p or (teams.get(m.get("team")) or {}).get("consistent") is False:
+                continue
         if not isinstance(m.get("card"), str) or m["card"] in skip or match_key(m) in recent:
             continue
         a = m.get("action")
@@ -570,15 +606,15 @@ def missing_line(m: dict, fee=(0, 0)) -> str:
 
 
 def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=(), names: dict | None = None,
-                 recent=(), rival_venues: bool = False, tick=None) -> tuple:
+                 recent=(), rival_venues: bool = False, tick=None, min_p: float = MIN_P_ANNOUNCE) -> tuple:
     """The --variant missing message: ONE match (pick_match, re-checked against the current books at `tick`) and the
     one action that completes it, then v20's own live offers when there is room (so an event post can still name the
     new offer). (text, match key). LookupError when no match qualifies: nothing worth posting."""
-    m = pick_match(doc, books, exclude, recent, rival_venues, tick)
+    m = pick_match(doc, books, exclude, recent, rival_venues, tick, min_p)
     if m is None:
         raise LookupError("no match to announce")
     text = f"{OPEN_BAZAAR} (public data, La Celestina {VENUE}): " + missing_line(m, fee)
-    skip = set(exclude or ())
+    skip = as_skip(exclude)
     shown = [d for o in venue_offers or [] if not refs(o) & skip for d in [describe(o, names)] if d][:SHOW_OFFERS]
     if shown:
         tail = " Live on v20 now: " + "; ".join(shown) + "."
@@ -1122,8 +1158,16 @@ def main(argv: list[str] | None = None) -> None:
                     help="--variant missing: also name offers on other teams' venues (a trade there scores for them)")
     ap.add_argument("--no-link", action="store_true", help="leave out the web link (the default has none)")
     ap.add_argument("--link", default=LINK, help="append this link (off by default: agents do not open pages)")
-    ap.add_argument("--exclude", default=",".join(MISSING),
-                    help="comma list of cards never advertised (default: the cards we lack)")
+    ap.add_argument("--exclude", default=None,
+                    help="comma list of cards never advertised (default: --exclude-from, else the built-in MISSING)")
+    ap.add_argument("--exclude-from", default=None,
+                    help="comma list of /api/me-shaped snapshots of our account, or a directory of me*.json (the "
+                         "valid one with the highest game tick, re-read before every post): every page card we lack "
+                         "is never advertised. FAILS CLOSED: no trusted snapshot, too old, or an incomplete catalog "
+                         "-> only epic and legendary cards. Logged as counts, never the cards")
+    ap.add_argument("--exclude-max-age-min", type=float, default=60.0)
+    ap.add_argument("--min-p", type=min_p_arg, default=MIN_P_ANNOUNCE,
+                    help="--variant missing: lowest p_missing at which an inferred need is named")
     ap.add_argument("--every-min", type=float, default=0, help="run only: minutes between scheduled messages")
     ap.add_argument("--count", type=int, default=1, help="run only: how many messages at most")
     ap.add_argument("--on-event", action="store_true",
@@ -1141,7 +1185,8 @@ def main(argv: list[str] | None = None) -> None:
         except ValueError:
             ap.error('--variant takes 0, 1, 2 or "missing"')
     link = None if args.no_link else args.link
-    exclude = tuple(x.strip() for x in args.exclude.split(",") if x.strip())
+    fixed = tuple(x.strip() for x in (args.exclude if args.exclude is not None else
+                                      ("" if args.exclude_from else ",".join(MISSING))).split(",") if x.strip())
     if args.cmd == "run" and not args.yes:
         ap.error("run posts on the public feed: add --yes")
     key, team = None, None
@@ -1161,6 +1206,28 @@ def main(argv: list[str] | None = None) -> None:
 
     picked = {}   # --variant missing: the match the last compose chose (remembered only once it is posted)
 
+    last_exclude = [fixed]   # the last list current_exclude() gave: also what a new v20 offer is checked against
+
+    def current_exclude(now_tick=None):
+        """--exclude plus, with --exclude-from, matchmaker.exclude_from's Exclusion, re-read before every post (our
+        holdings change during the day): the page cards we lack from a TRUSTED snapshot, or, failing closed, every
+        card that is not positively an epic or a legendary. MISSING only ever adds. Logged as a count, never the
+        cards; any error means no post (LookupError), never an exit."""
+        if not args.exclude_from:
+            return fixed
+        try:   # fails closed inside on a bad snapshot or catalog; an unreadable catalog means no post at all
+            import matchmaker   # noqa: E402  (keyless; the same rule the matchmaker applies)
+            import value_inference
+            lack, line = matchmaker.exclude_from(args.exclude_from.split(","), value_inference.catalog(), MISSING,
+                                                 args.exclude_max_age_min, now_tick=now_tick, say=lambda m: None)
+        except Exception as e:  # noqa: BLE001 — never out of the posting loop: nothing is posted instead
+            raise LookupError(f"exclude: {type(e).__name__}, no post without the list of cards we lack")
+        print(f"[{time.strftime('%H:%M:%S')}] {line}", flush=True)
+        if args.cmd == "run":
+            log.event("exclude", line=line, count=len(lack | set(fixed)), trusted=getattr(lack, "trusted", None))
+        last_exclude[0] = lack | set(fixed)   # an Exclusion: its rule (fail closed) travels with it
+        return last_exclude[0]
+
     def compose(variant: int, first=()) -> tuple:
         """(text, ids of the v20 offers the text names). A failed feed read costs only the team names; a failed
         venue index only the other venues and v20's fee (taken as 0 %, 0 P; El Rastro's and v20's books are still
@@ -1172,6 +1239,8 @@ def main(argv: list[str] | None = None) -> None:
         except Exception as e:
             print(f"feed unavailable ({type(e).__name__}); no team names in this message", flush=True)
             events = []
+        exclude = current_exclude(max((e["tick"] for e in events if isinstance(e, dict) and isinstance(e.get("tick"), int)),
+                                      default=None))
         try:
             index = [v for v in api(f"{URL}/api/venues").get("venues", []) if isinstance(v, dict)]
         except Silenced:
@@ -1199,7 +1268,7 @@ def main(argv: list[str] | None = None) -> None:
             doc = load_matches(Path(args.matches))
             now_tick = api(f"{URL}/api/clock").get("tick")   # the offer must still stand at this tick
             text, key = missing_text(doc, books, exclude, fee, v20, names, recent_matches(), args.rival_venues,
-                                     now_tick if isinstance(now_tick, int) else None)
+                                     now_tick if isinstance(now_tick, int) else None, args.min_p)
             m = next(x for x in doc.get("matches") or [] if isinstance(x, dict) and match_key(x) == key)
             a = m.get("action") or {}
             picked.update(key=key, named={"card": m.get("card"), "offer": a.get("offer"), "venue": a.get("venue") or VENUE,
@@ -1221,9 +1290,12 @@ def main(argv: list[str] | None = None) -> None:
         print(f"\nwould POST {URL}/api/broker/announce {json.dumps({'text': text}, ensure_ascii=False)[:120]}...")
         return
 
-    skip = set(exclude)
+    try:
+        current_exclude()
+    except LookupError as e:
+        print(f"[{time.strftime('%H:%M:%S')}] {e}", flush=True)
     ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
-                    eligible=lambda o: describe(o) is not None and not refs(o) & skip)
+                    eligible=lambda o: describe(o) is not None and not refs(o) & as_skip(last_exclude[0]))
     minutes = args.deadline_min if args.deadline_min is not None else max(1, args.count) * max(1.0, args.every_min) + 60
     deadline = time.time() + minutes * 60
     while ann.posted < ann.count or ann.pending:
