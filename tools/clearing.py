@@ -74,12 +74,14 @@ def h(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def commitment(team: str, rid, version, actions: list) -> str:
-    """SHA-256 of exactly what a team approves: its team id, the round, the version and its actions (id, role,
-    card, asset, price, venue, counterparty) in a canonical order. The client computes the same from its plan."""
+def commitment(team: str, rid, version, actions: list, nonce: str = "") -> str:
+    """SHA-256 of exactly what a team approves: its team id, the round, the version, a per-round random nonce and
+    its actions (id, role, card, asset, price, venue, counterparty) in a canonical order. The nonce (given to
+    participants in their plan, never published) makes the hash useless to anyone guessing prices from the
+    outside. The client computes the same from its plan."""
     rows = sorted((a["id"], a["role"], a["card"], a.get("asset"), a["price"], a["venue"], a.get("to") or a.get("from"))
                   for a in actions)
-    return hashlib.sha256(json.dumps([team, rid, version, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(json.dumps([team, rid, version, nonce, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 class Refused(Exception):
@@ -266,6 +268,13 @@ class Store:
             self.state = json.loads(path.read_text() or "{}") or self.state
             self.state.setdefault("teams", {})
             self.state.setdefault("rounds", [])
+            # a proposal saved by an older server has no nonce: its commitment would be guessable. Re-salt it,
+            # bump the version and clear the votes so every OK is re-signed against the salted hash.
+            for r in self.state["rounds"]:
+                if r.get("status") == "proposed" and not r.get("nonce"):
+                    r["nonce"], r["version"], r["votes"] = secrets.token_urlsafe(16), r.get("version", 1) + 1, {}
+                    r["proposed_at"] = now_iso()
+            self.save()
 
     def save(self) -> None:
         with self.lock:
@@ -352,29 +361,45 @@ class Store:
     def status(self, next_run: str | None = None) -> dict:
         with self.lock:
             teams = self.state["teams"]
-            rounds = [{"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
-                       "votes": {t: v.get("ok") for t, v in r.get("votes", {}).items()}, "votes_needed": self.needed(r),
-                       "rejections": r.get("rejections", []), "trades": len(r["trades"]),
-                       "done": sum(1 for a in r["trades"] if a.get("status") == "settled"),
-                       "venues": sorted({a["venue"] for a in r["trades"]})} for r in self.state["rounds"]]
+            # an open round (proposed or approved, not yet closed) never names its participants or venues: a pair
+            # on an unsettled trade would identify both sides of a price nobody has agreed to yet
+            rounds = []
+            for r in self.state["rounds"]:
+                row = {"id": r["id"], "version": r.get("version", 1), "status": r.get("status"), "at": r["at"],
+                       "trades": len(r["trades"]), "settled": sum(1 for a in r["trades"] if a.get("status") == "settled")}
+                if r.get("status") == "closed":
+                    settled_parties = {x for a in r["trades"] if a.get("status") == "settled" for x in (a["seller"], a["buyer"])}
+                    row.update({"votes_received": sum(1 for v in r.get("votes", {}).values() if v.get("ok")),
+                                "votes_needed": len(self.needed(r)), "rejections": len(r.get("rejections", [])),
+                                "sat_out": len(r.get("sat_out", [])),
+                                "parties_of_settled_trades": sorted(settled_parties),
+                                "venues": sorted({a["venue"] for a in r["trades"] if a.get("status") == "settled"})})
+                else:
+                    row.update({"votes_received": sum(1 for v in r.get("votes", {}).values() if v.get("ok")),
+                                "votes_needed": len(self.needed(r)),
+                                "rejections": len(r.get("rejections", []))})
+                rounds.append(row)
+            # only SETTLED trades are public with their price (they are in the game's public feed anyway): a
+            # proposed or failed zero-surplus trade's price would be both sides' reservation prices
             ledger = [{"id": t["id"], "round": r["id"], "seller": t["seller"], "buyer": t["buyer"], "card": t["card"],
                        "price": t["price"], "venue": t["venue"], "host": t.get("host"), "status": t["status"]}
-                      for r in self.state["rounds"] for t in r["trades"]]
+                      for r in self.state["rounds"] for t in r["trades"] if t["status"] == "settled"]
+            pending = {r["id"]: sum(1 for t in r["trades"] if t["status"] != "settled") for r in self.state["rounds"]}
             hosting = {}
             for row in ledger:
-                if row["status"] != "failed":
-                    hh = hosting.setdefault(row["venue"], {"host": row["host"], "trades": 0, "value": 0})
-                    hh["trades"] += 1
-                    hh["value"] += row["price"]
+                hh = hosting.setdefault(row["venue"], {"host": row["host"], "trades": 0, "value": 0})
+                hh["trades"] += 1
+                hh["value"] += row["price"]
             return {"teams": sorted(teams), "venues": {t: v.get("venue") for t, v in teams.items()},
                     "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
                             "the venue with the least value hosted today; a side that did not execute sits out the next round",
-                    "hosting": hosting, "ledger": ledger, "last_attempt": self.state.get("last_attempt"),
-                    "policy": self.state.get("policy"), "reliability": self.reliability(),
+                    "hosting": hosting, "ledger": ledger, "unsettled_trades_per_round": pending,
+                    "last_attempt": self.public_attempt(self.state.get("last_attempt")),
+                    "policy": self.state.get("policy"), "reliability": self.reliability_totals(),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
-                    "cards_offered": sorted({x["card"] for v in teams.values() for x in v["haves"]}),
-                    "cards_wanted": sorted({x["card"] for v in teams.values() for x in v["wants"]}),
+                    "cards_offered": len({x["card"] for v in teams.values() for x in v["haves"]}),
+                    "cards_wanted": len({x["card"] for v in teams.values() for x in v["wants"]}),
                     "rounds": rounds, "next_run": next_run, "now": now_iso()}
 
     def hosted(self) -> dict:
@@ -461,7 +486,7 @@ class Store:
                 tr.update({"id": f"r{rid}-{i}", "offer": None, "status": "planned", "posted": None, "accepted": None,
                            "error": None})
             r = {"id": rid, "version": version, "status": "proposed", "proposed_at": now_iso(), "at": now_iso(),
-                 "trades": trades, "sat_out": bad, "banned": banned, "votes": {},
+                 "trades": trades, "sat_out": bad, "banned": banned, "votes": {}, "nonce": secrets.token_urlsafe(16),
                  "rejections": open_round.get("rejections", []) if open_round else []}
             self.state["rounds"].append(r)
             self.state["last_attempt"] = {**attempt, "round": rid, "version": version}
@@ -531,7 +556,9 @@ class Store:
                 raise Refused(409, "stale_version", f"the open proposal is version {r.get('version', 1)}; re-read your plan")
             if ok is True:
                 mine = self._actions_of(team, r)
-                want = commitment(team, r["id"], r.get("version", 1), mine)
+                if not r.get("nonce"):
+                    raise Refused(409, "no_nonce", "this proposal has no nonce; it will be re-proposed")
+                want = commitment(team, r["id"], r.get("version", 1), mine, r["nonce"])
                 got = body.get("commitment")
                 if not (isinstance(got, str) and hmac.compare_digest(got, want)):
                     raise Refused(409, "bad_commitment", "your OK must carry the commitment hash of the plan you read "
@@ -579,35 +606,51 @@ class Store:
                             "from": tr["seller"]})
         return out
 
+    @staticmethod
+    def public_attempt(a) -> dict | None:
+        """The last run as counts only: who was uncovered and why is told to the teams themselves (their plan),
+        never on the tokenless route, where it would identify the parties of unsettled trades."""
+        if not isinstance(a, dict):
+            return None
+        return {"at": a.get("at"), "round": a.get("round"), "version": a.get("version"), "held": a.get("held"),
+                "trades": a.get("trades"), "uncovered_venues": len(a.get("uncovered") or []),
+                "sat_out": len(a.get("sat_out") or []), "note": a.get("note")}
+
     def reliability(self) -> dict:
-        """Public, per team: commitments signed, kept (every committed trade settled) and broken (a committed trade
-        the team did not execute: a seller that never posted, a buyer that never accepted)."""
+        """Per team, counts only, from CLOSED rounds: commitments signed, kept (every trade of theirs settled) and
+        broken (at least one did not). Served to each team about ITSELF inside its token-bound plan; the tokenless
+        status publishes only the totals (named per-team counters can be diffed between two public reads to
+        identify the parties of a failed trade)."""
         out: dict = {}
         for r in self.state["rounds"]:
-            if r.get("status") not in ("approved", "closed"):
+            if r.get("status") != "closed":
                 continue
             for team, v in r.get("votes", {}).items():
                 if not v.get("ok"):
                     continue
-                rec = out.setdefault(team, {"signed": 0, "kept": 0, "broken": 0, "broken_trades": []})
+                rec = out.setdefault(team, {"signed": 0, "kept": 0, "broken": 0})
                 rec["signed"] += 1
                 mine = [t for t in r["trades"] if team in (t["seller"], t["buyer"])]
-                broke = [t["id"] for t in mine if (t["status"] == "planned" and t["seller"] == team) or
-                         (t["status"] == "posted" and t["buyer"] == team) or
-                         (t["status"] == "failed" and str(t.get("error") or "").startswith("not executed") and
-                          ((t.get("offer") is None and t["seller"] == team) or (t.get("offer") and t["buyer"] == team)))]
-                if broke:
-                    rec["broken"] += 1
-                    rec["broken_trades"] += broke
-                elif r.get("status") == "closed" and all(t["status"] in ("settled", "failed") for t in mine):
+                if mine and all(t["status"] == "settled" for t in mine):
                     rec["kept"] += 1
+                elif mine:
+                    rec["broken"] += 1
         return out
+
+    def reliability_totals(self) -> dict:
+        rel = self.reliability()
+        return {"teams": len(rel), "signed": sum(v["signed"] for v in rel.values()),
+                "kept": sum(v["kept"] for v in rel.values()), "broken": sum(v["broken"] for v in rel.values()),
+                "sitting_out_next_round": len(self.defaulters())}
 
     def plan(self, token) -> dict:
         team = self.team_of(token)
         with self.lock:
             if not self.state["rounds"]:
-                return {"team": team, "round": None, "actions": [], "note": "no round yet"}
+                la = self.state.get("last_attempt") or {}
+                return {"team": team, "round": None, "actions": [], "note": "no round yet",
+                        "last_attempt": {**self.public_attempt(la), "you_uncovered": team in (la.get("uncovered") or []),
+                                         "why": (la.get("why") or {}).get(team)} if la else None}
             out = []
             cur = self.state["rounds"][-1]
             for r in self.state["rounds"]:
@@ -631,8 +674,15 @@ class Store:
                 a["round_status"] = next(r["status"] for r in self.state["rounds"] if any(t["id"] == a["id"] for t in r["trades"]))
             mine_now = [a for a in out if a["round_status"] == cur["status"] and
                         any(t["id"] == a["id"] for t in cur["trades"])]
+            la = self.state.get("last_attempt") or {}
+            mine_why = (la.get("why") or {}).get(team)
             return {"team": team, "round": cur["id"], "version": cur.get("version", 1), "round_status": cur["status"],
-                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now),
+                    "last_attempt": {**self.public_attempt(la), "you_uncovered": team in (la.get("uncovered") or []),
+                                     "why": mine_why} if la else None,
+                    "your_reliability": self.reliability().get(team, {"signed": 0, "kept": 0, "broken": 0}),
+                    "you_sit_out_next_round": team in self.defaulters(),
+                    "commitment": commitment(team, cur["id"], cur.get("version", 1), mine_now, cur["nonce"]) if cur.get("nonce") else None,
+                    "nonce": cur.get("nonce"),
                     "your_vote": cur.get("votes", {}).get(team), "votes_needed": self.needed(cur),
                     "votes": {t: v.get("ok") for t, v in cur.get("votes", {}).items()},
                     "rejections": cur.get("rejections", []),
@@ -764,8 +814,11 @@ its trades dropped and the rest goes ahead. The client does this for you: `vote 
 or `execute --auto-approve` if you trust your own numbers (every price is inside them).
 
 ## Your OK is a signed commitment
-`plan` carries a `commitment`: the SHA-256 of exactly what you are approving (your team, round, version, your
-actions). Your OK must carry it back, or it is refused: nobody can approve something they did not read. The
+`plan` carries a `commitment`: the SHA-256 of exactly what you are approving (your team, round, version, the
+round's `nonce` from your plan, and your actions as (id, role, card, asset, price, venue, counterparty) sorted;
+JSON `[team, round, version, nonce, rows]` with sorted keys and no spaces, as in clearing_client.my_commitment).
+Your OK must carry it back, or it is refused: nobody can approve something they did not read. The nonce is
+served only to participants, so the hash tells outsiders nothing. The
 status page shows, per team, commitments signed, kept and broken (an approved trade you did not post or accept).
 A broken commitment is public, stays, and sits you out of the next round. The client does the hashing for you.
 
@@ -782,8 +835,10 @@ A broken commitment is public, stays, and sits you out of the next round. The cl
   venue nobody can serve never blocks everyone until the stalls close. The status explains each held round.
 - The remaining trades go to the venue with the least value hosted so far today, so a venue that hosted little in
   an earlier round comes first in the next. Team 3's venue is in the pool on the same terms.
-- The allocation is public: /api/clearing/status shows per venue the trades and value hosted, and every matched
-  trade with its venue and price (trade prices are public in the game anyway; reservation prices never are).
+- The allocation is public once settled: /api/clearing/status shows per venue the settled trades and value hosted
+  and every settled trade with its venue and price (settled trades are public in the game anyway). Proposed or
+  failed trades are never shown with price or parties, only counted: a zero-surplus price would be both sides'
+  reservation prices.
 - The contract is the game itself: the seller's offer is addressed `to` the buyer (only that team can accept, nobody
   can take it), the buyer accepts by id, the game settles next tick. A side that does not post or accept loses only
   that trade and sits out the next round. Every planned price sits inside both sides' own numbers.
@@ -1104,7 +1159,10 @@ def selftest() -> None:
         assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t07"], r
         assert r["why"]["t07"]["trades_not_involving_it"] == 0, r
         st, r = call("GET", "/api/clearing/status")
-        assert r["last_attempt"]["held"] and r["rounds"] == [], r
+        assert r["last_attempt"]["held"] and r["rounds"] == [] and "uncovered" not in r["last_attempt"], r
+        assert "t03" not in json.dumps(r["last_attempt"]) and "t07" not in json.dumps(r["last_attempt"]), r
+        st, pl = call("GET", f"/api/clearing/plan?token={toks['t07']}")
+        assert pl["last_attempt"]["you_uncovered"] is True and pl["last_attempt"]["why"], pl
         st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13", "invite": "c11"})
         toks["t11"] = r["token"]
         st, r = call("POST", "/api/clearing/join", {"team": "t99", "venue": None, "invite": "x"})
@@ -1135,11 +1193,12 @@ def selftest() -> None:
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t07"], "ok": False, "why": "too dear", "trades": [buy07["id"]]})
         assert st == 200 and r["rejected"] == [buy07["id"]] and r["reproposed"]["version"] == 2, r
         st, r = call("GET", "/api/clearing/status")
-        assert r["rounds"][-1]["votes"] == {}, r                              # t03's earlier OK no longer counts
+        assert r["rounds"][-1]["votes_received"] == 0, r                     # t03's earlier OK no longer counts
         st, r = call("POST", "/api/clearing/vote", {"token": toks["t03"], "ok": True, "version": 1, "commitment": pl["commitment"]})
         assert st == 409 and r["error"] == "stale_version", r
         st, r = call("GET", "/api/clearing/status")
-        assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"][0]["why"] == "too dear", r
+        assert r["rounds"][-1]["version"] == 2 and r["rounds"][-1]["rejections"] == 1 and "votes_needed" in r["rounds"][-1], r
+        assert "seller" not in json.dumps(r["rounds"]) and "t07" not in json.dumps(r["rounds"][-1]), r["rounds"]
         st, r = call("GET", f"/api/clearing/plan?token={toks['t07']}")
         assert not any(x["role"] == "buy" and x["card"] == buy07["card"] and x.get("from") == buy07["from"] for x in r["actions"]), r
         sell = next(x for x in r["actions"] if x["role"] == "sell")
@@ -1163,14 +1222,51 @@ def selftest() -> None:
         assert r["status"] == "settled", r
         st, r = call("GET", "/api/clearing/status")
         assert r["hosting"] and r["ledger"] and '"min"' not in json.dumps(r), r
+        assert all(row["status"] == "settled" for row in r["ledger"]) and len(r["ledger"]) == 1, r["ledger"]
         # second run: the unexecuted trades fail, their idle sides sit out, the sold copy is gone
         st, r = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})
         assert st == 200 and r["sat_out"], r
         st, r = call("GET", "/api/clearing/status")
         assert r["rounds"][0]["status"] == "closed" and r["rounds"][-1]["status"] == "proposed", r
-        rel = r["reliability"]
-        assert rel["t07"]["signed"] == 1 and rel["t07"]["broken"] == 0, rel         # t07 posted; t03 accepted
-        assert any(v["broken"] == 1 for v in rel.values()), rel                      # someone left a trade undone
+        rel = r["reliability"]                                                       # round 1 is closed now: totals only
+        assert set(rel) == {"teams", "signed", "kept", "broken", "sitting_out_next_round"} and rel["signed"] >= 2, rel
+        assert r["rounds"][0]["status"] == "closed" and r["rounds"][0]["parties_of_settled_trades"] == ["t03", "t07"], r
+        st, pl = call("GET", f"/api/clearing/plan?token={toks['t07']}")
+        assert pl["your_reliability"]["signed"] == 1 and isinstance(pl["you_sit_out_next_round"], bool), pl
+        # returning participants: a later FAILED trade between the same two teams must not change any per-team
+        # public field; only the aggregate totals may move
+        snap1 = call("GET", "/api/clearing/status")[1]
+        for t in ("t03", "t07"):
+            call("POST", "/api/clearing/book", {"token": toks[t], **books[t]})
+        st, r2 = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})
+        assert r2.get("round"), r2
+        for t in need:
+            st, pl = call("GET", f"/api/clearing/plan?token={toks[t]}")
+            if pl.get("round_status") == "proposed" and pl.get("commitment"):
+                call("POST", "/api/clearing/vote", {"token": toks[t], "ok": True, "commitment": pl["commitment"]})
+        st, r3 = call("POST", "/api/clearing/run", {"admin": "adm", "force": True})   # closes the round: unexecuted -> failed
+        snap2 = call("GET", "/api/clearing/status")[1]
+        def strip(d):
+            d = json.loads(json.dumps(d))
+            for k in ("now", "last_attempt", "rounds", "haves", "wants", "cards_offered", "cards_wanted", "unsettled_trades_per_round"):
+                d.pop(k, None)
+            d.pop("reliability", None)
+            return d
+        assert strip(snap1) == strip(snap2), (strip(snap1), strip(snap2))           # nothing per-team moved publicly
+        assert "t11" not in json.dumps(snap2["rounds"]) and "t18" not in json.dumps(snap2["rounds"]), snap2["rounds"]
+        blob = json.dumps(snap2)
+        for team in ("t11", "t18"):                                                  # only in never-settled trades
+            assert team not in json.dumps(snap2["rounds"]) and team not in json.dumps(snap2["reliability"]) \
+                and team not in json.dumps(snap2["last_attempt"]), team
+        assert "MAL-06" not in blob and "LAV-03" not in blob, "cards of unsettled trades leaked"   # only SAL-10 settled
+        assert isinstance(snap2["cards_offered"], int) and isinstance(snap2["cards_wanted"], int), snap2
+        # legacy proposal without nonce gets re-salted on load
+        raw = json.loads((Path(d) / "state.json").read_text())
+        raw["rounds"][-1].pop("nonce", None); raw["rounds"][-1]["votes"] = {"t07": {"ok": True}}
+        (Path(d) / "state.json").write_text(json.dumps(raw))
+        st2 = Store(Path(d) / "state.json")
+        assert st2.state["rounds"][-1]["nonce"] and st2.state["rounds"][-1]["votes"] == {} \
+            and st2.state["rounds"][-1]["version"] == raw["rounds"][-1]["version"] + 1
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/agents.md", timeout=5) as r:
             assert r.status == 200 and b"clearing_client.py" in r.read()
         srv.shutdown()

@@ -182,7 +182,8 @@ def my_commitment(plan: dict) -> str:
     mine = [x for x in (plan.get("actions") or []) if x.get("round_status") == plan.get("round_status")]
     rows = sorted((x["id"], x["role"], x["card"], x.get("asset"), x["price"], x["venue"], x.get("to") or x.get("from"))
                   for x in mine)
-    return hashlib.sha256(json.dumps([team, rid, ver, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    nonce = plan.get("nonce") or ""            # per-round salt from the server: keeps the hash unguessable from outside
+    return hashlib.sha256(json.dumps([team, rid, ver, nonce, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def approved_set(plan: dict) -> dict:
