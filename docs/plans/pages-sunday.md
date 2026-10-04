@@ -28,16 +28,25 @@ What it does each tick (module docstring step 8):
    starts at 80 and rises 4 P every 8 ticks: 80, 84, … 108 at +56 ticks, 110 (the cap) at +64 ticks
    (16 min at 15 s ticks). It never
    rises above 110, above value − margin (159), or above the cost of a live SAL-10 ask, and never steps down.
-3. **Guards:** at most one live bid for SAL-10 (the ordinary bid planner never touches a page card, and run cancels a
-   duplicate); no post or step while `results/duel.lock` is fresh or a duel of ours is live (a live bid stays; cancels
-   still go); the bid fits in cash − 40 and the spend caps or it is not posted; it is cancelled when SAL-10 arrives
-   or when we take an ask for it. `main()` refuses a page cap above `--cap-hour` / `--cap-day` (the defaults 100 / 250
-   would have blocked every buy above 100 P).
-4. Every decision goes to `logs/market/<date>.jsonl` with `"page": true`, value, ceiling, anchor, price and gain.
+3. **Guards:**
+   - At most one live bid for SAL-10: the ordinary bid planner never touches a page card, run cancels a duplicate,
+     and before accepting an ask the desk re-reads `/api/me/offers` and cancels every bid of ours on the card. If
+     any of those cancels fails or has no quota, nothing is accepted that tick.
+   - No post or step while `results/duel.lock` is fresh or a duel of ours is live. Both are checked at planning and
+     again (a fresh `/api/duels` read) right before each page post or replacement; a live bid stays, cancels go.
+   - The bid fits in cash − 40 and in the spend room left after this tick's accept and the other bids, or it is not
+     posted. Every other buy keeps 110 P of cash and of hourly and daily spend room free for SAL-10 while we lack it.
+   - A replacement that fails after its cancel keeps the step clock: the next tick re-posts at the stepped price.
+   - Only a well-formed rival bid (cash only, for SAL-10 alone) moves our first price.
+   - It is cancelled when SAL-10 arrives or when we take an ask for it. `main()` refuses a page cap above
+     `--cap-hour` / `--cap-day` (the defaults 100 / 250 would have blocked every buy above 100 P).
+4. Every decision goes to `logs/market/<date>.jsonl` with `"page": true`, value, ceiling, anchor, price and gain
+   (also on the completed-card lines, where value is one more copy's).
 
 Expected gain: **+97 if the 80 bid fills, +67 at the 110 cap**. `--no-bids` keeps the cash for the page (the
 ordinary bids would chase RET/MAL/CHA page cards worth 5–63 to us); the desk still buys any other listing that passes
-its rule, within `--max-price 80`.
+its rule, within `--max-price 80`, as long as 110 P of spend room stays free for SAL-10 (with `--cap-hour 150`, at
+most 40 P of other buys per game hour until SAL-10 arrives).
 
 ### What it would do now against the recorded board (tick 1445, cash assumed 403 = 253 + 150)
 
@@ -82,9 +91,24 @@ our bid with Pilar's price, so 72 loses. 80 is above Pilar's median, and the ste
 sold that copy to Pilar at 80). t09 kept a standing bid of **68** from tick 1201 to 1387. Our own bids of 55–73
 (ticks 735–758) never filled. Nothing for SAL-10 was open at tick 1445.
 
-**Holders (INFERRED from asset ids):** t01 (#5), t16 (#6), t06 (#7), t05 (#11), t08 (#13), t14 (#20); Pilar holds 10
-and has never sold; #1–4 never seen (probably starter hands). The bid goes to nobody because six holders are better
-than one guess. `--page-address` would show it to the last public receiver only.
+**Holders (RECONSTRUCTED from asset ids in both feeds: pack openings, settlements, and the assets offers give).**
+19 copies (#2–#20) are seen; #1 never is (probably a starter hand). Pilar bought 10 (#8–10, #12, #14–19) and has
+never sold. Nine teams hold one each, as of the last public move:
+
+| copy | holder | last public move |
+|---|---|---|
+| #2 | t13 | t10 → t13 at 70, tick 98 (Friday, logs/feed-vm only) |
+| #3 | t18 | t12 → t18 at 80, tick 72 (Friday, logs/feed-vm only) |
+| #4 | t17 | never traded; t17 listed it at ticks 89–94 |
+| #5 | t01 | t02 → t01 at 72, tick 163 |
+| #6 | t16 | Chato → t16 at 90, tick 266 |
+| #7 | t06 | t01 → t06 at 76, tick 376 |
+| #11 | t05 | Pícaros → t05 at 54, tick 798 (listed at 93 to t08 at 799) |
+| #13 | t08 | Pícaros → t08 at 53, tick 958 |
+| #20 | t14 | Pícaros → t14 at 56, tick 1300 |
+
+Starter hands and pack pulls are not public, so a holder may have moved a copy unseen. The bid goes to nobody because
+nine possible sellers are better than one guess. `--page-address` would show it to the last public receiver only.
 
 **Server expiry:** our desk bids on Saturday morning came back with expires = created + 15 although we asked for 30.
 The desk re-posts an expired page bid with the same step clock, so the step is not lost.
@@ -121,7 +145,7 @@ team lands low; with choices only almost every team lands at 1.6). Weak targets 
 | CHA card | our value | target teams | floor: they take our ask / we take their bid (we pay the fee) | outlet |
 |---|---|---|---|---|
 | common (01–05) | 5 | first CHA bidders | 8 / 10 | Take any team bid ≥ 10. Pilar never buys commons. Abuela at ≥ 6 only if it improves our best three at her level. El Rastro listings of commons did not sell on Saturday. |
-| uncommon (06–08) | 12.5 | first CHA bidders | 16 / 18 | A team bid ≥ 18 first (a team sale at 24 scores +11.5 by value). Else **Pilar**: anchor 30, floor 22 (from tick 939 she paid a median of 25; RET uncommons 22–26). |
+| uncommon (06–08) | 12.5 | first CHA bidders | 16 / 18 | A team bid ≥ 18 first (accepting a team bid of 24 scores 24 − 3 fee − 12.5 = +8.5 by value). Else **Pilar**: anchor 30, floor 22 (from tick 939 she paid a median of 25; RET uncommons 22–26). |
 | rare (09–10) | 35 | first CHA bidders; Los Pícaros sell any rare at ~57, which caps teams (INFERRED) | 39 / 43 | Team bid ≥ 55 (+16 or more). Else **Pilar**: anchor 85, floor 65 (non-SAL rares 50–78; RET 78). |
 | epic CHA-11 | 90 | the first CHA bidder with cash (t16 729, t11 950, t18 555 before the grant) | 99 / 106 | Ask teams 190–210 (team epic trades 160–216). Fallback Pilar ≥ 150 (she paid 140–199). Not Banco (116–120). |
 | legendary CHA-12 | 225 | same | 248 / 263 | No trade data: ask ≥ 400 or hold. |

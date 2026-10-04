@@ -315,7 +315,8 @@ class Bids(unittest.TestCase):
         valuer = md.Valuer(CAT, AFFINITY, {})
         book = {"SAL-05": {"offer": 9, "price": 6, "since": 0, "anchor": 6}}
         res = md.decide(snap({}, {}, tick=100), valuer, md.Tape(), md.Ledger(),
-                        md.Config(min_cash=0, bid_max=60, bid_step=1, bid_step_ticks=20), book)
+                        md.Config(min_cash=0, bid_max=60, bid_step=1, bid_step_ticks=20,
+                                  cap_hour=10 ** 4, cap_day=10 ** 4), book)
         b = next(x for x in res["bids"] if x["card"] == "SAL-05")
         self.assertEqual(b["action"], "replace")
         self.assertEqual(b["price"], 10)                         # 6 + 5 steps = 11, ceiling 13 - 3 = 10
