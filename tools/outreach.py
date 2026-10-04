@@ -217,7 +217,7 @@ def pair_messages(m: dict, h: dict, spare_min: int) -> tuple:
     tail = " Check your own value first. We will not message you again today."
     v20 = f"La Celestina (v20, 0 % fee; El Rastro charges the taker {RASTRO_FEE})"
     held = (f"holding {copies} copies of it{at}, so it appears to have a spare" if copies >= spare_min
-            else f"holding a copy of it{at}, for a page it is not filling")
+            else f"holding a copy of it{at}, of a set it does not appear to be filling")
     bid = json.dumps({"venue": VENUE, "give": {"cash": a["price"]}, "want": {"cards": [m["card"]]}})
     w_text = fit(head + f"you bid {a['price']} P for {card} on {where}: offer #{a['offer']}{until}. Public trades "
                  f"showed {h_name} {held} (reconstructed, may have changed). To have the same bid on {v20}: "
@@ -226,8 +226,8 @@ def pair_messages(m: dict, h: dict, spare_min: int) -> tuple:
     asset = h.get("asset") if isinstance(h.get("asset"), int) and not isinstance(h.get("asset"), bool) else None
     ask = ('{"venue": "v20", "give": {"assets": [' + (str(asset) if asset is not None else f"<your {m['card']} asset id>")
            + ']}, "want": {"cash": <your price>}}')
-    yours = (f"holding {copies} copies{at}" if copies >= spare_min else f"holding a copy{at}, for a page you are not "
-             f"filling")
+    yours = (f"holding {copies} copies{at}" if copies >= spare_min else f"holding a copy{at}, of a set you do not "
+             f"appear to be filling")
     h_text = fit(head + f"{w_name} bids {a['price']} P for {card} on {where}: offer #{a['offer']}{until}. Public trades "
                  f"showed you {yours} (reconstructed, may have changed). To sell one on {v20} at your own price: "
                  f"POST /api/offers {ask}; there {BROKER_TERMS}. We asked {w_name} to post its bid there too.",
