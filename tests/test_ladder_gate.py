@@ -134,10 +134,14 @@ class BuyLimit:
         (p,) = self.buys(self.plan(me=dict(ME, affinity=dict(LAT, LAT=1.6))))
         self.assertEqual((p["ladder_value"], p["value"]), (self.rich_ceiling, self.rich_ceiling))
 
-    def test_a_set_without_a_multiplier_gets_no_target(self):
-        me = dict(ME, affinity={"LAV": 1.6})
-        self.assertEqual(self.buys(self.plan(me=me)), [])
-        self.assertEqual(self.buys(self.plan(me={"cash": 1000, "assets": []})), [])
+    def test_a_set_without_a_multiplier_is_flagged_never_priced(self):
+        for me in (dict(ME, affinity={"LAV": 1.6}), {"cash": 1000, "assets": []}):
+            (p,) = self.buys(self.plan(me=me))
+            self.assertIsNone(p["ladder_value"])                 # no gate: refuse_unpriced() refuses it in main()
+            self.assertEqual(p["value"], 0)
+            kept, refused = dc.refuse_unpriced([p])
+            self.assertEqual((kept, len(refused)), ([], 1))
+            self.assertIn("no multiplier for the", refused[0]["why"])
 
 
 class TestBuyLimitChato(BuyLimit, unittest.TestCase):
@@ -257,9 +261,9 @@ class CapCases:
         class NoAffinity(self.account):
             made = []
             affinity = {}
-        code, out, _, _ = run_main(self.mod, ["run", "--only", "LAT-09"], NoAffinity)
+        code, out, _, _ = run_main(self.mod, ["run", "--only", self.fine[1]], NoAffinity)
         self.assertEqual(code, 2, out)
-        self.assertIn("no set multipliers", out)
+        self.assertIn("no multiplier", out)
 
 
 class TestCapChato(CapCases, unittest.TestCase):
@@ -358,6 +362,9 @@ class Sells(unittest.TestCase):
 
         class Dealer:
             """Opens a thread and reports it already dealt: enough to reach the open log line."""
+
+            def me(self):
+                return dict(ME, assets=[asset(10, "LAV-06", "uncommon", 1, 40.0), asset(11, "LAV-06", "uncommon", 2, 3.0)])
 
             def open_thread(self, *a, **k):
                 return {"id": 7}

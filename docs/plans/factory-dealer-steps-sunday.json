@@ -1,5 +1,5 @@
 {
-  "_about": "Sunday 4 Oct dealer steps for tools/factory_sunday.json (WP5 pastes this): replace the `steps` of abuela, chato and pilar with the arrays below, set chato's `exclude` to [\"pilar\", \"picaros\"], and add the `picaros` process after pilar. Reasons and numbers: docs/plans/ladder-sunday.md. Every --cap sits at or under floor(book x our set multiplier) and every --floor at or over ceil(book x multiplier) of the copy sold (tests/test_ladder_steps.py checks this file against logs/state/me.json); agent/abuela.py and agent/chato.py now refuse the run otherwise (exit 2, before any thread). Steps run in list order per dealer and a step is done on its first deal or an empty plan, so a later delay never overtakes an earlier one. All steps keep the process gates (no duel lock, no duel wave within 12 min), so none starts inside the Duels III window (11:29 to 12:30). Nothing here touches venue v20 or the broker's key: the 10:49 Market Test is not affected. PRIVATE: set multipliers appear in the notes, never copy them into an announcement or a page.",
+  "_about": "Sunday 4 Oct dealer steps for tools/factory_sunday.json (WP5 pastes this): replace the `steps` of abuela, chato and pilar with the arrays below, set chato's `exclude` to [\"pilar\", \"picaros\"], and add the `picaros` process after pilar. Reasons and numbers: docs/plans/ladder-sunday.md. Every --cap sits at or under floor(book x our set multiplier) and every --floor at or over ceil(book x multiplier) of the copy sold (tests/test_ladder_steps.py checks this file against tests/fixtures/me_tick1445.json, a frozen copy of our account at the Saturday close); agent/abuela.py and agent/chato.py now refuse the run otherwise (exit 2, before any thread). Steps run in list order per dealer and a step is done on its first deal or an empty plan, so a later delay never overtakes an earlier one, and a step that must buy two cards is two steps (a cooloff on the second would otherwise leave the step done with one card). Both bots now re-read /api/me before every priced message and every accept and re-price the card from the holdings they read (a buy that became our second copy is worth 25 %, a spare whose kept copy left is a first copy): if the limit no longer allows the deal the thread is closed and the reason logged (limit_dropped, limit_unknown), so the steps may run at the same time on the same RET cards. All steps keep the process gates (no duel lock, no duel wave within 12 min), so none starts inside the Duels III window (11:29 to 12:30). Nothing here touches venue v20 or the broker's key: the 10:49 Market Test is not affected. PRIVATE: set multipliers appear in the notes, never copy them into an announcement or a page.",
   "abuela": {
     "steps": [
       {
@@ -103,11 +103,18 @@
     "stale_ticks": null,
     "steps": [
       {
-        "label": "r3-p1-ret-rares",
+        "label": "r3-p1a-ret-09",
         "after_event": {"action": "grant_all", "delay_min": 2},
-        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09,RET-10", "--cap", "62",
-                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "2", "--max-rounds", "40"],
-        "note": "RET rares are first copies worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). Each rare is resold to Pilar at 64 or more (L3)."
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-09", "--cap", "62",
+                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "RET-09 is a first copy worth 63.0 (70 x 0.9): cap 62. He opens at 73 and falls to a final at 52 to 63 as we move (62 or less in 47 of 52 Saturday deals; steps of 1 to 2 P ended at 52 to 57). The rare is resold to Pilar at 64 or more (L3). One card per step on purpose: a run that fills RET-09 and then meets a cooloff on RET-10 exits 0, and the factory would mark a two-card step done with one card bought; as two steps each is judged on its own card (a no-deal run is retried up to 3 times, then fails loudly)."
+      },
+      {
+        "label": "r3-p1b-ret-10",
+        "after_event": {"action": "grant_all", "delay_min": 2},
+        "cmd": ["{python}", "-u", "agent/chato.py", "run", "--dealer", "picaros", "--only", "RET-10", "--cap", "62",
+                "--anchor", "40", "--step", "2", "--reserve", "20", "--max-deals", "1", "--max-rounds", "40"],
+        "note": "Same as r3-p1a for RET-10 (also worth 63.0, resold to Pilar at 64 or more)."
       },
       {
         "label": "r3-p2-sal10",

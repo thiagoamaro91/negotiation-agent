@@ -6,6 +6,7 @@ and holds the dealer's keeper. This test finds it at commit time instead, from a
 Saturday close (tests/fixtures/me_tick1445.json) and the public catalog (logs/public/catalog.json):
 
   - a buy names cards we do not hold, has a --cap, and the cap is at or under the ceiling of every card it names
+  - a Picaros step buys one card (a cooloff on the second card of a two-card step would leave it marked done)
   - a sell names a card by ref (an asset id is not known before the buy lands), with --allow-single and a --floor at or
     over the card's whole value; Los Picaros never gets a sell
   - the flags are the ones the bot has (agent/chato.py parses them with its own parser; abuela.py takes five)
@@ -121,6 +122,9 @@ def step_violations(dealer, step):
             bad.append(f"{label}: not --dealer picaros")
         if any(BOOK.get(r) != 70 for r in buys):
             bad.append(f"{label}: Los Picaros only sells rares here")
+        if len(buys) != 1 or str(f.get("--max-deals")) != "1":
+            bad.append(f"{label}: one card and --max-deals 1 per Picaros step: a cooloff on the second card would leave a "
+                       f"two-card step marked done with one bought")
     if dealer == "pilar" and f.get("--dealer") != "pilar":
         bad.append(f"{label}: not --dealer pilar")
     return bad
@@ -160,7 +164,7 @@ class TestSundaySteps(unittest.TestCase):
         labels = {d: [s["label"] for s in self.frag[d]["steps"] if s.get("enabled", True)] for d in
                   ("abuela", "chato", "pilar", "picaros")}
         self.assertEqual(labels["abuela"], ["r3-a1-ret-uncommons", "r3-a2-ret-commons"])
-        self.assertEqual(labels["picaros"], ["r3-p1-ret-rares"])
+        self.assertEqual(labels["picaros"], ["r3-p1a-ret-09", "r3-p1b-ret-10"])
         self.assertEqual(labels["chato"], [])              # nothing a dealer sells is inside our value but SAL-10
         self.assertEqual(len(labels["pilar"]), 4)
 
@@ -177,7 +181,7 @@ class TestSundaySteps(unittest.TestCase):
         self.assertTrue(any("above the ceiling 22" in b for b in bad), bad)
 
     def test_the_old_chato_cap_on_a_cheap_card_is_found(self):
-        bad = self.doctored("picaros", "r3-p1-ret-rares", lambda c: c.__setitem__(c.index("--cap") + 1, "88"))
+        bad = self.doctored("picaros", "r3-p1a-ret-09", lambda c: c.__setitem__(c.index("--cap") + 1, "88"))
         self.assertTrue(any("above the ceiling 63" in b for b in bad), bad)
 
     def test_a_card_we_already_hold_is_found(self):
@@ -196,8 +200,12 @@ class TestSundaySteps(unittest.TestCase):
         bad = self.doctored("pilar", "r3-l1-resell-ret-rares", lambda c: c.remove("--allow-single"))
         self.assertTrue(any("needs --allow-single" in b for b in bad), bad)
 
+    def test_a_two_card_picaros_step_is_found(self):
+        bad = self.doctored("picaros", "r3-p1a-ret-09", lambda c: c.__setitem__(c.index("--only") + 1, "RET-09,RET-10"))
+        self.assertTrue(any("one card and --max-deals 1 per Picaros step" in b for b in bad), bad)
+
     def test_a_sell_to_picaros_is_found(self):
-        bad = self.doctored("picaros", "r3-p1-ret-rares", lambda c: c.__setitem__(c.index("--only") + 1, "sell:RET-09"))
+        bad = self.doctored("picaros", "r3-p1a-ret-09", lambda c: c.__setitem__(c.index("--only") + 1, "sell:RET-09"))
         self.assertTrue(any("nothing is ever sold to Los Picaros" in b for b in bad), bad)
 
     def test_a_flag_abuela_does_not_have_is_found(self):

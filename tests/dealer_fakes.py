@@ -201,6 +201,17 @@ class FakeServer:
     def tick(self):
         return self.vc.tick()
 
+    def holdings(self):
+        """What /api/me lists. The bots re-read it before every decision (a copy bought or sold by another bot while a
+        thread is open changes what the card is worth to us), so a sell needs the copy it sells in it: unless the test
+        gave `assets`, a sell finds two copies of the card (the spare at asset_id, API value 1.0, and the one we keep),
+        a buy finds none."""
+        if self.assets or self.side != "sell":
+            return list(self.assets)
+        base = {"kind": "card", "ref": self.item, "rarity": "uncommon", "set": self.item.split("-")[0], "name": self.item}
+        return [dict(base, id=self.asset_id, serial=9, your_value=1.0), dict(base, id=self.asset_id + 100000, serial=1,
+                                                                            your_value=40.0)]
+
     def price_of(self, o):
         return o["want"]["cash"] if self.side == "buy" else o["give"]["cash"]
 
@@ -311,7 +322,7 @@ class FakeServer:
             return 200, self.vc.read()
         if path == "/api/me" and method == "GET":
             return self._injected("me") or (200, {
-                "name": self.TEAM, "cash": self.cash, "level": 2, "unlocked": [], "assets": list(self.assets),
+                "name": self.TEAM, "cash": self.cash, "level": 2, "unlocked": [], "assets": self.holdings(),
                 "affinity": dict(self.affinity),
                 "score": {"deals": 3, "ladder_points": 0, "score": 0, "rank": 16}})
         if path == "/api/me/value":

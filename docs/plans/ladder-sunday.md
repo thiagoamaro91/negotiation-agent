@@ -4,15 +4,18 @@ Written in the night of 3 to 4 Oct, from Saturday's public feed (ticks 160 to 14
 
 ## 0. The short version
 
-- **A credited ladder deal is worth about 1.2 board points at Abuela, 0.8 at Pilar, 0.6 at Pícaros and 0.3 at El Chato** (Saturday scale, medians of single deals). **Only the best three per dealer count: the 4th and later deals add about 0** (median 0.00 to 0.07; 12 of 94 added more than 0.3, each one displacing a worse deal).
-- **Level 5 (Don Ernesto) is unmeasured.** Three teams sold him an epic at 116 to 120 and moved +0.14, -5.54 and -2.45 points; all three sold below what the card was worth to them. No team did a 4th. **Recommendation: no** to the CHA-epic round trip (buy at Pícaros 128 to 167, sell at 116 to 129): it costs 5 to 51 P (median 22), its buy leg is above our ceiling by construction (the clipped bots cannot run it), and nothing says the credit pays for it. Hector decides; section 3.
-- **Only about 9 of the 15 slots can be filled inside our value**, because we already hold every card the dealers sell cheaply enough: all commons and uncommons of LAV, LAT and SAL, and every LAV and LAT rare. What is left to buy inside value is RET and the SAL-10 rare. Expected gain of the plan below: about 5 to 6 board points (section 4).
-- **Do not complete the SAL page with a dealer.** A dealer buy that completes a page paid about 0.5 points on Saturday (-0.17 to +0.83, n=10); a team trade that completes one paid 1.6 to 4.7 (our LAT-09 at 88: +3.10). SAL-10 should come from a team (Hector's call) and only fall back to Pícaros or Chato.
-- **Code fix shipped in the same PR:** buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy we give up, and a `--cap` or `--floor` on the wrong side is refused (exit 2, before any thread). Three of the dealer lines now in `tools/factory_sunday.json` target cards we already hold or carry placeholder asset ids; section 4.3.
+- **How firm this is:** everything in sections 1 to 3 is a measured **association** between a public dealer deal and the same team's public `negotiating` score in the 10-tick interval around it, on Saturday, for other teams and for us. It is not the server's formula and not verified credit; the rules say the ladder counts the best three deals per level but not how many points each is worth. The projections (about 5 to 6 points, section 4.2) are **estimates** that assume Saturday's association carries over to Sunday.
+- **Deals in a dealer's best three were followed by a board change of about 1.2 points at Abuela, 0.8 at Pilar, 0.6 at Pícaros and 0.3 at El Chato** (Saturday scale, medians of single deals). **After a team's first three deals with a dealer, later deals were followed by about 0** (median 0.00 to 0.07; 12 of 94 were followed by more than 0.3, each one displacing a worse deal).
+- **Level 5 (Don Ernesto) is unmeasured.** Three teams sold him an epic at 116 to 120 and moved +0.14, -5.54 and -2.45 points; by the teams' inferred multipliers (not reliable) all three sold below what the card was worth to them. No team did a 4th. **Recommendation: no** to the CHA-epic round trip (buy at Pícaros 128 to 167, sell at 116 to 129): it costs 5 to 51 P (median 22), its buy leg is above our ceiling by construction (the clipped bots cannot run it), and nothing says the credit pays for it. Hector decides; section 3.
+- **Only about 9 of the 15 slots can be filled inside our value**, because we already hold every card the dealers sell cheaply enough: all commons and uncommons of LAV, LAT and SAL, and every LAV and LAT rare. What is left to buy inside value is RET and the SAL-10 rare. Projection of the plan below: about 5 to 6 board points, an estimate (section 4.2).
+- **Do not complete the SAL page with a dealer.** A dealer buy that completed a page was followed by about +0.5 points on Saturday (-0.17 to +0.83, n=10); a team trade that completed one by +1.6 to +4.7 (our LAT-09 at 88: +3.10). An association, with the confounders of section 1; the gap is large enough to act on. SAL-10 should come from a team (Hector's call) and only fall back to Pícaros or Chato.
+- **Code fix shipped in the same PR:** buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy we give up, a `--cap` or `--floor` on the wrong side is refused (exit 2, before any thread), a card whose set has no multiplier is refused, an offer must be exactly the deal (no extra asset of ours), and **every priced message and every accept re-reads `/api/me` and re-prices the card from the holdings it reads** (section 4.4), so Abuela, Pícaros and Pilar can run at once on the same RET cards. Three of the dealer lines now in `tools/factory_sunday.json` target cards we already hold or carry placeholder asset ids; section 4.3.
 
-## 1. What a ladder deal is worth (Saturday, board points)
+## 1. What followed a ladder deal on Saturday (board points; an association, not verified credit)
 
 **Method.** `logs/feed/snapshots.jsonl` holds the leaderboard every 10 ticks on Saturday; `logs/feed/feed.jsonl` has 470 dealer settlements from tick 160. A settlement at tick T shows up in the snapshot interval (a, b] with a < T <= b (checked on isolated deals: the median change is 0.26 in that interval and 0.00 in the one before and after). The board drifts for everybody at once (the day's weight grows into it), so each team's change is `negotiating(b) - k * negotiating(a)`, with k the median ratio of the teams that had no event in that interval (k between 0.93 and 1.04). The public `duel.closed` event names no team (the rival is an NPC), so **every interval with a duel result is dropped** (136 deals), and so is every interval in which the same team had **any** other event: team trade, second dealer deal, pack, Workshop, gift, egg, badge (173 deals). What is left: **156 single deals** (table 1) and 172 homogeneous groups (188 deals, table 2). Reproduce with `python3 tools/ladder_value.py table | level5 | pages | noise` (stdlib, offline, `tests/test_ladder_value.py` pins the counts). Noise: 1,015 team-intervals with no event at all had a median change of 0.00, 70 % within 0.05 and 90 % between -0.16 and +0.28, so **anything under about 0.3 is noise**.
+
+**Caveats on every number below.** The change is attributed to the deal by elimination (no duel result, no other event of that team in the interval), not observed from the server; two deals that the leaderboard refresh happened to split or merge, a penalty, or a rescale we cannot see would all show up as credit or loss; the cells are small (3 to 35 deals); and the Sunday round weights the board differently.
 
 **Table 1. Change in the team's `negotiating` per single deal, by dealer level and by that deal's rank for the team in the round (rank counted from tick 160; "flat" is under 0.15).**
 
@@ -49,12 +52,12 @@ Written in the night of 3 to 4 Oct, from Saturday's public feed (ticks 160 to 14
 
 **What it says.**
 
-1. **Three slots per dealer, nothing after.** The 4th and later deals are flat in 30 of 35 (Abuela), 22 of 30 (Pilar), 7 of 13 (Pícaros) and 3 of 5 (Chato). The exceptions are deals that beat an earlier one (t12's 4th Pícaros rare at 48 gave +0.99; a 4th Chato rare at 78 gave +0.73): the best three are kept, so a 4th only helps when it is better than the worst of the first three.
-2. **The credit does not rise with the level** (Abuela 1.2, Pilar 0.8, Pícaros 0.6, Chato 0.3): weights are not a plain "higher level, more points" here, so Level 5 cannot be extrapolated.
+1. **Three slots per dealer, nothing after.** The 4th and later deals were followed by a flat score in 30 of 35 (Abuela), 22 of 30 (Pilar), 7 of 13 (Pícaros) and 3 of 5 (Chato). The exceptions are deals that beat an earlier one (t12's 4th Pícaros rare at 48 gave +0.99; a 4th Chato rare at 78 gave +0.73): the best three are kept, so a 4th only helps when it is better than the worst of the first three.
+2. **The change does not rise with the level** (Abuela 1.2, Pilar 0.8, Pícaros 0.6, Chato 0.3): the weights are not a plain "higher level, more points" here, so Level 5 cannot be extrapolated.
 3. **Price matters inside the gate.** Chato rares: 78 gave +0.73, 87 to 91 gave +0.4 to +1.1, 95 to 96 gave 0.0 (his rare closes: 75 to 96, median 87). Pilar uncommons at 14 to 16 gave 0.0 and at 19 to 20 gave about +1.0. Abuela commons at 8 to 9 and uncommons at 22 to 23 gave +0.9 to +1.4. Pícaros rares at 52 to 63 gave +0.4 to +1.0 (+2.10 once at 52).
 4. **Our own two "wrong side" candidates were not zero.** LAV-06 sold to Pícaros at 11 (tick 961) gave +0.52 and SAL-03 at 5 (tick 1130) gave +0.54, both our 2nd and 3rd Pícaros deal. That fits spares valued at 25 % and 10 % of book x multiplier (10 and 1.3 P): both on the right side. The gate itself is still only proven by Friday's LAT-06 at 28 against 27.5 (+0).
-5. **A dealer deal on the wrong side can cost points, not just earn none.** t01 sold its page-completing SAL-07 to Pilar at 29 (tick 948) and lost 4.32 for good (the re-buy ten ticks later gave +0.26). t08 broke a page the same way at tick 722 and moved +0.11, so it is not the page. The three Ernesto sales are the other cases (section 3).
-6. **Completing a page through a dealer pays no page bonus.** Ten single dealer buys completed a page and moved -0.17 to +0.83 (median 0.5; t16's SAL-10 at Chato for 90 gave +0.83); the five single team trades that completed one moved +1.60 (a five-card swap) to +4.73 (+3.10 for our LAT-09 at 88).
+5. **A dealer deal on the wrong side may cost points, not just earn none (two readings, one unexplained).** t01 sold its page-completing SAL-07 to Pilar at 29 (tick 948) and lost 4.32 for good (the re-buy ten ticks later gave +0.26). t08 broke a page the same way at tick 722 and moved +0.11, so it is not the page. The three Ernesto sales are the other cases (section 3).
+6. **Completing a page through a dealer was not followed by a page-bonus-sized change.** Ten single dealer buys completed a page and moved -0.17 to +0.83 (median 0.5; t16's SAL-10 at Chato for 90 gave +0.83); the five single team trades that completed one moved +1.60 (a five-card swap) to +4.73 (+3.10 for our LAT-09 at 88).
 
 ## 2. Saturday prices, per dealer (closes, from the same 470 deals)
 
@@ -88,7 +91,7 @@ The only epic we could sell Ernesto without losing value is one we value at 120 
 | Buy leg | Pícaros epics closed at 128 to 167 (median 142, n=18). A CHA epic is worth 90 to us, so the buy is 38 to 77 P over value: **a wrong-side L4 deal by construction**, no credit, and `chato.py --dealer picaros` is not built to run it (epics are not in its targets, and a `--cap` of 128 or more is refused by the new gate). It would be a hand-driven thread. |
 | Sell leg | Ernesto: 116, 120, 120 on Saturday; 123 to 129 finals for sellers who held out. A fast seller ends near 120, a patient one near 125. Above our 90 either way. |
 | Net P | **-5 to -51 P, median -22** (142 - 120), from cash we would otherwise keep. |
-| Level 5 credit | **Unmeasured.** The three Saturday sellers moved +0.14 (t08, LAV-11 at 120), -5.54 (t16, SAL-11 at 116) and -2.45 (t06, SAL-11 at 120). By their inferred multipliers (LAV 0.97, SAL 1.40, SAL 1.16: not reliable) each epic was worth 175, 252 and 209 to its owner, so all three sold below value; none had a right-side sale to read. No team made a second Ernesto deal, so "does a 4th add anything" has no L5 data; at every other level it adds about 0. |
+| Level 5 credit | **Unmeasured.** The three Saturday sellers moved +0.14 (t08, LAV-11 at 120), -5.54 (t16, SAL-11 at 116) and -2.45 (t06, SAL-11 at 120). By their inferred multipliers (LAV 0.97, SAL 1.40, SAL 1.16: not reliable, so this is a guess) each epic was worth 175, 252 and 209 to its owner, so all three probably sold below value; none can be shown to have had a right-side sale. No team made a second Ernesto deal, so "does a 4th add anything" has no L5 data; at every other level it adds about 0. |
 | Bracket | If an L5 deal credits like the other levels' top three, 0.3 to 1.2 points for about 22 P. If the wrong-side buy costs what wrong-side sales cost on Saturday (about 0.03 to 0.04 points per P short, from the -5.54 and -2.45), the round trip nets about 0. |
 
 **Recommendation: no, do not schedule it.** It is the most expensive slot per point of the plan, its first leg cannot run in the factory, and the one number we need (the L5 credit at a price above value) does not exist yet. If cash is idle after the Final warning (14:03) and Hector wants the measurement, one deal by hand with `ladder_points` read before and after answers it for good; below 20 P net, with Pícaros at 135 or less and Ernesto bidding 118 or more.
@@ -112,7 +115,7 @@ A second copy is worth 25 % of that, a third 10 %. We hold **one copy of every c
 
 ### 4.2 The slots, cheapest first
 
-| Dealer | Slots | Target | Limit | Closes it needs | Credit | Cash | Verdict |
+| Dealer | Slots | Target | Limit | Closes it needs | Saturday change per deal | Cash | Verdict |
 |---|---|---|---|---|---|---|---|
 | Abuela (L1) | 3 | RET-06, RET-07, RET-08 | cap 22 (value 22.5) | 22 or less: 20 of 45 deals, 4 of 11 after tick 700 | about 1.2 each | 22 each, card kept or resold | run |
 | | | RET-01 to RET-05 | cap 9 (value 9.0, on the line) | 9 or less: 30 of 46 | about 1.2 each | 9 each | fallback, 2 deals; drop if ladder_points does not move |
@@ -131,7 +134,7 @@ A second copy is worth 25 % of that, a third 10 %. We hold **one copy of every c
 
 **Timing.** The schedule's Round 3 starts about 10:39 and the +150 P (`grant_all`) lands at 10:40: the Abuela steps start at +1 min, Pícaros at +2, the Pilar resales at +16, +30, +45 and +60 (each also waits for its gates: no duel lock, no duel wave within 12 min, so nothing starts between about 11:27 and the end of Duels III). A step is done on its first deal or on an empty plan, which is why each Pilar line appears twice at different delays.
 
-**Expected gain** (board points, Saturday scale): Abuela about 2.7 (2.2 credited deals of 1.2), Pícaros about 1.1 (two rares at 0.55; 90 % fill), Pilar about 1.9 (up to three resales at 0.8, depending on what the buys delivered), plus 0.6 if SAL-10 goes to Pícaros: **about 5 to 6**. A zero at Abuela costs us nothing but the slot.
+**Projected gain** (an estimate, board points, Saturday scale; it assumes the Saturday association of section 1 carries over to Sunday, Saturday's close rates, and the Pilar prices of section 2): Abuela about 2.7 (2.2 credited deals of 1.2), Pícaros about 1.1 (two rares at 0.55; 90 % fill), Pilar about 1.9 (up to three resales at 0.8, depending on what the buys delivered), plus 0.6 if SAL-10 goes to Pícaros: **about 5 to 6**. A zero at Abuela costs us nothing but the slot.
 
 ### 4.3 What changed in the existing factory lines
 
@@ -144,8 +147,18 @@ A second copy is worth 25 % of that, a third 10 %. We hold **one copy of every c
 | chato `r2-fill-lav09` | LAV-09 is already ours | drop |
 | pilar `r3-resell-ret` (`sell:<RET-07 id>,sell:827`) | asset ids are unknown before the buys, and 827 is not an asset we hold | `sell:<REF>` lines (new in this PR) |
 | (none) | Los Pícaros had no bot | `chato.py --dealer picaros` (rares only, never sells to him) |
+| fragment `r3-p1-ret-rares` (first draft of this PR) | two cards in one step: RET-09 filled, then a cooloff on RET-10 exits 0 and the factory marks the step done with one card | `r3-p1a-ret-09` and `r3-p1b-ret-10`, one card each |
 
 `tests/test_ladder_steps.py` runs every step of the fragment through the same rules the bots now enforce (caps, floors, held cards, flags, delay order), against a frozen copy of our account. Run it on `tools/factory_sunday.json` after the paste (point `FRAGMENT` at it) before 08:00.
+
+### 4.4 Concurrent runs: the limit is re-priced from the holdings, every time
+
+The three dealers run at once, so a card's worth can change under an open thread: another bot buys RET-09 (our planned buy becomes a second copy, worth 25 %: 15 instead of 62), or the copy we kept leaves while Pilar negotiates the spare (the spare becomes a first copy: 63 instead of 17.75). Both bots therefore read `/api/me` at the start of every decision, immediately before any priced message and any accept, and take `live_limit()`:
+
+- buy: `min(planned limit, floor(book x multiplier x marginal of the copy we would then hold))`
+- sell: `max(planned floor, ceil(API value of that copy now), ceil(book x multiplier x marginal of the copy we give up))`
+
+If our own standing number is already on the wrong side of the new limit the thread is closed (`limit_dropped`: a bid the dealer could still accept); if the read has no holdings, the copy is gone, or the set has no multiplier, the thread is closed (`limit_unknown`, with the reason); an offer that is not exactly the deal (an extra asset or type of ours, a second card, cash coming back) is refused as a `mismatch`. A thread is not even opened when the limit cannot be priced. Nothing is hidden: each close names the planned and the live number in `logs/<dealer>/<date>.jsonl`.
 
 ## 5. Chamberí (set CHA, released about 10:39; we value it x0.5, the worst)
 

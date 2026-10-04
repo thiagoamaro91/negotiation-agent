@@ -219,7 +219,8 @@ class TestClockLostChato(ClockLostCases, unittest.TestCase):
         srv = FakeServer(dealer="chato", side="buy", item="LAV-09", opening=97, replies=[97, 97, 97, 97, 96, 94, 90],
                          cash=383, frozen=(106.0, 196.0))
         with srv.serving():
-            r = chato.negotiate(srv.client(chato), {"side": "buy", "item": "LAV-09", "value": 88.0}, False)
+            r = chato.negotiate(srv.client(chato), {"side": "buy", "item": "LAV-09", "value": 88.0, "book": 77},
+                              False)
         self.assertEqual(r["result"], "max_bid_no_deal")
         self.assertGreaterEqual(srv.closes[0], 109)               # his 90 came at 107: two confirmed ticks later
 

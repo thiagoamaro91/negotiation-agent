@@ -68,10 +68,10 @@ The full Friday analysis is in [analysis-friday](analysis-friday/README.md). Add
 
 Method and tables in [plans/ladder-sunday.md](plans/ladder-sunday.md). From the board and the 470 Saturday dealer settlements, single deals only (no duel result, no other event of that team in the 10-tick interval):
 
-- **Per credited deal, in board points:** Abuela about 1.2, Pilar 0.8, Pícaros 0.6, El Chato 0.3. **The 4th and later deals add about 0** (median 0.00 to 0.07); a 4th only helps when it beats one of the first three.
+- **Board change after a deal in a team's first three with a dealer (an association, not verified credit):** Abuela about 1.2, Pilar 0.8, Pícaros 0.6, El Chato 0.3. **After the first three, later deals were followed by about 0** (median 0.00 to 0.07); a 4th only helps when it beats one of the first three.
 - **Level 5 is unmeasured:** the three Ernesto sales (t08 tick 1083, t16 1110, t06 1226, epics at 116 to 120) moved +0.14, -5.54 and -2.45, all below what the card was worth to the seller.
-- **A page completed by a dealer buy pays no page bonus** (-0.17 to +0.83, n=10); one completed by a team trade pays +1.6 to +4.7 (our LAT-09 at 88: +3.10).
-- **The ladder value gate is now enforced in code** (`agent/dealer_client.py`): buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy given up, and a `--cap` or `--floor` on the wrong side is refused.
+- **A page completed by a dealer buy was not followed by a page-bonus-sized change** (-0.17 to +0.83, n=10); one completed by a team trade was (+1.6 to +4.7; our LAT-09 at 88: +3.10).
+- **The ladder value gate is now enforced in code** (`agent/dealer_client.py`): buy limits are clipped to floor(book x our set multiplier), sell floors to the value of the copy given up, a `--cap` or `--floor` on the wrong side is refused, and every priced message and accept re-prices the card from a fresh `/api/me` read (other bots trade the same cards mid-thread).
 - **`tools/value_inference.py teams` shows CHA as the least liked set of 14 of 18 teams because of an artifact:** t07 opened ten threads for CHA-06 at tick 1074 to 1077, so CHA entered the softmax before it was released. Elimination cannot name the CHA fans (its top pick is right 21 % against 17 % for chance); the first CHA buyers on Sunday can.
 
 ## Open questions for the organisers

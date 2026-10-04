@@ -352,3 +352,79 @@ def refuse_caps(plan: list, cap) -> tuple[list, list]:
             kept.append(p)
     return kept, refused
 
+
+# ---------------------------------------------------------------- the gate, re-read while a thread runs
+
+def refuse_unpriced(plan: list) -> tuple[list, list]:
+    """A target whose own set has no multiplier in /api/me has no ladder gate (build_plan flags it with a None
+    ladder_value / ladder_floor): it is refused, never traded on a guess. The second list carries the reason."""
+    kept, refused = [], []
+    for p in plan:
+        gate = p.get("ladder_value") if p["side"] == "buy" else p.get("ladder_floor")
+        if gate is None:
+            refused.append(dict(p, why=f"/api/me has no multiplier for the {card_set(p['item'])} set: the ladder gate "
+                                       f"cannot be computed, so nothing is traded on it"))
+        else:
+            kept.append(p)
+    return kept, refused
+
+
+def live_limit(me: dict, target: dict, marginals=COPY_MARGINALS) -> tuple:
+    """The limit this target may trade at RIGHT NOW, from a fresh /api/me read: (limit, "") or (None, reason).
+
+    The plan was priced from the holdings of plan time, but other bots (Abuela, Chato, Pilar, Pícaros run at once) buy
+    and sell the same cards while a thread is open: a buy that has become our second copy is worth 25 % of the first,
+    the spare we offer Pilar becomes a first copy (worth the whole value) when the copy we kept leaves. So every
+    decision re-prices from the holdings it reads:
+      buy:  min(planned limit, floor(book x multiplier x marginal of the copy we would then hold))
+      sell: max(planned floor, ceil(API value of the copy now), ceil(book x multiplier x marginal of the copy we give up))
+    A read without holdings, a copy we no longer own, or a set without a multiplier is (None, reason): the caller
+    closes the thread."""
+    assets = me.get("assets")
+    if not isinstance(assets, list):
+        return None, "no_holdings"
+    item = target["item"]
+    held = [a for a in assets if isinstance(a, dict) and a.get("kind") == "card" and a.get("ref") == item]
+    mult = (me.get("affinity") or {}).get(card_set(item))
+    if mult is None:
+        return None, "no_multiplier"
+    if target["side"] == "buy":
+        top = ladder_ceiling(target.get("book"), mult * copy_marginal(len(held) + 1, marginals))
+        if top is None:
+            return None, "no_book"
+        return min(target["value"], top), ""
+    mine = [a for a in held if a.get("id") == target.get("asset_id")]
+    if not mine:
+        return None, "asset_gone"
+    gate = sell_ladder_floor(me, mine[0], len(held), marginals=marginals)
+    if gate is None:
+        return None, "no_multiplier"
+    now = math.ceil(_round6(float(mine[0].get("your_value") or 0)))
+    return max(target["value"], gate, now), ""
+
+
+def limit_dropped(side: str, ours, limit) -> bool:
+    """True when our own standing number is already on the wrong side of the limit just recomputed (a bid above it, an
+    ask under it): the dealer could still accept it, so the thread must be closed, not just no longer raised."""
+    if ours is None:
+        return False
+    return ours > int(limit) if side == "buy" else ours < int(-(-limit // 1))
+
+
+def exact_offer(o: dict, side: str, item: str, asset_id) -> bool:
+    """The dealer's offer is exactly the deal we negotiated and nothing more. Buy: he gives that one card (an asset of
+    that ref or the type card:<ref>) and wants cash only, no asset and no type of ours. Sell: he wants exactly our
+    one copy and gives cash only. An extra card of ours riding on an offer for the right card is refused."""
+    give, want = o.get("give") or {}, o.get("want") or {}
+
+    def lst(side_):
+        return [list(side_.get("assets") or []), list(side_.get("types") or [])]
+    g_assets, g_types = lst(give)
+    w_assets, w_types = lst(want)
+    if side == "buy":
+        refs = [a.get("ref") if isinstance(a, dict) else None for a in g_assets] + [str(t).split(":", 1)[-1] for t in g_types]
+        return (refs == [item] and not give.get("cash") and bool(want.get("cash")) and not w_assets and not w_types)
+    ids = [a.get("id") if isinstance(a, dict) else a for a in w_assets]
+    return (ids == [asset_id] and not w_types and not want.get("cash") and bool(give.get("cash"))
+            and not g_assets and not g_types)
+
