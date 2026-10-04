@@ -53,6 +53,33 @@ Every tick, one pass:
      live offer of ours holds. Renewed, replaced and cancelled like bids.
   7. Every decision, taken or not, is one human line and one JSON record (logs/market/<date>.jsonl in watch/run);
      a heartbeat goes to logs/state/desk-market.json.
+  8. PAGE MODE (--page REF:CAP[:FLOOR], repeatable): the last card of a page, bought from a TEAM (a team buy scores
+     value - price - fee at once, and the card that completes a page carries the page bonus: SAL-10 is ~91 alone and
+     ~177 as Salamanca's last card). For each target card:
+       (a) take any live El Rastro ask with price + fee <= CAP that still passes the gain rule (team venues never:
+           a trade there scores market points for the venue's owner);
+       (b) otherwise ONE bid on El Rastro, addressed to nobody (--page-address: to the last public receiver),
+           starting at FLOOR (default: p25 of the team trades for the card, or one above another team's live bid)
+           and raised by --page-step every --page-step-ticks, never above CAP, value - margin, or the cost of a live
+           ask; a live page bid never steps down;
+       (c) never two live bids for one card (plan_bids leaves page cards alone; run cancels a duplicate), and before
+           any accept of a card take() re-reads /api/me/offers and cancels every bid or swap of ours asking for it:
+           one cancel short (quota, refusal) and nothing is accepted that tick;
+       (d) nothing posted or raised while results/duel.lock is fresh or a duel of ours is live, checked when the
+           tick is planned and again (a fresh GET /api/duels) right before each page post or replacement; a live
+           bid stays, and a replacement's cancel is not sent either;
+       (e) page bids take the cash first, within --min-cash and the spend room left after this tick's accept and
+           the bids before them; every other buy and bid leaves the caps of the page cards we lack free, in cash
+           and in hourly and daily spend; a replacement whose post fails keeps the step clock (offer None);
+       (f) every decision is logged with its numbers (record field "page": true);
+       (g) fail closed: every open or queued cash offer of ours (/api/me/offers, any agent) holds cash and spend room
+           until its cancel or settlement shows; a snapshot whose reads crossed a tick, or a tick without the feed
+           (maker fills are only seen there), writes nothing but cancels; right before each accept and each batch of
+           bid posts the clock, our cash, our count of the card and our settling offers are read again and must
+           match; after an accept attempt no bid planned before it is posted that tick; a failed cancel holds every
+           post. Page writes (asks, bids, replacements) wait for EVERY live duel: --duel-guard-ticks relaxes only
+           ordinary accepts.
+     --page implies --page-bonus for offline values; keyed, /api/me/value already carries the bonus.
 
 Why bids (another team suggested it publicly; weighed here on its merits, not because they said so): the side that
 accepts pays the fee, so a filled bid saves us 5 % + 1 P against taking a listing, and it reaches sellers who hold a
@@ -69,6 +96,8 @@ Modes:
     python3 agent/market_desk.py run --until 13:00    # live through the lease (needs the team's yes first)
     python3 agent/market_desk.py plan --sell-first-copies MAL --cap-hour 60 --min-cash 280   # caps are flags
     python3 agent/market_desk.py plan --keyless --swap-fills --swap-posts --address-swaps   # swap candidates (opt-in)
+    python3 agent/market_desk.py plan --keyless --page SAL-10:110 --no-bids --min-cash 40 \
+        --recorded logs/feed/snapshots.jsonl            # page mode against the board recorded at the close
 Keyless mode knows our cards only as of the last tools/snapshot.py (plus public settlements; packs are not public):
 refresh logs/state/me.json and offers.json at 09:00. With the key it reads /api/me every tick and asks
 /api/me/value for the cards that come close to the rule (cached until our holdings change).
@@ -90,7 +119,7 @@ import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -160,6 +189,11 @@ class Config:
     swap_any_rarity: bool = False       # offer a lower-rarity spare for a card (default: same rarity or higher)
     swap_seller_spares: bool = False    # may offer copies in rastro_seller's config (it would adopt the offer)
     duel_guard_ticks: int | None = None  # keyed: no accept while a duel of ours is live (N: within N ticks of its end)
+    # page mode (--page REF:CAP[:FLOOR]): the last cards of our pages, bought from a team (docstring, step 8)
+    page_targets: dict = field(default_factory=dict)   # {ref: {"cap": max P we pay, fee included; "floor": P or None}}
+    page_step: int = 4                  # P added to a page bid every page_step_ticks
+    page_step_ticks: int = 8
+    page_address: bool = False          # address the page bid to the last public receiver of the card
 
 
 # ---------------------------------------------------------------- pure: fees, margins, structure
@@ -596,23 +630,67 @@ def price_cap(cfg: Config, info: dict) -> int:
 
 
 def buy_caps(cfg: Config, *, price: int, fee: int, info: dict, cash: int, ledger: Ledger, t_hours: float,
-             partner: str | None, committed: int = 0) -> str | None:
-    """The first cap a buy would break, or None. `committed`: cash already promised to live bids."""
+             partner: str | None, committed: int = 0, max_price: int | None = None,
+             spend_committed: int = 0) -> str | None:
+    """The first cap a buy would break, or None. `committed`: cash already promised to live bids;
+    `spend_committed`: spend room held back for them (page mode: the caps of the page cards we still lack).
+    `max_price` replaces the per-card price cap (page mode: the --page cap, checked on price + fee before this)."""
     cost = price + fee
-    cap = price_cap(cfg, info)
+    cap = price_cap(cfg, info) if max_price is None else max_price
     if price > cap:
         return f"cap: price {price} > max {cap}"
     if cash - committed - cost < cfg.min_cash:
         return f"cap: cash after {cash - committed - cost} < min {cfg.min_cash}"
+    held = f" (+{spend_committed} held for page bids)" if spend_committed else ""
     h = ledger.spent(t_hours, 1.0)
-    if h + cost > cfg.cap_hour:
-        return f"cap: hour spend {h}+{cost} > {cfg.cap_hour}"
+    if h + cost + spend_committed > cfg.cap_hour:
+        return f"cap: hour spend {h}+{cost}{held} > {cfg.cap_hour}"
     d = ledger.spent(t_hours, None)
-    if d + cost > cfg.cap_day:
-        return f"cap: day spend {d}+{cost} > {cfg.cap_day}"
+    if d + cost + spend_committed > cfg.cap_day:
+        return f"cap: day spend {d}+{cost}{held} > {cfg.cap_day}"
     if partner and ledger.partner_trades(partner, t_hours) >= cfg.partner_hour:
         return f"cap: {cfg.partner_hour} trades with {partner} this game hour"
     return None
+
+
+def cash_commitments(mine: list, me: str) -> dict:
+    """{offer id: cash} for every open or queued offer of ours that gives cash (a bid on any venue, an offer in a
+    dealer thread): cash that leaves if the other side accepts."""
+    out = {}
+    for o in mine or []:
+        if not isinstance(o, dict) or o.get("maker") != me or o.get("status") not in ("open", "queued"):
+            continue
+        cash = _int_cash((o.get("give") or {}).get("cash"))
+        if cash and cash > 0:
+            out[o.get("id")] = cash
+    return out
+
+
+def accept_cost(accept: dict | None) -> int:
+    """Cash and spend this tick's accept takes: price + fee for a buy, the fee for a swap fill, nothing for a sale."""
+    if not accept:
+        return 0
+    return {"buy": int(accept.get("price") or 0) + int(accept.get("fee") or 0),
+            "swap": int(accept.get("fee") or 0)}.get(accept.get("side"), 0)
+
+
+def rival_bid(o) -> tuple | None:
+    """(ref, price) of a well-formed bid on the board: open, cash only, for exactly one card (types ["card:REF"]) and
+    nothing else. A malformed "bid" (cash wanted back, assets, two cards) never moves our price."""
+    if not isinstance(o, dict) or o.get("status") != "open":
+        return None
+    g, w = _side(o.get("give")), _side(o.get("want"))
+    if g is None or w is None or g[3] or w[3]:
+        return None
+    gcash, gassets, gtypes, _ = g
+    wcash, wassets, wtypes, _ = w
+    price = _int_cash(gcash)
+    if price is None or price < 1 or gassets or gtypes or wcash or wassets or len(wtypes) != 1:
+        return None
+    t = wtypes[0]
+    if not isinstance(t, str) or not t.startswith("card:") or not REF_RE.match(t[5:]):
+        return None
+    return t[5:], price
 
 
 def swap_caps(cfg: Config, *, fee: int, cash: int, ledger: Ledger, t_hours: float, partner: str | None,
@@ -659,6 +737,8 @@ def line(d: dict) -> str:
         nums = (f"@ {d.get('price')} {where}{' to ' + d['to'] if d.get('to') else ''}: value {_num(d.get('value'))}, "
                 f"ceiling {d.get('ceiling')}, anchor {d.get('anchor')} ({d.get('price_basis')}), "
                 f"gain if filled {d['gain']:+.1f}" if d.get("gain") is not None else f"{where}")
+        if d.get("page"):
+            nums = f"PAGE cap {d.get('cap')} " + nums
     elif k == "swap" and d.get("value") is not None and d.get("give_value") is not None:
         mine = f"our {d.get('give_card')}" + (f" #{d['asset']}" if d.get("asset") else "")
         nums = (f"for {mine} {where} from{who}: value {_num(d['value'])} - our copy {_num(d['give_value'])} - fee "
@@ -693,6 +773,15 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
     swapbook = dict(swapbook or {})
     reserved = set(snap.get("reserved") or ())
     bid_committed = sum(int(b.get("price") or 0) for b in bidbook.values() if b.get("offer") is not None)
+    # page mode: the most each page card we still lack may cost stays free for it, in cash and in spend room
+    page_reserve = sum(int(p["cap"]) for r, p in cfg.page_targets.items() if counts.get(r, 0) == 0)
+    # every open or queued cash offer of ours (/api/me/offers: bids of any agent, dealer-thread offers) is cash that
+    # may leave at any tick: it stays held, in cash and in spend room, until its cancel or settlement shows
+    commit = cash_commitments(snap.get("mine") or [], me)
+    page_live = {(bidbook.get(r) or {}).get("offer") for r in cfg.page_targets} - {None}
+    own_live = {b.get("offer") for r, b in bidbook.items() if r not in cfg.page_targets} - {None}
+    outside_page = sum(v for k, v in commit.items() if k not in page_live)            # beyond our page bids
+    outside_bids = sum(v for k, v in commit.items() if k not in page_live | own_live)  # beyond every bid we plan
     mine = [o for o in snap.get("mine") or [] if isinstance(o, dict)]
     my_ids = {o.get("id") for o in mine if o.get("maker") == me}
     our_assets = {a["id"]: r for r, lst in holdings.items() for a in lst if isinstance(a, dict) and "id" in a}
@@ -747,6 +836,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             info = valuer.info(ref)
             fee = fee_for(price, fee_of(vid))
             rec.update(price=price, fee=fee, set=info["set"], rarity=info["rarity"], asset=chk["asset"])
+            page = cfg.page_targets.get(ref)
+            if page:   # every page-card record carries the page numbers, the held-card skip below included
+                rec.update(page=True, cap=page["cap"], ceiling=page["cap"],
+                           anchor=(bidbook.get(ref) or {}).get("anchor"))
             if counts.get(ref, 0) > 0:
                 v, src = valuer.offline_more(ref), "offline"
                 records.append({**rec, "value": v, "value_src": src, "gain": round(v - price - fee, 2),
@@ -762,6 +855,11 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             rec.update(value=round(v, 2), value_src=src, gain=gain, need=need)
             if ref in pending:
                 records.append({**rec, "action": "skip", "reason": "an offer of ours on this card is settling"})
+            elif page and vid != HOME:
+                records.append({**rec, "action": "skip", "reason": f"page card: bought on {HOME} only"})
+            elif page and price + fee > page["cap"]:
+                records.append({**rec, "action": "skip",
+                                "reason": f"page cap: price {price} + fee {fee} = {price + fee} > cap {page['cap']}"})
             elif gain < need:
                 records.append({**rec, "action": "skip", "reason": f"gain {gain:+.1f} below need {need:.1f}"})
             elif owner_of(vid) and not cfg.team_venues:
@@ -770,7 +868,9 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
                 # live bids do not hold back a buy: a buy is the surer gain, and the bid planner below then
                 # cancels the bids that no longer fit in cash - min cash (run sends those cancels first)
                 why = buy_caps(cfg, price=price, fee=fee, info=info, cash=cash, ledger=ledger, t_hours=th,
-                               partner=partner)
+                               partner=partner, max_price=page["cap"] if page else None,
+                               committed=outside_page + (0 if page else page_reserve),
+                               spend_committed=outside_page + (0 if page else page_reserve))
                 if why:
                     records.append({**rec, "action": "skip", "reason": why})
                 else:
@@ -872,6 +972,10 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
                                                               "the team's accept slot"})
         elif snap.get("duel_live"):
             records.append({**c, "action": "defer", "reason": snap["duel_live"]})
+        elif c.get("page") and snap.get("duel_any"):   # --duel-guard-ticks never relaxes a page write
+            records.append({**c, "action": "defer", "reason": snap["duel_any"]})
+        elif snap.get("feed_down") or snap.get("spans_ticks"):
+            records.append({**c, "action": "defer", "reason": snap.get("feed_down") or snap["spans_ticks"]})
         elif accept is None:
             accept = c
             note = ""
@@ -886,8 +990,14 @@ def decide(snap: dict, valuer: Valuer, tape: Tape, ledger: Ledger, cfg: Config, 
             records.append({**c, "action": "defer", "reason": f"one accept per tick (taking {accept['card']} "
                                                               f"{accept['gain']:+.1f})"})
 
-    bid_actions = plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash) \
-        if cfg.bids else []
+    # page bids first: they take the cash before the other bids, which never touch a page card
+    page_actions = plan_page_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash,
+                                  outside=outside_page) if cfg.page_targets else []
+    page_committed = sum(int(b["price"] or 0) for b in page_actions if b["action"] in ("post", "keep", "replace"))
+    bid_actions = page_actions + (plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash,
+                                            committed=max(page_committed, page_reserve) + outside_bids,
+                                            skip=set(cfg.page_targets))
+                                  if cfg.bids else [])
     for b in bid_actions:
         records.append({**base, **b["record"]})
     bid_cards = {b["card"] for b in bid_actions if b["action"] in ("post", "keep", "replace")}
@@ -955,8 +1065,14 @@ def pick_swap_asset(copies: list, wanted, listed: dict, reserved: set, cfg: Conf
     return None, "no copy we may hand over"
 
 
-def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash) -> list:
-    """Our want-to-buy offers on El Rastro: which cards, at what price, and what to post, keep or cancel."""
+def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash, committed: int = 0,
+              skip=()) -> list:
+    """Our want-to-buy offers on El Rastro: which cards, at what price, and what to post, keep or cancel.
+    `committed`: cash the page bids hold; `skip`: the page cards (plan_page_bids owns their bids).
+    Two rules against churn (Saturday 2026-10-03, ticks 216-257: LAV-09 and LAV-10 bids cancelled and reposted every
+    few ticks): the step clock's base (the anchor) a post or replace carries is the one its price was computed from,
+    so the next tick finds the same price; and a live bid whose stepped price no longer fits the cash or the spend
+    caps stays at its live price when that still fits, instead of being cancelled for another card."""
     tick, th, me = snap["tick"], float(snap.get("t_hours") or 0.0), snap["me_id"]
     released = set(snap.get("released") or [])
     boards = snap.get("boards") or {}
@@ -967,10 +1083,9 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
             if not isinstance(o, dict) or o.get("status") != "open":
                 continue
             g, w = (o.get("give") or {}), (o.get("want") or {})
-            for t in w.get("types") or []:
-                if isinstance(t, str) and t.startswith("card:") and _int_cash(g.get("cash")) and \
-                        (bidbook.get(t[5:]) or {}).get("offer") != o.get("id"):
-                    competing[t[5:]] = max(competing.get(t[5:], 0), g["cash"])
+            rb = rival_bid(o)
+            if rb and (bidbook.get(rb[0]) or {}).get("offer") != o.get("id"):
+                competing[rb[0]] = max(competing.get(rb[0], 0), rb[1])
             if len(g.get("assets") or []) == 1 and isinstance(g["assets"][0], dict) and _int_cash(w.get("cash")):
                 r = g["assets"][0].get("ref")
                 lowest_ask[r] = min(lowest_ask.get(r, 10 ** 9), w["cash"])
@@ -978,7 +1093,7 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
     for ref, info in valuer.cards.items():
         if not info["page"] or info["hidden"] or info["set"] not in released or counts.get(ref, 0) > 0:
             continue
-        if ref in pending or (accept and accept["card"] == ref):
+        if ref in pending or ref in skip or (accept and accept["card"] == ref):
             continue
         pre.append((-valuer.offline_more(ref), ref, info))
     pre.sort()
@@ -1006,16 +1121,21 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
         live = bidbook.get(ref) or {}
         since = live.get("since", tick)
         steps = max(0, (tick - since) // max(1, cfg.bid_step_ticks))
-        price = min(ceiling, max(anchor, int(live.get("anchor") or anchor)) + cfg.bid_step * steps)
+        base = max(anchor, int(live.get("anchor") or anchor))
+        price = min(ceiling, base + cfg.bid_step * steps)
         wanted.append({"card": ref, "value": round(v, 2), "value_src": src, "ceiling": ceiling, "anchor": anchor,
-                       "price": price, "gain": round(v - price, 2), "price_basis": basis, "set": info["set"],
-                       "rarity": info["rarity"], "since": since, "lowest_ask": lowest_ask.get(ref)})
+                       "base": base, "price": price, "gain": round(v - price, 2), "price_basis": basis,
+                       "set": info["set"], "rarity": info["rarity"], "since": since, "lowest_ask": lowest_ask.get(ref)})
     wanted.sort(key=lambda w: (-w["gain"], w["card"]))
-    out, budget = [], cash - cfg.min_cash - (accept["price"] + accept["fee"] if accept and accept["side"] == "buy" else 0)
-    room_hour = cfg.cap_hour - ledger.spent(th, 1.0)
-    room_day = cfg.cap_day - ledger.spent(th, None)
+    out = []
+    budget = cash - cfg.min_cash - committed - accept_cost(accept)
+    # spend room: this tick's accept, the page bids and every bid chosen before this one come off it too
+    room_hour = cfg.cap_hour - ledger.spent(th, 1.0) - accept_cost(accept) - committed
+    room_day = cfg.cap_day - ledger.spent(th, None) - accept_cost(accept) - committed
     chosen = set()
     for w in wanted:
+        live = bidbook.get(w["card"])
+        held = int(live["price"]) if live and live.get("offer") is not None and _int_cash(live.get("price")) else None
         if len(chosen) >= cfg.bid_max:
             reason, act = f"not in the top {cfg.bid_max} by gain", "skip"
         elif w["price"] > budget:
@@ -1025,11 +1145,22 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
         else:
             reason, act = "", "post"
             budget -= w["price"]
+            room_hour, room_day = room_hour - w["price"], room_day - w["price"]
+            chosen.add(w["card"])
+        if act == "skip" and len(chosen) < cfg.bid_max and held is not None \
+                and held <= min(budget, room_hour, room_day, w["ceiling"]):
+            # the step does not fit, the live bid does: keep it (cancelling it for another card was Saturday's churn)
+            act, reason = "keep", f"live bid {live['offer']} stays at {held}: the step to {w['price']} does not fit " \
+                                  f"({reason})"
+            w = {**w, "price": held, "gain": round(w["value"] - held, 2)}
+            budget -= held
+            room_hour, room_day = room_hour - held, room_day - held
             chosen.add(w["card"])
         to = None
         if act == "post" and cfg.address_bids:
             to = tape.last_receiver(w["card"], exclude=me)
-        live = bidbook.get(w["card"])
+        if act == "keep":
+            to = live.get("to")
         if act == "post" and live and live.get("offer") is not None:
             if live.get("price") == w["price"] and live.get("to") == to:
                 act, reason = "keep", f"live bid {live['offer']} at {w['price']}"
@@ -1043,16 +1174,137 @@ def plan_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept,
                "value": w["value"], "value_src": w["value_src"], "ceiling": w["ceiling"], "anchor": w["anchor"],
                "gain": w["gain"], "price_basis": w["price_basis"], "set": w["set"], "rarity": w["rarity"],
                "lowest_ask": w["lowest_ask"], "action": act, "reason": reason, "offer": (live or {}).get("offer")}
-        out.append({"action": act, "card": w["card"], "price": w["price"], "to": to, "anchor": w["anchor"],
+        out.append({"action": act, "card": w["card"], "price": w["price"], "to": to, "anchor": w["base"],
                     "since": w["since"], "offer": (live or {}).get("offer"), "record": rec})
     for ref, live in bidbook.items():
-        if ref in chosen or live.get("offer") is None:
+        if ref in chosen or ref in skip or live.get("offer") is None:
             continue
         why = "card arrived" if counts.get(ref, 0) > 0 else ("buying it this tick" if accept and accept["card"] == ref
                                                              else "no longer among the bids we want")
         rec = {"kind": "bid", "card": ref, "venue": cfg.bid_venue, "price": live.get("price"), "offer": live["offer"],
                "action": "cancel", "reason": why}
         out.append({"action": "cancel", "card": ref, "offer": live["offer"], "price": live.get("price"), "record": rec})
+    return out
+
+
+def page_floor(ref: str, info: dict, spec: dict, tape: Tape, cfg: Config, before=None) -> tuple:
+    """(first price of a page bid, basis): the --page floor, else the p25 of the team trades for the card (else its
+    set and rarity, else its rarity), else 80 % of book."""
+    if spec.get("floor"):
+        return int(spec["floor"]), "--page floor"
+    ps, scope = tape.prices(ref, info["set"], info["rarity"], before=before, last=cfg.price_window)
+    if ps:
+        return int(round(percentile(ps, 0.25))), f"p25 of {len(ps)} {scope} team trades {min(ps)}-{max(ps)}"
+    return int(round(0.8 * info["book"])), "80 % of book (no team trades seen)"
+
+
+def plan_page_bids(snap, valuer, tape, ledger, cfg, bidbook, counts, pending, accept, cash, outside: int = 0) -> list:
+    """Page mode (--page REF:CAP[:FLOOR], docstring step 8): ONE bid per target card on El Rastro, addressed to nobody
+    (any holder can hit it) unless --page-address. It starts at the team price floor (page_floor, or one above
+    another team's live bid for the card), steps up by --page-step every --page-step-ticks since it was first posted,
+    and never goes above the cap, value - margin, the cost of a live El Rastro ask for the card (that one is taken
+    instead), the cash above --min-cash or the spend caps. A live bid never steps down (no churn); when its next step
+    does not fit it stays at its live price if that fits, else it is cancelled. While results/duel.lock is fresh or a
+    duel of ours is live nothing is posted or raised (a live bid stays as it is; cancels still go). Page bids take the
+    cash first; plan_bids never touches a page card."""
+    tick, th, me = snap["tick"], float(snap.get("t_hours") or 0.0), snap["me_id"]
+    # every live duel holds a page write, whatever --duel-guard-ticks says; so does an unread feed or a torn snapshot
+    hold = ("results/duel.lock is fresh" if snap.get("duel_lock") else
+            snap.get("duel_any") or snap.get("duel_live") or snap.get("feed_down") or snap.get("spans_ticks"))
+    home_fee = tuple(((snap.get("venues") or {}).get(HOME) or {}).get("fee") or DEFAULT_FEE)
+    ours = {b.get("offer") for b in bidbook.values() if b.get("offer") is not None}
+    ours |= {o.get("id") for o in snap.get("mine") or [] if isinstance(o, dict) and o.get("maker") == me}
+    asks, rivals = {}, {}
+    for o in (snap.get("boards") or {}).get(HOME) or []:
+        if not isinstance(o, dict) or o.get("id") in ours or o.get("status") != "open":
+            continue
+        chk = check_listing(o, me, tick)
+        if chk["ok"] and chk["ref"] in cfg.page_targets:
+            cost = chk["price"] + fee_for(chk["price"], home_fee)
+            asks[chk["ref"]] = min(asks.get(chk["ref"], 10 ** 9), cost)
+        rb = rival_bid(o)
+        if rb and rb[0] in cfg.page_targets:
+            rivals[rb[0]] = max(rivals.get(rb[0], 0), rb[1])
+    # `outside`: our other open or queued cash offers (decide); they stay held until cancelled or settled
+    budget = cash - cfg.min_cash - accept_cost(accept) - outside
+    # spend room: this tick's accept and those offers come off it, and so does every page bid kept or posted before
+    room = min(cfg.cap_hour - ledger.spent(th, 1.0), cfg.cap_day - ledger.spent(th, None)) - accept_cost(accept) \
+        - outside
+    out = []
+    for ref, spec in sorted(cfg.page_targets.items()):
+        live = bidbook.get(ref) or {}
+        lid = live.get("offer")
+        held = int(live["price"]) if lid is not None and _int_cash(live.get("price")) else None
+        rec = {"kind": "bid", "page": True, "card": ref, "venue": HOME, "cap": spec["cap"], "offer": lid,
+               "to": live.get("to"), "price": held}
+
+        def emit(act, reason, price=None, to=None, base=None, first=None, **extra):
+            r = {**rec, **extra, "action": act, "reason": reason}
+            if price is not None:
+                r["price"] = price
+            if act in ("post", "replace"):
+                r["to"] = to
+            out.append({"action": act, "card": ref, "price": r["price"], "to": r["to"], "anchor": base,
+                        "since": first, "offer": lid, "page": True, "record": r})
+
+        info = valuer.info(ref)
+        v, src = valuer.more(ref)
+        need = need_buy(v, cfg)
+        ceiling, why_ceiling = int(math.floor(min(spec["cap"], v - need))), "cap / value - margin"
+        if ref in asks and asks[ref] - 1 < ceiling:
+            ceiling, why_ceiling = asks[ref] - 1, f"a live ask costs {asks[ref]}"
+        start, basis = page_floor(ref, info, spec, tape, cfg, before=snap.get("tape_before"))
+        if rivals.get(ref):
+            start, basis = max(start, rivals[ref] + 1), basis + f", other bid {rivals[ref]}"
+        anchor = int(live.get("anchor") or start) if live else start
+        since = live.get("since", tick)
+        steps = max(0, (tick - since) // max(1, cfg.page_step_ticks))
+        price = max(anchor + cfg.page_step * steps, start, held or 0)
+        price = min(price, ceiling)
+        limit = min(budget, room)
+        to = tape.last_receiver(ref, exclude=me) if cfg.page_address else None
+        nums = dict(value=round(v, 2), value_src=src, need=round(need, 2), ceiling=ceiling, anchor=anchor,
+                    price_basis=basis, set=info["set"], rarity=info["rarity"], lowest_ask=asks.get(ref),
+                    other_bid=rivals.get(ref), gain=round(v - price, 2))
+        if counts.get(ref, 0) > 0:   # value is then what one more copy is worth: the page is complete
+            if lid is not None:
+                emit("cancel", "page card arrived", **nums)
+            else:
+                emit("skip", f"we hold {ref}: the page is complete", **nums)
+            continue
+        if accept and accept["card"] == ref:
+            if lid is not None:
+                emit("cancel", "buying it this tick", **nums)
+            continue
+        if ref in pending:
+            emit("skip", "an offer of ours on this card is settling", **nums)
+            continue
+        if ceiling < max(1, start if held is None else 1):
+            why = f"ceiling {ceiling} ({why_ceiling}) below the first price {start}"
+            emit("cancel" if lid is not None else "skip", why, **nums)
+            continue
+        if held is not None and held > ceiling:
+            emit("cancel", f"live bid {held} above the ceiling {ceiling} ({why_ceiling})", **nums)
+            continue
+        if price > limit or hold:
+            short = f"cash: bid {{}} > room {limit} (cash {cash} - min {cfg.min_cash}, spend caps {room})"
+            if held is not None and held <= limit:
+                budget, room = budget - held, room - held
+                why = f"hold: {hold}" if hold else short.format(price)
+                emit("keep", f"live bid {lid} stays at {held} ({why})", **{**nums, "gain": round(v - held, 2)})
+            elif held is not None:
+                emit("cancel", short.format(held), **nums)
+            else:
+                emit("skip", f"hold: {hold}: no new page bid" if hold else short.format(price), price=price, **nums)
+            continue
+        budget, room = budget - price, room - price
+        if held is None:
+            emit("post", f"page bid {price} (gain if filled {v - price:+.1f}, steps to {ceiling})", price=price,
+                 to=to, base=anchor, first=since, **nums)
+        elif held == price and live.get("to") == to:
+            emit("keep", f"live bid {lid} at {price}", **nums)
+        else:
+            emit("replace", f"bid {lid} {held} -> {price}", price=price, to=to, base=anchor, first=since, **nums)
     return out
 
 
@@ -1242,6 +1494,49 @@ class PublicClient:
         return self.get("/api/feed", {"limit": int(limit)})
 
 
+class RecordedPublic:
+    """plan --recorded: the public reads from tools/feed_recorder.py's snapshots.jsonl (the last El Rastro board and
+    venue table it saw) and a saved catalog. Offline: no network at all, so the plan for a closed market can be read
+    against the board as it was at the close."""
+
+    def __init__(self, snapshots, catalog_path, release: str = ""):
+        self.last: dict = {}
+        with open(snapshots, encoding="utf-8") as f:
+            for ln in f:
+                try:
+                    r = json.loads(ln)
+                except ValueError:
+                    continue
+                if isinstance(r, dict) and r.get("what") in ("rastro", "venues"):
+                    self.last[r["what"]] = r
+        if "rastro" not in self.last:
+            raise SystemExit(f"{snapshots}: no El Rastro board recorded")
+        self.cat = json.loads(Path(catalog_path).read_text())
+        extra = {x.strip().upper() for x in release.split(",") if x.strip()}
+        for st in self.cat.get("sets", []):
+            if st.get("id") in extra:
+                st["released"] = True
+
+    def clock(self):
+        r = self.last["rastro"]
+        return {"tick": int(r["tick"]), "doors": "open", "paused": False, "recorded_at": r.get("seen_at")}
+
+    def catalog(self):
+        return self.cat
+
+    def venues(self):
+        return (self.last.get("venues") or {}).get("body") or {"venues": [{"venue": HOME, "fee_bps": 500,
+                                                                            "fee_per_card": 1, "house": True}]}
+
+    def board(self, vid: str):
+        if vid != HOME:
+            raise BazaarError("not_recorded", vid, 0)
+        return self.last["rastro"].get("body") or {"offers": []}
+
+    def feed(self, limit: int = 500):
+        return {"events": []}
+
+
 class ReadOnlyBazaar(Bazaar):
     """A keyed Bazaar that refuses every request except GET before it leaves the machine (plan / watch)."""
 
@@ -1404,6 +1699,7 @@ class Desk:
         self.last = None
         self.last_snap = None
         self.start_tick = None            # trades from the tape count toward the caps from here on
+        self.assume_cash = None           # plan --keyless --assume-cash: the cash to plan with
 
     def maker_trades(self, me_id: str, tick: int, t_hours: float) -> None:
         """Trades where another team accepted OUR offer (a filled bid, or a listing rastro_seller posted) spend cash
@@ -1460,11 +1756,16 @@ class Desk:
         self.reload_reserved()
         if self.catalog is None or self.ticks % 120 == 0:
             self.catalog = self.public.catalog()
+        feed_down = None
         try:
             self.tape.ingest(self.public.feed(500).get("events", []))
         except BazaarError as e:
-            self._say_once(("feed", tick), f"tick {tick} feed unread ({e.code}); using the tape we have")
+            # maker fills (another team taking our bid) are only seen in the feed: no cash write this tick
+            feed_down = f"feed_down: /api/feed unread ({e.code}); spending by our filled bids unknown"
+            self._say_once(("feed", tick), f"tick {tick} feed unread ({e.code}); no cash write this tick")
         acct = self.account(tick)
+        if self.assume_cash is not None and self.keyed is None:
+            acct = {**acct, "cash": int(self.assume_cash), "source": f"{acct.get('source')}, cash assumed"}
         if self.start_tick is None:
             self.start_tick = tick
         self.maker_trades(acct["id"], tick, float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR))
@@ -1492,46 +1793,67 @@ class Desk:
         self.valuer.set_counts({r: len(v) for r, v in holdings.items()}, copy_values if copy_values else None)
         released = {s["id"] for s in self.catalog.get("sets", []) if s.get("released")}
         shadow_cash = sum((r.get("cash") or 0) - (r.get("cost") or 0) for r in self.ledger.rows if r.get("shadow"))
-        return {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
+        snap = {"tick": tick, "t_hours": float(clock.get("t_hours") or tick / TICKS_PER_GAME_HOUR),
                 "me_id": acct["id"], "cash": acct["cash"] + shadow_cash,
                 "holdings": holdings, "venues": vt, "boards": boards, "mine": acct["offers"], "released": released,
                 "account_source": acct.get("source"), "duel_lock": self.duel_lock_fresh(), "reserved": set(self.reserved),
-                "duel_live": self.duel_guard(tick)}
+                "duel_live": self.duel_guard(tick), "duel_any": self.duel_guard(tick, any_live=True),
+                "feed_down": feed_down}
+        # the reads above take time: if the tick moved while they ran, the account and the offers may disagree
+        # (a bid of ours that settled between /api/me and /api/me/offers), so the snapshot is not used for writes
+        try:
+            after = int(self.public.clock()["tick"])
+        except (BazaarError, KeyError, TypeError, ValueError) as e:
+            after = f"unread ({getattr(e, 'code', type(e).__name__)})"
+        if after != tick:
+            snap["spans_ticks"] = f"snapshot_spans_ticks: reads began at tick {tick}, clock now {after}"
+        return snap
 
-    def duel_guard(self, tick: int) -> str | None:
+    def duel_guard(self, tick: int, fresh: bool = False, any_live: bool = False) -> str | None:
         """Server-side duel guard (keyed modes): results/duel.lock is a file on the machine that runs duel.py, which
         need not be the desk's, so the desk also reads GET /api/duels, once per tick (cached: take()'s re-read
         reuses it). While any of our duels is live (--duel-guard-ticks N: only while one is within N ticks of its
         deadline) every accept is deferred with reason duel_live; bids and cancels go on. A failed read defers too.
-        Keyless modes cannot read it (the route needs the key) and keep the local lock only."""
+        Keyless modes cannot read it (the route needs the key) and keep the local lock only.
+        any_live=True: every live duel of ours counts, whatever --duel-guard-ticks says (page writes use it)."""
         if self.keyed is None:
             return None
-        if self._duels_tick == tick:
-            return self._duels_why
-        why = None
+        if self._duels_tick != tick or fresh or self._duels_why is None:
+            self._duels_why = self._read_duels(tick)
+            self._duels_tick = tick
+        return self._duels_why[1 if any_live else 0]
+
+    def _read_duels(self, tick: int) -> tuple:
+        """(why for ordinary accepts, within --duel-guard-ticks; why for page writes, any live duel) from one read."""
+        why, why_any = None, None
         try:
             body = self.keyed.duels()
             duels = body.get("duels") if isinstance(body, dict) else None
             if not isinstance(duels, list):
                 raise BazaarError("bad_response", "no duels list", 0)
             n = self.cfg.duel_guard_ticks
-            live = []
+            live, every = [], []
             for d in duels:
                 if not isinstance(d, dict) or d.get("status") != "live":
                     continue
                 dl = d.get("deadline_tick")
                 left = dl - tick if isinstance(dl, int) and not isinstance(dl, bool) else None
+                row = (left if left is not None else -1, d.get("duel"), dl)
+                every.append(row)
                 if n is None or left is None or left <= n:   # no deadline: count it, to be safe
-                    live.append((left if left is not None else -1, d.get("duel"), dl))
-            if live:
-                left, did, dl = min(live)
-                more = f" (+{len(live) - 1} more)" if len(live) > 1 else ""
-                why = (f"duel_live: duel {did} is live, deadline tick {dl} ({left} ticks left){more}: the duel bot "
-                       f"holds the team's accept slot")
+                    live.append(row)
+
+            def say(rows):
+                left, did, dl = min(rows)
+                more = f" (+{len(rows) - 1} more)" if len(rows) > 1 else ""
+                return (f"duel_live: duel {did} is live, deadline tick {dl} ({left} ticks left){more}: the duel bot "
+                        f"holds the team's accept slot")
+            why = say(live) if live else None
+            why_any = say(every) if every else None
         except Exception as e:   # unread (network, 429, a client without the route): defer, never guess
             why = f"duel_live: /api/duels unread ({getattr(e, 'code', type(e).__name__)}); accepts deferred to be safe"
-        self._duels_tick, self._duels_why = tick, why
-        return why
+            why_any = why
+        return why, why_any
 
     def duel_lock_fresh(self) -> bool:
         """agent/duel.py's stopgap: while results/duel.lock is fresh the desk never accepts (bids and cancels go
@@ -1613,6 +1935,8 @@ class Desk:
     def tick(self, clock: dict) -> dict:
         snap = self.snapshot(clock)
         self.last_snap = snap
+        if snap.get("spans_ticks"):
+            self._say_once(("spans", snap["tick"]), f"tick {snap['tick']} {snap['spans_ticks']}: no write this tick")
         self.sync_bids(snap)
         self.sync_swaps(snap)
         res = decide(snap, self.valuer, self.tape, self.ledger, self.cfg, self.bidbook, self.swapbook)
@@ -1693,23 +2017,59 @@ class Desk:
             return
         # cancels first (a stale bid or swap must not fill while we buy), then the accept, then new bids and swaps
         swaps = res.get("swaps") or []
-        cancels = [("cancel", b) for b in res["bids"] if b["action"] in ("cancel", "replace")]
+        bids = self.hold_page_writes(snap, res["bids"], "before the cancels")
+        cancels = [("cancel", b) for b in bids if b["action"] in ("cancel", "replace")]
         cancels += [("cancel", {**d, "dupe": True}) for d in self.bid_dupes]
         cancels += [("cancel", {**d, "kind": "myswap", "dupe": True}) for d in self.swap_dupes]
         cancels += [("cancel", s) for s in swaps if s["action"] in ("cancel", "replace")]
-        posts = [("post", b) for b in res["bids"] if b["action"] in ("post", "replace")]
-        posts += [("post", s) for s in swaps if s["action"] in ("post", "replace")]
+        stop = snap.get("spans_ticks") or snap.get("feed_down")
+        if stop:   # cancels only: no cash write on a torn snapshot or without the feed's maker fills
+            self.log.event(stop.split(":")[0], tick=snap["tick"], why=stop)
+            self.send(clock, snap, cancels)
+            return
         failed = self.send(clock, snap, cancels)
         if res["accept"]:
             self.take(clock, snap, res["accept"])
+            # the bids below were planned before take()'s fresh reads (which may show new spending): none is posted
+            # this tick; the next tick plans them again from scratch
+            self.log.event("posts_deferred", tick=snap["tick"], why="an accept was attempted this tick",
+                           cards=[b["card"] for b in bids if b["action"] in ("post", "replace")])
+            return
+        if failed:   # an offer of ours we meant to cancel is still live: its cash stays out, so nothing new goes up
+            self.log.event("posts_deferred", tick=snap["tick"], why=f"cancel failed for {sorted(failed)}",
+                           cards=[b["card"] for b in bids if b["action"] in ("post", "replace")])
+            return
+        # a page post is checked again against the duel guards right before it is sent (send)
+        posts = [("post", b) for b in bids if b["action"] in ("post", "replace")]
+        posts += [("post", s) for s in swaps if s["action"] in ("post", "replace")]
+        why = self.write_check(snap, [b["card"] for _, b in posts if b.get("kind") != "myswap"]) if posts else None
+        if why:
+            self.log.event("posts_deferred", tick=snap["tick"], why=why, cards=[b["card"] for _, b in posts])
+            return
         # the 30 open offers are shared with rastro_seller: leave 2 free, as it does
         cap = int((clock.get("limits") or {}).get("max_open_offers_per_team", 30)) - 2
         open_now = sum(1 for o in snap["mine"] if o.get("maker") == snap["me_id"] and o.get("status") in ("open", "queued"))
         room = max(0, cap - open_now + len(cancels) - len(failed))
-        posts = [p for p in posts if p[1]["card"] not in failed]
         if len(posts) > room:
             self.log.event("offer_cap", tick=snap["tick"], open=open_now, room=room, skipped=[p[1]["card"] for p in posts[room:]])
         self.send(clock, snap, posts[:room])
+
+    def hold_page_writes(self, snap: dict, bids: list, when: str) -> list:
+        """Drop the page posts and replacements (and a replacement's cancel) while page_hold() says a duel holds the
+        team; the live page bid stays as it is. Other bids and every cancel go on."""
+        if not any(b.get("page") and b["action"] in ("post", "replace") for b in bids):
+            return bids
+        why = self.page_hold(snap["tick"])
+        if not why:
+            return bids
+        out = []
+        for b in bids:
+            if b.get("page") and b["action"] in ("post", "replace"):
+                self.log.event("page_hold", tick=snap["tick"], card=b["card"], action=b["action"], price=b["price"],
+                               offer=b.get("offer"), why=why, when=when)
+                continue
+            out.append(b)
+        return out
 
     def send(self, clock: dict, snap: dict, ops: list) -> set:
         """Listing operations through the lease's per-tick quota. Returns the cards whose cancel failed."""
@@ -1727,8 +2087,16 @@ class Desk:
                 if op == "cancel":
                     self.keyed.cancel(b["offer"])
                     self.cancelled_ids.add(b["offer"])
-                    if not b.get("dupe"):
+                    if not swap and b.get("action") == "replace":
+                        # until the replacement is up, the card keeps its step clock (since, anchor) with no offer
+                        book[b["card"]] = {**(book.get(b["card"]) or {}), "offer": None}
+                    elif not b.get("dupe"):
                         book.pop(b["card"], None)
+                elif b.get("page") and (held := self.page_hold(snap["tick"])):
+                    # read again right before the write: planning, the accept wait and the throttle came between
+                    self.log.event("page_hold", tick=snap["tick"], card=b["card"], action=b["action"],
+                                   price=b["price"], offer=b.get("offer"), why=held, when="at the post")
+                    continue
                 elif swap:
                     # one card for one card, no cash either way: give our spare, want any copy of the card
                     r = self.keyed.list_offer({"assets": [int(b["asset"])]}, {"cards": [b["card"]]},
@@ -1773,17 +2141,39 @@ class Desk:
         if not self.lease.claim_accept(c2, self.lease.MARKET, ref=f"offer {b['offer']} {b['card']}"):
             self.log.event("skip_accept", tick=snap["tick"], why="lease refused", offer=b["offer"])
             return
-        try:
-            # a card we get must not also arrive through our own bid or swap: cancel those first
-            for book, what in ((self.bidbook, "bid"), (self.swapbook, "swap")):
+        if b["side"] in ("buy", "swap"):
+            # a card we get must not also arrive through an offer of ours: cancel EVERY live bid or swap of ours that
+            # asks for it, as /api/me/offers says now (a duplicate whose cancel failed earlier in the tick is one),
+            # and accept nothing this tick unless every one of those cancels went through (a queued one never gets
+            # here: decide() on the fresh read already skips a card with a settling offer of ours)
+            ids = self.offers_asking(fresh, b["card"])
+            for book in (self.bidbook, self.swapbook):
                 oid = (book.get(b["card"]) or {}).get("offer")
-                if b["side"] in ("buy", "swap") and oid and oid not in self.cancelled_ids:
-                    if not self.lease.claim_listings(c2, 1):
-                        self.lease.release_accept(c2, f"could not cancel our {what} first")
-                        return
+                if isinstance(oid, int) and oid not in self.cancelled_ids and oid not in ids:
+                    ids.append(oid)
+            why = None
+            if ids and self.lease.claim_listings(c2, len(ids)) < len(ids):
+                why = f"no quota to cancel our offers {ids} asking {b['card']} first"
+            for oid in ids if why is None else []:
+                try:
                     self.keyed.cancel(oid)
-                    self.cancelled_ids.add(oid)
+                except BazaarError as e:
+                    why = f"cancel of our offer {oid} asking {b['card']} failed ({e.code})"
+                    break
+                self.cancelled_ids.add(oid)
+            if why:
+                self.lease.release_accept(c2, why)
+                self.log.event("skip_accept", tick=snap["tick"], why=why, offer=b["offer"])
+                return
+            for book in (self.bidbook, self.swapbook):
+                if (book.get(b["card"]) or {}).get("offer") in self.cancelled_ids:
                     book.pop(b["card"], None)
+        why = self.write_check(fresh, [b["card"]] if b["side"] in ("buy", "swap") else [])
+        if why:
+            self.lease.release_accept(c2, why)
+            self.log.event("skip_accept", tick=snap["tick"], why=why, offer=b["offer"])
+            return
+        try:
             if b.get("cancel_listing"):
                 if not self.lease.claim_listings(c2, 1):
                     self.lease.release_accept(c2, "could not cancel our listing first")
@@ -1805,6 +2195,57 @@ class Desk:
                        t_hours=fresh["t_hours"], cost=cost, give_card=b.get("give_card"), asset=b.get("asset"))
         if self.valuer:
             self.valuer.cache.clear()
+
+    def offers_asking(self, snap: dict, ref: str) -> tuple:
+        """Open offers of ours that ask for `ref` (a bid or a swap: want types "card:REF"), from the account read in
+        `snap`; offers we already cancelled are left out."""
+        ids = []
+        for o in sorted(snap.get("mine") or [], key=lambda o: o.get("id") or 0):
+            if not isinstance(o, dict) or o.get("maker") != snap["me_id"] or o.get("id") in self.cancelled_ids:
+                continue
+            want = o.get("want") or {}
+            asks = [t for t in want.get("types") or [] if t == f"card:{ref}"] + \
+                   [c for c in want.get("cards") or [] if c == ref]
+            if not asks:
+                continue
+            if o.get("status") == "open":
+                ids.append(o["id"])
+        return ids
+
+    def write_check(self, snap: dict, refs: list) -> str | None:
+        """Right before a cash write (an accept, a bid post): read the clock, /api/me and /api/me/offers again. The
+        tick must be the snapshot's, our cash the same (a bid of ours filled meanwhile spends it), each card in
+        `refs` held as many times as in the snapshot, and no offer of ours asking for one of them settling.
+        Keyless modes send nothing and are not checked."""
+        if self.keyed is None or self.mode != "run":
+            return None
+        try:
+            tick = int(self.keyed.clock()["tick"])
+            me = self.keyed.me()
+            offers = self.keyed.my_offers().get("offers", [])
+        except (BazaarError, KeyError, TypeError, ValueError) as e:
+            return f"write_check: reads failed ({getattr(e, 'code', type(e).__name__)})"
+        if tick != snap["tick"]:
+            return f"write_check: tick moved {snap['tick']} -> {tick}"
+        if int(me.get("cash") or 0) != int(snap.get("cash") or 0):
+            return f"write_check: cash {snap.get('cash')} -> {me.get('cash')}"
+        now = holdings_of(me.get("assets") or [])
+        for ref in refs:
+            if len(now.get(ref) or []) != len((snap.get("holdings") or {}).get(ref) or []):
+                return f"write_check: our {ref} count changed"
+            for o in offers:
+                want = (o or {}).get("want") or {}
+                if o.get("maker") == snap["me_id"] and o.get("status") == "queued" and \
+                        (f"card:{ref}" in (want.get("types") or []) or ref in (want.get("cards") or [])):
+                    return f"write_check: our offer {o.get('id')} asking {ref} is settling"
+        return None
+
+    def page_hold(self, tick: int) -> str | None:
+        """Why a page bid may not be posted or raised right now: results/duel.lock is fresh, or GET /api/duels
+        (read again, not the tick's cached answer) shows a live duel of ours or cannot be read."""
+        if self.duel_lock_fresh():
+            return "results/duel.lock is fresh"
+        return self.duel_guard(tick, fresh=True, any_live=True)
 
     # ------------------------------------------------ heartbeat
     def beat(self, snap: dict, res: dict) -> None:
@@ -1864,6 +2305,26 @@ def load_env() -> None:
                 os.environ.setdefault(k.strip(), v.strip())
 
 
+def parse_pages(specs) -> dict:
+    """--page REF:CAP[:FLOOR] (repeatable, or comma-separated) -> {ref: {"cap", "floor"}}. CAP is the most we pay
+    for the card, fee included; FLOOR is the first bid (default: from the team trades)."""
+    out = {}
+    for spec in specs or []:
+        for part in str(spec).split(","):
+            part = part.strip()
+            if not part:
+                continue
+            bits = part.split(":")
+            if len(bits) not in (2, 3) or not REF_RE.match(bits[0].upper()) or not all(b.isdigit() for b in bits[1:]):
+                raise ValueError(f"--page {part!r}: expected REF:CAP or REF:CAP:FLOOR, e.g. SAL-10:110")
+            ref, cap = bits[0].upper(), int(bits[1])
+            floor = int(bits[2]) if len(bits) == 3 else None
+            if cap < 1 or (floor is not None and not 1 <= floor <= cap):
+                raise ValueError(f"--page {part!r}: need 1 <= FLOOR <= CAP")
+            out[ref] = {"cap": cap, "floor": floor}
+    return out
+
+
 def build_config(args) -> Config:
     sets = lambda s: tuple(x.strip().upper() for x in (s or "").split(",") if x.strip())  # noqa: E731
     return Config(margin_min=args.margin_min, margin_frac=args.margin_frac, sell_margin_min=args.sell_margin_min,
@@ -1873,13 +2334,15 @@ def build_config(args) -> Config:
                   sell_first_copies=sets(args.sell_first_copies), sell_listed=args.sell_listed,
                   team_venues=not args.no_team_venues, bids=not args.no_bids, bid_max=args.bid_max,
                   bid_min_value=args.bid_min_value, bid_step=args.bid_step, bid_step_ticks=args.bid_step_ticks,
-                  bid_expires=args.bid_expires, address_bids=args.address_bids, page_bonus=args.page_bonus,
+                  bid_expires=args.bid_expires, address_bids=args.address_bids,
+                  page_bonus=args.page_bonus or bool(args.page),
                   swap_fill=args.swap_fills, swap_post=args.swap_posts, swap_venue=args.swap_venue,
                   swap_team_venue=args.swap_team_venue,
                   swap_max=args.swap_max, swap_expires=args.swap_expires, swap_min_value=args.swap_min_value,
                   swap_max_fee=args.swap_max_fee, address_swaps=args.address_swaps,
                   swap_any_rarity=args.swap_any_rarity, swap_seller_spares=args.swap_seller_spares,
-                  duel_guard_ticks=args.duel_guard_ticks)
+                  duel_guard_ticks=args.duel_guard_ticks, page_targets=parse_pages(args.page),
+                  page_step=args.page_step, page_step_ticks=args.page_step_ticks, page_address=args.page_address)
 
 
 def add_config_args(ap: argparse.ArgumentParser) -> None:
@@ -1926,9 +2389,23 @@ def add_config_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--swap-any-rarity", action="store_true", help="may offer a lower-rarity spare for a card")
     ap.add_argument("--swap-seller-spares", action="store_true",
                     help="may offer copies in rastro_seller's config (only when the seller is not running)")
+    ap.add_argument("--page", action="append", default=[], metavar="REF:CAP[:FLOOR]",
+                    help="page mode: buy REF from a team for at most CAP (fee included) on El Rastro: take an ask, "
+                         "else one bid stepping up from FLOOR (default: team prices); implies --page-bonus")
+    ap.add_argument("--page-step", type=int, default=c.page_step, help="P added to a page bid per step")
+    ap.add_argument("--page-step-ticks", type=int, default=c.page_step_ticks, help="ticks between page-bid steps")
+    ap.add_argument("--page-address", action="store_true",
+                    help="address the page bid to the last public receiver of the card (default: to nobody)")
     ap.add_argument("--duel-guard-ticks", type=int, default=c.duel_guard_ticks, metavar="N",
-                    help="keyed: defer accepts only while a live duel of ours is within N ticks of its deadline "
-                         "(default: while any duel of ours is live)")
+                    help="keyed: defer ordinary accepts only while a live duel of ours is within N ticks of its "
+                         "deadline (default: while any duel of ours is live). Page writes (--page asks, bids and "
+                         "replacements) always wait for every live duel: N never relaxes them")
+
+
+def default_feeds(files=None) -> list:
+    """Every recorded feed that exists (the tape dedupes by event id). logs/feed-vm alone is Friday's ticks 0-159:
+    reading only the first file left the price anchors without a single Saturday trade."""
+    return [p for p in (FEED_FILES if files is None else files) if Path(p).exists()]
 
 
 def until_time(hhmm: str) -> datetime:
@@ -1949,19 +2426,35 @@ def main() -> None:
     ap.add_argument("--offers", default=str(OFFERS_SNAPSHOT), help="keyless: /api/me/offers snapshot")
     ap.add_argument("--until", default=None, help="HH:MM Madrid time to stop (required for run)")
     ap.add_argument("--json", action="store_true", help="plan: print the JSON records too")
+    ap.add_argument("--recorded", default=None, metavar="SNAPSHOTS",
+                    help="plan --keyless against a recorded board (tools/feed_recorder.py snapshots.jsonl), offline")
+    ap.add_argument("--catalog", default=str(LOGS / "public" / "catalog.json"), help="--recorded: catalog JSON")
+    ap.add_argument("--release", default="", help="--recorded: sets to treat as released (e.g. CHA for Sunday)")
+    ap.add_argument("--assume-cash", type=int, default=None, help="plan --keyless: cash to plan with (e.g. +150 P)")
     ap.add_argument("--seller-config", default=str(SELLER_CONFIG),
                     help="rastro_seller's config: its assets stay out of our swaps ('' = none)")
     add_config_args(ap)
     args = ap.parse_args()
-    cfg = build_config(args)
+    try:
+        cfg = build_config(args)
+    except ValueError as e:
+        ap.error(str(e))
     if args.cmd == "run" and (args.keyless or not args.until):
         ap.error("run needs the key and --until HH:MM")
+    for ref, spec in cfg.page_targets.items():
+        if spec["cap"] > min(cfg.cap_hour, cfg.cap_day):
+            ap.error(f"--page {ref}:{spec['cap']} is above --cap-hour {cfg.cap_hour} / --cap-day {cfg.cap_day}: "
+                     f"that buy could never pass; raise them")
+    if args.recorded and (args.cmd != "plan" or not args.keyless):
+        ap.error("--recorded is for `plan --keyless` only")
+    if args.assume_cash is not None and (args.cmd != "plan" or not args.keyless):
+        ap.error("--assume-cash is for `plan --keyless` only")
     if cfg.swap_venue != HOME and not cfg.swap_team_venue:
         ap.error(f"--swap-venue {cfg.swap_venue} is another team's venue (its trades score for its owner): "
                  f"add --swap-team-venue to mean it")
     until = until_time(args.until) if args.until else None
     url = os.environ.get("BAZAAR_URL", URL)
-    public = PublicClient(url)
+    public = RecordedPublic(args.recorded, args.catalog, release=args.release) if args.recorded else PublicClient(url)
     keyed, lease, log = None, None, None
     if not args.keyless:
         load_env()
@@ -1977,10 +2470,11 @@ def main() -> None:
             print(f"(no BAZAAR_KEY: keyless {args.cmd} from logs/state/*.json and the public feed)")
     if args.cmd in ("watch", "run"):
         log = QuietRunLog("market")
-    feeds = args.feed if args.feed is not None else [p for p in FEED_FILES if p.exists()][:1]
+    feeds = args.feed if args.feed is not None else default_feeds()
     desk = Desk(args.cmd, cfg, public, keyed=keyed, lease=lease, log=log, feed_files=feeds,
                 me_path=Path(args.me), offers_path=Path(args.offers),
                 seller_config=Path(args.seller_config) if args.seller_config else None)
+    desk.assume_cash = args.assume_cash
     if log is not None:
         desk.ledger = today_ledger(log.path) if args.cmd == "run" else Ledger()
         log.start(mode=args.cmd, config=asdict(cfg), feeds=[str(f) for f in feeds], keyed=keyed is not None)
@@ -2038,8 +2532,13 @@ def summary(desk: Desk, clock: dict, res: dict, json_out: bool) -> None:
     print("  decisions:", ", ".join(f"{k}/{a} {n}" for (k, a), n in sorted(by.items())))
     a = res["accept"]
     print(f"  accept this tick: {line(a) if a else 'none'}")
+    for r in recs:
+        if r.get("page") and r["kind"] == "buy":
+            print(f"  page ask: {line(r)}")
     for b in res["bids"]:
-        if b["action"] in ("post", "replace", "keep"):
+        if b.get("page"):
+            print(f"  page bid: {line({**b['record'], 'tick': clock.get('tick')})}")
+        elif b["action"] in ("post", "replace", "keep"):
             print(f"  bid: {line({**b['record'], 'tick': clock.get('tick')})}")
     fills = [r for r in recs if r["kind"] == "swap" and r.get("value") is not None]
     print(f"  swaps on the boards: {sum(1 for r in recs if r['kind'] == 'swap')} seen, "
