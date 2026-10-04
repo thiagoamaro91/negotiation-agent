@@ -3,7 +3,7 @@
 duel.py's params cannot condition on our role (only days_best is per role) or on the rival's type, so these levers
 cannot ship tonight. This measures the ceiling instead: every one-lever sweep candidate is scored in the main world
 with the result split by (rival type, our role); for each split the best single lever change against the
-incumbent is picked (on train seeds) and re-measured on select seeds, and the ceiling is the duel-weighted sum of
+incumbent that does not lose more than 0.03 in that split's D-1 stress is picked (on train seeds) and re-measured on select seeds, and the ceiling is the duel-weighted sum of
 those per-split gains. An oracle that knows the type is an upper bound: recognising a bot (tools/duel_book.py)
 costs ticks and errs.
 
@@ -25,6 +25,7 @@ import lab  # noqa: E402
 import search  # noqa: E402
 
 CHUNK = 50
+D1_FLOOR = search.D1_FLOOR       # per split: a lever losing more than this in the D-1 stress is not picked
 
 
 def job(args):
@@ -71,7 +72,8 @@ def main():
     params = dict(items)
     pool = mp.get_context("fork").Pool(min(4, a.workers))
     tr = run(pool, items, lab.SEEDS["train"], a.train)
-    base = tr["inc"]
+    tr1 = run(pool, items, lab.SEEDS["train"], a.train, world="d1")
+    base, base1 = tr["inc"], tr1["inc"]
     picks = {}
     for split in base:
         best = None
@@ -79,27 +81,31 @@ def main():
             if split not in tr[k]:
                 continue
             m, se, per = delta(tr[k][split], base[split])
+            if delta(tr1[k][split], base1[split])[0] < D1_FLOOR:   # a deadline-1 trap: never picked
+                continue
             if best is None or m > best[1]:
                 best = (k, m, se, per)
         picks[split] = best
     keys = sorted({v[0] for v in picks.values()} | {"inc"})
     sel = run(pool, [(k, params[k]) for k in keys], lab.SEEDS["select"], a.select)
+    sel1 = run(pool, [(k, params[k]) for k in keys], lab.SEEDS["select"], a.select, world="d1")
     pool.close()
     L = ["# Ceiling of role- and rival-type-specific settings (hypotheses b, c)", "",
          __doc__.split("\n\n")[1].replace("\n", " "), "",
          f"Train {a.train} sessions (pick), select {a.select} sessions (re-measure), main world.", "",
-         "| split | duels per session | best single lever (train pick) | train Δ per duel | select Δ per duel |",
-         "|---|---|---|---|---|"]
+         "| split | duels per session | best single lever (train pick, D-1 safe) | train Δ per duel | select Δ per duel | "
+         "select D-1 Δ |", "|---|---|---|---|---|---|"]
     ceil = {"kind": 0.0, "role": 0.0}
     ceil_se = {"kind": 0.0, "role": 0.0}
     total = {}
     for split, (k, m, se, per) in sorted(picks.items(), key=lambda x: (x[0][0], -x[1][3])):
         sm, sse, sper = delta(sel[k][split], sel["inc"][split])
+        dm, dse, _ = delta(sel1[k][split], sel1["inc"][split])
         total[split[0]] = total.get(split[0], 0) + sper
         ceil[split[0]] += max(0.0, sm) * sper
         ceil_se[split[0]] += (sse * sper) ** 2
         L.append(f"| {split[0]}: {split[1]} | {sper:.1f} | {names.get(k, k)} | {m:+.4f} ±{se:.4f} | "
-                 f"{sm:+.4f} ±{sse:.4f} |")
+                 f"{sm:+.4f} ±{sse:.4f} | {dm:+.4f} ±{dse:.4f} |")
     L.append("")
     for s in ("kind", "role"):
         L.append(f"- Ceiling by {'rival type' if s == 'kind' else 'our role'}: {ceil[s] / total[s]:+.4f} per duel "

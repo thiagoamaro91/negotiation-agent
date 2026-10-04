@@ -318,15 +318,19 @@ def phase_random(ev: Evaluator, until: float, seed: int):
     ev.refresh()
 
 
-def phase_climb(ev: Evaluator, until: float, starts: int):
+def phase_climb(ev: Evaluator, until: float, starts: int, ids: list = None):
     """Coordinate ascent on the select objective: from each start, try every lever's neighbours (grid values and a
     step each way), move to the best that beats the current point by more than one SE of the difference."""
-    for st in best(ev.done, "select", starts):
+    pool = best(ev.done, "select", 10 ** 6)
+    first = [r for i in (ids or []) for r in pool if r["id"] == i][:len(ids or [])]
+    starts_ = first or pool[:starts]
+    for i, st in enumerate(starts_):
         if time.time() >= until:
             break
+        mine = time.time() + (until - time.time()) / (len(starts_) - i)     # an even share of what is left
         cur = st
         improved = True
-        while improved and time.time() < until:
+        while improved and time.time() < mine:
             improved = False
             items = []
             for key, (kind, lo, hi, grid) in SPACE.items():
@@ -356,6 +360,41 @@ def phase_climb(ev: Evaluator, until: float, starts: int):
     ev.refresh()
 
 
+def _revert(p: dict, key: str) -> dict:
+    """p with one lever back at the incumbent's value (keys the incumbent leaves out are dropped)."""
+    flag = {"anchor": "ratios", "floor": "ratios", "prem0": "days_premium", "prem1": "days_premium"}.get(key, key)
+    if flag not in INC:
+        q = copy.deepcopy(p)
+        q.pop(flag, None)
+        return q
+    q = _set(p, key, _get(INC, key))
+    if key in ("anchor", "floor") and len(q["ratios"]) == len(INC["ratios"]) and q["ratios"] == INC["ratios"]:
+        q["ratios"] = list(INC["ratios"])
+    return q
+
+
+def phase_prune(ev: Evaluator, top: int):
+    """Drop the levers a finalist changes for nothing: revert each one alone (select seeds); revert together every
+    one whose revert moves the objective by less than PRUNE_TOL, and keep the pruned file if it holds."""
+    tol = 0.0002
+    for r in best(ev.done, "select", top):
+        if r["name"].startswith("P "):
+            continue
+        keys = [k for k in SPACE if _get(r["params"], k) != _get(INC, k)]
+        items = [(f"P {r['id']} without {k}", _revert(r["params"], k)) for k in keys]
+        items = [(n, q) for n, q in items if valid(q)]
+        rows = ev.score(items, "select", phase="prune")
+        inert = [k for k, row in zip(keys, rows) if "obj" in row and row["obj"]["delta"] >= r["obj"]["delta"] - tol]
+        q = r["params"]
+        for k in inert:
+            q = _revert(q, k)
+        if inert and valid(q) and cid(q) != r["id"]:
+            row = ev.score([(f"P {r['id']} pruned", q)], "select", phase="prune")[0]
+            print(time.strftime("%H:%M"), "prune", r["id"], "drop", inert, "->", row.get("obj"), "was", r["obj"],
+                  flush=True)
+    ev.refresh()
+
+
 def phase_test(ev: Evaluator, top: int, extra: list):
     rows = best(ev.done, "select", top)
     ids = {r["id"] for r in rows}
@@ -369,13 +408,14 @@ def phase_test(ev: Evaluator, top: int, extra: list):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("phase", choices=["sweep", "random", "climb", "test", "board"])
+    ap.add_argument("phase", choices=["sweep", "random", "climb", "prune", "test", "board"])
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--until", default="")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--starts", type=int, default=4)
     ap.add_argument("--top", type=int, default=8)
     ap.add_argument("--extra", action="append", default=[])
+    ap.add_argument("--from-ids", default="", help="climb: comma-separated start ids (default: the best on select)")
     a = ap.parse_args()
     if a.phase == "board":
         board.write(board.load(RESULTS))
@@ -388,7 +428,9 @@ def main():
         elif a.phase == "random":
             phase_random(ev, until_ts(a.until), a.seed)
         elif a.phase == "climb":
-            phase_climb(ev, until_ts(a.until), a.starts)
+            phase_climb(ev, until_ts(a.until), a.starts, [x for x in a.from_ids.split(",") if x])
+        elif a.phase == "prune":
+            phase_prune(ev, a.top)
         else:
             phase_test(ev, a.top, a.extra)
     finally:
