@@ -44,7 +44,7 @@
       "match": ["agent/duel.py", "run"],
       "log": "logs/duel/{date}.jsonl",
       "stale_ticks": 8,
-      "note": "One run per wave (Duels III, then the Final): --duel-ticks comes from the schedule event (12 for both) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit; --idle-ticks is the window at 15 s ticks and --until the day's close plus 5 min. The window (165 game min) outlasts a wave even if the game clock runs two game hours per wall hour (216 ticks = 108 game min) and closes before the Final's own window opens (21.483 h), so the two never overlap and a crash is relaunched in either wave."
+      "note": "The params file is Sunday's own (docs/duel-lab/duel-params-duels3.json, PR #72): never overwrite it with an older Duels II set. One run per wave (Duels III, then the Final): --duel-ticks comes from the schedule event (12 for both) and flags win over the JSON; --late-poll 4 is the 15 s value from the duel audit; --idle-ticks is the window at 15 s ticks and --until the day's close plus 5 min. The window (165 game min) outlasts a wave even if the game clock runs two game hours per wall hour (216 ticks = 108 game min) and closes before the Final's own window opens (21.483 h), so the two never overlap and a crash is relaunched in either wave."
     },
     {
       "name": "abuela",
