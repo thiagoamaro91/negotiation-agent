@@ -111,19 +111,21 @@ def cmd_book(a) -> None:
     held: dict = {}
     for c in cards:
         held.setdefault(c["ref"], []).append(c)
+    catalog = call(f"{GAME}/api/catalog")
+    book_of = {c.get("id"): float(c.get("book") or 0) for st in (catalog.get("sets") or []) if isinstance(st, dict)
+               for c in (st.get("cards") or []) if isinstance(c, dict) and c.get("id")}
     haves = []
     for ref, copies in held.items():
         if ref in keep:
             continue
         copies = sorted(copies, key=lambda c: (c.get("your_value") or 0, c["id"]))
-        book_price = max(1.0, float(copies[-1].get("book") or 0) or 0.0)
-        mult = (float(copies[-1].get("your_value") or 0) / book_price) if copies[-1].get("book") else None
+        book_price = book_of.get(ref) or float(copies[-1].get("book") or 0)
+        mult = (float(copies[-1].get("your_value") or 0) / book_price) if book_price else None
         whole_set = ref[:3] in sell_sets or (a.full and mult is not None and mult < 1.0)
         spare = copies if whole_set else copies[:-1]      # one copy of each card stays unless the set is for sale
         for c in spare:
             v = float(c.get("your_value") or 0)
             haves.append({"card": ref, "asset": int(c["id"]), "min": max(1, int(math.ceil(v * (1 + a.margin))))})
-    catalog = call(f"{GAME}/api/catalog")
     refs = sorted({c.get("id") for s in (catalog.get("sets") or []) if isinstance(s, dict)
                    for c in (s.get("cards") or []) if isinstance(c, dict) and c.get("id") and c.get("page", True)})
     wants = []
