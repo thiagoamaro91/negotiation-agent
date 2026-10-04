@@ -235,6 +235,19 @@ class DeployedCheck(unittest.TestCase):
         self.assertFalse(an.deployed_check({"accept_any_ticks": 6}, self.LOG, {99})[0])
         self.assertFalse(an.deployed_check({"duel_ticks": 12}, self.LOG, {5})[0])
 
+    def test_already_tagged_exported_baseline_matches(self):
+        import duel as dl
+
+        base = dl.params_of(dl.make_cfg(["watch", "--days-best", "buyer:0,seller:10"]))
+        self.assertEqual(base["days_best"], "buyer:0,seller:10;robust")
+        self.assertIs(base["days_confirmed"], False)
+        with um.patch.object(dl.Path, "read_text", return_value=json.dumps(base)):
+            replayed = dl.params_of(dl.make_cfg(["watch", "--params", "/synthetic/params.json"]))
+        self.assertEqual(replayed, base)
+        rows = [dict(replayed, event="run_start", run="r"), {"event": "say", "run": "r", "duel": 7}]
+        ok, why = an.deployed_check(base, rows, {7})
+        self.assertTrue(ok, why)
+
 
 class BenchVerdict(unittest.TestCase):
     def ok(self, **kw):

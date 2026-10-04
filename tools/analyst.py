@@ -733,7 +733,7 @@ def deployed_check(base: dict, log_rows: list, ids: set) -> tuple:
                 unlogged.add(k)
                 continue
             compared.add(k)
-            if not _same(_as_run(k, st), v):
+            if not (_same(st[k], v) or _same(_as_run(k, st), v)):
                 diffs.append(f"{k}: file {v} vs run {st[k]} (run {st.get('run')})")
     if diffs:
         return False, "the baseline file is not what the bot ran: " + "; ".join(diffs[:6])
