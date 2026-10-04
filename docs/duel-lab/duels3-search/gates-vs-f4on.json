@@ -1,0 +1,51 @@
+{
+ "48b7348218": {
+  "selftest": "fail",
+  "matrix": "fail: fast",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "days: light weights (0-1 P/day) (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
+ },
+ "3623369e38": {
+  "selftest": "fail",
+  "matrix": "fail: steady, fast, hardliner, linear",
+  "matrix_other_worse": [
+   "mix: Duels I field (robust)",
+   "mix: Duels I field (confirmed)",
+   "rival: steady (robust)",
+   "rival: fast (robust)",
+   "rival: hardliner (robust)",
+   "rival: linear (robust)",
+   "days: light weights (0-1 P/day) (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals stubborn on their best day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
+ },
+ "79ceb09a92": {
+  "selftest": "fail",
+  "matrix": "fail: fast",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "days: light weights (0-1 P/day) (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
+ },
+ "2c4d6a32a0": {
+  "selftest": "pass",
+  "matrix": "fail: fast",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "days: 50% of pairs want the same day (robust)",
+   "days: rivals name a random day (robust)",
+   "days: direction flipped (buyer late, seller early) (robust)"
+  ]
+ }
+}

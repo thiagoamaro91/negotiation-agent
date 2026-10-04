@@ -1,0 +1,22 @@
+{
+ "4df2d0e8c2": {
+  "selftest": "pass",
+  "matrix": "fail: cycler, silent, llmfair",
+  "matrix_other_worse": [
+   "rival: cycler (robust)",
+   "rival: silent (robust)",
+   "rival: llmfair (robust)",
+   "days: rivals name a random day (robust)"
+  ]
+ },
+ "ffe21a63bd": {
+  "selftest": "pass",
+  "matrix": "fail: fast, cycler, llmfair",
+  "matrix_other_worse": [
+   "rival: fast (robust)",
+   "rival: cycler (robust)",
+   "rival: llmfair (robust)",
+   "days: rivals name a random day (robust)"
+  ]
+ }
+}
