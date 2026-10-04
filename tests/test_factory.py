@@ -886,7 +886,7 @@ class Round3Dealers(Sandbox):
         """PR #35 and #38 are merged: no dealer is switched off, and none still says it waits for #35."""
         cfg = f.load_config(f.CONFIG)
         dealers = [p for p in cfg["processes"] if p["kind"] == "steps"]
-        self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar", "picaros"})
+        self.assertEqual({p["name"] for p in dealers}, {"abuela", "chato", "pilar", "picaros", "sal10"})
         for p in dealers:
             self.assertIsNot(p.get("enabled"), False, p["name"])
             self.assertNotIn("Off:", p.get("note", ""), p["name"])
@@ -928,7 +928,8 @@ class Round3Dealers(Sandbox):
 
     def test_sal10_comes_from_a_team_through_the_desk_and_no_dealer_step_buys_it(self):
         """The page card SAL-10 is bought from a team on El Rastro by the market desk's page mode. A dealer copy as well
-        would be a second SAL-10, worth 22.75: every dealer step that names it stays off."""
+        would be a second SAL-10, worth 22.75: every dealer step that names it stays off, except the 13:30 fallback
+        (tools/sal10_fallback.py), which buys only after the desk acknowledged it dropped its bid."""
         cfg = f.load_config(f.CONFIG)
         procs = {p["name"]: p for p in cfg["processes"]}
         desk = procs["market_desk"]
@@ -945,7 +946,29 @@ class Round3Dealers(Sandbox):
         self.assertIn("--until", cmd)
         named = [(p["name"], s["label"]) for p in cfg["processes"] for s in p.get("steps") or []
                  if s.get("enabled", True) and any("SAL-10" in str(a) for a in s["cmd"])]
-        self.assertEqual(named, [])
+        # no dealer step buys it beside the desk; the 13:30 fallback first makes the desk drop its bid (yield + ack)
+        self.assertEqual(named, [("sal10", "r3-s1-sal10-picaros")])
+        # the one dealer route left is the 13:30 fallback, which yields the desk's bid first (tools/sal10_fallback.py)
+        fallback = [(p["name"], s["label"]) for p in cfg["processes"] for s in p.get("steps") or []
+                    if s.get("enabled", True) and any("sal10_fallback.py" in str(a) for a in s["cmd"])]
+        self.assertEqual(fallback, [("sal10", "r3-s1-sal10-picaros")])
+
+    def test_the_sal10_fallback_fires_after_duels3_well_before_the_1349_market_test_and_the_final(self):
+        """Game hour 20.40 (Duels III + 105 min): closed through the wave's configured end, open after it, and at least
+        20 game min (one 40-tick run at two game hours per wall hour) before the 21.0 Market Test and the Final's quiet
+        window (21.65 - 25 min)."""
+        p = next(x for x in f.load_config(f.CONFIG)["processes"] if x["name"] == "sal10")
+        step = p["steps"][0]
+        self.assertEqual(int(p.get("max_attempts", 3)), 2)
+        bench = ev("bench", 21.0)
+        events = [DUELS3, bench, FINAL]
+        g = f.gates_for(p, step)
+        at = 18.65 + step["after_event"]["delay_min"] / 60
+        for h, want in ((20.36, False), (at - 0.01, False), (at + 0.01, True)):
+            ok, why = f.check_gates(g, clock(t_hours=h), events, None, SUN_0900)
+            self.assertEqual(ok, want, (h, why))
+        self.assertGreaterEqual(21.0 - at, 20 / 60)
+        self.assertGreaterEqual(21.65 - 25 / 60 - at, 20 / 60)
 
     FRAGMENT = Path(__file__).resolve().parent.parent / "docs" / "plans" / "factory-dealer-steps-sunday.json"
 
