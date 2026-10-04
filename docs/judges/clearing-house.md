@@ -29,7 +29,7 @@ with its own key.
   (maker, addressed to this team, venue, one copy of that card, cash only, open, unexpired), and only if the
   debit (price plus the venue's live fee, any announced change included) is at or below the max the team stored,
   at or below the card's current marginal value re-read from the game, within the quantity it asked for, and
-  leaves its cash above a reserve (40 P by default). Equality is allowed on every bound. The server is never
+  leaves its cash above a private cash reserve. Equality is allowed on every bound. The server is never
   trusted: the client acts only on actions it signed itself.
 - Agent-readable onboarding at `/agents.md`; the server serves its own source for audit; both files are also a
   public gist. Invite codes are the only gate and were handed out in person.
