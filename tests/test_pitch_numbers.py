@@ -61,6 +61,20 @@ class Makers(unittest.TestCase):
         self.assertEqual(dict(c), {"t15": 2, "t13": 1})
 
 
+class Stage(unittest.TestCase):
+    OUT = {"version": "A", "why": "agree", "v20_other_team_trades": pn.others_trades([settle(1, ["t05", "t07"])]),
+           "v20_other_makers": {"t15": 2}, "v20_other_offers": 2, "events": 3, "last_tick": 1,
+           "ledger": {"ok": 1, "readings": 1, "last_tick": 1}, "merged_prs": 1, "leaderboard_v20": BOARD_ONE}
+
+    def test_stage_names_no_team(self):
+        text = "\n".join(pn.report(self.OUT, True, True))
+        self.assertNotRegex(text, r"\bt\d\d\b")
+        self.assertIn("SAL-10 for 30 P", text)
+
+    def test_without_stage_the_parties_are_shown(self):
+        self.assertIn("t05 and t07", "\n".join(pn.report(self.OUT, True, False)))
+
+
 class Load(unittest.TestCase):
     def test_dedupes_by_id_and_skips_bad_lines(self):
         with tempfile.TemporaryDirectory() as d:
