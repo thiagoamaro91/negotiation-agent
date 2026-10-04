@@ -236,7 +236,7 @@ Clearing House follow-up #103 after two disclosures were found in review (a zero
 ## 7. What we discovered about the game (all from public data, reproducible)
 
 - **The leaderboard is relative and the ladder tops out:** with dealers alone the leader was capped near 12.5; team trades move the board (t10 8.3 → 29.1 on one sale, Friday tick 40). `docs/findings.md`.
-- **Value gate on the ladder:** a dealer deal on the wrong side of our private value scores zero (the LAT-06 dealer sale at 28 was below our private value and earned no ladder credit). `docs/analysis-friday/score.md` §4a.
+- **Value gate on the ladder:** a dealer deal on the wrong side of our private value scores zero. The LAT-06 dealer sale earned no ladder credit. `docs/analysis-friday/score.md` §4a.
 - **Market formula that fits:** market = 7.5 × (our mean bench efficiency ÷ the free stall's) + value created by other teams' trades on our venue; fits 3.61, 5.46 and 5.86 readings. `docs/plans/market-test-sunday.md`, session analysis.
 - **Dealer behaviour measured:** Abuela's welcome price, open/close ranges, patience by step size; Chato's 1-by-1 vs 2-4 step outcomes on rares; Pilar's +1 per round. `docs/analysis-friday/dealers.md`, `docs/findings.md`.
 - **Duel server model:** payoff = surplus × (1 - decay_per_round)^rounds, with decay supplied by the duel format; the factor was 0.92 in Duels II and 0.90 in Sunday's III/Final; seller earns +w per delivery day from day 0. Confirmed on three server results, patched live (#54).
