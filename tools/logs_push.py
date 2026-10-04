@@ -5,6 +5,7 @@ Keyless: it never calls the game API and never reads a key. It only runs git on 
 
     python3 tools/logs_push.py --every 600     # a loop, one cycle every 10 minutes (what the factory runs)
     python3 tools/logs_push.py --once          # one cycle; exit 1 if it could not push
+    python3 tools/logs_push.py --screen-only logs   # the push's screener over a folder (0 clean, 1 refused): before a hand copy
 
 Why a second worktree. The checkout the bots run in stays on `main`, untouched: this tool never commits to main, never
 pulls main (it fetches origin/main once, to create the worktree), never stashes, never switches a branch. It keeps a
@@ -17,7 +18,8 @@ a cycle that finds it held reports so and does nothing, so two writers never int
   1. it empties the worktree's index, then copies the files under logs/ into <worktree>/logs/ (overwrite; a file that
      disappeared from logs/ stays in the target, nothing is ever deleted). A .jsonl file is copied up to its last
      newline. Every file is SCREENED first with the repo's shared scrubber (tools/redaction.py: tk-, tk_, bk_, adm_,
-     sk- key shapes), for credential assignments (`BAZAAR_KEY=...`, `"GH_TOKEN": "..."`) and by name (env, credentials,
+     sk- key shapes, plus ghp_/gho_/github_pat_ and Bearer/Basic values), for credential assignments with a bare or
+     prefixed name (`KEY=...`, `"token": "..."`, `BAZAAR_KEY=...`, case-insensitive) and by name (env, credentials,
      secrets, passwords, id_rsa, .pem, .key): a file that fails is not copied and is named in the report;
   2. it stages ONLY the files it copied this cycle (explicit paths), checks that nothing else is staged, and commits
      `logs: HH:MM Madrid (tick N)` if something is (tick: last line of logs/score.jsonl, else the feed, else left out).
@@ -26,7 +28,8 @@ a cycle that finds it held reports so and does nothing, so two writers never int
 
 Data-loss policy: the Mini is the ONLY writer of mini/logs. A commit that exists only on the remote branch is discarded
 by the next push (and reported); never push to mini/logs from anywhere else. A push that fails (network, credentials)
-is logged and the loop goes on; the commit stays local and the next cycle pushes it. One line per cycle on stdout:
+is logged and the loop goes on; the commit stays local and the next cycle pushes it. A file's (size, mtime) is remembered only after the cycle's commit succeeded, so a commit that
+failed is retried. One line per cycle on stdout:
 `pushed <sha> <n files>`, `nothing new`, or `push failed: <reason>`.
 First run: `git worktree add -B mini/logs <repo>/.logs-push origin/main` (from origin/mini/logs if that exists).
 Stdlib only; the commit time is Madrid time whatever TZ says.
@@ -53,9 +56,13 @@ WORKTREE = ".logs-push"
 LOCKFILE = ".logs-push.lock"
 MADRID = ZoneInfo("Europe/Madrid")
 GIT_TIMEOUT_S = 180
-# a credential assignment: BAZAAR_KEY=..., export GH_TOKEN: ..., "BROKER_KEY": "..." (any value of 8+ characters)
-ASSIGNMENT = re.compile(rb"""(?im)(?:^|[\s,{;])(?:export\s+)?["']?[A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?)"""
-                        rb"""["']?\s*[=:]\s*["']?[A-Za-z0-9_\-./+=]{8,}""")
+# A credential assignment, bare or prefixed, case-insensitive, as a JSON key or an assignment: key, token, secret,
+# password, authorization, api_key, credentials ... = / : a value of 12+ characters ("key": "RET-07" is not one).
+_NAME = rb"[A-Za-z0-9_.-]*(?:key|token|secret|passw(?:or)?d|authorization|credentials?)[A-Za-z0-9_.-]*"
+ASSIGNMENT = re.compile(rb"""(?i)["']?""" + _NAME + rb"""["']?\s*[=:]\s*["']?[A-Za-z0-9_\-./+=]{12,}""")
+# Known credential shapes on top of the shared scrubber's: GitHub tokens, sk- keys, bk_/tk_, Bearer/Basic values.
+KNOWN_SHAPES = re.compile(r"(?i)(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{8,}|github_pat_[A-Za-z0-9_]{8,}|sk-[A-Za-z0-9_-]{8,}"
+                          r"|bk_[A-Za-z0-9_-]{4,}|tk_[A-Za-z0-9_-]{4,}|(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{12,}")
 CREDENTIAL_NAME = re.compile(r"(?i)(?:^|[._-])(?:env|credentials?|secrets?|passwords?|passwd|id_rsa|id_ed25519)(?:[._-]|$)"
                              r"|\.(?:pem|key|p12|pfx)$")
 FALLBACK_IDENTITY = ["-c", "user.name=Mini logs push", "-c", "user.email=mini-logs@localhost"]
@@ -65,16 +72,27 @@ class PushError(Exception):
     """A git step failed; the message is what the one-line report says."""
 
 
+def _subcommand(args) -> str:
+    """The git subcommand in `args`, past any `-c name=value` pairs."""
+    it = iter(args)
+    for a in it:
+        if a == "-c":
+            next(it, None)
+            continue
+        return a
+    return "?"
+
+
 def git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
     env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "true"}
     try:
         r = subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=GIT_TIMEOUT_S)
     except subprocess.TimeoutExpired:
-        raise PushError(f"git {args[0]} timed out after {GIT_TIMEOUT_S} s") from None
+        raise PushError(f"git {_subcommand(args)} timed out after {GIT_TIMEOUT_S} s") from None
     except OSError as e:
         raise PushError(f"cannot run git: {e}") from None
     if check and r.returncode != 0:
-        raise PushError(f"git {args[0]}: " + (r.stderr.strip().splitlines() or ["failed"])[-1][:200])
+        raise PushError(f"git {_subcommand(args)}: " + (r.stderr.strip().splitlines() or ["failed"])[-1][:200])
     return r
 
 
@@ -131,7 +149,8 @@ def verify_worktree(root: Path, wt: Path, branch: str) -> None:
     common = (wt / git(wt, "rev-parse", "--git-common-dir").stdout.strip()).resolve()
     if git_dir == common:
         raise PushError(f"refusing: {WORKTREE} is not a linked worktree")
-    if (root / ".git").exists() and common != (root / ".git").resolve():
+    root_common = (root / git(root, "rev-parse", "--git-common-dir").stdout.strip()).resolve()
+    if common != root_common:
         raise PushError(f"refusing: {WORKTREE} is a worktree of another repository")
     on = git(wt, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     if on != branch:
@@ -174,11 +193,36 @@ def screen(rel: str, data: bytes):
     names that look like env or credential files."""
     if CREDENTIAL_NAME.search(Path(rel).name):
         return "credential-like name"
-    if redaction.SECRET.search(data.decode("utf-8", "replace")):
+    text = data.decode("utf-8", "replace")
+    if redaction.SECRET.search(text) or KNOWN_SHAPES.search(text):
         return "key-like text"
     if ASSIGNMENT.search(data):
         return "credential assignment"
     return None
+
+
+def screen_tree(folder: Path) -> list:
+    """[(relative path, reason)] for everything under `folder` that must not leave the machine: the same screener as
+    the push, plus symlinks (scp follows them). The pre-flight uses it before a hand copy."""
+    bad = []
+    for dirpath, dirnames, filenames in os.walk(folder, followlinks=False):
+        for d in list(dirnames):
+            if (Path(dirpath) / d).is_symlink():
+                bad.append((str((Path(dirpath) / d).relative_to(folder)), "symlink"))
+                dirnames.remove(d)
+        for name in sorted(filenames):
+            path = Path(dirpath) / name
+            rel = str(path.relative_to(folder))
+            if path.is_symlink():
+                bad.append((rel, "symlink"))
+                continue
+            try:
+                why = screen(rel, path.read_bytes())
+            except OSError as e:
+                why = f"unreadable ({type(e).__name__})"
+            if why:
+                bad.append((rel, why))
+    return bad
 
 
 def safe_target(dst_root: Path, rel: str) -> Path:
@@ -196,9 +240,10 @@ def safe_target(dst_root: Path, rel: str) -> Path:
 
 def mirror(src: Path, dst: Path, seen: dict) -> tuple[list, list]:
     """Copy src/** into dst/** (overwrite, never delete, symlinks never followed). `seen` maps a source path to its
-    (size, mtime_ns) at the last look, so an unchanged file costs one stat. Returns (relative paths written this cycle,
-    [(relative path, reason)] screened out)."""
-    copied, skipped = [], []
+    (size, mtime_ns) at the last COMMITTED look, so an unchanged file costs one stat; it is not touched here. Returns
+    (relative paths of the clean files looked at this cycle, [(relative path, reason)] screened out, the new stamps):
+    the caller records the stamps only once the cycle's commit has succeeded, so a failed commit retries the files."""
+    copied, skipped, stamps = [], [], {}
     for dirpath, dirnames, filenames in os.walk(src, followlinks=False):
         dirnames[:] = sorted(d for d in dirnames if not (Path(dirpath) / d).is_symlink())
         for name in sorted(filenames):
@@ -214,7 +259,7 @@ def mirror(src: Path, dst: Path, seen: dict) -> tuple[list, list]:
                 data = path.read_bytes()
             except OSError:
                 continue
-            seen[path] = stamp
+            stamps[path] = stamp
             if path.suffix == ".jsonl":
                 data = data[:data.rfind(b"\n") + 1]
             why = screen(rel, data)
@@ -226,8 +271,8 @@ def mirror(src: Path, dst: Path, seen: dict) -> tuple[list, list]:
             safe_target(dst, rel)                                   # again, now that the directories exist
             if not target.exists() or target.read_bytes() != data:
                 target.write_bytes(data)
-                copied.append(rel)
-    return copied, skipped
+            copied.append(rel)
+    return copied, skipped, stamps
 
 
 def stage(wt: Path, copied: list) -> list:
@@ -265,7 +310,7 @@ def cycle(root: Path, seen: dict, remote: str = "origin", branch: str = BRANCH, 
 def _cycle(root: Path, seen: dict, remote: str, branch: str, now) -> str:
     wt = ensure_worktree(root, remote, branch)
     verify_worktree(root, wt, branch)
-    copied, skipped = mirror(root / "logs", wt / "logs", seen)
+    copied, skipped, stamps = mirror(root / "logs", wt / "logs", seen)
     note = f" (screened out: {', '.join(f'{r} {w}' for r, w in skipped[:3])})" if skipped else ""
     staged = stage(wt, copied)
     if staged:
@@ -274,6 +319,7 @@ def _cycle(root: Path, seen: dict, remote: str, branch: str, now) -> str:
         message = f"logs: {stamp} Madrid" + (f" (tick {tick})" if tick is not None else "")
         ident = [] if git(wt, "config", "user.email", check=False).stdout.strip() else FALLBACK_IDENTITY
         git(wt, *ident, "commit", "-q", "-m", message)
+    seen.update(stamps)                      # only now: a failed stage or commit above makes the next cycle look again
     # fetch every cycle: the push decision is made against what the remote has now, not against a stale view
     listed = git(wt, "ls-remote", "--exit-code", "--heads", remote, branch, check=False)
     if listed.returncode not in (0, 2):
@@ -303,7 +349,16 @@ def main(argv=None) -> int:
     ap.add_argument("--root", default=str(ROOT), help="the repo to mirror (default: the one this tool lives in)")
     ap.add_argument("--remote", default="origin")
     ap.add_argument("--branch", default=BRANCH)
+    ap.add_argument("--screen-only", metavar="DIR", default=None,
+                    help="run the push's screener over DIR and exit (0 clean, 1 a file would be refused): use it before "
+                         "copying logs by hand")
     a = ap.parse_args(argv)
+    if a.screen_only:
+        bad = screen_tree(Path(a.screen_only))
+        for rel, why in bad:
+            print(f"REFUSED {rel}: {why}")
+        print(f"{len(bad)} file(s) refused" if bad else "clean")
+        return 1 if bad else 0
     root, seen = Path(a.root).resolve(), {}
     while True:
         line = cycle(root, seen, a.remote, a.branch)

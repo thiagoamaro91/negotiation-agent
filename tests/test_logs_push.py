@@ -249,6 +249,22 @@ class Failures(Sandbox):
         self.run_git(other, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "intruder")
         self.run_git(other, "push", "-q", "origin", "mini/logs")
 
+    def test_a_failed_commit_is_retried_not_remembered_as_done(self):
+        """Sol, round 2: the source stamps were recorded before the commit, so a commit that failed once (a hook, a full
+        disk) made every later cycle say `nothing new` and the files never left the machine."""
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()                                                                     # creates the worktree
+        hook = self.mini / ".git" / "hooks" / "pre-commit"
+        hook.write_text("#!/bin/sh\nexit 1\n")
+        hook.chmod(0o755)
+        self.write("logs/duel/b.jsonl", '{"n": 1}\n')
+        self.assertRegex(self.cycle(), r"^push failed: git commit")
+        self.assertNotIn("b.jsonl", self.on_origin("ls-tree", "-r", "--name-only", "mini/logs"))
+        hook.unlink()
+        self.assertRegex(self.cycle(), r"^pushed [0-9a-f]{7} 1 files$")                   # not `nothing new`
+        self.assertEqual(self.on_origin("show", "mini/logs:logs/duel/b.jsonl"), '{"n": 1}')
+        self.assertEqual(self.cycle(), "nothing new")
+
     def test_a_broken_origin_is_a_report_not_a_crash(self):
         self.run_git(self.mini, "remote", "set-url", "origin", str(self.tmp / "nowhere.git"))
         self.write("logs/duel/a.jsonl", "{}\n")
@@ -323,6 +339,18 @@ class Isolation(Sandbox):
         self.assertNotIn("link", tree)
 
 
+class SourceRoot(Sandbox):
+    def test_a_mini_checkout_that_is_itself_a_linked_worktree_works(self):
+        """Sol, round 2: a legitimate linked-worktree source root was refused (its .git is a file)."""
+        linked = self.tmp / "linked"
+        self.run_git(self.mini, "worktree", "add", "-q", "-b", "mini-live", str(linked), "HEAD")
+        (linked / "logs" / "duel").mkdir(parents=True, exist_ok=True)
+        (linked / "logs" / "duel" / "a.jsonl").write_text("{}\n")
+        line = lp.cycle(linked, {})
+        self.assertRegex(line, r"^pushed [0-9a-f]{7} \d+ files$")
+        self.assertEqual(self.on_origin("show", "mini/logs:logs/duel/a.jsonl"), "{}")
+
+
 class Guards(Sandbox):
     """What is committed is only what this cycle copied and screened."""
 
@@ -335,17 +363,55 @@ class Guards(Sandbox):
         "logs/a/env-copy.txt": "nothing in here looks like a key\n",                 # the name alone says env
         "logs/a/.env": "A=B\n",
         "logs/a/server.pem": "-----\n",
+        # Sol, round 2: bare names, other prefixes, Bearer values
+        "logs/b/bare-token.json": '{"token":"ghp_fakeabcdefgh1234"}\n',
+        "logs/b/bare-token2.json": '{"token": "abcdef1234567890"}\n',
+        "logs/b/bare-key.txt": "KEY=abcdef123456\n",
+        "logs/b/bare-key-json.json": '{"KEY": "abcdef1234567890"}\n',
+        "logs/b/lower.txt": "api_key = abcdefghijkl\n",
+        "logs/b/password.txt": "password: hunter2hunter2\n",
+        "logs/b/auth.txt": "Authorization: Bearer abcdef1234567890\n",
+        "logs/b/basic.txt": "authorization=Basic dXNlcjpwYXNzd29yZA==\n",
+        "logs/b/sk.jsonl": '{"x": "sk-abcdefgh1234"}\n',
+        "logs/b/gho.jsonl": '{"x": "gho_abcdefgh1234"}\n',
+        "logs/b/pat.jsonl": '{"x": "github_pat_abcdefgh1234"}\n',
+        "logs/b/secret-json.json": '{"Secret": "abcdefghijklmnop"}\n',
+    }
+
+    FINE = {
+        "logs/c/key-field.jsonl": '{"key": "RET-07", "price": 22}\n',
+        "logs/c/team-key.jsonl": '{"key": "t14:LAT-07:20248"}\n',
+        "logs/c/tokens.jsonl": '{"tokens": 12, "monkey": "banana"}\n',
+        "logs/c/prose.txt": "the key to the deal is the price; no token was spent\n",
     }
 
     def test_nothing_that_looks_like_a_credential_is_copied_or_committed(self):
         for rel, text in self.LEAKS.items():
             self.write(rel, text)
-        self.write("logs/a/fine.jsonl", '{"key": "RET-07", "price": 22}\n')                # an ordinary `key` field
+        for rel, text in self.FINE.items():
+            self.write(rel, text)                                                       # ordinary fields and prose
         line = self.cycle()
         self.assertTrue(line.startswith("pushed"), line)
-        self.assertEqual(self.on_origin("ls-tree", "-r", "--name-only", "mini/logs", "logs/a/"), "logs/a/fine.jsonl")
+        shipped = set(self.on_origin("ls-tree", "-r", "--name-only", "mini/logs", "logs/a/", "logs/b/", "logs/c/").split())
+        self.assertEqual(shipped, set(self.FINE))
         for rel in self.LEAKS:
             self.assertFalse((self.mini / ".logs-push" / rel).exists(), rel)
+
+    def test_screen_only_runs_the_same_screener_for_a_hand_copy(self):
+        for rel, text in {**self.LEAKS, **self.FINE}.items():
+            self.write(rel, text)
+        os.symlink(self.mini / "README.md", self.mini / "logs" / "link.txt")
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = lp.main(["--screen-only", str(self.mini / "logs")])
+        self.assertEqual(rc, 1)
+        refused = {line.split(" ")[1].rstrip(":") for line in out.getvalue().splitlines() if line.startswith("REFUSED")}
+        self.assertEqual(refused, {r[len("logs/"):] for r in self.LEAKS} | {"link.txt"})
+        clean = self.tmp / "clean"
+        clean.mkdir()
+        (clean / "ok.jsonl").write_text('{"key": "RET-07"}\n')
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(lp.main(["--screen-only", str(clean)]), 0)
+        self.assertEqual(out.getvalue().strip(), "clean")
 
     def test_a_secret_already_sitting_dirty_in_the_worktree_is_never_committed(self):
         self.write("logs/duel/a.jsonl", "{}\n")

@@ -5,6 +5,7 @@
 import contextlib
 import io
 import json
+import math
 import os
 import re
 import subprocess
@@ -430,6 +431,92 @@ class ReviewPauseGate(Sandbox):
         self.assertEqual(st["why"], "clock paused")
 
 
+class PoisonedClock(Sandbox):
+    """Sol, round 2: a "nan" t_hours followed by a valid reading 120 s later made the duel keeper raise and stop."""
+
+    def test_the_meter_drops_a_poisoned_reading_and_its_history(self):
+        meter = f.PaceMeter()
+        meter.update(SUN_0900, clock(t_hours=18.40, tick=1000))
+        meter.update(SUN_0900 + 60, clock(t_hours="nan", tick=1004))
+        self.assertEqual(meter.samples, [])
+        for bad in (float("nan"), float("inf"), "x", None, [1]):
+            meter.update(SUN_0900 + 70, dict(clock(t_hours=18.4, tick=1005), t_hours=bad))
+        meter.update(SUN_0900 + 80, dict(clock(tick=1006), tick=1006.0))                          # a float tick
+        meter.update(SUN_0900 + 90, dict(clock(tick=1007), tick=True))
+        meter.update(float("nan"), clock(t_hours=18.5, tick=1008))
+        self.assertEqual(meter.samples, [])
+        meter.update(SUN_0900 + 200, clock(t_hours=18.49, tick=1010))
+        meter.update(SUN_0900 + 320, clock(t_hours=18.49 + 0.0166, tick=1018))
+        self.assertGreater(meter.pace, 0)
+        self.assertTrue(math.isfinite(meter.pace))
+
+    def test_the_duel_keeper_survives_a_nan_clock_and_launches_on_the_next_good_read(self):
+        nan_clock = dict(clock(t_hours=18.485, closes="2026-10-04T15:00:00+02:00"), t_hours="nan")
+        good = clock(t_hours=18.49, closes="2026-10-04T15:00:00+02:00")
+        with mock.patch.object(f.time, "time", lambda: SUN_0900 + 2 * 3600 + 34 * 60):
+            rc, st = self.keep(self.config(ReviewOutOfHours.SESSION), "duel", [nan_clock, good],
+                               [FakeChild(polls=3, hang=True)], schedule=[DUELS3], sleeps=4)
+        self.assertEqual(len(self.popen), 1)                         # it read on, and launched on the good reading
+        with mock.patch.object(f.time, "time", lambda: SUN_0900 + 2 * 3600 + 34 * 60):
+            rc, st = self.keep(self.config(ReviewOutOfHours.SESSION), "duel", [nan_clock], [], schedule=[DUELS3], sleeps=1)
+        self.assertEqual(st["why"], "clock reading malformed: waiting for a good one")   # a malformed read is not a value
+        self.assertEqual(self.popen, [])
+
+    def test_a_pace_meter_that_raises_never_stops_a_keeper(self):
+        good = clock(t_hours=18.49, closes="2026-10-04T15:00:00+02:00")
+        with mock.patch.object(f.PaceMeter, "update", side_effect=ValueError("boom")), \
+                mock.patch.object(f.time, "time", lambda: SUN_0900 + 2 * 3600 + 34 * 60):
+            self.keep(self.config(ReviewOutOfHours.SESSION), "duel", [good], [FakeChild(polls=3, hang=True)],
+                      schedule=[DUELS3], sleeps=2)
+        self.assertEqual(len(self.popen), 1)
+
+    def test_status_calls_a_nan_clock_a_problem_not_a_crash(self):
+        _, problems = self.status(self.config(SERVICE), dict(clock(), t_hours="nan"))
+        self.assertIn("clock reading malformed", problems)
+        self.assertTrue(f.clock_ok(clock()))
+        for bad in (dict(clock(), t_hours=float("nan")), dict(clock(), t_hours="18.4"), dict(clock(), tick=1.5), [1], None):
+            self.assertFalse(f.clock_ok(bad), bad)
+
+
+class WholeWave(unittest.TestCase):
+    """Sol, round 2: with the lock expired and the allowance fired, a dealer launched three game minutes into Duels III."""
+
+    def picaros(self):
+        return next(p for p in f.load_config(f.CONFIG)["processes"] if p["name"] == "picaros")
+
+    def gate(self, h, events=(DUELS3, FINAL, GRANT), lock=None):
+        p = self.picaros()
+        return f.check_gates(f.gates_for(p, p["steps"][0]), clock(t_hours=h), list(events), lock, SUN_0900)
+
+    def test_no_dealer_launch_inside_the_active_wave_whatever_the_lock(self):
+        expired = SUN_0900 - 1                                      # the duel lock file exists but its time has passed
+        for h in (18.65 - 0.40, 18.65, 18.71, 18.65 + 1.0, 18.65 + 1.69):
+            ok, why = self.gate(h, lock=expired)
+            self.assertFalse(ok, (h, why))
+        self.assertIn("no launch from 25 min before it until 20.350 h", self.gate(18.71)[1])
+
+    def test_a_dealer_may_launch_between_the_waves_and_after_the_second(self):
+        self.assertTrue(self.gate(18.65 - 0.43)[0])                 # 26 minutes before Duels III
+        self.assertTrue(self.gate(18.65 + 1.71)[0])                 # after the configured end of Duels III
+        self.assertTrue(self.gate(21.20)[0])                        # before the Final's 25 minute lead
+        self.assertFalse(self.gate(21.25)[0])
+        self.assertFalse(self.gate(21.65 + 0.85)[0])
+        self.assertTrue(self.gate(21.65 + 0.91)[0])
+
+    def test_the_schedule_end_wins_over_the_configured_one(self):
+        longer = dict(DUELS3, params=dict(DUELS3["params"], duration_hours=2.5))
+        self.assertFalse(self.gate(18.65 + 2.0, events=(longer, GRANT))[0])
+        self.assertTrue(self.gate(18.65 + 2.6, events=(longer, GRANT))[0])
+
+    def test_a_fresh_lock_still_holds_a_dealer(self):
+        self.assertFalse(self.gate(20.4, events=(), lock=SUN_0900 + 30)[0])
+
+    def test_every_dealer_carries_the_wave_durations(self):
+        for p in f.load_config(f.CONFIG)["processes"]:
+            if p["kind"] == "steps":
+                self.assertEqual(p["gates"]["duel_wave_hours"], {"Duels III": 1.7, "Final duels": 0.9, "default": 1.7}, p["name"])
+
+
 class OptionalServices(Sandbox):
     """An enabled optional service that fails must not fail in silence (the desk's SAL-10 bid, the announcer)."""
 
@@ -589,21 +676,39 @@ class ReviewOutOfHours(Sandbox):
                "session": {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120},
                "cmd": ["{python}", "-c", "pass"], "match": ["agent/duel.py", "run"]}
 
-    def test_a_measured_pace_refuses_a_wave_that_projects_after_close(self):
-        # Sunday 14:58 at game 21.55: the Final (21.65) is 6 game minutes away
-        c = clock(t_hours=21.55, closes="2026-10-04T15:00:00+02:00")
-        now = SUN_0900 + 5 * 3600 + 58 * 60
+    def test_the_launch_decision_is_the_game_hour_window_and_the_real_close_only(self):
         sess = {"event": {"action": "duels"}, "lead_min": 10, "window_min": 120}
-        self.assertEqual(f.session_gate(sess, c, [FINAL], now, pace=1.0)[1:], (False, "Final duels projected at Sun 15:04, "
-                                                                              "outside opening hours: not launching"))
-        self.assertFalse(f.session_gate(sess, c, [FINAL], now, pace=2.0)[1])          # 15:01
-        self.assertTrue(f.session_gate(sess, c, [FINAL], now, pace=4.0)[1])           # 14:59:30: it can still happen
+        closes = "2026-10-04T15:00:00+02:00"
+        # 14:59 Madrid, game 21.49: the Final (21.65) is 9.6 game minutes away, inside the 10 minute lead: LAUNCH
+        c = clock(t_hours=21.49, closes=closes)
+        self.assertTrue(f.session_gate(sess, c, [FINAL], SUN_0900 + 5 * 3600 + 59 * 60)[1])
+        # 15:01 Madrid is past the published close: nothing left to launch for
+        why = f.session_gate(sess, c, [FINAL], SUN_0900 + 6 * 3600 + 60)
+        self.assertEqual(why[1:], (False, "Final duels: Sun 15:01 Madrid is outside opening hours: not launching"))
+        # the same game hour before the lead window is simply not open
+        self.assertEqual(f.session_gate(sess, clock(t_hours=21.40, closes=closes), [FINAL], SUN_0900 + 5 * 3600)[1:],
+                         (False, "next duel wave Final duels at 21.650 h"))
 
-    def test_an_unknown_pace_never_refuses_a_launch(self):
-        """A duel bot that launches for nothing idles until --until; one that is refused misses the wave. With no pace
-        measured the wave is projected as early as the fastest believable clock allows."""
-        c = clock(t_hours=21.55, closes="2026-10-04T15:00:00+02:00")
-        with mock.patch.object(f.time, "time", lambda: SUN_0900 + 5 * 3600 + 58 * 60):
+    def test_a_poisonous_pace_cannot_veto_a_valid_duel_window(self):
+        """Sol, round 2: two reads 120 s apart that advance 8 ticks but 0.001 game hours made pace 0.03, projected Duels III
+        at 17:04 and refused the 11:34 launch. No pace reaches the launch decision any more."""
+        c = clock(t_hours=18.485, closes="2026-10-04T15:00:00+02:00")
+        with mock.patch.object(f.PaceMeter, "pace", new_callable=mock.PropertyMock, return_value=0.03), \
+                mock.patch.object(f.time, "time", lambda: SUN_0900 + 2 * 3600 + 34 * 60):          # 11:34 Madrid
+            self.keep(self.config(self.SESSION), "duel", [c], [FakeChild(polls=3, hang=True)], schedule=[DUELS3], sleeps=2)
+        self.assertEqual(len(self.popen), 1)
+        meter = f.PaceMeter()
+        meter.update(SUN_0900, clock(t_hours=18.484, tick=1000))
+        meter.update(SUN_0900 + 120, clock(t_hours=18.485, tick=1008))
+        self.assertAlmostEqual(meter.pace, 0.03, places=2)                                          # the reviewer's input
+        sess = {"event": {"action": "duels"}, "lead_min": 10, "window_min": 165}
+        self.assertTrue(f.session_gate(sess, c, [DUELS3], SUN_0900 + 2 * 3600 + 34 * 60)[1])
+        final = clock(t_hours=21.49, closes="2026-10-04T15:00:00+02:00")                              # the Final at 14:04
+        self.assertTrue(f.session_gate(sess, final, [FINAL], SUN_0900 + 5 * 3600 + 4 * 60)[1])
+
+    def test_a_launch_at_14_59_with_the_final_window_open_goes_ahead(self):
+        c = clock(t_hours=21.49, closes="2026-10-04T15:00:00+02:00")
+        with mock.patch.object(f.time, "time", lambda: SUN_0900 + 5 * 3600 + 59 * 60):
             self.keep(self.config(self.SESSION), "duel", [c], [FakeChild(polls=3, hang=True)], schedule=[FINAL], sleeps=2)
         self.assertEqual(len(self.popen), 1)
 
@@ -668,13 +773,11 @@ class Pace(Sandbox):
 
     def test_the_duel_session_opens_at_its_game_hour_whatever_the_pace_or_the_wall_time(self):
         lead_h = self.SESS["lead_min"] / 60
-        for pace in (None, 1.0, 2.0, 4.0):
-            for wall in (SUN_0900 + 600, SUN_0900 + 2 * 3600 + 29 * 60, SUN_0900 + 3 * 3600):    # 09:10, 11:29, 12:00
-                at = lambda h: f.session_gate(self.SESS, clock(t_hours=h, closes="2026-10-04T15:00:00+02:00"),
-                                              [DUELS3], wall, pace)
-                self.assertTrue(at(18.65 - lead_h + 0.001)[1], (pace, wall))
-                self.assertFalse(at(18.65 - lead_h - 0.01)[1], (pace, wall))
-                self.assertEqual(at(18.65 - lead_h - 0.01)[2], "next duel wave Duels III at 18.650 h")
+        for wall in (SUN_0900 + 600, SUN_0900 + 2 * 3600 + 29 * 60, SUN_0900 + 3 * 3600):          # 09:10, 11:29, 12:00 Madrid
+            at = lambda h: f.session_gate(self.SESS, clock(t_hours=h, closes="2026-10-04T15:00:00+02:00"), [DUELS3], wall)
+            self.assertTrue(at(18.65 - lead_h + 0.001)[1], wall)
+            self.assertFalse(at(18.65 - lead_h - 0.01)[1], wall)
+            self.assertEqual(at(18.65 - lead_h - 0.01)[2], "next duel wave Duels III at 18.650 h")
 
     def test_the_dealer_quiet_window_is_game_hours_whatever_the_wall_time(self):
         gates = {"doors_open": True, "clock_running": True, "no_duel_lock": True, "duel_quiet_min": 25}
@@ -727,6 +830,13 @@ class Pace(Sandbox):
         self.assertIn("pace 1.00 game hours per wall hour, measured by the keepers", text)
         self.assertRegex(text, r"14\.650  Sun 10:16\+ .*bench")
         self.assertIsNone(f.read_pace(SUN_0900 + 3600))                                    # an old reading is not trusted
+
+    def test_an_absurd_measured_pace_is_ignored_by_plan_and_status(self):
+        for absurd in (0.03, 0.0, -1.0, 40.0, float("nan")):
+            f.write_json(f.pace_path(), {"pace": absurd, "at": SUN_0900})
+            self.assertIsNone(f.read_pace(SUN_0900 + 10), absurd)
+        f.write_json(f.pace_path(), {"pace": 2.0, "at": SUN_0900})
+        self.assertEqual(f.read_pace(SUN_0900 + 10), 2.0)
 
     def test_a_keeper_shares_the_pace_it_measures(self):
         """A keeper that waits (a dealer for the allowance) still reads the clock every loop: that is what measures it."""
@@ -950,7 +1060,7 @@ class OperatorText(unittest.TestCase):
         for p in f.load_config(f.CONFIG)["processes"]:
             if p["kind"] != "steps":
                 continue
-            self.assertIn("No run is LAUNCHED within 25 game min of a duel wave", p["note"], p["name"])
+            self.assertIn("No run is LAUNCHED from 25 game min before a duel wave until its configured end", p["note"], p["name"])
             self.assertIn("may still overlap", p["note"], p["name"])
             self.assertNotIn("a run is 40 ticks", p["note"], p["name"])
 
@@ -959,7 +1069,8 @@ class OperatorText(unittest.TestCase):
         for bad in ("git add logs", "pull --rebase", 'git commit -m "logs'):
             self.assertNotIn(bad, text)
         self.assertIn("Never run `git add`, `commit`, `pull` or `stash` in `~/bazaar` while the bots run", text)
-        self.assertIn("scp -r logs", text)
+        self.assertIn("python3 tools/logs_push.py --screen-only logs && scp -r logs", text)   # the push's own screener
+        self.assertNotIn("grep -rlE", text)
         self.assertNotIn("Everything here is read-only", text)                # check 1 pulls and check 11 pushes
 
 

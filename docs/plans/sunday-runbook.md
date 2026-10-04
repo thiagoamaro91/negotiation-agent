@@ -62,7 +62,7 @@ The organisers' published schedule (Madrid) is the reference for humans: [`sunda
 | 18.65 | Duels III (2 rounds, 12-tick duels, decay 0.1, max 4) | status checks the duel log while the wave is live: something logged since it began, and no silence over 8 ticks while our duel lock exists |
 | 19.00, 21.00 | Market Tests | as at 17.00 |
 | 21.45 | finale warning | nothing |
-| 21.65 | The Final (12-tick duels) and the dealer stalls close | a fresh duel run 10 min before, but only if the wave projects inside opening hours (rechecked every loop) |
+| 21.65 | The Final (12-tick duels) and the dealer stalls close | a fresh duel run 10 game min before, decided on the game-hour window alone; refused only when Madrid time is already past the 15:00 close (rechecked every loop) |
 | closing time | The Bazaar closes | gates close; keepers wait |
 
 The clock closed Saturday at 13.37 h, not at the schedule's 16.65 h, so Sunday's events land earlier or later in wall time depending on the clock's speed (see the 09:05 read in the pre-flight page). At Sunday 01:30 `plan` projected the Final at about 14:00, inside opening hours; it marks an event `OUTSIDE OPENING HOURS` when its projection falls past the 15:00 close (the `Scores freeze` line always does, at exactly 15:00), and the factory follows whatever the schedule says.

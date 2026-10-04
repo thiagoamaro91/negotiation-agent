@@ -24,10 +24,11 @@ Game hours and wall time. On Friday and Saturday t_hours advanced tick_seconds/3
 0.350 to 0.783 h at 60 s; Saturday ticks 265 to 266: 3.533 to 3.542 h at 30 s): one game hour per wall hour. Sunday's
 published table (hard Market Test 09:39, Duels III 11:39, Final 14:09, Madrid) fits about TWO game hours per wall hour,
 so nothing here assumes a pace. Every decision (the duel session, the dealer gates, after_event) is made in game hours
-from the live /api/clock and /api/schedule, re-read on every loop: a pause freezes it, a different pace only moves the
-wall time at which it happens. The wall times that `plan` prints (marked +) are ESTIMATES: `plan` uses the pace the
-keepers measured from the live clock (results/factory/pace.json), else `--pace X`, else 1.0 and says so. Bots act on
-game events, never on those estimates.
+from the live /api/clock (read every loop, about every 10 s) and /api/schedule (refreshed every 60 s): a pause freezes
+it, a different pace only moves the wall time at which it happens. The wall times that `plan` prints (marked +) are
+ESTIMATES, for display only: `plan` uses the pace the keepers measured from the live clock (results/factory/pace.json),
+else `--pace X`, else the config's pace_assumed, and says so. NOTHING that starts or stops a bot reads a pace: the one
+wall-clock check on a launch is whether Madrid time is already past the published close.
 """
 from __future__ import annotations
 
@@ -62,11 +63,10 @@ SAFE_ENV = ("PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE", "TZ
             "BAZAAR_URL", "TEAM_BUS_REPO", "TEAM_BUS_ISSUE", "TEAM_BUS_STATE", "TEAM_BUS_SESSION", "PYTHONUNBUFFERED")
 SECRETISH = re.compile(r"KEY|TOKEN|SECRET|PASS", re.I)
 RECHECK_S = 6.0          # status looks twice before calling a child dead (a keeper notices an exit within 5 s)
-PACE_FASTEST = 4.0       # the fastest game clock we would believe (game hours per wall hour): with no measured pace,
-                         # a wave is projected as early as that allows, so an unknown pace never refuses a launch
 PACE_MIN_SPAN_S = 120.0  # a pace is reported only after this long of a running clock (tick edges are seen to 10 s)
 PACE_WINDOW_S = 900.0    # ... measured over at most this long
 PACE_MAX_AGE_S = 600.0   # `plan` and `status` trust results/factory/pace.json for this long
+PACE_SANE = (0.25, 8.0)  # a measured pace outside this is a glitch (a stall, a jump): display and alerts ignore it
 CRASHLOOP_FAILS = 3      # status raises a problem for ANY enabled process after this many failed runs in a row
 FAIL_RUN_S = 300.0       # a run that lived this long is not a crash: it resets the count
 BACKOFF_MAX_S = 120.0    # the longest wait between two launches of a process that keeps dying
@@ -126,11 +126,17 @@ class PaceMeter:
         self.samples = []          # (wall, t_hours, tick)
 
     def update(self, wall: float, clock: dict) -> None:
-        tick = clock.get("tick")
-        if clock.get("doors") != "open" or clock.get("paused") is not False or not isinstance(tick, int):
+        """One read. Anything that is not a clean running-clock reading (a pause, closed doors, a non-finite or malformed
+        number) clears the history: a poisoned sample never reaches the pace."""
+        try:
+            tick, h = clock.get("tick"), float(clock.get("t_hours") or 0.0)
+            clean = (clock.get("doors") == "open" and clock.get("paused") is False and isinstance(tick, int)
+                     and not isinstance(tick, bool) and math.isfinite(h) and math.isfinite(wall))
+        except (TypeError, ValueError, AttributeError):
+            clean = False
+        if not clean:
             self.samples.clear()
             return
-        h = float(clock.get("t_hours") or 0.0)
         if self.samples and (tick < self.samples[-1][2] or h < self.samples[-1][1] or wall < self.samples[-1][0]):
             self.samples.clear()
         if not self.samples or tick != self.samples[-1][2]:
@@ -145,7 +151,19 @@ class PaceMeter:
         (w0, h0, t0), (w1, h1, t1) = self.samples[0], self.samples[-1]
         if t1 <= t0 or w1 - w0 < PACE_MIN_SPAN_S or h1 <= h0:
             return None
-        return (h1 - h0) * 3600.0 / (w1 - w0)
+        pace = (h1 - h0) * 3600.0 / (w1 - w0)
+        return pace if math.isfinite(pace) and pace > 0 else None
+
+
+def clock_ok(c) -> bool:
+    """A /api/clock reading the rest of the factory can do arithmetic on: t_hours absent or a finite number, tick absent
+    or an int. Anything else is treated as an unreadable clock (wait and read again), never as a value."""
+    if not isinstance(c, dict):
+        return False
+    h, tick = c.get("t_hours"), c.get("tick")
+    if h is not None and (isinstance(h, bool) or not isinstance(h, (int, float)) or not math.isfinite(h)):
+        return False
+    return tick is None or (isinstance(tick, int) and not isinstance(tick, bool))
 
 
 def pace_path() -> Path:
@@ -156,7 +174,7 @@ def read_pace(now: float):
     """The pace a keeper measured in the last PACE_MAX_AGE_S seconds, or None."""
     d = read_json(pace_path(), {})
     try:
-        if now - float(d["at"]) <= PACE_MAX_AGE_S and float(d["pace"]) > 0:
+        if now - float(d["at"]) <= PACE_MAX_AGE_S and PACE_SANE[0] <= float(d["pace"]) <= PACE_SANE[1]:
             return float(d["pace"])
     except (KeyError, TypeError, ValueError):
         pass
@@ -182,8 +200,10 @@ def matches(e: dict, sel: dict) -> bool:
 
 
 def check_gates(g: dict, clock: dict, events: list, lock_expiry, now: float) -> tuple[bool, str]:
-    """(open, why) for a gate dict: doors_open and clock_running (both default on), no_duel_lock, duel_quiet_min,
-    after_event."""
+    """(open, why) for a gate dict: doors_open and clock_running (both default on), no_duel_lock, duel_quiet_min with
+    duel_wave_hours, after_event. A dealer is kept out of the WHOLE active wave: no launch from duel_quiet_min before a
+    wave until its end (the event's params.duration_hours or end_hours after it if the schedule carries one, else
+    duel_wave_hours[wave name or "default"] game hours), whatever the state of the duel lock."""
     h = float(clock.get("t_hours") or 0.0)
     if g.get("doors_open", True) and clock.get("doors") != "open":         # explicit values only: {} is closed
         return False, f"doors closed (next opening {clock.get('next_opens') or 'unknown'})"
@@ -193,10 +213,17 @@ def check_gates(g: dict, clock: dict, events: list, lock_expiry, now: float) -> 
         return False, f"duel lock fresh for {lock_expiry - now:.0f} s"
     quiet = g.get("duel_quiet_min")
     if quiet:
+        waves = g.get("duel_wave_hours") or {}
         for e in events:
-            at = float(e.get("at_hours", 0))
-            if e.get("action") == "duels" and h - 0.05 <= at <= h + quiet / 60.0:
-                return False, f"{(e.get('params') or {}).get('name', 'duels')} at {at:.3f} h is within {quiet} min"
+            if e.get("action") != "duels":
+                continue
+            at, params = float(e.get("at_hours", 0)), e.get("params") or {}
+            name = params.get("name", "duels")
+            span = params.get("duration_hours", params.get("end_hours"))
+            span = float(span) if isinstance(span, (int, float)) and span > 0 else float(waves.get(name, waves.get("default", 0.05)))
+            if at - quiet / 60.0 <= h <= at + span:
+                return False, (f"{name} at {at:.3f} h: no launch from {quiet} min before it until {at + span:.3f} h "
+                               f"(the wave runs about {span:g} game h)")
     after = g.get("after_event")
     if after:
         hits = [float(e["at_hours"]) for e in events if matches(e, after)]
@@ -219,21 +246,19 @@ def session_pick(sess: dict, events: list, now_hours: float):
     return (ahead[0] if ahead else None), False
 
 
-def session_gate(sess: dict, clock: dict, events: list, now: float, pace=None):
-    """(event, open, why). WHETHER the session is open is decided in game hours only (session_pick: the game clock
-    against the event's game hour, whatever the pace). On top of that the wave's projected wall time must fall inside
-    opening hours, so a pause that pushes a wave past the close stops a launch that could only idle; that projection
-    uses the measured `pace`, and with none it uses PACE_FASTEST (the earliest the wave could come), so an unknown pace
-    can never refuse a launch that a real one would allow."""
+def session_gate(sess: dict, clock: dict, events: list, now: float):
+    """(event, open, why). Whether the session is open is decided in game hours ONLY (session_pick: the live game clock
+    against the event's game hour, from lead_min before it to window_min after it), whatever the pace. No wall-time
+    projection can veto it. The one wall-clock check is the real closing: Madrid time already past the published close
+    (the clock's days table) means nothing is left to launch for."""
     ev, is_open = session_pick(sess, events, float(clock.get("t_hours") or 0.0))
     if not ev:
         return None, False, "no duel wave in the schedule"
     name = (ev.get("params") or {}).get("name", "duels")
-    wall, _ = to_wall(float(ev["at_hours"]), clock, events, now, pace or PACE_FASTEST)
-    if clock.get("days") and not day_of(clock, wall):
-        return ev, False, f"{name} projected at {hhmm(wall, day=True)}, outside opening hours: not launching"
     if not is_open:
         return ev, False, f"next duel wave {name} at {float(ev['at_hours']):.3f} h"
+    if clock.get("days") and not day_of(clock, now):
+        return ev, False, f"{name}: {hhmm(now, day=True)} Madrid is outside opening hours: not launching"
     return ev, True, "duel window open"
 
 
@@ -579,12 +604,12 @@ def context(cfg: dict, cfg_path, p: dict, clock: dict, events: list, now: float)
     return ctx
 
 
-def launch_check(p: dict, step, clock: dict, events: list, now: float, skip=(), pace=None) -> tuple[bool, str]:
+def launch_check(p: dict, step, clock: dict, events: list, now: float, skip=()) -> tuple[bool, str]:
     """(ok, why), evaluated before EVERY launch, restarts included: the gates, the duel session (inside opening
     hours), and no copy of the bot running outside the factory."""
     ok, why = check_gates(gates_for(p, step), clock, events, lock_expiry(), now)
     if ok and p["kind"] == "session":
-        _, ok, why = session_gate(p["session"], clock, events, now, pace)
+        _, ok, why = session_gate(p["session"], clock, events, now)
     if ok:
         others = [x for x in ps_pids(ps_lines(), p.get("match") or [], p.get("exclude") or []) if x not in skip]
         if others:
@@ -675,7 +700,7 @@ def cmd_plan(cfg: dict, cfg_path, pace_arg=None) -> int:
             print(f"      ALREADY RUNNING outside the factory: pid {', '.join(map(str, others))} (up will refuse it)")
         ctx = context(cfg, cfg_path, p, clock, events, now)
         if p["kind"] == "session":
-            ev, _, why_s = session_gate(p["session"], clock, events, now, known)
+            ev, _, why_s = session_gate(p["session"], clock, events, now)
             w, early = to_wall(float(ev["at_hours"]), clock, events, now, pace) if ev else (now, False)
             when = f" ({hhmm(w, day=True)}{'+' if early else ''})" if ev else ""
             print(f"      session: {why_s}{when}; starts {p['session'].get('lead_min', 10)} min before, "
@@ -795,14 +820,17 @@ def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
     def note_clock(c):
         """Feed the pace meter and share what it measured (plan and status read it); never an input to a launch gate
         except the opening-hours projection of a duel wave, which uses it only to be less strict."""
-        meter.update(time.time(), c)
-        measured = meter.pace
-        if measured and time.time() - pace_written[0] >= 30:
-            pace_written[0] = time.time()
-            try:
+        try:
+            meter.update(time.time(), c)
+            measured = meter.pace
+            if measured and time.time() - pace_written[0] >= 30:
+                pace_written[0] = time.time()
                 write_json(pace_path(), {"pace": round(measured, 3), "at": time.time(), "tick": c.get("tick"),
                                          "t_hours": c.get("t_hours")})
-            except OSError:
+        except Exception as e:     # the meter is a display aid: it must never take a keeper down
+            try:
+                say(f"pace meter ignored a reading ({type(e).__name__})")
+            except Exception:
                 pass
     try:
         while True:
@@ -822,6 +850,10 @@ def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
                 save(state="waiting", why=f"clock unreachable ({type(e).__name__})")
                 time.sleep(10)
                 continue
+            if not clock_ok(clock):
+                save(state="waiting", why="clock reading malformed: waiting for a good one")
+                time.sleep(10)
+                continue
             now = time.time()
             note_clock(clock)
             if now - events_at > 60:
@@ -834,7 +866,7 @@ def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
                     say("all enabled steps done")
                     return 0
                 step = left[0]
-            ok, why = launch_check(p, step, clock, events, now, skip={os.getpid(), os.getppid()}, pace=meter.pace)
+            ok, why = launch_check(p, step, clock, events, now, skip={os.getpid(), os.getppid()})
             if not ok:
                 save(state="waiting", why=why, step=step and step["label"], child_pid=None)
                 time.sleep(10)
@@ -859,7 +891,8 @@ def cmd_keep(cfg_path, name: str, no_bus: bool = False) -> int:
                     last_clock = time.time()
                     try:
                         live = get(cfg, "clock")
-                        note_clock(live)
+                        if clock_ok(live):
+                            note_clock(live)
                         if live.get("paused") and not st.get("paused_during_run"):
                             save(paused_during_run=True)
                             say("the clock paused while this run is live")
@@ -935,6 +968,9 @@ def status_once(cfg: dict) -> tuple[list, list]:
     except Exception as e:
         clock = {}
         problems.append(f"clock unreachable ({type(e).__name__})")
+    if clock and not clock_ok(clock):
+        clock = {}
+        problems.append("clock reading malformed")
     tick_s = float(clock.get("tick_seconds") or 15.0)
     live_clock = clock.get("doors") == "open" and not clock.get("paused")
     events = events_now(cfg, clock, save=True) if clock else []

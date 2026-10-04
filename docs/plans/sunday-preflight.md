@@ -50,9 +50,9 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```bash
    cd ~/bazaar && python3 tools/logs_push.py --once && git ls-remote origin mini/logs
    ```
-   If it prints `push failed`, the line says what refused. Credentials or network: fix them (`gh auth status`, the `origin` URL), then run the command again. If it cannot be fixed, copy the logs to the VM by hand, screened first (the grep must print nothing), and tell the VM analyst (bus post or by hand) that they arrive by scp, not on `mini/logs`; `<vm-host>` is in `docs/plans/sunday-analyst.md`:
+   If it prints `push failed`, the line says what refused. Credentials or network: fix them (`gh auth status`, the `origin` URL), then run the command again. If it cannot be fixed, copy the logs to the VM by hand, screened first by the push's own screener (it must print `clean`), and tell the VM analyst (bus post or by hand) that they arrive by scp, not on `mini/logs`; `<vm-host>` is in `docs/plans/sunday-analyst.md`:
    ```bash
-   cd ~/bazaar && ! grep -rlE 'tk[-_][A-Za-z0-9]{4}|bk[_-][A-Za-z0-9]{6}|adm[_-][A-Za-z0-9]{4}|(KEY|TOKEN|SECRET|PASSWORD)=' logs/ && scp -r logs <vm-host>:~/work/sunday-data/
+   cd ~/bazaar && python3 tools/logs_push.py --screen-only logs && scp -r logs <vm-host>:~/work/sunday-data/
    ```
    Never run `git add`, `commit`, `pull` or `stash` in `~/bazaar` while the bots run: that is the live checkout.
 
@@ -111,7 +111,7 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 
 ## 09:05 Madrid: the clock and the published schedule
 
-**The reference for humans is the organisers' published Sunday schedule, in Madrid time:** doors 09:00, hard Market Test 09:39, Market Test 09:49, Round 3 and Chamberí 10:39, +150 P 10:40, Market Test 10:49, Duels III 11:39, Market Test 11:49, Market Test 13:49, finale warning 14:03, Grand Final and NPC stalls close 14:09, freeze warning 14:36, scores freeze 14:39, close 15:00. The wall times that `factory plan` prints (marked `+`) are ESTIMATES from the game clock: they use the pace the keepers measured (game hours per wall hour), do not model the pause near 12:30 (after it they read about an hour early) and can be off by up to an hour. **The bots never use them.** Every launch, gate and restart is decided in game hours from the live `/api/clock` and `/api/schedule`, re-read on every loop: the duel bot starts 10 game minutes before each wave (5 to 10 minutes of Madrid time, depending on the pace), the dealers stay 25 game minutes clear of a wave, and a pace that differs from the published one changes nothing but the wall time at which they happen.
+**The reference for humans is the organisers' published Sunday schedule, in Madrid time:** doors 09:00, hard Market Test 09:39, Market Test 09:49, Round 3 and Chamberí 10:39, +150 P 10:40, Market Test 10:49, Duels III 11:39, Market Test 11:49, Market Test 13:49, finale warning 14:03, Grand Final and NPC stalls close 14:09, freeze warning 14:36, scores freeze 14:39, close 15:00. The wall times that `factory plan` prints (marked `+`) are ESTIMATES from the game clock: they use the pace the keepers measured (game hours per wall hour), do not model the pause near 12:30 (after it they read about an hour early) and can be off by up to an hour. **The bots never use them.** Every launch, gate and restart is decided in game hours from the live `/api/clock` (read every loop, about every 10 seconds) and `/api/schedule` (refreshed every 60 seconds): the duel bot starts 10 game minutes before each wave (5 to 10 minutes of Madrid time, depending on the pace), the dealers stay 25 game minutes clear of a wave, and a pace that differs from the published one changes nothing but the wall time at which they happen.
 
 ```bash
 cd ~/bazaar && python3 tools/factory.py plan | grep -E '^pace|hard Market Test'
