@@ -87,7 +87,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "Té Moruno",
-   "your_value": 122.0
+   "your_value": 4.0
   },
   {
    "id": 37,
@@ -109,7 +109,7 @@
    "set": "LAV",
    "print_run": 300,
    "name": "Bici de Reparto",
-   "your_value": 122.0
+   "your_value": 4.0
   },
   {
    "id": 39,
@@ -252,7 +252,7 @@
    "set": "LAV",
    "print_run": 30,
    "name": "Fiesta de San Cayetano",
-   "your_value": 218.0
+   "your_value": 28.0
   },
   {
    "id": 491,
@@ -274,7 +274,7 @@
    "set": "LAT",
    "print_run": 90,
    "name": "Vermut del Domingo",
-   "your_value": 100.4
+   "your_value": 6.9
   },
   {
    "id": 525,
@@ -332,14 +332,6 @@
    "your_value": 100.4
   },
   {
-   "id": 903,
-   "kind": "pack",
-   "ref": "sobre_barrio",
-   "serial": 63,
-   "name": "Neighbourhood pack",
-   "your_value": 17.1
-  },
-  {
    "id": 967,
    "kind": "card",
    "ref": "LAV-09",
@@ -349,14 +341,6 @@
    "print_run": 30,
    "name": "Cine Doré",
    "your_value": 218.0
-  },
-  {
-   "id": 1012,
-   "kind": "pack",
-   "ref": "sobre_plata",
-   "serial": 23,
-   "name": "Silver pack",
-   "your_value": 105.1
   },
   {
    "id": 1140,
@@ -379,9 +363,97 @@
    "print_run": 30,
    "name": "El Marqués",
    "your_value": 91.0
+  },
+  {
+   "id": 1187,
+   "kind": "card",
+   "ref": "RET-05",
+   "serial": 14,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "La Ardilla",
+   "your_value": 9.0
+  },
+  {
+   "id": 1188,
+   "kind": "card",
+   "ref": "LAV-05",
+   "serial": 27,
+   "rarity": "common",
+   "set": "LAV",
+   "print_run": 300,
+   "name": "Bici de Reparto",
+   "your_value": 4.0
+  },
+  {
+   "id": 1189,
+   "kind": "card",
+   "ref": "RET-03",
+   "serial": 14,
+   "rarity": "common",
+   "set": "RET",
+   "print_run": 300,
+   "name": "El Titiritero",
+   "your_value": 9.0
+  },
+  {
+   "id": 1190,
+   "kind": "card",
+   "ref": "MAL-04",
+   "serial": 25,
+   "rarity": "common",
+   "set": "MAL",
+   "print_run": 300,
+   "name": "El Tatuador",
+   "your_value": 7.0
+  },
+  {
+   "id": 1191,
+   "kind": "card",
+   "ref": "LAV-03",
+   "serial": 28,
+   "rarity": "common",
+   "set": "LAV",
+   "print_run": 300,
+   "name": "Té Moruno",
+   "your_value": 4.0
+  },
+  {
+   "id": 1192,
+   "kind": "card",
+   "ref": "LAT-07",
+   "serial": 19,
+   "rarity": "uncommon",
+   "set": "LAT",
+   "print_run": 90,
+   "name": "Vermut del Domingo",
+   "your_value": 6.9
+  },
+  {
+   "id": 1193,
+   "kind": "card",
+   "ref": "MAL-06",
+   "serial": 24,
+   "rarity": "uncommon",
+   "set": "MAL",
+   "print_run": 90,
+   "name": "Tienda de Discos",
+   "your_value": 17.5
+  },
+  {
+   "id": 1194,
+   "kind": "card",
+   "ref": "LAV-10",
+   "serial": 13,
+   "rarity": "rare",
+   "set": "LAV",
+   "print_run": 30,
+   "name": "Fiesta de San Cayetano",
+   "your_value": 28.0
   }
  ],
- "collection_value": 1565.1,
+ "collection_value": 1528.2,
  "album": {
   "pages": [
    {
@@ -395,7 +467,7 @@
    {
     "set": "MAL",
     "name": "Malasaña",
-    "have": 1,
+    "have": 3,
     "of": 10,
     "complete": false,
     "master": false
@@ -419,13 +491,13 @@
    {
     "set": "RET",
     "name": "El Retiro",
-    "have": 0,
+    "have": 2,
     "of": 10,
     "complete": false,
     "master": false
    }
   ],
-  "filled": 30,
+  "filled": 34,
   "slots": 50
  },
  "tick": 1445,
@@ -444,7 +516,7 @@
   "bench_points": 0.406,
   "bench_venue": "v20",
   "level": 5,
-  "album_filled": 30,
+  "album_filled": 34,
   "album_slots": 50,
   "pages_complete": 2,
   "rarest": {
@@ -454,7 +526,7 @@
    "print_run": 9,
    "rarity": "epic"
   },
-  "luck": -42.6,
+  "luck": -67.1,
   "deals": 32,
   "badges": [
    "Sharp ear"
@@ -462,7 +534,7 @@
   "adjustments": [],
   "frozen": false,
   "venue": "v20",
-  "luck_private": -70.0,
+  "luck_private": -106.9,
   "rank": 5
  },
  "venue": {

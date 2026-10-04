@@ -1,5 +1,5 @@
 {
- "generated_at": 1791097512,
+ "generated_at": 1791098194,
  "tick": 1445,
  "venue": "v20",
  "matches": [
@@ -162,6 +162,89 @@
    "inferred": false,
    "team": "t04",
    "team_name": "Team 4",
+   "card": "MAL-06",
+   "card_name": "Tienda de Discos",
+   "rarity": "uncommon",
+   "set": "MAL",
+   "set_name": "Malasaña",
+   "buyer_active": true,
+   "basis": "census tick 1445",
+   "p_missing": null,
+   "page": null,
+   "holders": [],
+   "dealers": [
+    {
+     "dealer": "abuela",
+     "name": "Abuela",
+     "sells": {
+      "low": 20,
+      "median": 23,
+      "high": 25
+     },
+     "n": 59
+    },
+    {
+     "dealer": "chato",
+     "name": "El Chato",
+     "sells": {
+      "low": 26,
+      "median": 30,
+      "high": 32
+     },
+     "n": 17
+    }
+   ],
+   "dealer_left": 66,
+   "prices": {
+    "fair": 20.0,
+    "fair_text": "about 20 P (last team-to-team trades: 20, 28, 20)",
+    "team_range": {
+     "low": 20,
+     "median": 20,
+     "high": 24,
+     "trades": 3
+    },
+    "rarity_median": 20.0,
+    "dealer_sells": {
+     "abuela": 23,
+     "chato": 30
+    },
+    "dealer_buys": {
+     "pilar": 25,
+     "abuela": 14.5,
+     "chato": 14,
+     "picaros": 11.0
+    }
+   },
+   "price": 24,
+   "action": {
+    "offer": 20263,
+    "venue": "rastro",
+    "venue_owner": "world",
+    "asset": null,
+    "venue_class": 1,
+    "side": "bid",
+    "price": 17,
+    "fee": 2,
+    "expires_tick": 1565,
+    "maker": "t04",
+    "maker_name": "Team 4",
+    "to": null,
+    "who": [],
+    "who_names": [],
+    "call": "POST /api/offers/20263/accept"
+   },
+   "proposal": null,
+   "fair_offer": false,
+   "score": 42.4,
+   "rank": 3
+  },
+  {
+   "tier": 2,
+   "kind": "live want",
+   "inferred": false,
+   "team": "t04",
+   "team_name": "Team 4",
    "card": "SAL-08",
    "card_name": "Guantería Antigua",
    "rarity": "uncommon",
@@ -237,7 +320,90 @@
    "proposal": null,
    "fair_offer": false,
    "score": 38.8,
-   "rank": 3
+   "rank": 4
+  },
+  {
+   "tier": 2,
+   "kind": "live want",
+   "inferred": false,
+   "team": "t08",
+   "team_name": "Team 8",
+   "card": "LAT-08",
+   "card_name": "Las Vistillas",
+   "rarity": "uncommon",
+   "set": "LAT",
+   "set_name": "La Latina",
+   "buyer_active": true,
+   "basis": "census tick 1445",
+   "p_missing": null,
+   "page": null,
+   "holders": [],
+   "dealers": [
+    {
+     "dealer": "abuela",
+     "name": "Abuela",
+     "sells": {
+      "low": 20,
+      "median": 23,
+      "high": 25
+     },
+     "n": 59
+    },
+    {
+     "dealer": "chato",
+     "name": "El Chato",
+     "sells": {
+      "low": 26,
+      "median": 30,
+      "high": 32
+     },
+     "n": 17
+    }
+   ],
+   "dealer_left": 71,
+   "prices": {
+    "fair": 17.5,
+    "fair_text": "about 17.5 P (last team-to-team trades: 10, 25)",
+    "team_range": {
+     "low": 14,
+     "median": 18,
+     "high": 21,
+     "trades": 2
+    },
+    "rarity_median": 20.0,
+    "dealer_sells": {
+     "abuela": 23,
+     "chato": 30
+    },
+    "dealer_buys": {
+     "pilar": 25,
+     "abuela": 14.5,
+     "chato": 14,
+     "picaros": 11.0
+    }
+   },
+   "price": 24,
+   "action": {
+    "offer": 20266,
+    "venue": "rastro",
+    "venue_owner": "world",
+    "asset": null,
+    "venue_class": 1,
+    "side": "bid",
+    "price": 5,
+    "fee": 2,
+    "expires_tick": 1455,
+    "maker": "t08",
+    "maker_name": "Team 8",
+    "to": null,
+    "who": [],
+    "who_names": [],
+    "call": "POST /api/offers/20266/accept"
+   },
+   "proposal": null,
+   "fair_offer": false,
+   "score": 34.0,
+   "rank": 5
   },
   {
    "tier": 2,
@@ -307,7 +473,7 @@
    "proposal": null,
    "fair_offer": false,
    "score": 13.9,
-   "rank": 4
+   "rank": 6
   },
   {
    "tier": 2,
@@ -356,7 +522,7 @@
    "proposal": null,
    "fair_offer": true,
    "score": 973.3,
-   "rank": 5
+   "rank": 7
   },
   {
    "tier": 2,
@@ -406,7 +572,7 @@
    "proposal": null,
    "fair_offer": false,
    "score": 674.0,
-   "rank": 6
+   "rank": 8
   },
   {
    "tier": 2,
@@ -456,7 +622,7 @@
    "proposal": null,
    "fair_offer": false,
    "score": 544.1,
-   "rank": 7
+   "rank": 9
   },
   {
    "tier": 2,
@@ -526,7 +692,7 @@
    "proposal": null,
    "fair_offer": false,
    "score": 9.1,
-   "rank": 8
+   "rank": 10
   }
  ],
  "teams": {
