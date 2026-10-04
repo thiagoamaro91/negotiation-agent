@@ -524,7 +524,7 @@ class ExcludeFrom(unittest.TestCase):
         import json
         f = Path(d) / name
         body = {"id": account, "tick": tick, "tick_seconds": 15.0,
-                "assets": [{"id": i, "kind": "card", "ref": r} for i, r in enumerate(cards)]
+                "assets": [{"id": i, "kind": "card", "ref": r} for i, r in enumerate(cards, 1)]
                 + [{"id": 99, "kind": "pack", "ref": "sobre_oro"}]}
         body.update(extra)
         if account is None:
@@ -622,3 +622,112 @@ class Validate(unittest.TestCase):
         self.assertEqual((r["recall"], r["precision"]), (0.667, 1.0))
         self.assertEqual([f["card"] for f in r["false_missing"]], ["LAV-04"])
         self.assertTrue(r["consistent"])
+
+
+class SolRound2(unittest.TestCase):
+    """Sol's round 2 on #73: each counterexample, red without its fix."""
+    MAL = {"sets": [{"id": "MAL", "name": "Malasaña", "released": True, "cards": [
+        {"id": f"MAL-0{i}", "name": f"M{i}", "rarity": "uncommon", "book": 20, "page": True} for i in range(1, 10)]
+        + [{"id": "MAL-11", "name": "Epic", "rarity": "epic", "book": 150, "page": False}]}]}
+
+    def bid(self, oid, ref):
+        return {"id": oid, "maker": "mB", "status": "open", "to": None, "expires_tick": 500, "venue": "rastro",
+                "give": {"cash": 15, "assets": [], "types": []}, "want": {"cash": 0, "assets": [], "types": [f"card:{ref}"]}}
+
+    def run_once(self, catalog, exclude_from, books):
+        import argparse
+        import io
+        import unittest.mock as um
+        data = {"events": JOIN + [named(o["id"], "t02") for o in books], "catalog": catalog, "leaderboard": LB,
+                "venues": [], "books": {"rastro": books}}
+        args = argparse.Namespace(feed="/nonexistent", live=False, exclude="", no_values=True, census=None,
+                                  exclude_from=exclude_from, exclude_max_age_min=60)
+        with um.patch.object(mm, "offline_inputs", return_value=data), um.patch("sys.stderr", io.StringIO()):
+            return mm.run_once(args)
+
+    def test_1_an_incomplete_catalog_shows_nothing_page_related(self):
+        books = [self.bid(77, "MAL-08"), self.bid(78, "MAL-11")]
+        res = self.run_once({"sets": []}, "/nonexistent/me.json", books)
+        self.assertEqual(res["matches"], [])                                   # not even the epic: nothing is known
+        res = self.run_once(self.MAL, "/nonexistent/me.json", books)
+        self.assertEqual([m["card"] for m in res["matches"]], ["MAL-11"])      # complete catalog: the epic only
+        ex, _ = mm.exclude_from([], {"sets": []}, ("RET-01",), say=lambda m: None, now_tick=1)
+        self.assertIn("MAL-08", ex)
+        self.assertIn("MAL-11", ex)
+        self.assertFalse(ex.trusted)
+
+    def test_1_a_trusted_snapshot_still_hides_refs_the_catalog_does_not_know(self):
+        import json as _json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "me.json").write_text(_json.dumps({"id": "t03", "tick": 7, "tick_seconds": 15, "assets": [
+                {"id": i, "kind": "card", "ref": f"MAL-0{i}"} for i in range(1, 10)]}))
+            ex, line = mm.exclude_from([d], self.MAL, (), say=lambda m: None, now_tick=8)
+        self.assertTrue(ex.trusted)
+        self.assertNotIn("MAL-08", ex)                                          # we hold it
+        self.assertNotIn("MAL-11", ex)                                          # a known non-page card
+        self.assertIn("CHA-01", ex)                                             # unknown to this catalog
+
+    def test_1_an_incomplete_catalog_distrusts_even_a_valid_snapshot(self):
+        import copy
+        import json as _json
+        import tempfile
+        broken = copy.deepcopy(self.MAL)
+        broken["sets"][0]["cards"].append({"id": "MAL-12", "rarity": "mythic"})          # unknown rarity
+        noflag = copy.deepcopy(self.MAL)
+        noflag["sets"].append({"id": "RET", "cards": []})                                # a set without its cards
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "me.json").write_text(_json.dumps({"id": "t03", "tick": 7, "tick_seconds": 15, "assets": [
+                {"id": i, "kind": "card", "ref": f"MAL-0{i}"} for i in range(1, 10)]}))
+            for cat_ in (broken, noflag):
+                ex, line = mm.exclude_from([d], cat_, (), say=lambda m: None, now_tick=8)
+                self.assertFalse(ex.trusted)
+                self.assertIn("incomplete catalog", line)
+                self.assertIn("MAL-08", ex)                    # held, but nothing page-related without a full catalog
+                self.assertNotIn("MAL-11", ex)                 # positively an epic
+
+    def test_2_duplicate_or_malformed_assets_never_make_trusted_holdings(self):
+        import json as _json
+        import tempfile
+        base = {"id": "t03", "tick": 7, "tick_seconds": 15}
+        bad = {"duplicate id": [{"id": 1, "kind": "card", "ref": "MAL-01"}, {"id": 1, "kind": "card", "ref": "MAL-02"}],
+               "no kind": [{"id": 1, "ref": "MAL-02"}], "bool id": [{"id": True, "kind": "card", "ref": "MAL-02"}],
+               "unknown kind": [{"id": 1, "kind": "sticker", "ref": "MAL-02"}],
+               "unknown ref": [{"id": 1, "kind": "card", "ref": "ZZZ-02"}]}
+        for why, assets in bad.items():
+            with self.subTest(why), tempfile.TemporaryDirectory() as d:
+                (Path(d) / "me.json").write_text(_json.dumps(dict(base, assets=assets)))
+                ex, _ = mm.exclude_from([d], self.MAL, (), say=lambda m: None, now_tick=8)
+                self.assertFalse(ex.trusted)
+                self.assertIn("MAL-02", ex)
+                res = self.run_once(self.MAL, d, [self.bid(77, "MAL-02")])
+                self.assertEqual(res["matches"], [])
+
+    def test_3_a_tombstone_removes_a_seeded_record_of_the_same_team(self):
+        snap = census(10, [(100, "LAV-04", "t02"), (101, "LAV-04", "t02")], mode="topup", removed=[101])
+        _, by_team = mm.census_holdings(snap, [])
+        self.assertEqual(by_team["t02"]["held"]["LAV-04"], 1)
+        self.assertEqual(by_team["t02"]["assets"]["LAV-04"], [100])
+
+    def test_5_bad_tombstone_metadata_rejects_the_census_instead_of_raising(self):
+        import unittest.mock as um
+        with um.patch.object(mm, "CENSUS_MIN_IDS", 1), um.patch.object(mm, "CENSUS_MIN_CARDS", 1):
+            for removed in (7, ["7"], [True], {"a": 1}):
+                with self.subTest(removed=removed):
+                    snap = census(10, [(100, "LAV-04", "t02")], mode="topup", removed=removed)
+                    self.assertIsNotNone(mm.census_problem(snap))
+                    res = build(T01 + T02, values={}, lb=LB, census=snap)
+                    self.assertIsNotNone(res["census_rejected"])
+
+    def test_6_huge_numbers_are_rejected_not_raised(self):
+        import json as _json
+        import tempfile
+        for field, value in (("tick_seconds", 10**400), ("tick", 10**400)):
+            with self.subTest(field), tempfile.TemporaryDirectory() as d:
+                body = {"id": "t03", "tick": 7, "tick_seconds": 15, "assets": []}
+                body[field] = value
+                (Path(d) / "me.json").write_text(_json.dumps(body))
+                ex, _ = mm.exclude_from([d], self.MAL, (), say=lambda m: None, now_tick=8)
+                self.assertFalse(ex.trusted)
+        ex, _ = mm.exclude_from([], self.MAL, (), say=lambda m: None, now_tick=10**400)
+        self.assertFalse(ex.trusted)

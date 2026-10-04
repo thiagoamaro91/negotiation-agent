@@ -45,7 +45,7 @@ which card, how much) is read.
     python3 tools/matchmaker.py selftest               # synthetic data, no network
     python3 tools/matchmaker.py validate --git         # our own account (every committed me.json) vs the inference
     ... --census logs/census                           # a tools/census.py snapshot replaces the rebuilt decks
-    ... --exclude-from logs/state/me_live.json,logs/state/me.json   # never show a page card we lack (freshest file)
+    ... --exclude-from logs/state   # never show a page card we lack; no trusted snapshot -> epic/legendary only
 
 Validation (docs/plans/matchmaker-validation.md): on our own account the feed never named a page card we did not hold
 (precision 1.00 in 12 snapshots, recall 0.70 at tick 1445), and p_missing >= 0.8 was really missing 91 % of the time;
@@ -91,7 +91,7 @@ ORDER_TICKS = 240         # suggested expiry of the posted orders: one hour at S
                           # expired after 10 ticks on Saturday, before anyone could see them)
 DEMAND_TICKS = 600        # bids and dealer asks for a card in the last 600 ticks count as demand
 PAGE_BONUS = 0.25         # catalog values.page_bonus (read from the catalog when it has one)
-EXCLUDE_MAX_AGE_MIN = 60  # --exclude-from: a holdings snapshot older than this is stale (the built-in list is added)
+EXCLUDE_MAX_AGE_MIN = 60  # --exclude-from: a holdings snapshot older than this (minutes of play) is not trusted
 PAGE_RARITIES = ("common", "uncommon", "rare")   # a card is a page card by its catalog `page` flag, else by rarity
 PRICE_FIELDS = ("low", "median", "high")
 DEALERS_SELL = {"common": ("abuela",), "uncommon": ("abuela", "chato"), "rare": ("chato", "picaros"),
@@ -219,8 +219,20 @@ def _int(x) -> bool:
     return isinstance(x, int) and not isinstance(x, bool)
 
 
+def _finite(x) -> bool:
+    """A JSON number that is safe to use as a float: not a bool, not NaN or infinite, and (an int) not so large that
+    float() overflows."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)):
+        return False
+    return abs(x) < 10**15 if isinstance(x, int) else math.isfinite(x)
+
+
 def _pos_number(x) -> bool:
-    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and x > 0
+    return _finite(x) and x > 0
+
+
+def _tick(x) -> bool:
+    return _int(x) and 0 <= x < 10**9
 
 
 def census_tick(census: dict) -> int | None:
@@ -258,6 +270,9 @@ def census_problem(census) -> str | None:
             return f"ids_walked {meta.get('ids_walked')!r} < {CENSUS_MIN_IDS}"
     elif not _int(meta.get("base_tick")):
         return "a top-up without its base tick"
+    removed = meta.get("removed")
+    if removed is not None and (not isinstance(removed, list) or not all(_int(x) for x in removed)):
+        return "removed is not a list of asset ids"
     seen = set()
     for c in cards:
         if not isinstance(c, dict) or not _int(c.get("id")) or c["id"] <= 0 or not isinstance(c.get("ref"), str) \
@@ -290,7 +305,10 @@ def census_holdings(census: dict, events: list) -> tuple:
     for c in census.get("cards") or []:
         if isinstance(c, dict) and _int(c.get("id")) and isinstance(c.get("ref"), str):
             owner[c["id"]], ref_of[c["id"]] = c.get("owner"), c["ref"]
-    removed = {x for x in meta.get("removed") or [] if _int(x)}
+    removed = {x for x in meta.get("removed") or [] if _int(x)} if isinstance(meta.get("removed"), list) else set()
+    for aid in removed:         # a tombstone wins over a stale record of the same id
+        owner.pop(aid, None)
+        ref_of.pop(aid, None)
     for e in events:
         if e.get("type") != "settlement" or not _int(since) or e["tick"] < since:
             continue
@@ -341,30 +359,129 @@ def lacking_cards(me: dict, cat: dict) -> set:
     return {c["id"] for c in all_page_cards(cat) if c["id"] not in held}
 
 
+RARITIES = ("common", "uncommon", "rare", "epic", "legendary")
+NON_PAGE_RARITIES = ("epic", "legendary")
+
+
+def is_page(c: dict) -> bool:
+    return bool(c.get("page", c.get("rarity") in PAGE_RARITIES))
+
+
+def catalog_problem(cat) -> str | None:
+    """Why this catalog cannot say which cards are page cards, or None: a non-empty list of sets, each with its cards
+    (unique refs, a known rarity, a boolean page flag when given that agrees with the rarity) and at least one page
+    card. Without a complete catalog nothing page-related is advertised."""
+    if not isinstance(cat, dict) or not isinstance(cat.get("sets"), list) or not cat["sets"]:
+        return "no sets"
+    seen = set()
+    for st in cat["sets"]:
+        if not isinstance(st, dict) or not isinstance(st.get("id"), str) or not isinstance(st.get("cards"), list) \
+                or not st["cards"]:
+            return "a set without its cards"
+        pages = 0
+        for c in st["cards"]:
+            if not isinstance(c, dict) or not isinstance(c.get("id"), str) or not REF_RE.match(c["id"]) \
+                    or c["id"] in seen or c.get("rarity") not in RARITIES:
+                return f"a malformed card in set {st['id']}"
+            if "page" in c and (not isinstance(c["page"], bool) or c["page"] != (c["rarity"] in PAGE_RARITIES)):
+                return f"{c['id']}: page flag and rarity disagree"
+            seen.add(c["id"])
+            pages += is_page(c)
+        if not pages:
+            return f"set {st['id']} has no page cards"
+    return None
+
+
+def non_page_cards(cat) -> set:
+    """Cards POSITIVELY known as non-page cards (epic, legendary, not flagged page) in the catalog."""
+    return {c["id"] for st in (cat or {}).get("sets") or [] if isinstance(st, dict) for c in st.get("cards") or []
+            if isinstance(c, dict) and isinstance(c.get("id"), str) and c.get("rarity") in NON_PAGE_RARITIES
+            and c.get("page", False) is False} if isinstance(cat, dict) else set()
+
+
+class Exclusion:
+    """The cards never shown. `cards` are excluded by name; with `allow`, so is every ref outside it: trusted holdings
+    allow the catalog's known refs (an unknown ref could be a page card we lack), untrusted holdings or an incomplete
+    catalog only the cards positively known as non-page cards. Supports `in`, `|` and `&` with sets, len() and
+    iteration over the named cards (counts in logs), and equality with the set of named cards."""
+
+    def __init__(self, cards=(), allow=None, trusted: bool = False):
+        self.cards = frozenset(cards)
+        self.allow = None if allow is None else frozenset(allow)
+        self.trusted = trusted
+
+    def __contains__(self, ref) -> bool:
+        if ref is None:          # no card at all (a bid gives none): nothing to hide
+            return False
+        return ref in self.cards or (self.allow is not None and ref not in self.allow)
+
+    def __or__(self, other):
+        if isinstance(other, Exclusion):
+            allow = self.allow if other.allow is None else other.allow if self.allow is None else self.allow & other.allow
+            return Exclusion(self.cards | other.cards, allow, self.trusted and other.trusted)
+        return Exclusion(self.cards | frozenset(other or ()), self.allow, self.trusted)
+
+    __ror__ = __or__
+
+    def __and__(self, other) -> set:
+        return {r for r in other or () if r in self}
+
+    __rand__ = __and__
+
+    def __iter__(self):
+        return iter(sorted(self.cards))
+
+    def __len__(self) -> int:
+        return len(self.cards)
+
+    def __bool__(self) -> bool:
+        return bool(self.cards) or self.allow is not None
+
+    def __eq__(self, other):
+        if isinstance(other, Exclusion):
+            return (self.cards, self.allow) == (other.cards, other.allow)
+        if isinstance(other, (set, frozenset)):
+            return self.cards == frozenset(other)
+        return NotImplemented
+
+    __hash__ = None
+
+
+def as_skip(exclude):
+    """An Exclusion as it is, anything else as a set of refs."""
+    return exclude if isinstance(exclude, Exclusion) else set(exclude or ())
+
+
 def all_page_cards(cat: dict) -> list:
     return [c for st in (cat or {}).get("sets") or [] if isinstance(st, dict) for c in st.get("cards") or []
             if isinstance(c, dict) and isinstance(c.get("id"), str) and c.get("page", c.get("rarity") in PAGE_RARITIES)]
 
 
-def account_problem(me) -> str | None:
+def account_problem(me, known=None) -> str | None:
     """Why this is not a trustworthy snapshot of OUR account (GET /api/me as tools/snapshot.py or me_relay saves it),
-    or None: our id, an integer game tick, a finite positive tick length, and a list of well-formed assets."""
+    or None: our id, an integer game tick, a finite positive tick length, and a list of well-formed assets (unique
+    integer ids, kind card or pack, a card's ref valid and, with `known`, in the catalog). Any doubt is untrusted."""
     if not isinstance(me, dict):
         return "not a JSON object"
     if me.get("id") != US:
         return f"the account is {me.get('id')!r}, not {US}"
-    if not _int(me.get("tick")) or me["tick"] < 0:
+    if not _tick(me.get("tick")):
         return "no integer tick"
     if not _pos_number(me.get("tick_seconds")):
         return "no finite positive tick_seconds"
     assets = me.get("assets")
     if not isinstance(assets, list):
         return "no assets list"
+    ids = set()
     for a in assets:
-        if not isinstance(a, dict):
+        if not isinstance(a, dict) or not _int(a.get("id")) or a["id"] <= 0 or a.get("kind") not in ("card", "pack") \
+                or not isinstance(a.get("ref"), str):
             return "a malformed asset"
-        if a.get("kind", "card") == "card" and not (isinstance(a.get("ref"), str) and REF_RE.match(a["ref"])):
-            return "a card asset without a valid ref"
+        if a["id"] in ids:
+            return f"asset id {a['id']} twice"
+        ids.add(a["id"])
+        if a["kind"] == "card" and (not REF_RE.match(a["ref"]) or (known is not None and a["ref"] not in known)):
+            return "a card asset without a valid, known ref"
     return None
 
 
@@ -373,12 +490,14 @@ SUPPRESSED = "exclude: no trusted holdings, page cards suppressed"
 
 def exclude_state(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MAX_AGE_MIN,
                   now_tick: int | None = None) -> dict:
-    """{"cards", "trusted", "line", "source"}: the cards never shown. Trusted holdings = the valid snapshot of OUR
-    account (account_problem) with the highest game tick among `paths` (files, or a directory standing for its
-    me*.json), aged against the game's `now_tick` with its own tick length: at most `max_age_min` minutes of play.
-    Then the cards are every page card we lack. Otherwise (no valid snapshot, no game tick to age it, too old) it FAILS
-    CLOSED: every page card in the catalog plus `fallback` (announce.MISSING only ever adds), so no page card is
-    recommended until trusted holdings exist. Never raises on a bad file. The line carries counts, never the cards."""
+    """{"cards": Exclusion, "trusted", "line", "source"}: the cards never shown. Trusted holdings = the valid snapshot
+    of OUR account (account_problem, refs checked against a COMPLETE catalog) with the highest game tick among `paths`
+    (files, or a directory standing for its me*.json), aged against the game's `now_tick` with its own tick length: at
+    most `max_age_min` minutes of play. Then every page card we lack is excluded, and so is any ref the catalog does
+    not know. Otherwise (incomplete catalog, no valid snapshot, no game tick, too old) it FAILS CLOSED: only cards the
+    catalog positively identifies as non-page cards (epic, legendary) may be shown; every page card and `fallback`
+    (announce.MISSING only ever adds) are named in the exclusion. Never raises on a bad file or number. The line
+    carries counts, never the cards."""
     files = []
     for raw in paths or []:
         try:
@@ -386,6 +505,8 @@ def exclude_state(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MA
             files += sorted(f.glob("me*.json")) if f.is_dir() else [f]
         except OSError:
             continue
+    cat_why = catalog_problem(cat)
+    known = {c["id"] for st in cat["sets"] for c in st["cards"]} if cat_why is None else None
     valid, rejected = [], []
     for f in files:
         try:
@@ -393,37 +514,39 @@ def exclude_state(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MA
         except (OSError, ValueError, UnicodeDecodeError) as e:
             rejected.append(f"{f.name}: {type(e).__name__}")
             continue
-        why = account_problem(me)
+        why = account_problem(me, known)
         if why:
             rejected.append(f"{f.name}: {why}")
         else:
             valid.append((me["tick"], str(f), me))
-    every = {c["id"] for c in all_page_cards(cat)} | set(fallback or ())
+    every = ({c["id"] for c in all_page_cards(cat)} if isinstance(cat, dict) else set()) | set(fallback or ())
 
     def closed(reason: str) -> dict:
-        return {"cards": every, "trusted": False, "source": None,
-                "line": f"{SUPPRESSED} ({reason}; {len(every)} cards hidden)"}
+        return {"cards": Exclusion(every, allow=non_page_cards(cat)), "trusted": False, "source": None,
+                "line": f"{SUPPRESSED} ({reason}; only epic and legendary cards may be shown)"}
+    if cat_why is not None:
+        return closed(f"incomplete catalog: {cat_why}")
     if not valid:
         return closed("no valid account snapshot at " + (", ".join(map(str, paths or [])) or "(none)")
                       + (f"; rejected {'; '.join(rejected)}" if rejected else ""))
     tick, name, me = max(valid, key=lambda x: x[0])
-    if not _int(now_tick):
+    if not _tick(now_tick):
         return closed(f"no game tick to age {name}")
     age = max(0, now_tick - tick) * float(me["tick_seconds"]) / 60
-    if not math.isfinite(age) or age > max_age_min:
-        return closed(f"{name} is {age:.0f} min of play old (> {max_age_min:g})")
-    lack = lacking_cards(me, cat)
+    if not math.isfinite(age) or not _finite(max_age_min) or age > max_age_min:
+        return closed(f"{name} is {age:.0f} min of play old (> {max_age_min})")
+    lack = Exclusion(lacking_cards(me, cat), allow=known, trusted=True)
     return {"cards": lack, "trusted": True, "source": name,
             "line": f"exclude-from: {len(lack)} cards we lack, from {name} (tick {tick}, {age:.0f} min of play old)"}
 
 
 def exclude_from(paths, cat: dict, fallback=(), max_age_min: float = EXCLUDE_MAX_AGE_MIN, now: float | None = None,
                  say=None, now_tick: int | None = None) -> tuple:
-    """(cards never shown, one line): exclude_state(); an untrusted result is also said through `say` (stderr)."""
+    """(Exclusion, one line): exclude_state(); an untrusted result is also said through `say` (stderr)."""
     st = exclude_state(paths, cat, fallback, max_age_min, now_tick)
     if not st["trusted"]:
         (say or (lambda m: print(m, file=sys.stderr)))(st["line"])
-    return set(st["cards"]), st["line"]
+    return st["cards"], st["line"]
 
 
 def last_moves(events: list) -> dict:
@@ -773,7 +896,7 @@ def build(events: list, cat: dict, leaderboard: dict | None = None, books: dict 
     brought forward by the public settlements since ("seen": "census tick N")."""
     events = dedupe(events)
     now_tick = now_tick if isinstance(now_tick, int) else (events[-1]["tick"] if events else 0)
-    skip = set(exclude or ())
+    skip = as_skip(exclude)
     info, pages = card_info(cat), page_cards(cat)
     rarity_of = {r: i["rarity"] for r, i in info.items()}
     page_book = {s: sum(info[r]["book"] for r in refs) for s, refs in pages.items()}
@@ -1098,12 +1221,12 @@ def run_once(args, gate=None) -> dict:
     if args.live:
         fresh = live_inputs(get_json, gate)
         data = {**fresh, "events": data["events"] + fresh["events"]}
-    exclude = set(x.strip() for x in (args.exclude or "").split(",") if x.strip())
+    exclude = set(x.strip() for x in (args.exclude or "").split(",") if x.strip())   # | an Exclusion keeps its rule
     if getattr(args, "exclude_from", None):   # the cards we lack, from our freshest holdings snapshot (private: counts only)
         lack, line = exclude_from(args.exclude_from.split(","), data["catalog"], announce_missing(),
                                   args.exclude_max_age_min,
                                   now_tick=max((e["tick"] for e in dedupe(data["events"])), default=None))
-        exclude |= lack
+        exclude = lack | exclude
         print(f"[{time.strftime('%H:%M:%S')}] {line}", file=sys.stderr)
     census = None
     if getattr(args, "census", None):   # a missing or unreadable census costs the census only: the feed inference runs
@@ -1114,7 +1237,7 @@ def run_once(args, gate=None) -> dict:
                   f"decks rebuilt from the feed", file=sys.stderr)
     values = {} if args.no_values else team_values(dedupe(data["events"]), data["catalog"])
     return build(data["events"], data["catalog"], data["leaderboard"], data["books"], data["venues"],
-                 tuple(sorted(exclude)), values, census=census)
+                 exclude, values, census=census)
 
 
 def write_out(res: dict, path: Path) -> None:
@@ -1125,7 +1248,8 @@ def write_out(res: dict, path: Path) -> None:
 
 
 def announce_missing() -> tuple:
-    """announce.MISSING: the hard-coded list of cards Team 3 lacked on Saturday (the fallback of --exclude-from)."""
+    """announce.MISSING: the hard-coded list of cards Team 3 lacked on Saturday. With --exclude-from it only ever
+    ADDS to the exclusion (never replaces it); without the flag it is the legacy default."""
     try:
         sys.path.insert(0, str(ROOT / "kit"))
         sys.path.insert(0, str(ROOT / "agent"))
@@ -1298,8 +1422,10 @@ def main(argv=None) -> None:
     ap.add_argument("--census", default=None, help="a tools/census.py snapshot (or its directory: the newest one): "
                                                    "holdings read from the server replace the rebuilt decks")
     ap.add_argument("--exclude-from", default=None,
-                    help="comma list of /api/me-shaped snapshots of our account (the freshest is used): every page "
-                         "card we lack is never shown; missing/unreadable -> announce.MISSING, stale -> both")
+                    help="comma list of /api/me-shaped snapshots of our account, or a directory of me*.json (the "
+                         "valid one with the highest game tick is used): every page card we lack, and any ref the "
+                         "catalog does not know, is never shown. FAILS CLOSED: no trusted snapshot, too old, or an "
+                         "incomplete catalog -> only epic and legendary cards are shown")
     ap.add_argument("--exclude-max-age-min", type=float, default=EXCLUDE_MAX_AGE_MIN)
     ap.add_argument("--me", nargs="*", default=None, help="validate: /api/me snapshots of our account (default: "
                                                           "logs/state/me.json)")

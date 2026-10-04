@@ -1440,3 +1440,27 @@ class ProbabilityAndExclusion(unittest.TestCase):
     def test_a_catalog_failure_is_no_post_not_a_crash(self):
         text = self.run_plan(self.GOOD, catalog_error=OSError("down"))
         self.assertIn("nothing to post (exclude: OSError", text)
+
+
+class SolRound2(unittest.TestCase):
+    def test_6_a_huge_integer_p_missing_is_refused_not_raised(self):
+        m = match("t13", "MAL-08")
+        m["p_missing"] = 10**400
+        self.assertIsNone(an.pick_match({"matches": [m]}, {}, min_p=0.0))
+        import argparse
+        with self.assertRaises(argparse.ArgumentTypeError):
+            an.min_p_arg("1" + "0" * 400)
+
+    def test_1_an_incomplete_catalog_announces_no_page_card(self):
+        import io
+        import value_inference
+        with tempfile.TemporaryDirectory() as d:
+            mp = Path(d) / "latest.json"
+            mp.write_text(json.dumps({"generated_at": time.time(), "tick": 1500, "matches": [match("t13", "MAL-08")]}))
+            out = io.StringIO()
+            with um.patch.object(an, "get_json", lambda url: {"events": [{"id": 1, "tick": 1500}], "tick": 1500}), \
+                    um.patch.object(value_inference, "catalog", lambda *a, **k: {"sets": []}), \
+                    um.patch("sys.stdout", out), um.patch.object(an, "recorded_events", lambda *a, **k: []):
+                an.main(["plan", "--variant", "missing", "--matches", str(mp), "--exclude-from", d])
+        self.assertIn("nothing to post", out.getvalue())
+        self.assertIn("incomplete catalog", out.getvalue())

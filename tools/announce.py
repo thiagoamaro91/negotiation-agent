@@ -374,7 +374,7 @@ def build_text(offers: list, variant: int, link: str | None = LINK, exclude=MISS
     offers); `venue_offers`: v20's live offers; `names`: {offer id: team} from the feed. variant 0: v20's book first;
     1: the near pairs first; 2: the "missing card" pitch in Spanish and English, then v20's book. Cards in
     `exclude` never appear. `fee`: v20's (bps, P per card), counted in every order and every "crosses" claim."""
-    skip = set(exclude or ())
+    skip = as_skip(exclude)
     names = names or {}
     live = [o for o in venue_offers or [] if not refs(o) & skip]
     lead = set(lead or ())
@@ -488,18 +488,26 @@ def still_live(a: dict, card: str, books: dict, tick=None) -> bool:
     return sh is not None and sh[0] == a.get("side") and sh[1] == card and sh[2] == a.get("price")
 
 
+def as_skip(exclude):
+    """matchmaker.Exclusion (it has `allow`) as it is, so its fail-closed rule holds; anything else as a set."""
+    return exclude if hasattr(exclude, "allow") else set(exclude or ())
+
+
 def probability(x) -> float | None:
-    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None."""
-    if isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) or not 0 <= x <= 1:
+    """x when it is a real probability (a finite int or float in [0, 1], never a bool), else None. A huge JSON integer
+    is refused before any float conversion (it would overflow)."""
+    if isinstance(x, bool) or not isinstance(x, (int, float)):
         return None
-    return float(x)
+    if isinstance(x, int):
+        return float(x) if 0 <= x <= 1 else None
+    return float(x) if math.isfinite(x) and 0 <= x <= 1 else None
 
 
 def min_p_arg(raw: str) -> float:
     """--min-p: a probability, or argparse refuses it."""
     try:
         v = probability(float(raw))
-    except ValueError:
+    except (ValueError, OverflowError):
         v = None
     if v is None:
         raise argparse.ArgumentTypeError(f"--min-p takes a number in [0, 1], not {raw!r}")
@@ -514,7 +522,7 @@ def pick_match(doc: dict, books: dict, exclude=(), recent=(), rival_venues: bool
     one team (only that team could act), and (unless rival_venues) never an offer on another team's venue, where a
     trade scores for that team. An inferred need (tier 3-4) only at p_missing >= `min_p`, and never for a team whose
     rebuilt deck contradicts the leaderboard (the matchmaker's teams[...].consistent). None when nothing is left."""
-    skip, recent = set(exclude or ()), set(recent or ())
+    skip, recent = as_skip(exclude), set(recent or ())
     teams = (doc or {}).get("teams") or {}
     for m in (doc or {}).get("matches") or []:
         if not isinstance(m, dict) or _public(m.get("team_name"), m.get("team")) is None:
@@ -606,7 +614,7 @@ def missing_text(doc: dict, books: dict, exclude=(), fee=(0, 0), venue_offers=()
     if m is None:
         raise LookupError("no match to announce")
     text = f"{OPEN_BAZAAR} (public data, La Celestina {VENUE}): " + missing_line(m, fee)
-    skip = set(exclude or ())
+    skip = as_skip(exclude)
     shown = [d for o in venue_offers or [] if not refs(o) & skip for d in [describe(o, names)] if d][:SHOW_OFFERS]
     if shown:
         tail = " Live on v20 now: " + "; ".join(shown) + "."
@@ -1153,9 +1161,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--exclude", default=None,
                     help="comma list of cards never advertised (default: --exclude-from, else the built-in MISSING)")
     ap.add_argument("--exclude-from", default=None,
-                    help="comma list of /api/me-shaped snapshots of our account (the freshest is used, re-read before "
-                         "every post): every page card we lack is never advertised; missing/unreadable -> MISSING, "
-                         "stale -> both. Logged as counts, never the cards")
+                    help="comma list of /api/me-shaped snapshots of our account, or a directory of me*.json (the "
+                         "valid one with the highest game tick, re-read before every post): every page card we lack "
+                         "is never advertised. FAILS CLOSED: no trusted snapshot, too old, or an incomplete catalog "
+                         "-> only epic and legendary cards. Logged as counts, never the cards")
     ap.add_argument("--exclude-max-age-min", type=float, default=60.0)
     ap.add_argument("--min-p", type=min_p_arg, default=MIN_P_ANNOUNCE,
                     help="--variant missing: lowest p_missing at which an inferred need is named")
@@ -1199,12 +1208,14 @@ def main(argv: list[str] | None = None) -> None:
 
     last_exclude = [fixed]   # the last list current_exclude() gave: also what a new v20 offer is checked against
 
-    def current_exclude(now_tick=None) -> tuple:
-        """--exclude plus, with --exclude-from, the cards we lack per our freshest holdings snapshot, re-read before
-        every post (our holdings change during the day). Logged as a count, never the cards."""
+    def current_exclude(now_tick=None):
+        """--exclude plus, with --exclude-from, matchmaker.exclude_from's Exclusion, re-read before every post (our
+        holdings change during the day): the page cards we lack from a TRUSTED snapshot, or, failing closed, every
+        card that is not positively an epic or a legendary. MISSING only ever adds. Logged as a count, never the
+        cards; any error means no post (LookupError), never an exit."""
         if not args.exclude_from:
             return fixed
-        try:   # fails closed inside (every page card) on a bad snapshot; a missing catalog means no post at all
+        try:   # fails closed inside on a bad snapshot or catalog; an unreadable catalog means no post at all
             import matchmaker   # noqa: E402  (keyless; the same rule the matchmaker applies)
             import value_inference
             lack, line = matchmaker.exclude_from(args.exclude_from.split(","), value_inference.catalog(), MISSING,
@@ -1213,8 +1224,8 @@ def main(argv: list[str] | None = None) -> None:
             raise LookupError(f"exclude: {type(e).__name__}, no post without the list of cards we lack")
         print(f"[{time.strftime('%H:%M:%S')}] {line}", flush=True)
         if args.cmd == "run":
-            log.event("exclude", line=line, count=len(lack | set(fixed)))
-        last_exclude[0] = tuple(sorted(lack | set(fixed)))
+            log.event("exclude", line=line, count=len(lack | set(fixed)), trusted=getattr(lack, "trusted", None))
+        last_exclude[0] = lack | set(fixed)   # an Exclusion: its rule (fail closed) travels with it
         return last_exclude[0]
 
     def compose(variant: int, first=()) -> tuple:
@@ -1284,7 +1295,7 @@ def main(argv: list[str] | None = None) -> None:
     except LookupError as e:
         print(f"[{time.strftime('%H:%M:%S')}] {e}", flush=True)
     ann = Announcer(max(1, args.count), max(60.0, args.every_min * 60), args.on_event, args.min_gap_min * 60,
-                    eligible=lambda o: describe(o) is not None and not refs(o) & set(last_exclude[0]))
+                    eligible=lambda o: describe(o) is not None and not refs(o) & as_skip(last_exclude[0]))
     minutes = args.deadline_min if args.deadline_min is not None else max(1, args.count) * max(1.0, args.every_min) + 60
     deadline = time.time() + minutes * 60
     while ann.posted < ann.count or ann.pending:

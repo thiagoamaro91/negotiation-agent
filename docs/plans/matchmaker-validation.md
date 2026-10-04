@@ -136,6 +136,14 @@ directory stands for its `me*.json` files.
 - **Fail closed (Sol, round 1).** No valid snapshot, no game tick to age it, or a snapshot too old means EVERY page
   card is excluded, plus MISSING. The log line reads `exclude: no trusted holdings, page cards suppressed (<reason>)`.
   Tier 1-2 live wants for epics and legendaries are still shown. MISSING never replaces a valid list.
+- **Round 2 (Sol).**
+  - The catalog must be complete: sets with their cards, known rarities, page flags that agree with the rarity, at
+    least one page card per set, and unique refs. Otherwise nothing page-related is shown.
+  - Without trusted holdings, only cards the catalog positively identifies as epic or legendary may be shown.
+  - With trusted holdings, refs the catalog does not know stay hidden.
+  - Account assets need unique integer ids, kind card or pack, and known refs.
+  - Census tombstones remove seeded records. `removed` must be a list of ids.
+  - Huge JSON numbers are refused, never raised.
 - **Never raises.** A bad file is rejected; it never throws. `announce.py` re-reads the snapshot before every post,
   and if its catalog cannot be read, that post is skipped ("nothing to post"), never a crash.
 - **Logging.** The log line carries counts and the file name, never the cards.
