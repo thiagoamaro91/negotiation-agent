@@ -1,0 +1,108 @@
+{
+ "duel": 11658,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Vinilo de la Movida",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 2.76,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 87,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Noche",
+ "deadline_tick": 2042,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15669,
+  "price": 129,
+  "tick": 2040,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2030,
+   "from": "Rival Noche",
+   "text": "Hello! I can do 75 with delivery on day 0.",
+   "price": 75,
+   "days": 0
+  },
+  {
+   "tick": 2031,
+   "from": "Rival Noche",
+   "text": "Thanks for the reply. 89, delivery day 0.",
+   "price": 89,
+   "days": 0
+  },
+  {
+   "tick": 2032,
+   "from": "Rival Noche",
+   "text": "Let me move closer: 99, day 0.",
+   "price": 99,
+   "days": 0
+  },
+  {
+   "tick": 2033,
+   "from": "Rival Noche",
+   "text": "I'd like to close this: 107 with day 0.",
+   "price": 107,
+   "days": 0
+  },
+  {
+   "tick": 2034,
+   "from": "Rival Noche",
+   "text": "Meeting you halfway: 113, delivered day 0.",
+   "price": 113,
+   "days": 0
+  },
+  {
+   "tick": 2035,
+   "from": "Rival Noche",
+   "text": "Final stretch from me: 117, day 0.",
+   "price": 117,
+   "days": 0
+  },
+  {
+   "tick": 2036,
+   "from": "Rival Noche",
+   "text": "Hello! I can do 120 with delivery on day 0.",
+   "price": 120,
+   "days": 0
+  },
+  {
+   "tick": 2037,
+   "from": "Rival Noche",
+   "text": "Thanks for the reply. 122, delivery day 0.",
+   "price": 122,
+   "days": 0
+  },
+  {
+   "tick": 2038,
+   "from": "Rival Noche",
+   "text": "Let me move closer: 124, day 0.",
+   "price": 124,
+   "days": 0
+  },
+  {
+   "tick": 2039,
+   "from": "Rival Noche",
+   "text": "I'd like to close this: 127 with day 0.",
+   "price": 127,
+   "days": 0
+  },
+  {
+   "tick": 2040,
+   "from": "Rival Noche",
+   "text": "Meeting you halfway: 129, delivered day 0.",
+   "price": 129,
+   "days": 0
+  }
+ ],
+ "result": 42.0,
+ "price": 129,
+ "days": 0
+}
