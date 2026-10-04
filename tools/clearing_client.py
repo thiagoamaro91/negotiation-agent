@@ -2,6 +2,13 @@
 only to the game (BAZAAR_URL, header X-Team-Key); the clearing server receives card refs, asset ids and your
 reservation prices, nothing else.
 
+Trust model: the server is NOT trusted. `book` keeps a local copy of what you listed; `execute` posts a sell only
+if the server's offer body gives exactly one of YOUR listed spares, for plain cash at or above YOUR min, addressed
+to the buyer the plan names (check_sell); it accepts a buy only after reading that offer from the game's PUBLIC
+venue book and seeing it is addressed to you, gives one copy of the plan's card, wants cash only, at the plan price,
+within YOUR max including the fee (check_buy). Anything else is refused and reported back as failed. An offer that
+wants one of your cards is never accepted.
+
     export BAZAAR_KEY=<your team key>
     python3 clearing_client.py --server https://<clearing> join --team t07 --venue v29 --invite <code>
     python3 clearing_client.py --server https://<clearing> book [--margin 0.15] [--sell-sets MAL,CHA] [--keep LAV-09]
@@ -133,7 +140,9 @@ def cmd_book(a) -> None:
         print(json.dumps({"haves": haves, "wants": wants, "cash": cash}, indent=1))
         return
     r = call(f"{cfg['server']}/api/clearing/book", {"token": cfg["token"], "haves": haves, "wants": wants})
-    print(f"book sent: {r}  (cash {cash})")
+    cfg["book"] = {"haves": haves, "wants": wants, "team": me.get("id"), "sent": datetime.now().isoformat(timespec="seconds")}
+    cfg_path(cfg["team"]).write_text(json.dumps(cfg))
+    print(f"book sent: {r}  (cash {cash}); a copy is kept locally and every plan action is checked against it")
 
 
 def cmd_plan(a) -> None:
@@ -157,8 +166,65 @@ def cmd_vote(a) -> None:
     print(json.dumps(call(f"{cfg['server']}/api/clearing/vote", body), indent=1))
 
 
+def check_sell(x: dict, book: dict, team: str) -> str | None:
+    """The server's ready-made offer body is only posted if it is exactly one of OUR listed assets, for cash only,
+    at or above OUR min, addressed to the buyer the plan names. Anything else is refused and reported."""
+    body = x.get("post") or {}
+    mine = {h["asset"]: h for h in book.get("haves", [])}
+    give, want = body.get("give") or {}, body.get("want") or {}
+    assets = give.get("assets") or []
+    if set(body) - {"venue", "to", "give", "want", "expires_in_ticks"}:
+        return "unexpected keys in the offer body"
+    if len(assets) != 1 or assets[0] not in mine:
+        return "offer gives something that is not one of my listed spares"
+    if mine[assets[0]]["card"] != x.get("card") or x.get("asset") != assets[0]:
+        return "card/asset mismatch"
+    if set(give) - {"assets"} or give.get("cash"):
+        return "offer gives cash too"
+    if set(want) != {"cash"} or not isinstance(want["cash"], int) or want["cash"] != x.get("price"):
+        return "offer wants something other than plain cash at the plan price"
+    if want["cash"] < mine[assets[0]]["min"]:
+        return f"price {want['cash']} is below my min {mine[assets[0]]['min']}"
+    if body.get("to") != x.get("to") or not isinstance(body.get("to"), str) or body["to"] == team:
+        return "offer is not addressed to the buyer the plan names"
+    if not isinstance(body.get("venue"), str):
+        return "no venue"
+    return None
+
+
+def check_buy(x: dict, book: dict, team: str) -> str | None:
+    """Before accepting, read the offer from the game's PUBLIC book of that venue: it must be addressed to us, give
+    exactly one card of the plan's ref, want only cash equal to the plan price, and that price plus the plan fee
+    must be at or below OUR max for that card. Nothing else is accepted."""
+    wants = [w for w in book.get("wants", []) if w["card"] == x.get("card")]
+    if not wants:
+        return "I never asked for this card"
+    my_max = max(w["max"] for w in wants)
+    pub = call(f"{GAME}/api/venues/{x.get('venue')}/offers")
+    offer = next((o for o in (pub.get("offers") or []) if isinstance(o, dict) and o.get("id") == x.get("offer")), None)
+    if offer is None:
+        return "offer not visible on that venue's public book (yet)"
+    if offer.get("status", "open") != "open":
+        return "offer is not open"
+    if offer.get("to") != team:
+        return "offer is not addressed to me"
+    give, want = offer.get("give") or {}, offer.get("want") or {}
+    assets = give.get("assets") or []
+    refs = [a.get("ref") if isinstance(a, dict) else None for a in assets]
+    if len(assets) != 1 or refs[0] != x.get("card") or give.get("cash") or give.get("types"):
+        return "offer does not give exactly one copy of the plan's card"
+    if want.get("assets") or want.get("types") or not isinstance(want.get("cash"), int):
+        return "offer wants a card of mine or something other than cash: refused"
+    if want["cash"] != x.get("price") or want["cash"] + int(x.get("fee") or 0) > my_max:
+        return f"price {want['cash']} + fee {x.get('fee')} is above my max {my_max} or differs from the plan"
+    return None
+
+
 def cmd_execute(a) -> None:
     cfg, key = load_cfg(a), key_or_die()
+    book, team = cfg.get("book") or {}, cfg.get("team")
+    if not book:
+        sys.exit("no local copy of my book: run `book` first (execute only acts on what I listed myself)")
     posted, accepted, failed, voted = set(), set(), set(), set()
     until = a.until
     while True:
@@ -187,7 +253,13 @@ def cmd_execute(a) -> None:
         for x in pending:
             if x["role"] == "sell" and x["id"] not in posted and x.get("offer") is None:
                 body = x["post"]
-                print(f"{datetime.now():%H:%M:%S} SELL {x['card']} #{x['asset']} at {x['price']} on {x['venue']} to {x['to']}")
+                bad = check_sell(x, book, team)
+                if bad:
+                    print(f"{datetime.now():%H:%M:%S} REFUSED sell {x['id']}: {bad}")
+                    failed.add(x["id"])
+                    call(f"{cfg['server']}/api/clearing/report", {"token": cfg["token"], "action": x["id"], "status": "failed", "error": "client refused: " + bad})
+                    continue
+                print(f"{datetime.now():%H:%M:%S} SELL {x['card']} #{x['asset']} at {x['price']} on {x['venue']} to {x['to']}  (checked against my book)")
                 if a.dry_run:
                     posted.add(x["id"])
                     continue
@@ -206,7 +278,15 @@ def cmd_execute(a) -> None:
             elif x["role"] == "sell" and x.get("offer"):
                 posted.add(x["id"])
             elif x["role"] == "buy" and x.get("offer") and not did_accept:
-                print(f"{datetime.now():%H:%M:%S} BUY  {x['card']} at {x['price']} (+{x.get('fee', 0)} fee) on {x['venue']}: accept offer {x['offer']}")
+                bad = check_buy(x, book, team)
+                if bad:
+                    if "(yet)" in bad:
+                        continue                      # the book lags a tick; try again next loop
+                    print(f"{datetime.now():%H:%M:%S} REFUSED buy {x['id']}: {bad}")
+                    failed.add(x["id"])
+                    call(f"{cfg['server']}/api/clearing/report", {"token": cfg["token"], "action": x["id"], "status": "failed", "error": "client refused: " + bad})
+                    continue
+                print(f"{datetime.now():%H:%M:%S} BUY  {x['card']} at {x['price']} (+{x.get('fee', 0)} fee) on {x['venue']}: accept offer {x['offer']}  (public offer checked: to me, one {x['card']}, cash only)")
                 if a.dry_run:
                     accepted.add(x["id"])
                     continue
