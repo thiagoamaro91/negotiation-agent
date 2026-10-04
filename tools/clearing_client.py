@@ -73,6 +73,17 @@ def cfg_path(team: str) -> Path:
     return Path.home() / f".clearing_{team}.json"
 
 
+def save_cfg(cfg: dict) -> None:
+    """Token, my reservation prices and what I approved: written atomically, readable by me only (0600)."""
+    p = cfg_path(cfg["team"])
+    tmp = p.with_suffix(".tmp")
+    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(json.dumps(cfg))
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, p)
+
+
 def load_cfg(a) -> dict:
     cands = [cfg_path(a.team)] if a.team else sorted(Path.home().glob(".clearing_t??.json"))
     for p in cands:
@@ -97,8 +108,8 @@ def cmd_join(a) -> None:
     r = call(f"{a.server}/api/clearing/join", body)
     if "token" not in r:
         sys.exit(f"join refused: {r}")
-    p.write_text(json.dumps({"team": team, "token": r["token"], "server": a.server}))
-    print(f"joined as {team} (venue {r.get('venue')}); token saved in {p}")
+    save_cfg({"team": team, "token": r["token"], "server": a.server})
+    print(f"joined as {team} (venue {r.get('venue')}); token saved in {p} (0600)")
 
 
 def cmd_book(a) -> None:
@@ -150,7 +161,8 @@ def cmd_book(a) -> None:
         sys.exit(f"book REFUSED by the server, nothing listed: {r}")
     cfg["book"] = {"haves": haves, "wants": wants, "team": me.get("id"), "sent": datetime.now().isoformat(timespec="seconds")}
     cfg["bought"] = {}
-    cfg_path(cfg["team"]).write_text(json.dumps(cfg))
+    cfg["approved"] = None
+    save_cfg(cfg)
     print(f"book sent: {r}  (cash {cash}); a copy is kept locally and every plan action is checked against it")
 
 
@@ -173,6 +185,24 @@ def my_commitment(plan: dict) -> str:
     return hashlib.sha256(json.dumps([team, rid, ver, rows], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def approved_set(plan: dict) -> dict:
+    """What I am approving, keyed by action id, with the fields that matter; persisted so execute only ever acts
+    on actions I signed, whatever the server says later."""
+    mine = [x for x in (plan.get("actions") or []) if x.get("round_status") == plan.get("round_status")]
+    return {x["id"]: [x["role"], x["card"], x.get("asset"), x["price"], x["venue"], x.get("to") or x.get("from")] for x in mine}
+
+
+def record_approval(cfg: dict, plan: dict) -> None:
+    cfg["approved"] = {"round": plan.get("round"), "version": plan.get("version"), "commitment": my_commitment(plan),
+                       "actions": approved_set(plan), "at": datetime.now().isoformat(timespec="seconds")}
+    save_cfg(cfg)
+
+
+def i_approved(cfg: dict, x: dict) -> bool:
+    ap = (cfg.get("approved") or {}).get("actions") or {}
+    return ap.get(x.get("id")) == [x["role"], x["card"], x.get("asset"), x["price"], x["venue"], x.get("to") or x.get("from")]
+
+
 def cmd_vote(a) -> None:
     cfg = load_cfg(a)
     if a.ok == a.no:
@@ -183,6 +213,7 @@ def cmd_vote(a) -> None:
         body["commitment"] = my_commitment(plan)
         if body["commitment"] != plan.get("commitment"):
             sys.exit("the server's commitment hash does not match what I computed from my own plan: NOT voting")
+        record_approval(cfg, plan)
     if a.no:
         body["why"] = a.why or "no reason given"
         if a.trades:
@@ -216,20 +247,23 @@ def check_sell(x: dict, book: dict, team: str) -> str | None:
     return None
 
 
-_venues_cache: dict = {"at": 0.0, "fees": {}}
-
-
 def venue_fee(venue: str, price: int) -> int | None:
-    """The fee the ACCEPTER pays on that venue, from the game's own /api/venues (never from the plan)."""
-    if time.time() - _venues_cache["at"] > 60:
-        v = call(f"{GAME}/api/venues")
-        _venues_cache["fees"] = {x["venue"]: (int(x.get("fee_bps") or 0), int(x.get("fee_per_card") or 0))
-                                 for x in (v.get("venues") or []) if isinstance(x, dict) and x.get("venue")}
-        _venues_cache["at"] = time.time()
-    f = _venues_cache["fees"].get(venue)
-    if f is None:
+    """The fee the ACCEPTER pays on that venue, read from the game's own /api/venues NOW (no cache: a fee can
+    change under us). A pending fee change effective by the next tick (when an accept settles) counts, taking
+    the higher of the two, as agent/market_desk.py does."""
+    v = call(f"{GAME}/api/venues")
+    row = next((x for x in (v.get("venues") or []) if isinstance(x, dict) and x.get("venue") == venue), None)
+    if row is None or row.get("status", "open") != "open":
         return None
-    return int(math.ceil(price * f[0] / 10000)) + f[1]
+    try:
+        tick = int((call(f"{GAME}/api/clock") or {}).get("tick") or 0)
+    except Exception:
+        tick = 0
+    bps, per = int(row.get("fee_bps") or 0), int(row.get("fee_per_card") or 0)
+    pend = row.get("pending_fee")
+    if isinstance(pend, dict) and (tick == 0 or int(pend.get("effective_tick") or 0) <= tick + 1):
+        bps, per = max(bps, int(pend.get("fee_bps") or 0)), max(per, int(pend.get("fee_per_card") or 0))
+    return int(math.ceil(price * bps / 10000)) + per
 
 
 def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: int) -> str | None:
@@ -301,6 +335,10 @@ def cmd_execute(a) -> None:
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: dry run, NOT voting")
                 elif a.auto_approve and key_v not in voted:
                     voted.add(key_v)
+                    if my_commitment(plan) != plan.get("commitment"):
+                        print(f"{datetime.now():%H:%M:%S} commitment hash mismatch on r{key_v[0]} v{key_v[1]}: NOT voting")
+                        continue
+                    record_approval(cfg, plan)
                     r = call(f"{cfg['server']}/api/clearing/vote", {"token": cfg["token"], "ok": True, "version": key_v[1],
                                                                      "commitment": my_commitment(plan)})
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]}: auto-approved -> {r.get('status')}, waiting for {r.get('waiting_for')}")
@@ -309,7 +347,17 @@ def cmd_execute(a) -> None:
                     print(f"{datetime.now():%H:%M:%S} proposal r{key_v[0]} v{key_v[1]} needs your vote: run `plan`, then `vote --ok` or `vote --no --why ...`")
                     for x in mine:
                         print(f"   {x['id']} {x['role'].upper()} {x['card']} {x['price']} P on {x['venue']} with {x.get('to') or x.get('from')}")
-        acts = [x for x in (plan.get("actions") or []) if x.get("round_status") == "approved"]
+        cfg = load_cfg(a)                       # re-read: a manual `vote --ok` in another shell records approval here
+        acts = []
+        for x in (plan.get("actions") or []):
+            if x.get("round_status") != "approved":
+                continue
+            if not i_approved(cfg, x):
+                if x["id"] not in failed:
+                    print(f"{datetime.now():%H:%M:%S} IGNORED {x['id']}: the server says approved but I never signed this exact action")
+                    failed.add(x["id"])
+                continue
+            acts.append(x)
         pending = [x for x in acts if x["id"] not in accepted | failed]
         if not pending and plan.get("round"):
             print(f"{datetime.now():%H:%M:%S} nothing pending in round {plan['round']}; waiting for the next run")
@@ -359,7 +407,7 @@ def cmd_execute(a) -> None:
                     accepted.add(x["id"])
                     bought[x["card"]] = bought.get(x["card"], 0) + 1
                     cfg["bought"] = bought
-                    cfg_path(team).write_text(json.dumps(cfg))
+                    save_cfg(cfg)
                     did_accept = True
                     call(f"{cfg['server']}/api/clearing/report", {"token": cfg["token"], "action": x["id"], "status": "accepted"})
                     print(f"   accepted: {r}")
@@ -408,7 +456,12 @@ def main() -> None:
     e.add_argument("--auto-approve", action="store_true", help="vote OK on every proposal (prices are inside your numbers anyway)")
     e.add_argument("--reserve", type=int, default=40, help="cash never to go under when accepting a buy")
     e.set_defaults(fn=cmd_execute)
+    for sp in (j, b, e, v, sub.choices["plan"]):
+        sp.add_argument("--server", dest="server_sub", default="", help=argparse.SUPPRESS)
+        sp.add_argument("--team", dest="team_sub", default="", help=argparse.SUPPRESS)
     a = p.parse_args()
+    a.server = a.server or getattr(a, "server_sub", "") or ""
+    a.team = a.team or getattr(a, "team_sub", "") or ""
     if a.cmd == "join" and not a.server:
         sys.exit("--server is required")
     a.fn(a)

@@ -55,6 +55,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+STORE_DEFAULT = Path(os.environ.get("CLEARING_HOME", str(Path.home() / ".clearing")))   # never under logs/ (the Mini pushes logs/)
 GAME_URL = os.environ.get("BAZAAR_URL", "https://bazaar.causaprima.ai").rstrip("/")
 TEAM_RE = re.compile(r"^t\d{2}$")
 REF_RE = re.compile(r"^[A-Z]{3}-\d{2}$")
@@ -208,7 +209,8 @@ def match(books: dict, venues: list, participants: dict, hosted: dict | None = N
             if team in (c["seller"], c["buyer"]) and take(c):
                 break
     for c in cands:
-        take(c)
+        if any(can_host(v, c) for v in by_id):
+            take(c)
     # venue assignment: one trade per participant venue by augmenting paths (sizes are tiny)
     assigned: dict = {}            # trade index -> venue
     match_of: dict = {}            # venue -> trade index
@@ -676,9 +678,11 @@ class Store:
                 give = o.get("give") or {}
                 assets = [a.get("id") if isinstance(a, dict) else a for a in (give.get("assets") or [])]
                 with self.lock:
+                    want = o.get("want") or {}
                     for t in pending:
-                        if t["venue"] == vid and t["asset"] in assets and (o.get("want") or {}).get("cash") == t["price"] \
-                                and t["status"] == "planned" and o.get("id"):
+                        if t["venue"] == vid and assets == [t["asset"]] and want.get("cash") == t["price"] \
+                                and not want.get("assets") and not want.get("types") and not give.get("cash") \
+                                and o.get("to") == t["buyer"] and t["status"] == "planned" and o.get("id"):
                             t["offer"], t["status"], t["posted"] = int(o["id"]), "posted", now_iso()
                             n += 1
         if n:
@@ -1003,6 +1007,16 @@ def selftest() -> None:
     # hosted so far today steers the balance: v13 heavy -> the free trade goes elsewhere
     res4 = match(books3, venues3, {**parts, "t11": "v13"}, hosted={"v13": 500})
     assert sum(1 for t in res4["trades"] if t["venue"] == "v13") == 1, res4["trades"]
+    # an infeasible high-surplus candidate (no venue can host it) must not consume the asset
+    only_two = [v for v in venues if v["venue"] in ("v20", "v29")]
+    b5 = {"t03": {"haves": [{"card": "MAL-06", "asset": 1, "min": 9}], "wants": []},
+          "t07": {"haves": [], "wants": [{"card": "MAL-06", "max": 40, "qty": 1}]},
+          "t18": {"haves": [], "wants": [{"card": "MAL-06", "max": 20, "qty": 1}]}}
+    r5 = match(b5, only_two + [{"venue": "v28", "owner": "t18", "status": "open", "fee_bps": 0, "fee_per_card": 0}],
+               {"t03": "v20", "t07": "v29", "t18": "v28"})
+    assert len(r5["trades"]) == 1 and r5["trades"][0]["buyer"] == "t07" and r5["trades"][0]["venue"] == "v28", r5
+    r5b = match(b5, only_two, {"t03": "v20", "t07": "v29"})           # t07's trade cannot be hosted anywhere:
+    assert len(r5b["trades"]) == 1 and r5b["trades"][0]["buyer"] == "t18" and r5b["trades"][0]["venue"] == "v29", r5b
     # rastro only: fee inside the buyer's max, midpoint of [60, 90 - fee]
     two = {"t03": books["t03"], "t07": books["t07"]}
     t3 = match(two, [v for v in venues if v["venue"] not in ("v28",)], {"t03": "v20", "t07": "v29"})["trades"]
@@ -1140,7 +1154,7 @@ def main() -> None:
     s = sub.add_parser("serve")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8790)
-    s.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    s.add_argument("--store", default=str(STORE_DEFAULT))
     s.add_argument("--public-url", default="")
     s.add_argument("--admin-token", default="")
     s.add_argument("--run-at", default="", help="HH:MM[,HH:MM] wall clock runs")
@@ -1151,16 +1165,16 @@ def main() -> None:
                    help="minutes a proposal waits for every OK; then silent teams' trades are dropped and the rest is approved")
     s.set_defaults(fn=cmd_serve)
     r = sub.add_parser("run")
-    r.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    r.add_argument("--store", default=str(STORE_DEFAULT))
     r.add_argument("--force", action="store_true", help="run even if a participant's venue would host nothing")
     r.add_argument("--port", type=int, default=8790)
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status")
-    st.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    st.add_argument("--store", default=str(STORE_DEFAULT))
     st.set_defaults(fn=cmd_status)
     i = sub.add_parser("invite", help="mint invite codes: invite t07 t17 ...")
     i.add_argument("teams", nargs="+")
-    i.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
+    i.add_argument("--store", default=str(STORE_DEFAULT))
     i.add_argument("--out", default="", help="invites file (default <store>/invites.json); use a path outside logs/")
     i.set_defaults(fn=cmd_invite)
     f = sub.add_parser("forget", help="drop a team from the running server (needs CLEARING_ADMIN in the env)")
