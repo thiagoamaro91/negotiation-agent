@@ -113,3 +113,16 @@ What `tools/ledger.py` needed to rebuild all 18 teams' cash from the public feed
 - **At 15 s ticks one game hour is one wall hour (240 ticks).** Measured from the VM recorder's `seen_at`: tick 1546 = 09:40, 1626 = 10:00, 1706 = 10:20 (40 ticks and 0.1667 h per 10 min). Game 14.65 (the hard Market Test) started at tick 1690, about 10:16.
 - **Wall times from `/api/schedule` at tick 1720, if nothing else pauses:** Market Test (15.0) about 10:37; Duels III (15.367) about 10:59; Market Test (17.0) about 12:37; finale warning about 13:47; stalls close and the Grand Final at about 13:59; freeze warning about 14:53; **scores freeze about 14:59** (19.367); the Bazaar closes at 15:00. Only two Market Tests remain after the hard one, not four.
 - **Hard Market Test (session 7 / b121, ticks 1690-1706):** 24 bench offers, every per-offer expiry equal to the session end (1706), as on Saturday. Our broker on `stall` matched 7 pairs, 178 P = 85 % of the revealed-limit best (209 P) and 100 % of the quote-respecting ceiling; the `ours` replay was identical.
+
+## Duels III (server session 4, ticks ~1822-2074, read 12:02)
+
+- **Complete 68/68**, `duels.finished` session 4 at tick 2074 (11:52). 55 deals (buyer 27/34, seller 28/34), our surplus 1475.4 P; duel_points went 0.0 (tick 1822) -> 27.94 (tick 2087): 0.411 per duel against the lab's 0.420.
+- **`duel_points` restarts each round in `score.jsonl`:** it read 43.37 at tick 1445 (Round 2) and 0.0 at tick 1783 (Round 3), although `round.started` round 3 said `"reset": false`.
+- **The Duels III field, refit from the final transcripts:** linear 36, fast 11, one-shot 11, absent 8, steady 2. No-deals: 8 rivals who never priced, 3 with no zone, 2 where a rival offer inside our limit came 9-11 ticks before the end and we did not take it (duels 11468, 11534: an early accept needs code, not params).
+- **No dealer deals of ours during the wave** (ladder unchanged at 5/15 from tick 1809 to 2117).
+- **The server slowed down around midday (tick ~2230-2290, 12:31-12:43).** Our broker logged 38 read timeouts in 12 minutes (26 on `GET /api/clock`, 12 on `GET /api/broker/book`), all single misses (`in_a_row` 1, once 2), against 1 timeout during the 10:37 test. The 12:37 Market Test (b156) still had a book row for every tick and lost no match (7 matches, 100 % of the quote-respecting ceiling), so the retry-next-tick handling held.
+
+## Grand Final and the close (ticks 2578-2816)
+
+- **Grand Final (server session 5, finished tick 2692, 14:28):** 34/34 complete, 25 deals (buyer 13/17, seller 12/17), our surplus 657.3 P; duel_points 27.94 -> 40.19, 0.360 per duel against the lab's 0.420 and Duels III's 0.411. The delivery-day term cost us 79.2 P over the 25 deals (11 deals at day 10), where in Duels III it was worth +1.7 P. The Final field read linear 17, fast 7, tit-for-tat 3, one-shot 3, absent 3, steady 1.
+- **The Bazaar closed at tick 2816 (t 19.3417, 15:00), before the schedule's 19.367 freeze.** The organisers' 14:55 announcement said "Scores freeze at 15:00". Final board read at tick 2802: t03 34.19, rank 4 (leader t05 37.73).
