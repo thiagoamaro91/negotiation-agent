@@ -148,6 +148,7 @@ def cmd_book(a) -> None:
     if r.get("_status") or "error" in r:
         sys.exit(f"book REFUSED by the server, nothing listed: {r}")
     cfg["book"] = {"haves": haves, "wants": wants, "team": me.get("id"), "sent": datetime.now().isoformat(timespec="seconds")}
+    cfg["bought"] = {}
     cfg_path(cfg["team"]).write_text(json.dumps(cfg))
     print(f"book sent: {r}  (cash {cash}); a copy is kept locally and every plan action is checked against it")
 
@@ -268,7 +269,8 @@ def cmd_execute(a) -> None:
     book, team = cfg.get("book") or {}, cfg.get("team")
     if not book:
         sys.exit("no local copy of my book: run `book` first (execute only acts on what I listed myself)")
-    posted, accepted, failed, voted, bought = set(), set(), set(), set(), {}
+    posted, accepted, failed, voted = set(), set(), set(), set()
+    bought = dict(cfg.get("bought") or {})          # survives restarts: kept in the local config file
     until = a.until
     while True:
         if until and datetime.now().strftime("%H:%M") >= until:
@@ -340,6 +342,8 @@ def cmd_execute(a) -> None:
                 if r.get("_status") is None:
                     accepted.add(x["id"])
                     bought[x["card"]] = bought.get(x["card"], 0) + 1
+                    cfg["bought"] = bought
+                    cfg_path(team).write_text(json.dumps(cfg))
                     did_accept = True
                     call(f"{cfg['server']}/api/clearing/report", {"token": cfg["token"], "action": x["id"], "status": "accepted"})
                     print(f"   accepted: {r}")
