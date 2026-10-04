@@ -17,8 +17,9 @@ La Celestina costs no fee. A message never names a venue as a condition of anyth
 message each, once per game: La Celestina's fee next to El Rastro's, the exact v20 orders, and what our broker crosses
 (agent/broker.py crosses teams' public v20 offers card by card on every book it reads, with any --policy). It never
 names a card, a price or anything about Team 3's album. --pitch-reciprocity adds one line about Team 3's own buying:
-enable it ONLY while the trade desk runs without --no-team-venues (it is false otherwise, and a false line is a bad
-faith flag); it states a standing price rule, never "trade on ours and we trade on yours".
+enable it ONLY after checking agent/market_desk.py's team-venue rule for the mode the desk runs in (today
+--no-team-venues, and page mode reads team boards for page cards only: the line is false then, and a false line is a
+bad faith flag); it states a standing price rule, never "trade on ours and we trade on yours".
 
 Thread slots are scarce: a team holds at most 6 open threads and the dealer bots need them on Sunday. So `run` opens
 ONE thread at a time, sends ONE message, and closes it at once (POST /api/threads/{id}/close); before opening it
@@ -73,7 +74,7 @@ PITCH_KEY = "pitch:"      # state["keys"] entry of a team pitched once (never ag
 PITCH_ASK = '{"venue": "v20", "give": {"assets": [<your asset id>]}, "want": {"cash": <your price>}}'
 PITCH_BID = '{"venue": "v20", "give": {"cash": <your price>}, "want": {"cards": ["<card ref>"]}}'
 RECIPROCITY_LINE = (" Team 3's own buying desk reads team venues too and takes a buy where its all-in cost (price + "
-                    "fee) is lowest, so a fair ask on your venue is weighed exactly like one on El Rastro.")
+                    "fee) is lowest.")
 
 
 def _team(t) -> bool:
@@ -379,8 +380,8 @@ def main(argv=None) -> None:
     ap.add_argument("--pitch", action="store_true",
                     help="fill the slots left after the matches with the one-time La Celestina pitch (active teams)")
     ap.add_argument("--pitch-reciprocity", action="store_true",
-                    help="add the line about Team 3's own buying to the pitch: ONLY while the trade desk runs "
-                         "without --no-team-venues (the line is false otherwise)")
+                    help="add the line about Team 3's own buying to the pitch: ONLY after checking the trade "
+                         "desk's team-venue rule for its mode (false under --no-team-venues and in page mode)")
     args = ap.parse_args(argv)
     if args.cmd == "run" and not args.yes:
         ap.error("run opens threads with other teams: add --yes")
