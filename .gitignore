@@ -24,3 +24,4 @@ logs/state/STOP
 
 # the second worktree tools/logs_push.py keeps on branch mini/logs (the Mini only)
 .logs-push/
+.logs-push.lock

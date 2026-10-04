@@ -160,7 +160,7 @@ class Mirror(Sandbox):
         self.write("logs/duel/leak.jsonl", '{"auth": "tk-abcd-efgh"}\n')
         self.write("logs/duel/ok.jsonl", "{}\n")
         line = self.cycle()
-        self.assertIn("skipped, key-like text: duel/leak.jsonl", line)
+        self.assertIn("screened out: duel/leak.jsonl key-like text", line)
         self.assertEqual(self.on_origin("ls-tree", "--name-only", "mini/logs", "logs/duel/"), "logs/duel/ok.jsonl")
         self.assertNotIn("tk-abcd", self.on_origin("log", "-p", "mini/logs"))
 
@@ -220,24 +220,195 @@ class Failures(Sandbox):
             self.assertEqual(lp.main(["--root", str(self.mini), "--once"]), 0)
         self.assertIn("nothing new", out.getvalue())
 
-    def test_a_stale_lease_heals_by_itself(self):
+    def test_a_commit_only_the_remote_has_is_discarded_and_said_so(self):
+        """The Mini is the only writer of mini/logs: someone else's push there is overwritten, with a line saying so."""
         self.write("logs/duel/a.jsonl", "{}\n")
         self.cycle()
+        self.intruder_pushes()
+        self.write("logs/duel/a.jsonl", "{}\n{}\n")
+        line = self.cycle()
+        self.assertRegex(line, r"^pushed [0-9a-f]{7} 1 files \(discarded 1 remote-only commit: the Mini is the only writer\)")
+        self.assertEqual(self.on_origin("show", "mini/logs:logs/duel/a.jsonl"), "{}\n{}")
+        self.assertNotIn("x.txt", self.on_origin("ls-tree", "--name-only", "mini/logs"))
+
+    def test_a_remote_ahead_with_nothing_new_locally_is_fetched_and_overwritten(self):
+        """No local change and no local-only commit used to report `nothing new` without looking at the remote."""
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        self.intruder_pushes()
+        line = self.cycle()
+        self.assertRegex(line, r"^pushed [0-9a-f]{7} 0 files \(discarded 1 remote-only commit")
+        self.assertEqual(self.on_origin("rev-parse", "mini/logs"), self.run_git(self.mini / ".logs-push", "rev-parse", "HEAD"))
+        self.assertEqual(self.cycle(), "nothing new")
+
+    def intruder_pushes(self):
         other = self.tmp / "other"
         self.run_git(self.tmp, "clone", "-q", "-b", "mini/logs", str(self.origin), str(other))
         (other / "x.txt").write_text("someone else\n")
         self.run_git(other, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
         self.run_git(other, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "intruder")
         self.run_git(other, "push", "-q", "origin", "mini/logs")
-        self.write("logs/duel/a.jsonl", "{}\n{}\n")
-        self.assertTrue(self.cycle().startswith("push failed"))                          # the lease is stale
-        self.assertTrue(self.cycle().startswith("pushed"))                               # refreshed, then overwritten
-        self.assertEqual(self.on_origin("show", "mini/logs:logs/duel/a.jsonl"), "{}\n{}")
 
     def test_a_broken_origin_is_a_report_not_a_crash(self):
         self.run_git(self.mini, "remote", "set-url", "origin", str(self.tmp / "nowhere.git"))
         self.write("logs/duel/a.jsonl", "{}\n")
         self.assertRegex(self.cycle(), r"^push failed: git fetch")
+
+
+class Isolation(Sandbox):
+    """The tool must never act on the live checkout, and never write outside <worktree>/logs."""
+
+    def main_head(self):
+        return self.run_git(self.mini, "rev-parse", "HEAD")
+
+    def test_a_worktree_that_is_a_symlink_to_the_main_checkout_is_refused(self):
+        os.symlink(self.mini, self.mini / ".logs-push")
+        head = self.main_head()
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertRegex(self.cycle(), r"^push failed: refusing: \.logs-push is a symlink")
+        self.assertEqual(self.main_head(), head)
+        self.assertIsNone(self.branch_sha())
+        self.assertEqual(self.on_origin("rev-parse", "main"), head)
+
+    def test_a_full_clone_in_the_worktree_place_is_refused(self):
+        self.run_git(self.tmp, "clone", "-q", str(self.origin), str(self.mini / ".logs-push"))
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertRegex(self.cycle(), r"^push failed: refusing: \.logs-push is not a linked worktree")
+        self.assertIsNone(self.branch_sha())
+
+    def test_a_worktree_on_another_branch_is_refused(self):
+        self.run_git(self.mini, "worktree", "add", "-q", "-b", "other", str(self.mini / ".logs-push"), "HEAD")
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertRegex(self.cycle(), r"^push failed: refusing: \.logs-push is on branch other, not mini/logs")
+        self.assertIsNone(self.branch_sha())
+
+    def test_a_worktree_of_another_repository_is_refused(self):
+        elsewhere = self.tmp / "elsewhere"
+        self.run_git(self.tmp, "clone", "-q", str(self.origin), str(elsewhere))
+        self.run_git(elsewhere, "worktree", "add", "-q", "-b", "mini/logs", str(self.mini / ".logs-push"), "HEAD")
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertRegex(self.cycle(), r"^push failed: refusing: \.logs-push is a worktree of another repository")
+
+    def test_a_symlinked_destination_never_overwrites_a_live_bot(self):
+        self.write("agent/duel.py", "print('live bot')\n")
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertTrue(self.cycle().startswith("pushed"))
+        wt = self.mini / ".logs-push"
+        os.symlink("../../agent/duel.py", wt / "logs" / "dup.jsonl")                  # logs/dup.jsonl -> the live bot
+        self.write("logs/dup.jsonl", "evil\n")
+        line = self.cycle()
+        self.assertRegex(line, r"^push failed: refusing: destination .*dup\.jsonl is a symlink")
+        self.assertEqual((self.mini / "agent" / "duel.py").read_text(), "print('live bot')\n")
+
+    def test_a_symlinked_destination_directory_is_refused_too(self):
+        self.write("agent/duel.py", "print('live bot')\n")
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        wt = self.mini / ".logs-push"
+        os.symlink("../agent", wt / "logs" / "sub")
+        self.write("logs/sub/duel.py", "evil\n")
+        self.assertRegex(self.cycle(), r"^push failed: refusing: destination .*sub is a symlink")
+        self.assertEqual((self.mini / "agent" / "duel.py").read_text(), "print('live bot')\n")
+
+    def test_a_symlink_in_logs_is_never_followed(self):
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "secret.txt").write_text("not for the VM\n")
+        os.symlink(outside, self.mini / "logs" / "link")
+        os.symlink(outside / "secret.txt", self.mini / "logs" / "file-link")
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertTrue(self.cycle().startswith("pushed"))
+        tree = self.on_origin("ls-tree", "-r", "--name-only", "mini/logs")
+        self.assertNotIn("secret.txt", tree)
+        self.assertNotIn("link", tree)
+
+
+class Guards(Sandbox):
+    """What is committed is only what this cycle copied and screened."""
+
+    LEAKS = {
+        "logs/a/bk-key.jsonl": '{"x": "bk_abcdef"}\n',
+        "logs/a/tk-underscore.jsonl": '{"x": "tk_abcd_efgh"}\n',
+        "logs/a/assign.txt": "BAZAAR_KEY=abcdef123456\n",
+        "logs/a/export.txt": "export BROKER_KEY='abcdef123456'\n",
+        "logs/a/json-env.jsonl": '{"GH_TOKEN": "ghp_abcdefgh1234"}\n',
+        "logs/a/env-copy.txt": "nothing in here looks like a key\n",                 # the name alone says env
+        "logs/a/.env": "A=B\n",
+        "logs/a/server.pem": "-----\n",
+    }
+
+    def test_nothing_that_looks_like_a_credential_is_copied_or_committed(self):
+        for rel, text in self.LEAKS.items():
+            self.write(rel, text)
+        self.write("logs/a/fine.jsonl", '{"key": "RET-07", "price": 22}\n')                # an ordinary `key` field
+        line = self.cycle()
+        self.assertTrue(line.startswith("pushed"), line)
+        self.assertEqual(self.on_origin("ls-tree", "-r", "--name-only", "mini/logs", "logs/a/"), "logs/a/fine.jsonl")
+        for rel in self.LEAKS:
+            self.assertFalse((self.mini / ".logs-push" / rel).exists(), rel)
+
+    def test_a_secret_already_sitting_dirty_in_the_worktree_is_never_committed(self):
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        wt = self.mini / ".logs-push"
+        (wt / "logs" / "planted.txt").write_text("tk-abcd-efgh\n")                      # untracked
+        (wt / "logs" / "duel" / "a.jsonl").write_text("{}\n{\"x\": \"bk_abcdef\"}\n")       # tracked, dirty
+        self.run_git(wt, "add", "logs/planted.txt")                                      # and pre-staged
+        self.write("logs/duel/b.jsonl", "{}\n")                                          # an unrelated change to publish
+        line = self.cycle()
+        self.assertRegex(line, r"^pushed [0-9a-f]{7} 1 files$")
+        self.assertEqual(self.on_origin("show", "--name-only", "--format=", "mini/logs"), "logs/duel/b.jsonl")
+        self.assertNotIn("planted", self.on_origin("ls-tree", "-r", "--name-only", "mini/logs"))
+        self.assertNotIn("bk_abcdef", self.on_origin("log", "-p", "mini/logs"))
+
+    def test_a_secret_in_a_source_that_is_skipped_stays_unpublished(self):
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        wt = self.mini / ".logs-push"
+        (wt / "logs" / "duel" / "a.jsonl").write_text('{"x": "bk_abcdef"}\n')           # dirty copy of a source we now skip
+        self.write("logs/duel/a.jsonl", '{"x": "bk_abcdef"}\n')
+        self.assertEqual(self.cycle().split(" (")[0], "nothing new")
+        self.assertEqual(self.on_origin("show", "mini/logs:logs/duel/a.jsonl"), "{}")
+
+    def test_unrelated_files_staged_by_someone_else_are_not_in_the_commit(self):
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        wt = self.mini / ".logs-push"
+        (wt / "README.md").write_text("edited by hand\n")
+        self.run_git(wt, "add", "README.md")
+        self.write("logs/duel/b.jsonl", "{}\n")
+        self.assertTrue(self.cycle().startswith("pushed"))
+        self.assertEqual(self.on_origin("show", "--name-only", "--format=", "mini/logs"), "logs/duel/b.jsonl")
+        self.assertEqual(self.on_origin("show", "mini/logs:README.md"), "code")
+
+
+class Locking(Sandbox):
+    def hold(self):
+        import fcntl
+        fd = os.open(self.mini / lp.LOCKFILE, os.O_RDWR | os.O_CREAT)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fd
+
+    def test_a_cycle_that_finds_the_lock_held_does_nothing_and_says_so(self):
+        fd = self.hold()
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.assertEqual(self.cycle(), "push failed: another logs_push holds the lock")
+        self.assertFalse((self.mini / ".logs-push").exists())                            # not even the worktree
+        self.assertIsNone(self.branch_sha())
+        os.close(fd)
+        self.assertTrue(self.cycle().startswith("pushed"))
+
+    def test_once_exits_nonzero_while_another_instance_holds_the_lock(self):
+        fd = self.hold()
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(lp.main(["--root", str(self.mini), "--once"]), 1)
+        os.close(fd)
+        self.assertIn("another logs_push holds the lock", out.getvalue())
+
+    def test_the_lock_is_released_after_each_cycle(self):
+        self.write("logs/duel/a.jsonl", "{}\n")
+        self.cycle()
+        os.close(self.hold())                                                            # would raise if it were still held
 
 
 if __name__ == "__main__":
