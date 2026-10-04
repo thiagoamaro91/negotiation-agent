@@ -1,6 +1,6 @@
 # Sunday pre-flight: 08:40 Madrid, on the Mac Mini
 
-Twelve checks, one line each (check 1 also pulls when behind), then the 08:55 command. Most checks only read: check 1 pulls `main`, check 11 pushes the branch `mini/logs` (and creates the worktree `.logs-push`), and the 08:55 command starts the bots. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
+Thirteen checks, one line each (check 1 also pulls when behind), then the 08:55 command. Most checks only read: check 1 pulls `main`, check 11 pushes the branch `mini/logs` (and creates the worktree `.logs-push`), and the 08:55 command starts the bots. Run it in `~/bazaar` on the Mini; no check prints a key (key checks print a count and a file mode only). If one fails and two minutes do not fix it, say so in the team chat before starting anything. The full operator page is [`sunday-runbook.md`](sunday-runbook.md); what changed overnight is in [`sunday-night-handoff.md`](sunday-night-handoff.md).
 
 Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/factory_sunday.json` (the line is in the handoff, section "What needs you"). Without it the watchdog still prints problems in its tmux window but sends nothing to your phone.
 
@@ -31,11 +31,11 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
 7. **No hand-started bot.** Expect no `ps` line, and no `bazaar` session or running `factory` window in `tmux ls`. Kill what shows (`tmux kill-session -t bazaar`, `kill <pid>`), Saturday's feed recorder included: the factory starts its own.
    ```bash
-   ps -axo pid=,args= | grep -E 'agent/(broker|duel|abuela|chato|rastro_seller|market_desk)\.py|tools/(logs_push|matchmaker|announce|outreach)\.py|feed_recorder|broker_loop|_gate\.sh' | grep -v grep; tmux ls
+   ps -axo pid=,args= | grep -E 'agent/(broker|duel|abuela|chato|rastro_seller|market_desk)\.py|tools/(logs_push|matchmaker|announce|outreach|census|snapshot)\.py|feed_recorder|broker_loop|_gate\.sh' | grep -v grep; tmux ls
    ```
 8. **The bus board has no foreign claim on a factory name.** Expect no output. Saturday's `broker` and `duel` rows on `mini` are yours; `up` takes them over.
    ```bash
-   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|matchmaker|announce|logs_push|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
+   cd ~/bazaar && python3 tools/bus.py --session thiago-mini-factory board | awk -F'|' '$2 ~ /^ *(feed|broker|duel|abuela|chato|pilar|picaros|market_desk|matchmaker|announce|me_snapshot|logs_push|watchdog) *$/ && $4 !~ /mini/ {print "BAD:" $0}'
    ```
 9. **Cash and level, from the dashboard.** Expect `cash 253 level 5 age <10 error None` (Saturday's close, ledger-checked at tick 1445; 403 after the 150 P at about 10:40 Madrid).
    ```bash
@@ -56,9 +56,17 @@ Before 08:40, once, after the 08:00 code freeze: set `notify_cmd` in `tools/fact
    ```
    Never run `git add`, `commit`, `pull` or `stash` in `~/bazaar` while the bots run: that is the live checkout.
 
-12. **The matchmaker board is sane** (08:50 Madrid). Expect a first number above 5 (lines), `0`, and `[]`: a board with tiers 1 to 4, no Team 3 row, none of the cards we lack. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
+12. **The census** (08:40 Madrid, before `up --yes`; skip it if it fails or is slow). Keyed and read-only: about 1,300 requests, about 6 minutes at 4 requests per second (the key allows 5; no bot runs yet). It writes `logs/census/` and makes the matchmaker's holders facts. Then refresh our holdings for the exclusion. If it fails, stops, or is not done by 08:54 Madrid, start the factory anyway: the matchmaker falls back to the feed inference by itself.
    ```bash
-   cd ~/bazaar && python3 tools/matchmaker.py report --live > /tmp/mm.txt; wc -l < /tmp/mm.txt; grep -c -E '\| Team 3 \|' /tmp/mm.txt; python3 -c "import re,sys; sys.path.insert(0,'tools'); import announce; t=open('/tmp/mm.txt').read(); print(sorted(c for c in announce.MISSING if re.search(r'\b'+c+r'\b', t)))"
+   cd ~/bazaar && python3 tools/census.py run --rate 4 --until 08:54 ; python3 tools/snapshot.py --me-only
+   ```
+   Optional, hourly (a top-up of only the ids that moved; 1 to 5 minutes at 1 request per second):
+   ```bash
+   cd ~/bazaar && BASE=$(ls -t logs/census/cards-*-t*.json | grep -v history | head -1) && python3 tools/decks.py moved --base "$BASE" --out logs/census/moved.txt && python3 tools/census.py ids --ids-file logs/census/moved.txt --base "$BASE" --out logs/census --rate 1 && python3 tools/snapshot.py --me-only
+   ```
+13. **The matchmaker board is sane** (08:50 Madrid), with the flags the service uses. Expect `matches` above 2, `team3 0`, and `census_tick` a number if the census ran (`None` means the feed inference is used; `rejected` says why a census was refused). The error lines must show `exclude-from:` with the snapshot younger than 90 minutes (older pauses the page-card matches) and no `census: WARNING`. The factory's `matchmaker` service writes the same board from 08:55 and the announcer posts one match every 12 minutes from 09:00. If the board is empty, say so in the bus post and leave the announcer running: it posts nothing without matches.
+   ```bash
+   cd ~/bazaar && python3 tools/matchmaker.py json --live --census logs/census --exclude-from logs/state/me_live.json,logs/state/me.json --out /tmp/mm.json 2> /tmp/mm.err; cat /tmp/mm.err; python3 -c "import json;d=json.load(open('/tmp/mm.json'));print('matches',len(d['matches']),'team3',sum(m['team']=='t03' for m in d['matches']),'census_tick',d['census_tick'],'rejected',d['census_rejected'])"
    ```
 
 The team key sits in `~/bazaar/.env` and the bots read it themselves; the factory never passes a key to a bot. The dashboard's duel and broker panels read the folder named by `BROKER_ROOT` in `~/bazaar-dashboard/.env`; for the factory's bots it must be `~/bazaar` (`grep '^BROKER_ROOT=' ~/bazaar-dashboard/.env`), otherwise those panels stay empty.
@@ -84,7 +92,8 @@ Starting before 09:00 is safe: every gate waits for open doors and a running clo
 started feed        started broker      started duel
 started abuela      skip    chato: no enabled step left to run today      started pilar      started picaros
 off     rastro_seller: ...              started market_desk      started matchmaker
-started announce    off     outreach: ...   started logs_push   started watchdog
+started announce    off     outreach: ...   started me_snapshot
+started logs_push   started watchdog
 ```
 
 Any `REFUSE` line names its reason. `already running outside the factory`: stop that pid and run `up --yes` again. `missing input file ...`: the duel params file is not on this checkout, pull again. `cannot read the bus board`: GitHub is down; say so in the team chat, then `up --yes --no-bus`.
@@ -102,6 +111,7 @@ Any `REFUSE` line names its reason. `already running outside the factory`: stop 
 | matchmaker | `RUNNING` (log is `logs/matchmaker/latest.json`, rebuilt every 2 minutes) |
 | announce | `WAITING` until 09:00, then `RUNNING`; its log `logs/announce/<date>.jsonl` shows `named` events once it posts (nothing without a match) |
 | outreach | `off` until a human flips it after the 09:05 test thread |
+| me_snapshot | `RUNNING` from 09:00; `logs/state/me.json` is at most 10 minutes old |
 | logs_push | `RUNNING`; its window (`tmux attach -t factory`) prints `pushed ...` or `nothing new` every 10 minutes |
 | rastro_seller | `off` |
 | watchdog | `RUNNING` |

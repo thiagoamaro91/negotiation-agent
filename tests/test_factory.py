@@ -420,7 +420,7 @@ class ReviewPauseGate(Sandbox):
         cfg = f.load_config(f.CONFIG)
         paused = clock(t_hours=18.6, paused=True)
         for p in cfg["processes"]:
-            if p["name"] in ("feed", "watchdog", "logs_push", "matchmaker"):   # keyless, no key, no gate by design
+            if p["name"] in ("feed", "watchdog", "logs_push", "matchmaker", "me_snapshot"):   # no clock gate by design
                 continue
             self.assertFalse(f.check_gates(f.gates_for(p), paused, [], None, SUN_0900)[0], p["name"])
 
@@ -1018,6 +1018,40 @@ class KeylessHelpers(unittest.TestCase):
         self.assertEqual(o["cmd"][2:5], ["tools/outreach.py", "run", "--yes"])
         self.assertLessEqual(int(o["cmd"][o["cmd"].index("--max-teams") + 1]), 3)
         self.assertEqual(o["gates"], {"doors_open": True, "clock_running": True})
+
+    EXCLUDE = ["--exclude-from", "logs/state/me_live.json,logs/state/me.json", "--exclude-max-age-min", "90"]
+
+    def test_the_matchmaker_and_the_announcer_hide_the_cards_we_lack_from_our_own_snapshot(self):
+        """The hard-coded MISSING list is stale (at tick 1445 it hid 7 cards we hold and missed 18 we lack): both read the
+        freshest account snapshot instead, the matchmaker also the census, and every flag exists in the tool."""
+        procs = self.procs()
+        mm, an = procs["matchmaker"]["cmd"], procs["announce"]["cmd"]
+        self.assertEqual(mm[mm.index("--census"):mm.index("--census") + 2], ["--census", "logs/census"])
+        self.assertEqual(mm[mm.index("--exclude-from"):], self.EXCLUDE)
+        self.assertEqual(an[an.index("--exclude-from"):], self.EXCLUDE)
+        root = Path(__file__).resolve().parent.parent
+        for tool, wanted in (("matchmaker", ("--census", "--exclude-from", "--exclude-max-age-min")),
+                             ("announce", ("--exclude-from", "--exclude-max-age-min"))):
+            helptext = subprocess.run([sys.executable, str(root / "tools" / f"{tool}.py"), "--help"], capture_output=True,
+                                      text=True).stdout
+            for flag in wanted:
+                self.assertIn(flag, helptext, (tool, flag))
+
+    def test_me_snapshot_keeps_the_account_snapshot_fresh_every_ten_minutes(self):
+        p = self.procs()["me_snapshot"]
+        self.assertIsNot(p.get("enabled"), False)
+        self.assertEqual(p["cmd"][:2], ["/bin/bash", "-c"])
+        loop = p["cmd"][2]
+        self.assertIn("tools/snapshot.py --me-only", loop)               # one GET /api/me, nothing else
+        self.assertIn("|| exit 1", loop)                                 # a failing snapshot is a crash the keeper alerts on
+        self.assertRegex(loop, r"sleep 600;")                              # every ten minutes, not 6000 s
+        self.assertEqual(p["gates"], {"doors_open": True, "clock_running": False})
+        self.assertEqual(p["log"], "logs/state/me.json")
+        self.assertFalse(p.get("required"))
+        # the exclusion files the matchmaker reads must include the one this service writes
+        self.assertIn(p["log"], self.procs()["matchmaker"]["cmd"][self.procs()["matchmaker"]["cmd"].index("--exclude-from") + 1].split(","))
+        self.assertEqual(f.ps_pids(["  71 /bin/bash -c while true; do python3 -u tools/snapshot.py --me-only || exit 1; sleep 600; done"],
+                                   p["match"]), [71])
 
     def test_the_logs_push_is_a_loop_without_a_gate_and_never_the_one_shot(self):
         p = self.procs()["logs_push"]
