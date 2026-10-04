@@ -331,6 +331,7 @@ class Store:
                     "rule": "a round runs only if every participant's venue hosts at least one trade; the rest go to "
                             "the venue with the least value hosted today; a side that did not execute sits out the next round",
                     "hosting": hosting, "ledger": ledger, "last_attempt": self.state.get("last_attempt"),
+                    "policy": self.state.get("policy"),
                     "haves": sum(len(v["haves"]) for v in teams.values()),
                     "wants": sum(len(v["wants"]) for v in teams.values()),
                     "cards_offered": sorted({x["card"] for v in teams.values() for x in v["haves"]}),
@@ -357,6 +358,22 @@ class Store:
                     bad.add(t["buyer"])
         return bad
 
+    @staticmethod
+    def why_uncovered(uncovered: list, books: dict, trades: list) -> dict:
+        """For each uncovered team: how many trades exist that it is not part of (0 means nobody else trades), and
+        the cards it offers that nobody wants / wants that nobody offers, so a human knows what would unblock it."""
+        out = {}
+        offered = {h["card"] for b in books.values() for h in b.get("haves", [])}
+        wanted = {w["card"] for b in books.values() for w in b.get("wants", [])}
+        for t in uncovered:
+            b = books.get(t, {})
+            out[t] = {"trades_not_involving_it": sum(1 for tr in trades if t not in (tr["seller"], tr["buyer"])),
+                      "its_haves_nobody_wants": sorted({h["card"] for h in b.get("haves", []) if h["card"] not in wanted}),
+                      "its_wants_nobody_offers": sorted({w["card"] for w in b.get("wants", []) if w["card"] not in offered}),
+                      "note": "a venue can only host trades between two OTHER teams; more trades among the others, "
+                              "or more cards in their books, would cover it"}
+        return out
+
     def run(self, venues: list, force: bool = False) -> dict:
         with self.lock:
             bad = self.defaulters()
@@ -369,7 +386,7 @@ class Store:
             res = match(books, venues, parts, self.hosted())
             trades, uncovered = res["trades"], res["uncovered"]
             attempt = {"at": now_iso(), "trades": len(trades), "uncovered": uncovered, "sat_out": sorted(bad),
-                       "held": bool(uncovered) and not force}
+                       "held": bool(uncovered) and not force, "why": self.why_uncovered(uncovered, books, trades)}
             if uncovered and not force:
                 attempt["note"] = "round held: every participant's venue must host at least one trade"
                 self.state["last_attempt"] = attempt
@@ -502,6 +519,10 @@ trades. Then each side gets exactly one thing to do:
 - Every round is for everyone or it does not run: the matcher first gives every participant's venue one trade
   (a trade cannot sit on a venue owned by one of its two sides). If some participant's venue would host nothing, the
   round is held and /api/clearing/status says who would be left out; it is retried every 2 minutes.
+- Nothing guarantees a cross: a trade exists only where a card someone sells is a card someone else wants at a
+  price both accept. The more cards in the books (every spare, every missing page card), the more crosses. A held
+  round still held at {anyway} runs with the trades that exist, uncovered venues first in the allocation, so a
+  venue nobody can serve never blocks everyone until the stalls close. The status explains each held round.
 - The remaining trades go to the venue with the least value hosted so far today, so a venue that hosted little in
   an earlier round comes first in the next. Team 3's venue is in the pool on the same terms.
 - The allocation is public: /api/clearing/status shows per venue the trades and value hosted, and every matched
@@ -536,7 +557,7 @@ Source: https://github.com/thiagoamaro91/negotiation-agent/pull/96 (tools/cleari
 
 
 def make_server(store: Store, host: str, port: int, *, admin_token: str, public_url: str, run_at: list,
-                venues_fn) -> ThreadingHTTPServer:
+                venues_fn, anyway: str = "") -> ThreadingHTTPServer:
     class H(BaseHTTPRequestHandler):
         server_version = "clearing/1"
 
@@ -580,7 +601,8 @@ def make_server(store: Store, host: str, port: int, *, admin_token: str, public_
                     base = public_url or (f"https://{fwd}" if fwd and not fwd.startswith(("127.", "localhost"))
                                           else f"http://{host}:{port}")
                     runs = ", ".join(run_at) if run_at else "on demand (ask Team 3)"
-                    self._send(200, AGENTS_MD.format(base=base, runs=runs).encode(), "text/markdown; charset=utf-8")
+                    self._send(200, AGENTS_MD.format(base=base, runs=runs, anyway=anyway or "the last run").encode(),
+                               "text/markdown; charset=utf-8")
                 elif u.path == "/clearing_client.py":
                     self._send(200, (ROOT / "tools" / "clearing_client.py").read_bytes(), "text/x-python")
                 elif u.path == "/api/clearing/status":
@@ -633,8 +655,10 @@ def cmd_serve(a) -> None:
     store = Store(Path(a.store) / "state.json")
     Path(a.store).mkdir(parents=True, exist_ok=True)
     run_at = [x.strip() for x in (a.run_at or "").split(",") if x.strip()]
+    anyway = (a.run_anyway_at or "").strip()
+    store.state["policy"] = {"run_at": run_at, "run_anyway_at": anyway or None}
     srv = make_server(store, a.host, a.port, admin_token=a.admin_token or os.environ.get("CLEARING_ADMIN", ""),
-                      public_url=a.public_url, run_at=run_at, venues_fn=live_venues)
+                      public_url=a.public_url, run_at=run_at, venues_fn=live_venues, anyway=anyway)
     print(f"clearing house on http://{a.host}:{a.port}  store={a.store}  runs={run_at or 'on demand'}", flush=True)
 
     def ticker():
@@ -652,8 +676,9 @@ def cmd_serve(a) -> None:
                     held_since = time.time() if r.get("held") else None
                 elif held_since and time.time() - last_retry > 120:      # a held round is retried every 2 minutes
                     last_retry = time.time()
-                    r = store.run(live_venues())
-                    print(f"{now_iso()} retry of the held round: {r}", flush=True)
+                    force = bool(anyway) and hhmm >= anyway
+                    r = store.run(live_venues(), force=force)
+                    print(f"{now_iso()} retry of the held round{' (deadline, runs anyway)' if force else ''}: {r}", flush=True)
                     if not r.get("held"):
                         held_since = None
             except Exception as e:
@@ -781,6 +806,7 @@ def selftest() -> None:
         assert st == 403
         st, r = call("POST", "/api/clearing/run", {"admin": "adm"})
         assert st == 200 and r["round"] is None and r["held"] and r["uncovered"] == ["t03", "t07"], r
+        assert r["why"]["t07"]["trades_not_involving_it"] == 0 and r["why"]["t03"]["its_haves_nobody_wants"] == [], r
         st, r = call("GET", "/api/clearing/status")
         assert r["last_attempt"]["held"] and r["rounds"] == [], r
         st, r = call("POST", "/api/clearing/join", {"team": "t11", "venue": "v13", "invite": "c11"})
@@ -830,6 +856,7 @@ def main() -> None:
     s.add_argument("--public-url", default="")
     s.add_argument("--admin-token", default="")
     s.add_argument("--run-at", default="", help="HH:MM[,HH:MM] wall clock runs")
+    s.add_argument("--run-anyway-at", default="", help="HH:MM: a round still held at this time runs with what there is")
     s.set_defaults(fn=cmd_serve)
     r = sub.add_parser("run")
     r.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
