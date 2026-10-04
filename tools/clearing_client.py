@@ -200,14 +200,49 @@ def check_sell(x: dict, book: dict, team: str) -> str | None:
     return None
 
 
-def check_buy(x: dict, book: dict, team: str) -> str | None:
+_venues_cache: dict = {"at": 0.0, "fees": {}}
+
+
+def venue_fee(venue: str, price: int) -> int | None:
+    """The fee the ACCEPTER pays on that venue, from the game's own /api/venues (never from the plan)."""
+    if time.time() - _venues_cache["at"] > 60:
+        v = call(f"{GAME}/api/venues")
+        _venues_cache["fees"] = {x["venue"]: (int(x.get("fee_bps") or 0), int(x.get("fee_per_card") or 0))
+                                 for x in (v.get("venues") or []) if isinstance(x, dict) and x.get("venue")}
+        _venues_cache["at"] = time.time()
+    f = _venues_cache["fees"].get(venue)
+    if f is None:
+        return None
+    return int(math.ceil(price * f[0] / 10000)) + f[1]
+
+
+def check_buy(x: dict, book: dict, team: str, key: str, bought: dict, reserve: int) -> str | None:
     """Before accepting, read the offer from the game's PUBLIC book of that venue: it must be addressed to us, give
-    exactly one card of the plan's ref, want only cash equal to the plan price, and that price plus the plan fee
-    must be at or below OUR max for that card. Nothing else is accepted."""
+    exactly one card of the plan's ref, want only cash equal to the plan price. The fee comes from /api/venues (not
+    from the plan), price + fee must be at or below OUR max for that card AND at or below the card's CURRENT value
+    to us (/api/me/value, re-read now: a second copy is worth less), we must not exceed the qty we asked for, and
+    cash after the debit must stay above the reserve. Nothing else is accepted."""
     wants = [w for w in book.get("wants", []) if w["card"] == x.get("card")]
     if not wants:
         return "I never asked for this card"
     my_max = max(w["max"] for w in wants)
+    qty = sum(int(w.get("qty", 1)) for w in wants)
+    if bought.get(x.get("card"), 0) >= qty:
+        return f"already bought {qty} of {x.get('card')} this session: refused"
+    fee = venue_fee(x.get("venue"), int(x.get("price") or 0))
+    if fee is None:
+        return "venue unknown to the game (yet)"
+    debit = int(x.get("price") or 0) + fee
+    if debit > my_max:
+        return f"price {x.get('price')} + real fee {fee} = {debit} is above my max {my_max}"
+    cur = call(f"{GAME}/api/me/value?card={x.get('card')}", key=key)
+    val = cur.get("your_value") if isinstance(cur, dict) else None
+    if not isinstance(val, (int, float)) or debit > val:
+        return f"debit {debit} is not below the card's current value to me ({val}): refused"
+    me = call(f"{GAME}/api/me", key=key)
+    cash = me.get("cash")
+    if not isinstance(cash, int) or cash - debit < reserve:
+        return f"cash {cash} minus {debit} would go under my reserve {reserve}: refused"
     pub = call(f"{GAME}/api/venues/{x.get('venue')}/offers")
     offer = next((o for o in (pub.get("offers") or []) if isinstance(o, dict) and o.get("id") == x.get("offer")), None)
     if offer is None:
@@ -223,8 +258,8 @@ def check_buy(x: dict, book: dict, team: str) -> str | None:
         return "offer does not give exactly one copy of the plan's card"
     if want.get("assets") or want.get("types") or not isinstance(want.get("cash"), int):
         return "offer wants a card of mine or something other than cash: refused"
-    if want["cash"] != x.get("price") or want["cash"] + int(x.get("fee") or 0) > my_max:
-        return f"price {want['cash']} + fee {x.get('fee')} is above my max {my_max} or differs from the plan"
+    if want["cash"] != x.get("price"):
+        return f"offer price {want['cash']} differs from the plan price {x.get('price')}"
     return None
 
 
@@ -233,7 +268,7 @@ def cmd_execute(a) -> None:
     book, team = cfg.get("book") or {}, cfg.get("team")
     if not book:
         sys.exit("no local copy of my book: run `book` first (execute only acts on what I listed myself)")
-    posted, accepted, failed, voted = set(), set(), set(), set()
+    posted, accepted, failed, voted, bought = set(), set(), set(), set(), {}
     until = a.until
     while True:
         if until and datetime.now().strftime("%H:%M") >= until:
@@ -289,7 +324,7 @@ def cmd_execute(a) -> None:
             elif x["role"] == "sell" and x.get("offer"):
                 posted.add(x["id"])
             elif x["role"] == "buy" and x.get("offer") and not did_accept:
-                bad = check_buy(x, book, team)
+                bad = check_buy(x, book, team, key, bought, a.reserve)
                 if bad:
                     if "(yet)" in bad:
                         continue                      # the book lags a tick; try again next loop
@@ -304,6 +339,7 @@ def cmd_execute(a) -> None:
                 r = call(f"{GAME}/api/offers/{int(x['offer'])}/accept", {}, key=key)
                 if r.get("_status") is None:
                     accepted.add(x["id"])
+                    bought[x["card"]] = bought.get(x["card"], 0) + 1
                     did_accept = True
                     call(f"{cfg['server']}/api/clearing/report", {"token": cfg["token"], "action": x["id"], "status": "accepted"})
                     print(f"   accepted: {r}")
@@ -350,6 +386,7 @@ def main() -> None:
     e.add_argument("--once", action="store_true")
     e.add_argument("--dry-run", action="store_true")
     e.add_argument("--auto-approve", action="store_true", help="vote OK on every proposal (prices are inside your numbers anyway)")
+    e.add_argument("--reserve", type=int, default=40, help="cash never to go under when accepting a buy")
     e.set_defaults(fn=cmd_execute)
     a = p.parse_args()
     if a.cmd == "join" and not a.server:

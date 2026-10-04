@@ -308,6 +308,8 @@ class Store:
         with self.lock:
             rec = self.state["teams"].get(team)
             inv = self.invites() if rec is None else {}
+            if rec is None and not inv and not self.open_join:
+                raise Refused(503, "invites_unavailable", "the invite list is empty; ask Team 3")
             if inv and rec is None:
                 code = body.get("invite")
                 if team not in inv:
@@ -865,8 +867,15 @@ def cmd_serve(a) -> None:
 
 
 def cmd_run(a) -> None:
-    store = Store(Path(a.store) / "state.json")
-    print(json.dumps(store.run(live_venues(), force=a.force), indent=1))
+    """Ask the LIVE server to run (it owns the store); never touch state.json from a second process."""
+    admin = os.environ.get("CLEARING_ADMIN", "")
+    if not admin:
+        sys.exit("set CLEARING_ADMIN (the live server's admin token)")
+    req = urllib.request.Request(f"http://127.0.0.1:{a.port}/api/clearing/run", method="POST",
+                                 data=json.dumps({"admin": admin, "force": bool(a.force)}).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        print(r.read().decode())
 
 
 def cmd_invite(a) -> None:
@@ -893,6 +902,7 @@ def cmd_forget(a) -> None:
 
 
 def cmd_status(a) -> None:
+    """Read-only view of state.json as last saved by the live server (use GET /api/clearing/status for live)."""
     store = Store(Path(a.store) / "state.json")
     print(json.dumps(store.status(), indent=1))
     for r in store.state["rounds"]:
@@ -962,6 +972,9 @@ def selftest() -> None:
         (Path(d) / "invites.json").write_text("{not json")
         st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29", "invite": "x"})
         assert st == 503, r                                                   # malformed: closed
+        (Path(d) / "invites.json").write_text("{}")
+        st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29"})
+        assert st == 503, r                                                   # empty: closed too
         (Path(d) / "invites.json").write_text(json.dumps({"t03": "c03", "t07": "c07", "t18": "c18", "t11": "c11"}))
         st, r = call("POST", "/api/clearing/join", {"team": "t07", "venue": "v29"})
         assert st == 403 and r["error"] == "bad_invite", r
@@ -1074,6 +1087,7 @@ def main() -> None:
     r = sub.add_parser("run")
     r.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
     r.add_argument("--force", action="store_true", help="run even if a participant's venue would host nothing")
+    r.add_argument("--port", type=int, default=8790)
     r.set_defaults(fn=cmd_run)
     st = sub.add_parser("status")
     st.add_argument("--store", default=str(ROOT / "logs" / "clearing"))
