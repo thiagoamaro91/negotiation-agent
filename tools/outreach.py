@@ -136,7 +136,7 @@ def targets(doc: dict, state: dict, day: str, max_teams: int, exclude=(), min_p:
     """[(team, match, text)] in the matchmaker's order: one per team, never a team messaged today, never a match sent
     before, never Team 3, never a card in `exclude` (the card, or the one a swap gives), never an unconfident
     inference (confident())."""
-    skip = set(exclude or ())
+    skip = exclude if hasattr(exclude, "allow") else set(exclude or ())   # a matchmaker.Exclusion keeps its rule
     teams = (doc or {}).get("teams") if isinstance((doc or {}).get("teams"), dict) else {}
     done_teams = set((state.get("teams") or {}).get(day, []))
     done_keys = set(state.get("keys") or [])
@@ -300,7 +300,7 @@ def lacking(args, doc: dict, fallback) -> set:
                                   args.exclude_max_age_min,
                                   now_tick=tick if isinstance(tick, int) and not isinstance(tick, bool) else None)
     print(st["line"])
-    return set(st["cards"])
+    return st["cards"]          # a matchmaker.Exclusion: untrusted -> only epic and legendary cards pass
 
 
 def main(argv=None) -> None:
@@ -361,7 +361,7 @@ def main(argv=None) -> None:
         print(f"nothing to send: {type(e).__name__}: {e}")
         return stop("no fresh matches") if session else None
     try:
-        exclude = tuple(sorted(set(exclude) | lacking(args, doc, announce.MISSING)))
+        exclude = lacking(args, doc, announce.MISSING) | set(exclude)
     except LookupError as e:
         print(f"nothing to send: {e}")
         return stop("no catalog") if session else None

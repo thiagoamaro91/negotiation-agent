@@ -797,7 +797,7 @@ def public_view(snap: dict, exclude=()) -> dict:
     map (who is known to hold which copies), the matches built on it and the announcement drafts never leave here.
     Cards in `exclude` (the page cards we lack) never appear in the matches, invitations, our venue's book or the
     demand list; the per-card books stay (every venue's public book)."""
-    skip = frozenset(exclude or ())
+    skip = matchmaker.as_skip(exclude)
     ours = snap.get("our_venue") or None
     vid = ours["venue"] if ours else None
     cards = snap.get("cards") or {}
@@ -905,33 +905,45 @@ def min_p_arg(raw: str) -> float:
 
 
 class PublicExclude:
-    """The page cards Team 3 lacks, never shown on the public side (matchmaker.exclude_state). Configured by serve,
-    refreshed at every engine refresh against the snapshot's tick; `cards` is replaced whole. FAILS CLOSED: until a
-    trusted snapshot of our account is read (no --exclude-from, no valid file, too old), `suppress` is on: every page
-    card is hidden (the catalog's, once known; before that, any entry that is not an epic or a legendary).
-    Unconfigured (unit tests, `once`): nothing hidden. The log line carries counts and the file, never the cards."""
+    """The cards never shown on the public side (matchmaker.exclude_state, a matchmaker.Exclusion). Configured by
+    serve; refresh() at every engine refresh stores the catalog and the game tick, and current() re-reads our holdings
+    at most every RECHECK_S when a page is served, so a newer snapshot counts at once even while the engine fails.
+    FAILS CLOSED: until a trusted snapshot of ours is read against a complete catalog (no --exclude-from, no valid
+    file, too old, no catalog yet), only cards the catalog positively identifies as epic or legendary may be shown
+    and `suppress` is on. Unconfigured (unit tests, `once`): nothing hidden. The log line carries counts, never cards."""
+    RECHECK_S = 5.0
 
     def __init__(self):
         self.paths, self.max_age, self.fallback, self.line = None, 60.0, (), None
         self.cards, self.suppress = frozenset(), False
+        self.catalog, self.tick, self.checked = None, None, 0.0
 
     def configure(self, paths, max_age_min: float, fallback) -> None:
         self.paths, self.max_age, self.fallback = list(paths or []), max_age_min, tuple(fallback or ())
-        self.cards, self.suppress = frozenset(self.fallback), True
+        self.cards, self.suppress = matchmaker.Exclusion(self.fallback, allow=()), True   # nothing until a check
 
-    def refresh(self, catalog: dict | None, tick=None) -> frozenset:
-        if self.paths is None:
-            return self.cards
-        if not (isinstance(catalog, dict) and catalog.get("sets")):
-            self.suppress = True
-            return self.cards
-        st = matchmaker.exclude_state(self.paths, catalog, self.fallback, self.max_age,
-                                      now_tick=tick if isinstance(tick, int) and not isinstance(tick, bool) else None)
-        self.cards, self.suppress = frozenset(st["cards"]), not st["trusted"]
+    def _check(self) -> None:
+        st = matchmaker.exclude_state(self.paths, self.catalog, self.fallback, self.max_age, now_tick=self.tick)
+        self.cards, self.suppress, self.checked = st["cards"], not st["trusted"], time.time()
         if st["line"] != self.line:
             print(f"[{time.strftime('%H:%M:%S')}] {st['line']}", file=sys.stderr, flush=True)
             self.line = st["line"]
+
+    def refresh(self, catalog: dict | None, tick=None):
+        if self.paths is None:
+            return self.cards
+        if isinstance(catalog, dict):
+            self.catalog = catalog
+        if isinstance(tick, int) and not isinstance(tick, bool):
+            self.tick = tick if self.tick is None else max(self.tick, tick)   # game time never goes back
+        self._check()
         return self.cards
+
+    def current(self):
+        """(cards, suppress) as of now: our holdings re-read if the last check is older than RECHECK_S."""
+        if self.paths is not None and time.time() - self.checked >= self.RECHECK_S:
+            self._check()
+        return self.cards, self.suppress
 
 
 EXCLUDE = PublicExclude()
@@ -1841,15 +1853,17 @@ class Engine:
 
 # ---------------------------------------------------------------- server
 
-STATE = {"private": None, "public": None, "private_bytes": None, "public_bytes": None, "error": None, "updated": 0.0}
+STATE = {"private": None, "public": None, "private_bytes": None, "public_bytes": None, "pub_exclude": None,
+         "error": None, "updated": 0.0}
 LOCK = threading.Lock()
 
 
 def publish(snap: dict, catalog: dict | None = None) -> None:
-    pub = public_view(snap, EXCLUDE.refresh(catalog, snap.get("tick")))   # the Open Bazaar board is built when served
+    ex = EXCLUDE.refresh(catalog, snap.get("tick"))
+    pub = public_view(snap, ex)          # the Open Bazaar board is built when served, with the exclusion of that moment
     with LOCK:
         STATE.update(private=snap, public=pub, private_bytes=json.dumps(snap, default=list).encode(),
-                     public_bytes=json.dumps(pub).encode(), error=None, updated=time.time())
+                     public_bytes=json.dumps(pub).encode(), pub_exclude=ex, error=None, updated=time.time())
 
 
 def worker(engine: Engine, interval: float) -> None:
@@ -1967,6 +1981,11 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                                         f"{GAME}."}, agentish)
             with LOCK:
                 snap, body, err, updated = STATE[scope], STATE[scope + "_bytes"], STATE["error"], STATE["updated"]
+                private, pub_ex = STATE["private"], STATE.get("pub_exclude")
+            ex, sup = EXCLUDE.current() if scope == "public" else (frozenset(), False)   # our holdings as of now
+            if scope == "public" and private is not None and pub_ex is not None and ex != pub_ex:
+                snap = public_view(private, ex)          # holdings changed since the last refresh: re-cut it now
+                body = json.dumps(snap).encode()
             if path in ("/", "/index.html"):
                 if scope == "public":
                     return self._send(200, page_bytes(public_url), "text/html; charset=utf-8")
@@ -1987,14 +2006,14 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                 team = (q.get("team") or [None])[0]
                 if team is not None and not MATCH_TEAM_RE.match(team):
                     return self._json(400, {"error": "bad_team", "message": "team is tNN, e.g. t07"}, True)
-                return self._json(200, missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
-                                                    min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress))
+                return self._json(200, missing_view(MISSING.load(), team, pub=live, exclude=ex,
+                                                    min_p=PUBLIC_MIN_P[0], suppress_pages=sup))
             if snap is None:
                 return self._json(503, {"error": "warming up, try again in a few seconds"}, agentish)
             if path == "/api/celestina.json":
                 if scope == "public":    # the board first, recomputed now: no cached live claim outlives its snapshot
-                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live, exclude=EXCLUDE.cards,
-                                                     min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress))
+                    bazaar = json.dumps(missing_view(MISSING.load(), pub=live, exclude=ex,
+                                                     min_p=PUBLIC_MIN_P[0], suppress_pages=sup))
                     rest = body.decode()
                     merged = '{"missing": ' + bazaar + (", " + rest[1:] if rest.strip() not in ("{}", "") else "}")
                     return self._send(200, merged.encode(), "application/json", True)
@@ -2012,8 +2031,8 @@ def handler(scope: str, public_url: str = "", board: ConciergeBoard | None = Non
                         team, want, have, fmt = parse_match_query(u.query, catalog_refs(snap))
                         view = match_view(snap, team, want, have, public_url,
                                           board.rows() if board is not None else None)
-                        view = {"missing": missing_view(MISSING.load(), team, pub=live, exclude=EXCLUDE.cards,
-                                                        min_p=PUBLIC_MIN_P[0], suppress_pages=EXCLUDE.suppress)["matches"], **view}
+                        view = {"missing": missing_view(MISSING.load(), team, pub=live, exclude=ex,
+                                                        min_p=PUBLIC_MIN_P[0], suppress_pages=sup)["matches"], **view}
                         if fmt == "text":
                             return self._send(200, text_view(view).encode("utf-8"), "text/plain; charset=utf-8", True)
                         return self._json(200, view)

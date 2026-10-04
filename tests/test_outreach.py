@@ -412,10 +412,12 @@ class Guards(unittest.TestCase):
                 off = out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1500}, fallback)
         self.assertIn("MAL-07", got)                               # a page card we do not hold
         self.assertNotIn("MAL-08", got)                            # one we hold
-        self.assertNotIn("NOT-01", got)                            # a trusted file needs no built-in list
+        self.assertNotIn("NOT-01", got.cards)                      # a trusted file needs no built-in list
+        self.assertTrue(got.trusted)
         every = {c["id"] for c in value_inference.catalog()["sets"][0]["cards"] if c.get("page")}
         for closed in (none, off):                                 # no trusted file: every page card, not MISSING alone
-            self.assertTrue(every <= closed)
+            self.assertTrue(all(r in closed for r in every))
+            self.assertFalse(closed.trusted)
             self.assertIn("MAL-08", closed)
         src = (ROOT / "tools" / "outreach.py").read_text(encoding="utf-8")
         self.assertIn('ap.add_argument("--exclude-from", default=str(ACCOUNT_DIR),', src)
@@ -436,3 +438,20 @@ class SolRound1(unittest.TestCase):
         with um.patch.object(value_inference, "catalog", um.MagicMock(side_effect=OSError("down"))), \
                 self.assertRaises(LookupError):
             out.lacking(argparse.Namespace(exclude_from="", exclude_max_age_min=60), {"tick": 1}, ())
+
+
+class SolRound2(unittest.TestCase):
+    def test_1_without_trusted_holdings_only_epic_and_legendary_cards_are_messaged(self):
+        import argparse
+        import value_inference
+        cat_ = {"sets": [{"id": "MAL", "cards": [{"id": "MAL-08", "rarity": "uncommon", "page": True},
+                                                 {"id": "MAL-11", "rarity": "epic", "page": False}]}]}
+        page = m("t13", "MAL-08", 1, action=("bid", 7, "rastro", 20, "t13"), who=("t05",))
+        epic = m("t14", "MAL-11", 1, action=("bid", 8, "rastro", 150, "t14"), who=("t05",))
+        unknown = m("t15", "ZZZ-01", 1, action=("bid", 9, "rastro", 20, "t15"), who=("t05",))
+        for catalog, allowed in ((cat_, ["MAL-11"]), ({"sets": []}, [])):
+            with self.subTest(complete=bool(catalog["sets"])), \
+                    um.patch.object(value_inference, "catalog", lambda *a, **k: catalog), um.patch("builtins.print"):
+                ex = out.lacking(argparse.Namespace(exclude_from="/nonexistent", exclude_max_age_min=60), {"tick": 1}, ())
+                got = out.targets({"matches": [page, epic, unknown]}, {}, "d", 5, exclude=ex | {"NOT-01"})
+                self.assertEqual([x[1]["card"] for x in got], allowed)

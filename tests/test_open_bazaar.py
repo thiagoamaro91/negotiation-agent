@@ -270,6 +270,15 @@ class PublicGuards(unittest.TestCase):
         self.assertEqual(sorted(pub), sorted(base))                            # same keys for every reader
 
 
+class PublicViewFailClosed(unittest.TestCase):
+    def test_1_an_untrusted_exclusion_keeps_its_rule_in_the_public_view(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import matchmaker
+        import test_celestina as tc
+        pub = cel.public_view(tc.snapshot(), matchmaker.Exclusion((), allow=()))   # nothing positively non-page
+        self.assertEqual((pub["matches"], pub["our_book"], pub["invitations"], pub["demand"]), ([], [], [], []))
+
+
 class PublicExcludeFile(unittest.TestCase):
     CAT = {"sets": [{"id": "MAL", "released": True, "cards": [
         {"id": f"MAL-0{i}", "rarity": "common", "page": True} for i in range(1, 5)]}]}
@@ -290,7 +299,7 @@ class PublicExcludeFile(unittest.TestCase):
             with um.patch("sys.stderr"):
                 self.assertEqual(ex.refresh(self.CAT, 110), frozenset({"MAL-02", "MAL-03", "MAL-04"}))
                 self.assertFalse(ex.suppress)
-                ex.refresh(None, 120)                                    # a refresh without a catalog: closed again
+                ex.refresh({"sets": []}, 120)                            # an incomplete catalog: closed again
                 self.assertTrue(ex.suppress)
 
     def test_no_trusted_snapshot_fails_closed_never_to_the_built_in_list_alone(self):
@@ -309,8 +318,26 @@ class PublicExcludeFile(unittest.TestCase):
             with um.patch("sys.stderr"):
                 self.assertEqual(ex.refresh(self.CAT, 100 + 241), self.ALL)  # stale: 60.25 min of play
                 self.assertTrue(ex.suppress)
-                ex.refresh(None, 110)                                       # no catalog: stays closed
+                ex.refresh(None, 110)                     # an older tick never makes the snapshot young again
             self.assertTrue(ex.suppress)
+
+    def test_4_the_served_exclusion_follows_a_newer_snapshot_without_an_engine_refresh(self):
+        cat_ = {"sets": [{"id": "LAV", "released": True, "cards": [
+            {"id": f"LAV-0{i}", "rarity": "common", "page": True} for i in range(1, 5)]}]}
+        with tempfile.TemporaryDirectory() as d, um.patch("sys.stderr"):
+            hold = lambda tick, refs: (Path(d) / "me.json").write_text(json.dumps(
+                {"id": "t03", "tick": tick, "tick_seconds": 15,
+                 "assets": [{"id": i, "kind": "card", "ref": r} for i, r in enumerate(refs, 1)]}))
+            hold(100, ["LAV-01", "LAV-02"])
+            ex = cel.PublicExclude()
+            ex.configure([d], 60, ())
+            ex.refresh(cat_, 100)
+            self.assertNotIn("LAV-02", ex.current()[0])
+            hold(101, ["LAV-01"])                                      # we sold LAV-02; the engine has not refreshed
+            ex.checked = 0.0                                           # RECHECK_S elapsed
+            cards, sup = ex.current()
+            self.assertIn("LAV-02", cards)
+            self.assertFalse(sup)
 
     def test_a_suppressed_board_lists_only_epic_and_legendary_wants_and_says_so(self):
         epic = m("t06", "SAL-12", tier=2, inferred=False, holders=())
@@ -360,6 +387,48 @@ class GuardedRoutes(unittest.TestCase):
     def get(self):
         with urllib.request.urlopen(self.base + "/api/missing") as r:
             return [e["card"] for e in json.loads(r.read())["matches"]]
+
+    def test_4_the_served_board_drops_a_card_we_no_longer_hold_at_once(self):
+        cat_ = {"sets": [{"id": "MAL", "released": True, "cards": [
+            {"id": f"MAL-0{i}", "rarity": "uncommon", "page": True} for i in range(1, 10)]},
+            {"id": "SAL", "released": True, "cards": [
+            {"id": f"SAL-0{i}", "rarity": "uncommon", "page": True} for i in range(1, 10)]}]}
+        old = (cel.EXCLUDE.paths, cel.EXCLUDE.catalog, cel.EXCLUDE.tick, cel.EXCLUDE.checked, cel.EXCLUDE.suppress)
+        with tempfile.TemporaryDirectory() as d, um.patch("sys.stderr"):
+            hold = lambda tick, refs: (Path(d) / "me.json").write_text(json.dumps(
+                {"id": "t03", "tick": tick, "tick_seconds": 15,
+                 "assets": [{"id": i, "kind": "card", "ref": r} for i, r in enumerate(refs, 1)]}))
+            try:
+                hold(1445, ["MAL-08", "SAL-06"])
+                cel.EXCLUDE.configure([d], 60, ())
+                cel.EXCLUDE.refresh(cat_, 1445)
+                self.assertEqual(self.get(), ["SAL-06", "MAL-08"])
+                hold(1446, ["SAL-06"])                                 # a newer snapshot: MAL-08 is gone
+                cel.EXCLUDE.checked = 0.0
+                self.assertEqual(self.get(), ["SAL-06"])
+            finally:
+                cel.EXCLUDE.paths, cel.EXCLUDE.catalog, cel.EXCLUDE.tick, cel.EXCLUDE.checked, cel.EXCLUDE.suppress = old
+                cel.EXCLUDE.cards = frozenset()
+
+    def test_4_the_served_public_view_is_recut_when_holdings_change(self):
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_celestina as tc
+        private = tc.snapshot()
+        saved = dict(cel.STATE)
+        old = (cel.EXCLUDE.paths, cel.EXCLUDE.cards, cel.EXCLUDE.suppress)
+        try:
+            pub = cel.public_view(private, frozenset())
+            cel.STATE.update(private=private, public=pub, public_bytes=json.dumps(pub).encode(),
+                             pub_exclude=frozenset(), error=None, updated=time.time())
+            with urllib.request.urlopen(self.base + "/api/celestina.json") as r:
+                self.assertIn("LAV-09", [x["ref"] for x in json.loads(r.read())["matches"]])
+            cel.EXCLUDE.cards = frozenset({"LAV-09"})          # holdings changed since the last engine refresh
+            with urllib.request.urlopen(self.base + "/api/celestina.json") as r:
+                self.assertNotIn("LAV-09", [x["ref"] for x in json.loads(r.read())["matches"]])
+        finally:
+            cel.STATE.clear()
+            cel.STATE.update(saved)
+            cel.EXCLUDE.paths, cel.EXCLUDE.cards, cel.EXCLUDE.suppress = old
 
     def test_the_served_board_is_paused_for_page_cards_while_untrusted(self):
         cel.EXCLUDE.suppress = True
