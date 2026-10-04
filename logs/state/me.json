@@ -1,7 +1,7 @@
 {
  "id": "t03",
  "name": "Team 3",
- "cash": 239,
+ "cash": 17,
  "level": 5,
  "unlocked": [
   "abuela",
@@ -365,6 +365,17 @@
    "your_value": 288.0
   },
   {
+   "id": 1145,
+   "kind": "card",
+   "ref": "SAL-11",
+   "serial": 9,
+   "rarity": "epic",
+   "set": "SAL",
+   "print_run": 9,
+   "name": "La Puerta de Alcalá",
+   "your_value": 234.0
+  },
+  {
    "id": 1172,
    "kind": "card",
    "ref": "SAL-09",
@@ -530,7 +541,7 @@
    "your_value": 68.6
   }
  ],
- "collection_value": 1950.6,
+ "collection_value": 2184.6,
  "album": {
   "pages": [
    {
@@ -585,7 +596,7 @@
   "filled": 43,
   "slots": 60
  },
- "tick": 2737,
+ "tick": 2797,
  "tick_seconds": 15.0,
  "score": {
   "team": "t03",
@@ -612,7 +623,7 @@
    "rarity": "epic"
   },
   "luck": -67.1,
-  "deals": 49,
+  "deals": 50,
   "badges": [
    "Sharp ear"
   ],

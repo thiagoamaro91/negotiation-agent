@@ -342,7 +342,7 @@
      "flavour": "Everything is negotiable, especially the price.",
      "book": 10,
      "print_run": 300,
-     "minted": 29,
+     "minted": 30,
      "hidden": false,
      "page": true
     },
@@ -430,7 +430,7 @@
      "flavour": "Cellar of 1642, prices of today.",
      "book": 70,
      "print_run": 30,
-     "minted": 10,
+     "minted": 11,
      "hidden": false,
      "page": true
     },
@@ -539,7 +539,7 @@
      "flavour": "Price on request.",
      "book": 25,
      "print_run": 90,
-     "minted": 22,
+     "minted": 23,
      "hidden": false,
      "page": true
     },
@@ -561,7 +561,7 @@
      "flavour": "Fitted by hand since 1890.",
      "book": 25,
      "print_run": 90,
-     "minted": 25,
+     "minted": 26,
      "hidden": false,
      "page": true
     },
@@ -659,7 +659,7 @@
      "flavour": "No cars, many skaters.",
      "book": 10,
      "print_run": 300,
-     "minted": 22,
+     "minted": 23,
      "hidden": false,
      "page": true
     },
