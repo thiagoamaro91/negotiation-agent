@@ -394,6 +394,15 @@ trades. Then each side gets exactly one thing to do:
 - The match is greedy by surplus, not a global optimum, and runs only at the listed times; a matched sale leaves
   your book, so a second run never sells the same copy twice.
 
+## Which venue, and what binds
+- Venue rule (deterministic, in `match()` of tools/clearing.py): the open venues of the participants minus the
+  seller's and the buyer's; among them the one with the fewest trades in this round, ties by lower fee then id.
+  None left: the cheapest open venue of a third team; none at all: El Rastro. Team 3's venue is in the pool on the
+  same terms and is excluded whenever Team 3 is a side.
+- The contract is the game itself: the seller's offer is addressed `to` the buyer (only that team can accept, nobody
+  can take it), the buyer accepts by id, the game settles next tick. A side that does not post or accept loses only
+  that trade; it never costs the other side anything. Every planned price sits inside both sides' own numbers.
+
 ## Join in three commands (python3, no dependencies)
 
     curl -sO {base}/clearing_client.py
