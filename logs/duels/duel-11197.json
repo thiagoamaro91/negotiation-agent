@@ -1,0 +1,38 @@
+{
+ "duel": 11197,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "San Isidro",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.17,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 154,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 1923,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 12835,
+  "price": 120,
+  "tick": 1911,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1911,
+   "from": "Rival Luna",
+   "text": "Hola, Rival Verde, voy con prisa: San Isidro por 120 y cerramos ya. Entrega en 10 días.",
+   "price": 120,
+   "days": 10
+  }
+ ],
+ "result": 22.3,
+ "price": 120,
+ "days": 10
+}

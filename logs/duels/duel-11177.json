@@ -1,0 +1,71 @@
+{
+ "duel": 11177,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.69,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 186,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1897,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 12394,
+  "price": 161,
+  "tick": 1893,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 12459,
+  "price": 164,
+  "tick": 1895,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1885,
+   "from": "Rival Rojo",
+   "text": "I'd like to open at 195 P for delivery on day 10.",
+   "price": 195,
+   "days": 10
+  },
+  {
+   "tick": 1889,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 114 P, delivery day 0.",
+   "price": 114,
+   "days": 0
+  },
+  {
+   "tick": 1893,
+   "from": "you",
+   "text": "Last word from me: 161 P, delivery day 0.",
+   "price": 161,
+   "days": 0
+  },
+  {
+   "tick": 1894,
+   "from": "Rival Rojo",
+   "text": "I can do 179 P, delivery on day 10.",
+   "price": 179,
+   "days": 10
+  },
+  {
+   "tick": 1895,
+   "from": "Rival Rojo",
+   "text": "I can do 164 P, delivery on day 10.",
+   "price": 164,
+   "days": 10
+  }
+ ],
+ "result": 20.2,
+ "price": 161,
+ "days": 0
+}

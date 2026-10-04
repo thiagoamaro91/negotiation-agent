@@ -1,0 +1,38 @@
+{
+ "duel": 11544,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.94,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 74,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Verde",
+ "deadline_tick": 1955,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 13610,
+  "price": 75,
+  "tick": 1943,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 1943,
+   "from": "Rival Verde",
+   "text": "Offering 75 primas with 10 delivery days, a fair deal for both sides.",
+   "price": 75,
+   "days": 10
+  }
+ ],
+ "result": 50.4,
+ "price": 75,
+ "days": 10
+}

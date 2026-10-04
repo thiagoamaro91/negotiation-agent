@@ -1,0 +1,87 @@
+{
+ "duel": 11601,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 0.59,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 156,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Sol",
+ "deadline_tick": 2022,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15400,
+  "price": 127,
+  "tick": 2019,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2012,
+   "from": "Rival Sol",
+   "text": "Before we start: which Madrid barrio would you pick for a Sunday walk? I can do 204.",
+   "price": 204,
+   "days": 0
+  },
+  {
+   "tick": 2013,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 201 is where I land.",
+   "price": 201,
+   "days": 0
+  },
+  {
+   "tick": 2014,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 194 is where I land.",
+   "price": 194,
+   "days": 0
+  },
+  {
+   "tick": 2015,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 185.",
+   "price": 185,
+   "days": 0
+  },
+  {
+   "tick": 2016,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 174 is where I land.",
+   "price": 174,
+   "days": 0
+  },
+  {
+   "tick": 2017,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 160.",
+   "price": 160,
+   "days": 0
+  },
+  {
+   "tick": 2018,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 144 is where I land.",
+   "price": 144,
+   "days": 0
+  },
+  {
+   "tick": 2019,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 127.",
+   "price": 127,
+   "days": 0
+  }
+ ],
+ "result": 29.0,
+ "price": 127,
+ "days": 0
+}

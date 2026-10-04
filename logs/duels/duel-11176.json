@@ -1,0 +1,57 @@
+{
+ "duel": 11176,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.9,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 102,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1893,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 12184,
+  "price": 166,
+  "tick": 1885,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 12196,
+  "price": 106,
+  "tick": 1885,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1881,
+   "from": "Rival Rojo",
+   "text": "I'd like to open at 90 P for delivery on day 0.",
+   "price": 90,
+   "days": 0
+  },
+  {
+   "tick": 1885,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 166 P, delivery day 10.",
+   "price": 166,
+   "days": 10
+  },
+  {
+   "tick": 1885,
+   "from": "Rival Rojo",
+   "text": "La brecha es grande. Ofrezco 106 P para entrega en día 0.",
+   "price": 106,
+   "days": 0
+  }
+ ],
+ "result": 3.6,
+ "price": 106,
+ "days": 0
+}

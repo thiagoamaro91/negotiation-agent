@@ -1,0 +1,280 @@
+{
+ "id": 3096,
+ "kind": "persona",
+ "team": "t03",
+ "with": "pilar",
+ "venue": null,
+ "topic": {
+  "sell": {
+   "assets": [
+    1194
+   ]
+  }
+ },
+ "status": "deal",
+ "created_tick": 2138,
+ "messages": [
+  {
+   "id": 16109,
+   "tick": 2139,
+   "sender": "t03",
+   "text": "Buenas. Clean card, straight price: 80 P.",
+   "offer": {
+    "id": 25034,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 80,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2147,
+    "created_tick": 2139,
+    "final": false
+   }
+  },
+  {
+   "id": 16107,
+   "tick": 2139,
+   "sender": "pilar",
+   "text": "Buenas tardes. Welcome. I have been admiring your Fiesta de San Cayetano — a charming piece, and my albums have a gap exactly its shape. I offer forty-seven P for it. A fair figure, I assure you.",
+   "offer": {
+    "id": 25032,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 47,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2147,
+    "created_tick": 2139,
+    "final": false
+   }
+  },
+  {
+   "id": 16111,
+   "tick": 2140,
+   "sender": "pilar",
+   "text": "Let us be civilised: 48 P.",
+   "offer": {
+    "id": 25040,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 48,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2148,
+    "created_tick": 2140,
+    "final": false
+   }
+  },
+  {
+   "id": 16113,
+   "tick": 2140,
+   "sender": "t03",
+   "text": "I move, you move. 79 P.",
+   "offer": {
+    "id": 25042,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 79,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2148,
+    "created_tick": 2140,
+    "final": false
+   }
+  },
+  {
+   "id": 16124,
+   "tick": 2141,
+   "sender": "t03",
+   "text": "Coming down: 78 P.",
+   "offer": {
+    "id": 25054,
+    "maker": "t03",
+    "to": "pilar",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "want": {
+     "cash": 78,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2149,
+    "created_tick": 2141,
+    "final": false
+   }
+  },
+  {
+   "id": 16118,
+   "tick": 2141,
+   "sender": "pilar",
+   "text": "I do move, señor — forty-nine P. My steps are small but sincere. Your card is charming, yet I know its print run precisely, and sentiment does not alter numbers. Shall we shake hands on forty-nine?",
+   "offer": {
+    "id": 25048,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 3096,
+    "status": "cancelled",
+    "give": {
+     "cash": 49,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2149,
+    "created_tick": 2141,
+    "final": false
+   }
+  },
+  {
+   "id": 16127,
+   "tick": 2142,
+   "sender": "pilar",
+   "text": "Let us be civilised: 50 P. That is my final word on the matter.",
+   "offer": {
+    "id": 25060,
+    "maker": "pilar",
+    "to": "t03",
+    "venue": null,
+    "thread": 3096,
+    "status": "settled",
+    "give": {
+     "cash": 50,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [
+      {
+       "id": 1194,
+       "kind": "card",
+       "ref": "LAV-10",
+       "serial": 13,
+       "rarity": "rare",
+       "set": "LAV",
+       "print_run": 30
+      }
+     ],
+     "types": []
+    },
+    "expires_tick": 2150,
+    "created_tick": 2142,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "Fiesta de San Cayetano",
+ "closed_reason": null
+}

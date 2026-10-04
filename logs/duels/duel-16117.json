@@ -1,0 +1,52 @@
+{
+ "duel": 16117,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "El Ahuehuete",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.07,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 104,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 2680,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 18443,
+  "price": 78,
+  "tick": 2677,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2671,
+   "from": "Rival Luna",
+   "text": "98 P with delivery on day 10. My number per day: each delivery day earns me 6.29 P. Give the day to whoever cares more and we split the gain.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2674,
+   "from": "Rival Luna",
+   "text": "90 P with delivery on day 10. My number per day: each delivery day earns me 6.29 P. Give the day to whoever cares more and we split the gain.",
+   "price": 90,
+   "days": 10
+  },
+  {
+   "tick": 2677,
+   "from": "Rival Luna",
+   "text": "78 P with delivery on day 10. My number per day: each delivery day earns me 6.29 P. Give the day to whoever cares more and we split the gain.",
+   "price": 78,
+   "days": 10
+  }
+ ],
+ "result": 15.3,
+ "price": 78,
+ "days": 10
+}

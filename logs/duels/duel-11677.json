@@ -1,0 +1,94 @@
+{
+ "duel": 11677,
+ "session": 4,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.05,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 110,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 2018,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15334,
+  "price": 88,
+  "tick": 2015,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2006,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto: 130 P y 10 días.",
+   "price": 130,
+   "days": 10
+  },
+  {
+   "tick": 2007,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 125 P con 10 días.",
+   "price": 125,
+   "days": 10
+  },
+  {
+   "tick": 2008,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. Propongo 120 P y 10 días.",
+   "price": 120,
+   "days": 10
+  },
+  {
+   "tick": 2009,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto: 114 P y 10 días.",
+   "price": 114,
+   "days": 10
+  },
+  {
+   "tick": 2010,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 109 P con 10 días.",
+   "price": 109,
+   "days": 10
+  },
+  {
+   "tick": 2012,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. Propongo 98 P y 10 días.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2013,
+   "from": "Rival Azul",
+   "text": "Propuesta justa para cerrar pronto: 93 P y 10 días.",
+   "price": 93,
+   "days": 10
+  },
+  {
+   "tick": 2014,
+   "from": "Rival Azul",
+   "text": "Me muevo para acercarnos: 89 P con 10 días.",
+   "price": 89,
+   "days": 10
+  },
+  {
+   "tick": 2015,
+   "from": "Rival Azul",
+   "text": "Yo ya me he movido. Propongo 88 P y 10 días.",
+   "price": 88,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

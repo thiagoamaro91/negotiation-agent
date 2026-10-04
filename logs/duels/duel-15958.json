@@ -1,0 +1,78 @@
+{
+ "duel": 15958,
+ "session": 5,
+ "status": "no_deal",
+ "role": "seller",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 9.04,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 101,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 2630,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 17324,
+  "price": 117,
+  "tick": 2626,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 17417,
+  "price": 113,
+  "tick": 2629,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2618,
+   "from": "Rival Oro",
+   "text": "Let's open at 77 P, delivery day 0.",
+   "price": 77,
+   "days": 0
+  },
+  {
+   "tick": 2622,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 165 P, delivery day 10.",
+   "price": 165,
+   "days": 10
+  },
+  {
+   "tick": 2626,
+   "from": "you",
+   "text": "Last word from me: 117 P, delivery day 10.",
+   "price": 117,
+   "days": 10
+  },
+  {
+   "tick": 2627,
+   "from": "Rival Oro",
+   "text": "I can do 92 P, delivery on day 0.",
+   "price": 92,
+   "days": 0
+  },
+  {
+   "tick": 2628,
+   "from": "Rival Oro",
+   "text": "I can do 107 P, delivery on day 0.",
+   "price": 107,
+   "days": 0
+  },
+  {
+   "tick": 2629,
+   "from": "Rival Oro",
+   "text": "I can do 113 P, delivery on day 0.",
+   "price": 113,
+   "days": 0
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

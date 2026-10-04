@@ -1,0 +1,71 @@
+{
+ "duel": 15959,
+ "session": 5,
+ "status": "deal",
+ "role": "buyer",
+ "item": "La Sala Pentagrama",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.07,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 52,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Noche",
+ "deadline_tick": 2653,
+ "decay_per_round": 0.1,
+ "rounds": 2,
+ "your_offer": {
+  "id": 17923,
+  "price": 45,
+  "tick": 2649,
+  "days": 0
+ },
+ "rival_offer": {
+  "id": 17987,
+  "price": 23,
+  "tick": 2651,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2641,
+   "from": "Rival Noche",
+   "text": "I offer 53 P for delivery on day 10.",
+   "price": 53,
+   "days": 10
+  },
+  {
+   "tick": 2645,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 32 P, delivery day 0.",
+   "price": 32,
+   "days": 0
+  },
+  {
+   "tick": 2649,
+   "from": "you",
+   "text": "Last word from me: 45 P, delivery day 0.",
+   "price": 45,
+   "days": 0
+  },
+  {
+   "tick": 2650,
+   "from": "Rival Noche",
+   "text": "I can do 38 P, delivery on day 10.",
+   "price": 38,
+   "days": 10
+  },
+  {
+   "tick": 2651,
+   "from": "Rival Noche",
+   "text": "I can do 23 P, delivery on day 10.",
+   "price": 23,
+   "days": 10
+  }
+ ],
+ "result": 14.8,
+ "price": 23,
+ "days": 10
+}

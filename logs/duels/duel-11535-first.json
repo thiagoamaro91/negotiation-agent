@@ -1,0 +1,25 @@
+{
+ "duel": 11535,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Cine Doré",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.93,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 144,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Plata",
+ "deadline_tick": 2030,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

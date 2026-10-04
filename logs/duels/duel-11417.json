@@ -1,0 +1,87 @@
+{
+ "duel": 11417,
+ "session": 4,
+ "status": "deal",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.24,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 115,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 1991,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 14633,
+  "price": 100,
+  "tick": 1988,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1981,
+   "from": "Rival Azul",
+   "text": "We can do 119 P, delivery on day 0. Thank you for the talk.",
+   "price": 119,
+   "days": 0
+  },
+  {
+   "tick": 1982,
+   "from": "Rival Azul",
+   "text": "110 P, delivery on day 0 works well for us.",
+   "price": 110,
+   "days": 0
+  },
+  {
+   "tick": 1983,
+   "from": "Rival Azul",
+   "text": "Our offer is 108 P, delivery on day 0.",
+   "price": 108,
+   "days": 0
+  },
+  {
+   "tick": 1984,
+   "from": "Rival Azul",
+   "text": "Let's meet at 107 P, delivery on day 0, fair for both.",
+   "price": 107,
+   "days": 0
+  },
+  {
+   "tick": 1985,
+   "from": "Rival Azul",
+   "text": "104 P, delivery on day 0, and we close now.",
+   "price": 104,
+   "days": 0
+  },
+  {
+   "tick": 1986,
+   "from": "Rival Azul",
+   "text": "We move to 103 P, delivery on day 0.",
+   "price": 103,
+   "days": 0
+  },
+  {
+   "tick": 1987,
+   "from": "Rival Azul",
+   "text": "We can do 102 P, delivery on day 0. Thank you for the talk.",
+   "price": 102,
+   "days": 0
+  },
+  {
+   "tick": 1988,
+   "from": "Rival Azul",
+   "text": "100 P, delivery on day 0 works well for us.",
+   "price": 100,
+   "days": 0
+  }
+ ],
+ "result": 15.0,
+ "price": 100,
+ "days": 0
+}

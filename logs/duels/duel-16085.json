@@ -1,0 +1,57 @@
+{
+ "duel": 16085,
+ "session": 5,
+ "status": "no_deal",
+ "role": "buyer",
+ "item": "Mural de la Esquina",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.52,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 130,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Luna",
+ "deadline_tick": 2676,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 18409,
+  "price": 90,
+  "tick": 2672,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 18417,
+  "price": 129,
+  "tick": 2673,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2668,
+   "from": "you",
+   "text": "Hola. I like it, and I can pay 77 P, delivery day 10.",
+   "price": 77,
+   "days": 10
+  },
+  {
+   "tick": 2672,
+   "from": "you",
+   "text": "Last word from me: 90 P, delivery day 10.",
+   "price": 90,
+   "days": 10
+  },
+  {
+   "tick": 2673,
+   "from": "Rival Luna",
+   "text": "I can do 129 P with delivery in 10 days.",
+   "price": 129,
+   "days": 10
+  }
+ ],
+ "result": 0.0,
+ "price": null,
+ "days": null
+}

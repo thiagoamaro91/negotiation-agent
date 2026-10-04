@@ -1,0 +1,78 @@
+{
+ "duel": 15904,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "La Castañera",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.39,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 60,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Oro",
+ "deadline_tick": 2620,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 16946,
+  "price": 98,
+  "tick": 2613,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 17062,
+  "price": 70,
+  "tick": 2616,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2608,
+   "from": "Rival Oro",
+   "text": "I can do 26 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 26,
+   "days": 0
+  },
+  {
+   "tick": 2609,
+   "from": "Rival Oro",
+   "text": "I can do 33 with delivery on day 0. That is a fair deal for both of us.",
+   "price": 33,
+   "days": 0
+  },
+  {
+   "tick": 2613,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 98 P, delivery day 10.",
+   "price": 98,
+   "days": 10
+  },
+  {
+   "tick": 2613,
+   "from": "Rival Oro",
+   "text": "Thanks for moving. We can do 52 P with delivery on day 0; that is a fair close for both of us.",
+   "price": 52,
+   "days": 0
+  },
+  {
+   "tick": 2614,
+   "from": "Rival Oro",
+   "text": "Thanks for moving. We can do 52 P with delivery on day 0; that is a fair close for both of us.",
+   "price": 52,
+   "days": 0
+  },
+  {
+   "tick": 2616,
+   "from": "Rival Oro",
+   "text": "Thanks for moving. We can do 70 P with delivery on day 0; that is a fair close for both of us.",
+   "price": 70,
+   "days": 0
+  }
+ ],
+ "result": 9.0,
+ "price": 70,
+ "days": 0
+}

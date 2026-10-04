@@ -1,0 +1,25 @@
+{
+ "duel": 11417,
+ "session": 4,
+ "status": "live",
+ "role": "buyer",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 4.24,
+ "days_meaning": "each delivery day costs you this much cash",
+ "your_limit": 115,
+ "limit_meaning": "never pay above your value",
+ "rival": "Rival Azul",
+ "deadline_tick": 1991,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": null,
+ "messages": [],
+ "result": null,
+ "price": null,
+ "days": null
+}

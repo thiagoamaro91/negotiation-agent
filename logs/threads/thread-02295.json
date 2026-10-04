@@ -1,0 +1,48 @@
+{
+ "id": 2295,
+ "kind": "persona",
+ "team": "t03",
+ "with": "picaros",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-09"
+  }
+ },
+ "status": "closed",
+ "created_tick": 1506,
+ "messages": [
+  {
+   "id": 13188,
+   "tick": 1507,
+   "sender": "picaros",
+   "text": "¡Amigo, amigo! Paco, open the case—\n\n—yes, yes, the good one! Look here: El Ángel Caído, mint, the corners like glass. We had three this morning. Now? One.\n\nMy brother says I'm crazy, but for you—73 pesos. Today only, before the market closes and we vanish, eh?",
+   "offer": {
+    "id": 20769,
+    "maker": "picaros",
+    "to": "t03",
+    "venue": null,
+    "thread": 2295,
+    "status": "expired",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-06"
+     ]
+    },
+    "want": {
+     "cash": 73,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 1515,
+    "created_tick": 1507,
+    "final": false
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "El Ángel Caído",
+ "closed_reason": null
+}

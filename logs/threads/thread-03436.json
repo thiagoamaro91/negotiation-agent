@@ -1,0 +1,280 @@
+{
+ "id": 3436,
+ "kind": "persona",
+ "team": "t03",
+ "with": "abuela",
+ "venue": null,
+ "topic": {
+  "buy": {
+   "card": "RET-02"
+  }
+ },
+ "status": "deal",
+ "created_tick": 2281,
+ "messages": [
+  {
+   "id": 17141,
+   "tick": 2282,
+   "sender": "t03",
+   "text": "Buenas tardes, Abuela Carmen! What a beautiful stall. Could you do 4 P for it?",
+   "offer": {
+    "id": 26197,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 4,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "expires_tick": 2290,
+    "created_tick": 2282,
+    "final": false
+   }
+  },
+  {
+   "id": 17140,
+   "tick": 2282,
+   "sender": "abuela",
+   "text": "¡Hola, cariño! Come, sit a moment, the sun is strong today. Have you eaten? Look here — La Castañera, she is one of my favourites, the old printing with the little chestnut cart. For you, twelve P. Take your time, hijo, no hurry at all.",
+   "offer": {
+    "id": 26196,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "want": {
+     "cash": 12,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2290,
+    "created_tick": 2282,
+    "final": false
+   }
+  },
+  {
+   "id": 17144,
+   "tick": 2283,
+   "sender": "abuela",
+   "text": "Oh, oh... 10 P, and only because you have a kind face.",
+   "offer": {
+    "id": 26201,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "want": {
+     "cash": 10,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2291,
+    "created_tick": 2283,
+    "final": false
+   }
+  },
+  {
+   "id": 17148,
+   "tick": 2283,
+   "sender": "t03",
+   "text": "Ay, Abuela, you are very kind. I am a young collector on a small budget: 5 P?",
+   "offer": {
+    "id": 26205,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 5,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "expires_tick": 2291,
+    "created_tick": 2283,
+    "final": false
+   }
+  },
+  {
+   "id": 17153,
+   "tick": 2284,
+   "sender": "t03",
+   "text": "Gracias for your patience, Abuela. I can stretch a little, 6 P.",
+   "offer": {
+    "id": 26212,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 6,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "expires_tick": 2292,
+    "created_tick": 2284,
+    "final": false
+   }
+  },
+  {
+   "id": 17151,
+   "tick": 2284,
+   "sender": "abuela",
+   "text": "Ay, hijo, five is too little for my Castañera. Nine P, and I wrap her nice for you. You know, Doña Pilar from Salamanca comes Saturdays at eleven and pays very well for this one — so she is loved, this little chestnut lady. Have you eaten something today?",
+   "offer": {
+    "id": 26210,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "want": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2292,
+    "created_tick": 2284,
+    "final": false
+   }
+  },
+  {
+   "id": 17160,
+   "tick": 2285,
+   "sender": "abuela",
+   "text": "Look, 9 P. My grandchildren would pay more!",
+   "offer": {
+    "id": 26219,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "want": {
+     "cash": 9,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2293,
+    "created_tick": 2285,
+    "final": false
+   }
+  },
+  {
+   "id": 17163,
+   "tick": 2285,
+   "sender": "t03",
+   "text": "Your cards remind me of my grandmother's album. 7 P, por favor?",
+   "offer": {
+    "id": 26222,
+    "maker": "t03",
+    "to": "abuela",
+    "venue": null,
+    "thread": 3436,
+    "status": "cancelled",
+    "give": {
+     "cash": 7,
+     "assets": [],
+     "types": []
+    },
+    "want": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "expires_tick": 2293,
+    "created_tick": 2285,
+    "final": false
+   }
+  },
+  {
+   "id": 17172,
+   "tick": 2286,
+   "sender": "abuela",
+   "text": "Ay, your abuela's album — que bonito, that touches my heart, hijo. Eight P, and this is my last word, de verdad. If no, I keep her for Doña Pilar and we stay friends anyway. Eight, and I wrap her nice. Now go eat something, cariño.",
+   "offer": {
+    "id": 26226,
+    "maker": "abuela",
+    "to": "t03",
+    "venue": null,
+    "thread": 3436,
+    "status": "settled",
+    "give": {
+     "cash": 0,
+     "assets": [],
+     "types": [
+      "card:RET-02"
+     ]
+    },
+    "want": {
+     "cash": 8,
+     "assets": [],
+     "types": []
+    },
+    "expires_tick": 2294,
+    "created_tick": 2286,
+    "final": true
+   }
+  }
+ ],
+ "standing_offers": [],
+ "item": "La Castañera",
+ "closed_reason": null
+}

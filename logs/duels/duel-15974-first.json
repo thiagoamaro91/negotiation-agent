@@ -1,0 +1,38 @@
+{
+ "duel": 15974,
+ "session": 5,
+ "status": "live",
+ "role": "seller",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.01,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 82,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 2631,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17142,
+  "price": 42,
+  "tick": 2619,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 2619,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 42 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 42,
+   "days": 0
+  }
+ ],
+ "result": null,
+ "price": null,
+ "days": null
+}

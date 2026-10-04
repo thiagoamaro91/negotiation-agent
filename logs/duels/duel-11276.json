@@ -1,0 +1,57 @@
+{
+ "duel": 11276,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 3.44,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 107,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1913,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 12708,
+  "price": 174,
+  "tick": 1906,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 12725,
+  "price": 131,
+  "tick": 1906,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1902,
+   "from": "Rival Rojo",
+   "text": "Rápido y justo: 103 P, día 0. ¿Qué día de entrega te va mejor? / Quick and fair: 103 P, day 0. Which delivery day suits you best?",
+   "price": 103,
+   "days": 0
+  },
+  {
+   "tick": 1906,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 174 P, delivery day 10.",
+   "price": 174,
+   "days": 10
+  },
+  {
+   "tick": 1906,
+   "from": "Rival Rojo",
+   "text": "Parece que el día te importa: 131 P con día 0. / It seems the day matters to you: 131 P, day 0.",
+   "price": 131,
+   "days": 0
+  }
+ ],
+ "result": 21.6,
+ "price": 131,
+ "days": 0
+}

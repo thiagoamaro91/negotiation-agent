@@ -1,0 +1,50 @@
+{
+ "duel": 11328,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Museo Sorolla",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 5.6,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 39,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Rojo",
+ "deadline_tick": 1931,
+ "decay_per_round": 0.1,
+ "rounds": 1,
+ "your_offer": {
+  "id": 13095,
+  "price": 51,
+  "tick": 1922,
+  "days": 10
+ },
+ "rival_offer": {
+  "id": 13195,
+  "price": 43,
+  "tick": 1926,
+  "days": 0
+ },
+ "messages": [
+  {
+   "tick": 1922,
+   "from": "you",
+   "text": "Hola. This one is in perfect condition. 51 P, delivery day 10.",
+   "price": 51,
+   "days": 10
+  },
+  {
+   "tick": 1926,
+   "from": "Rival Rojo",
+   "text": "43 P con entrega el día 0 y cerramos ahora.",
+   "price": 43,
+   "days": 0
+  }
+ ],
+ "result": 3.6,
+ "price": 43,
+ "days": 0
+}

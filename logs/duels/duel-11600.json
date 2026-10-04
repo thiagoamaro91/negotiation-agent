@@ -1,0 +1,87 @@
+{
+ "duel": 11600,
+ "session": 4,
+ "status": "deal",
+ "role": "seller",
+ "item": "Escaparate de Serrano",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.91,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 71,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Sol",
+ "deadline_tick": 2010,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 15107,
+  "price": 84,
+  "tick": 2007,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2000,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 44.",
+   "price": 44,
+   "days": 10
+  },
+  {
+   "tick": 2001,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 46.",
+   "price": 46,
+   "days": 10
+  },
+  {
+   "tick": 2002,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 49.",
+   "price": 49,
+   "days": 10
+  },
+  {
+   "tick": 2003,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 54.",
+   "price": 54,
+   "days": 10
+  },
+  {
+   "tick": 2004,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 60.",
+   "price": 60,
+   "days": 10
+  },
+  {
+   "tick": 2005,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 67.",
+   "price": 67,
+   "days": 10
+  },
+  {
+   "tick": 2006,
+   "from": "Rival Sol",
+   "text": "Hello. My number is 75.",
+   "price": 75,
+   "days": 10
+  },
+  {
+   "tick": 2007,
+   "from": "Rival Sol",
+   "text": "Hi! After running the numbers, 84 is where I land.",
+   "price": 84,
+   "days": 10
+  }
+ ],
+ "result": 32.1,
+ "price": 84,
+ "days": 10
+}

@@ -1,0 +1,101 @@
+{
+ "duel": 15974,
+ "session": 5,
+ "status": "deal",
+ "role": "seller",
+ "item": "Paseo de Coches",
+ "issues": [
+  "price",
+  "days"
+ ],
+ "your_days_weight": 1.01,
+ "days_meaning": "each delivery day adds this much cash to your side",
+ "your_limit": 82,
+ "limit_meaning": "never sell below your cost",
+ "rival": "Rival Plata",
+ "deadline_tick": 2631,
+ "decay_per_round": 0.1,
+ "rounds": 0,
+ "your_offer": null,
+ "rival_offer": {
+  "id": 17361,
+  "price": 92,
+  "tick": 2628,
+  "days": 10
+ },
+ "messages": [
+  {
+   "tick": 2619,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 42 primas y entrega en 0 días; me cuesta subir más.",
+   "price": 42,
+   "days": 0
+  },
+  {
+   "tick": 2620,
+   "from": "Rival Plata",
+   "text": "47 primas y entrega en 0 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 47,
+   "days": 0
+  },
+  {
+   "tick": 2621,
+   "from": "Rival Plata",
+   "text": "Mi propuesta: 52 primas y entrega en 0 días. Dame una cifra concreta y la miro.",
+   "price": 52,
+   "days": 0
+  },
+  {
+   "tick": 2622,
+   "from": "Rival Plata",
+   "text": "Puedo llegar a 52 primas y entrega en 10 días. Dime si cerramos.",
+   "price": 52,
+   "days": 10
+  },
+  {
+   "tick": 2623,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 59 primas y entrega en 10 días; me cuesta subir más.",
+   "price": 59,
+   "days": 10
+  },
+  {
+   "tick": 2624,
+   "from": "Rival Plata",
+   "text": "65 primas y entrega en 10 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 65,
+   "days": 10
+  },
+  {
+   "tick": 2625,
+   "from": "Rival Plata",
+   "text": "Mi propuesta: 71 primas y entrega en 10 días. Dame una cifra concreta y la miro.",
+   "price": 71,
+   "days": 10
+  },
+  {
+   "tick": 2626,
+   "from": "Rival Plata",
+   "text": "Puedo llegar a 76 primas y entrega en 10 días. Dime si cerramos.",
+   "price": 76,
+   "days": 10
+  },
+  {
+   "tick": 2627,
+   "from": "Rival Plata",
+   "text": "Te ofrezco 84 primas y entrega en 10 días; me cuesta subir más.",
+   "price": 84,
+   "days": 10
+  },
+  {
+   "tick": 2628,
+   "from": "Rival Plata",
+   "text": "92 primas y entrega en 10 días. Me muevo poco ya, pero si tú bajas, cerramos.",
+   "price": 92,
+   "days": 10
+  }
+ ],
+ "result": 20.1,
+ "price": 92,
+ "days": 10
+}
