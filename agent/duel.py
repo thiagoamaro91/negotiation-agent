@@ -164,6 +164,7 @@ HOLD_TICKS = 2                      # ... only while at least this many ticks ar
 HOLD_COUNTER = True                 # ... and counters one rung while it waits (False: waits in silence, no round)
 SILENT_LAST_MARGIN = 0.0            # off. F2: last chance to a rival that never spoke at L x (1 +- margin)
 OPEN_RUNG = 0                       # F3: the anchor opens at this rung of the ratio schedule (0: RATIOS[0])
+LAST_WHILE_MOVING = False           # off. F4: the last chance also goes to a rival still conceding outside our limit
 WINDOW_RETRY = 1                    # window wait keeps this many ticks before the deadline as retry (0: deadline-1)
 
 SELL_LINES = [
@@ -704,7 +705,8 @@ def decide(d: dict, st: DuelState, tick: int, cfg) -> dict:
     budget = cfg.max_msgs - st.sent
     absent_from = int(math.ceil(cfg.absent_at * st.total))
     kind = None
-    if budget >= 1 and last and not acceptable and ((spoke and stalled) or (not spoke and cfg.absent_last)):
+    to_spoke = spoke and (stalled or getattr(cfg, "last_while_moving", False))   # F4: a mover too
+    if budget >= 1 and last and not acceptable and (to_spoke or (not spoke and cfg.absent_last)):
         kind = "last"
     elif budget >= 1 and not spoke and st.sent == 0 and elapsed >= absent_from:
         kind = "absent"
@@ -1234,6 +1236,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="F2: last chance to a rival that never spoke at L x (1 + M), buyer L x (1 - M) (0: off)")
     ap.add_argument("--open-rung", type=int, default=OPEN_RUNG,
                     help="F3: the anchor opens at this rung of --ratios (0: the first ratio)")
+    ap.add_argument("--last-while-moving", action=argparse.BooleanOptionalAction, default=LAST_WHILE_MOVING,
+                    help="F4: the last chance also goes to a rival that is still conceding but whose offer we would "
+                         "not accept (off: only a stalled or silent rival gets it; Duels II 5905 conceded every tick "
+                         "to 3 P short of our limit and never heard from us)")
     ap.add_argument("--mirror", action="store_true",
                     help="KILLED hypothesis: take the paired limit as the rival's exact limit (keep off)")
     ap.add_argument("--until", default="", help="stop at this local wall time, HH:MM")

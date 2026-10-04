@@ -587,9 +587,11 @@ def decisions_digest(mod, params: dict, extra=()) -> str:
     return hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()
 
 
-# computed with agent/duel.py at origin/main e59d10d (before this change), same generator
-DIGEST_DEFAULTS = "55f4ea52c284bd516669463b0218da2416b544620212d7aa0ec2bd6018c36147"
-DIGEST_T10 = "b0d746679702fea55627f3430ef870d90b2957db68dcceecb04d0457f61669cd"
+# computed with agent/duel.py at origin/main e59d10d (before this change), same generator; recomputed after PR #54 (the
+# server's seller days model): against the pre-#54 duel.py, the only states that change are two-issue sellers whose
+# best day is 10 (91 of the 119 such states, for both params sets), checked state by state on 2026-10-04
+DIGEST_DEFAULTS = "2089f9df35fa8225ec0617f5cd5773c4b6f3f28a5d1d75a24c1895d6c6c85401"
+DIGEST_T10 = "88418002e64190a050eaf5ba2531772b997e34404576b347f18db4db5adde1fc"
 T10_FLAGS = {"ratios": "1.55,1.277", "last_r": 1.103, "last_chance_ticks": 4, "accept_any_ticks": 2, "near_ticks": 0,
              "stall_ticks": 4, "early_share": 0.85, "early_min_pie": 5.373, "pair_sell": 0.965, "pair_buy": 1.07,
              "absent_at": 0.552, "absent_share": 0.371, "days_cheap": 0.153, "days_premium": "0.629,0.087",
@@ -658,7 +660,10 @@ class PayoffWording(unittest.TestCase):
         self.assertEqual(duel.decide(b, st, 115, c)["action"], "hold")   # 10 - 30 = -20
         s_ = days_duel("seller", 3, "Each day earlier reduces your payoff")
         s_.update(messages=[msg(112, 110, 0)], rival_offer={"id": 1, "price": 110, "tick": 112, "days": 0})
-        self.assertEqual(duel.decide(s_, duel.DuelState(s_, 100, 16), 115, c)["action"], "hold")
+        # PR #54, the server's model: a seller whose best day is 10 earns w per day from day 0, so day 0 costs nothing
+        # (110 - 100 + 3 x 0 = +10, not 110 - 100 - 3 x 10 = -20 as the old distance guess said): in the window, accept
+        out = duel.decide(s_, duel.DuelState(s_, 100, 16), 115, c)
+        self.assertEqual((out["action"], out["rival_surplus"]), ("accept", 10.0))
 
 
 class RobustDays(unittest.TestCase):
@@ -696,11 +701,15 @@ class RobustDays(unittest.TestCase):
     def test_in_the_arena_a_misleading_wording_never_loses_in_robust_mode(self):
         p = json.loads(FINAL.read_text())
         wrong = "each day later reduces your cost"          # says late is best: wrong for every arena buyer
-        with mock.patch.object(arena, "DAYS_WORDING", wrong):
-            robust = [r for r in arena.evaluate(p, range(12), 2) if r["deal"]]
-            self.assertEqual([r for r in robust if r["share"] < 0], [])
-            trusting = [r for r in arena.evaluate({**p, "days_confirmed": True}, range(12), 2) if r["deal"]]
-        self.assertTrue([r for r in trusting if r["share"] < 0])        # the protection is what keeps it at zero
+        # under both referee days models: the server's (a seller earns w per day, a buyer pays it; the arena words
+        # it as the server did, so the misleading sentence replaces _wording) and the earlier distance guess
+        for model in ("server", "distance"):
+            with self.subTest(model=model), mock.patch.object(arena, "DAYS_MODEL", model), \
+                    mock.patch.object(arena, "DAYS_WORDING", wrong), mock.patch.object(arena, "_wording", lambda dl: wrong):
+                robust = [r for r in arena.evaluate(p, range(12), 2) if r["deal"]]
+                self.assertEqual([r for r in robust if r["share"] < 0], [])
+                trusting = [r for r in arena.evaluate({**p, "days_confirmed": True}, range(12), 2) if r["deal"]]
+                self.assertTrue([r for r in trusting if r["share"] < 0])   # the protection is what keeps it at zero
 
 
 def _http_error(code, body):
