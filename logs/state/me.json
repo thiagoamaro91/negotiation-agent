@@ -429,7 +429,7 @@
   "slots": 50
  },
  "tick": 1445,
- "tick_seconds": 30.0,
+ "tick_seconds": 15.0,
  "score": {
   "team": "t03",
   "name": "Team 3",
