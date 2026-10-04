@@ -1007,11 +1007,29 @@ def say_body(text: str, price: int, days: int | None) -> dict:
     return body
 
 
-def post_say(b, did: int, text: str, price: int, days: int | None) -> dict:
-    """Send one message: price-only through the kit's duel_say, two-issue with say_body (a top-level days too)."""
-    if days is None:
-        return b.duel_say(did, text, price=price)
-    return b._call("POST", f"/api/duels/{int(did)}/messages", say_body(text, price, days))
+SAY_MARGIN = 1.0   # seconds before the tick ends after which no message starts (it would land on a stale decision)
+
+
+def post_say(b, did: int, text: str, price: int, days: int | None, deadline: float | None = None) -> dict:
+    """Send one message: price-only through the kit's duel_say, two-issue with say_body (a top-level days too).
+
+    With `deadline` (epoch seconds, inside the current tick): no call once it has passed (BazaarError "say_budget"),
+    the kit client's retries are 0 for the call and its timeout is capped to the time left, so a slow server can
+    never push our messages, or the tick's accept behind them, into the next tick."""
+    if deadline is not None and time.time() >= deadline:
+        raise BazaarError("say_budget", "tick almost over: message not sent", 0)
+    saved = {k: getattr(b, k) for k in ("retries", "timeout") if hasattr(b, k)} if deadline is not None else {}
+    try:
+        if "retries" in saved:
+            b.retries = 0
+        if "timeout" in saved:
+            b.timeout = max(0.5, min(float(saved["timeout"]), deadline - time.time()))
+        if days is None:
+            return b.duel_say(did, text, price=price)
+        return b._call("POST", f"/api/duels/{int(did)}/messages", say_body(text, price, days))
+    finally:
+        for k, v in saved.items():
+            setattr(b, k, v)
 
 
 def words(d: dict, n_sent: int, price: int, days: int | None, last: bool = False) -> str:
@@ -1440,8 +1458,13 @@ def main() -> None:
                 decisions = [(d, st, decide(d, st, tick, cfg)) for d, st in decisions]
 
                 allocate(decisions, cfg, late=late_failed)
+                # messages stop SAY_MARGIN before the tick ends, or before the late read when this tick has one; the
+                # tick's accept goes first, so slow messages can never hold it back
+                say_deadline = tick_end - (max(SAY_MARGIN, cfg.late_poll + 1.0)
+                                           if not cfg.once and not late_failed and late_due(decisions, cfg)
+                                           else SAY_MARGIN)
 
-                for d, st, dec in decisions:
+                for d, st, dec in sorted(decisions, key=lambda x: x[2]["action"] != "accept"):
                     did = d["duel"]
                     row = {k: dec.get(k) for k in ("left", "step", "rival", "rival_surplus", "pair_l", "soft_pie",
                                                    "moving", "next", "next_days", "why")}
@@ -1473,14 +1496,16 @@ def main() -> None:
                         record_say(st, dec, d, tick)
                         continue
                     try:
-                        resp = post_say(b, did, text, price, days)
+                        resp = post_say(b, did, text, price, days, deadline=say_deadline)
                         record_say(st, dec, d, tick)
                         run.event("say", duel=did, role=d["role"], limit=d["your_limit"], tick=tick, price=price,
                                   days=days, resp=redact(resp),
                                   **{k: v for k, v in row.items() if k not in ("next", "next_days")})
                     except BazaarError as e:
-                        # 429 / wait_for_tick: skip this duel until the next tick, never retry-spam
-                        run.event("refused", duel=did, action="say", code=e.code, msg=e.message, extra=e.extra)
+                        # 429 / wait_for_tick: skip this duel until the next tick, never retry-spam; say_budget: the
+                        # tick is almost over, and the next tick decides again on fresh duels
+                        run.event("say_budget" if e.code == "say_budget" else "refused", duel=did, action="say",
+                                  code=e.code, msg=e.message, extra=e.extra)
                     time.sleep(cfg.post_gap)
 
                 if not cfg.once and not late_failed and late_due(decisions, cfg):
