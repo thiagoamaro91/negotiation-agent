@@ -539,7 +539,7 @@
      "flavour": "Price on request.",
      "book": 25,
      "print_run": 90,
-     "minted": 19,
+     "minted": 20,
      "hidden": false,
      "page": true
     },
@@ -867,7 +867,7 @@
      "flavour": "A poet lived here. The flowers stayed.",
      "book": 70,
      "print_run": 30,
-     "minted": 5,
+     "minted": 6,
      "hidden": false,
      "page": true
     },
