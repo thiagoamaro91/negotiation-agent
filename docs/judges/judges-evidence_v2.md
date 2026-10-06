@@ -18,7 +18,7 @@ Companion to [`judges-story_draft_v2.md`](judges-story_draft_v2.md). What to hav
 
 | Cue (script time) | Screen | How to open | Tag | Notes |
 |---|---|---|---|---|
-| 0:00 Hook | Public leaderboard | `https://bazaar.causaprima.ai` (big-screen board) | SAFE | Only if the "6 of 8" line survives the refresh. Never show the threat map itself |
+| 0:00 Hook | [Row removed after the event.] |   |   |   |
 | 1:05 "we see everything" | Feed recorder proof | `logs/feed-vm/README.md` (3,770 events, every tick 0 to 159) | SAFE | Public data only |
 | 1:05 "always on" | Bots running on the Mac Mini | Screenshot of the tmux windows (`seller`, `desk`) and the dashboard LaunchAgent, taken beforehand | MASK | Live tmux can print caps and our values in log lines. Use a checked screenshot, never a live attach on stage. Confirm where the duel bot runs before saying "all of them" |
 | 1:10 "La Celestina" | Our venue panel on the Mini dashboard | Dashboard, La Celestina panel (our venue, fee, offers by maker pseudonym, broker heartbeat, matches, Market Test) | SAFE (panel) / MASK (page) | The panel shows no private values (checked in `tools/dashboard.html`). The same page shows the El Rastro board and album with our values: zoom on the panel only. 0 trades at 11:46, so do not point at volume |
@@ -39,11 +39,11 @@ Companion to [`judges-story_draft_v2.md`](judges-story_draft_v2.md). What to hav
 - The dashboard's El Rastro board and album panels (our private values), and the brain page's value table (`tools/brain.html`).
 - Any `run_start` log line, `results/*.out`, or the runbook (they hold caps, reserves and max bids).
 - `.env`, any terminal where the key could appear, and the brain or dashboard token in a URL bar.
-- The vault competitor map (personal data on 47 people).
+- [Line removed after the event.]
 
 ## Before going on (10 minutes out)
 
-1. Re-score the threat map against `GET /api/leaderboard`. Say "more than half" at 5 or more of 8; drop the line below 5.
+1. [Line removed after the event.]
 2. Duels I results: pick the swap-in line from section 9 of the story draft.
 3. Use a pinned checkout on the demo laptop; the historical OK figure does not describe current main.
 4. Open the screens above in tabs, in order, with the MASK ones already cropped or zoomed.

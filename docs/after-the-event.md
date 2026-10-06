@@ -31,6 +31,10 @@ What is actually in this repository: `logs/state/me.json` is committed and holds
 
 What is actually in this repository: the session briefings use the placeholder, but one committed log, `logs/concierge/2026-10-03.jsonl`, still records one Cloudflare quick-tunnel hostname, in the start command of two concierge runs. Quick-tunnel addresses are temporary, and the tunnels were stopped after the event (pull request #114). It stays in git history for the same reason as above.
 
+## Later edits
+
+Some session briefings, pitch notes under `docs/judges`, one plan, three tests, a log and two tools were edited on 6 October 2026 to remove private details. `SUBMISSION.md` is unchanged.
+
 ## Running the evals today
 
 The two eval commands under "How to run" in `SUBMISSION.md` (lines 444 and 445) now stop with "use a new variant (or move the old results away)". The results recorded under `evals/` were written by earlier versions of the bots, and the harness refuses to overwrite them. Adding `--out-root` writes a fresh run somewhere else and leaves `evals/` as recorded:

@@ -173,7 +173,7 @@ Kept from v2:
 - Any private value: what a card is worth to us, our set multipliers, our caps or max bids beyond what the market already saw (84 is public in the feed; the cap behind it is not). This includes the inference's ranking of our own sets (`value_inference.py check` section 1, PR #61's wording): it names our order.
 - Cash floor numbers.
 - Our score or rank as an achievement.
-- Team names, or any name from the threat map, or that the map came from LinkedIn profiles. Do not name teams at all, including the two that posted on v20 or the parties of a version A trade. "Two other teams" is the most we say.
+- [Line removed after the event.]
 - "Other teams are allowed to inject us". Say "prompt injection is part of the game".
 - "The bot walked away" from El Chato. Say "our ladder stopped at 84, he stayed at 90, no deal".
 - "His final offer was 90". It was not marked final.
@@ -196,7 +196,7 @@ New in v3:
 
 ## 8. What changed from v2, and why
 
-- **Hook.** v2 opened on the threat map ("more than half of today's top eight"). It needs a re-score against a personal-data file at 14:50 and it does not speak to the judges' thesis. v3 opens on their problem (two teams chasing each other) and the game as its miniature. The threat map line can come back in Q&A if they ask how we prepared, under v2's rules.
+- [Line removed after the event.]
 - **New beat in "How it runs": the network.** La Celestina is one paragraph, in two versions, decided by section 0's fact.
 - **The counterparty brain and the ledger** come in, each with its honest number (21 % vs 17 % vs 23 %; 12 of 12).
 - **The killed darling** (PR #65) replaces v2's "+11 % in simulation" duel lab line: the simulation number was never confirmed live, and refusing our own idea with a pre-registered rule is the stronger craft story.

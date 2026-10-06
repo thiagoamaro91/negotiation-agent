@@ -63,7 +63,7 @@ Version B is the default. Version A changes row 5 only.
 - Any `run_start` log line, `results/*.out`, `tools/factory_sunday.json`, `tools/factory.py plan` output, the runbook, `evals/dealers/*`, `evals/market-desk*/*`: caps, reserves, max bids.
 - `logs/duels/*.json` (`your_limit`), `logs/duel/*.jsonl`.
 - `.env`, any terminal where the key could appear, the brain, swarm or dashboard token in a URL bar (`?t=`).
-- The vault competitor map, and any screen that lists team names next to our notes about them.
+- [Line removed after the event.]
 - `tools/pitch_numbers.py` without `--stage` (team ids next to a v20 trade; makers in `--json`).
 - The incident's raw data: feed lines of the offers addressed to us, `logs/market/2026-10-03.jsonl` (values, ceilings), `tools/factory.py plan` and `tools/factory_sunday.json` (caps, reserves).
 

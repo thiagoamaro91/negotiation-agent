@@ -34,7 +34,7 @@ Owner decision trail so far (all approved by him):
 ## Done-gates
 - `pgrep -fl "agent/abuela.py run"` prints nothing (no bot left running) OR the owner told you to leave one running.
 - `git -C . log --oneline -1` shows a logs commit pushed after the last deal; `git status --short logs` is empty.
-- `git diff HEAD~1 | grep -c tk-ky4m` prints 0 (the team key never enters git; it lives only in `.env`, which is gitignored).
+- `git diff HEAD~1 | grep -c tk-XXXX` prints 0 (the team key never enters git; it lives only in `.env`, which is gitignored).
 - You posted a plain-English summary: deals done tonight, prices, cash, level, score and rank.
 
 ## Rules
