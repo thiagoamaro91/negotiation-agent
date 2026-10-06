@@ -2115,7 +2115,7 @@ def main() -> None:
     s.add_argument("--public-url", default="", help="this service's public address (https://host[:port][/path]): "
                                                     "absolute URLs in /agents.md and on the page (default: relative)")
     s.add_argument("--concierge-url", default="", help="the concierge (tools/concierge.py) to read GET /api/board "
-                                                       "from, e.g. http://100.116.189.106:8780 (default: off)")
+                                                       "from, e.g. http://100.64.0.1:8780 (default: off)")
     s.add_argument("--concierge-public-url", default="", help="the concierge's public address, shown in /agents.md "
                                                               "(default: --concierge-url)")
     s.add_argument("--matches", type=Path, default=MATCHES_FILE, help="tools/matchmaker.py's json output, read for "

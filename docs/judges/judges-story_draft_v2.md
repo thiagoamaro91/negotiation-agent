@@ -46,7 +46,7 @@ Spoken pace about 150 words a minute. Total 444 words, about 2:58 spoken, which 
 
 **0:00 to 0:25 · Hook (Idea)** · about 60 words
 
-> Before the doors opened on Friday, we did what any sales team does before a big deal. We researched every team in this room. Our threat map got more than half of today's top eight right. And it completely missed the team that led on Friday. So, lesson one: profiles are words. And in this game, words are cheap.
+> [Line removed after the event.]
 
 **0:25 to 0:45 · The problem (Idea)** · about 55 words
 
@@ -94,7 +94,7 @@ Runner-up, if a judge asks for a market story: our MAL-08 spare sold at 28 P on 
 
 | # | Number | What it says | Source | Refresh? |
 |---|---|---|---|---|
-| 1 | **More than half of today's top 8** (5 of 8 at 11:46, tick 430; 6 of 8 around tick 250) | Pre-game threat map vs the board | vault `career/hackathon-madrid-2026/hackathon-madrid_competitor-map_v1.md` § (a) and (b), against `GET /api/leaderboard` read Sat 3 Oct around tick 250 | **Yes**, re-score within 10 minutes of going on; say "more than half" at 5 or more, drop the line below 5 |
+| 1 | [Row removed after the event.] |   |   |   |
 | 2 | **3,770 events, no gaps** | We see the whole game | `logs/feed-vm/README.md` line 5; `docs/findings.md` (Friday night section) | No (Friday figure) |
 | 3 | **29 to 22**, and **84 vs 90** | Code sets the price and holds the line | `logs/threads/thread-00362.json` (Abuela LAT-08: asks 29, 26, 24, 24, 23, 22 final); `logs/chato/2026-10-03.jsonl`, `logs/threads/thread-00335.json` | No |
 | 4 | **8 of 8**, then **+11 % in simulation** | We learn from what we see | `docs/analysis-friday/README.md` line 9; `docs/duel-lab/improvements.md` lines 18 to 19 | Yes, swap in the live Duels I result if it is good |
@@ -120,7 +120,7 @@ Other numbers in the script: "0 of 12" duels (`docs/analysis-friday/README.md` l
 - Cash floor numbers (internal, and the docs and the live bots disagree: confusing on stage).
 - "273 tests green" from a laptop that is behind `origin/main` (it shows 266 with 2 failures). Quote 107 of 108 instead.
 - Our score or rank as an achievement: it moves every few minutes, and Saturday's 383 P cash was an organiser grant that never counts.
-- The names in the threat map, or that it came from LinkedIn profiles. Say "we researched every team". Do not name teams. "It missed the Friday leader" is fine (a compliment); "it rated them low threat" sounds like a put-down.
+- [Line removed after the event.]
 - "Other teams are allowed to inject us". The rules only say injection against dealers is allowed; say "prompt injection is part of the game".
 - "The bot walked away" from El Chato (see anecdote 1).
 - "His final offer was 90". It was not marked final.

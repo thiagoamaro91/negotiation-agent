@@ -226,8 +226,8 @@ class Binding(unittest.TestCase):
         for host in ("0.0.0.0", "::", ""):
             self.assertIsNotNone(swarm.bind_problem(host, self.TOKEN, public=False), host)
             self.assertIsNotNone(swarm.bind_problem(host, None, public=True), host)
-        self.assertIsNotNone(swarm.bind_problem("100.75.84.67", None, public=True))
-        self.assertIsNone(swarm.bind_problem("100.75.84.67", self.TOKEN, public=False))
+        self.assertIsNotNone(swarm.bind_problem("100.64.0.1", None, public=True))
+        self.assertIsNone(swarm.bind_problem("100.64.0.1", self.TOKEN, public=False))
         self.assertIsNone(swarm.bind_problem("127.0.0.1", None, public=True))  # what tailscale funnel forwards to
 
     def test_main_refuses_before_listening(self):

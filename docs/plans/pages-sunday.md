@@ -144,7 +144,7 @@ open and the 150 P grant (16.7). The night brief says ~10:39. Check `t_hours` an
 **Who values CHA high: unknown.** `tools/value_inference.py teams` as shipped is biased on CHA: it counts CHA as "in
 play" only because t07 asked El Chato for CHA-06 ten times (ticks 1074–1083), so 14 of 18 teams come out as CHA
 haters. Re-run with CHA decided by elimination, the model still cannot separate the teams (with all evidence every
-team lands low; with choices only almost every team lands at 1.6). Weak targets (low confidence): t16, t18, t07, t11
+team lands low; with choices only almost every team lands at 1.6). Weak targets (low confidence): four teams
 (t11 never trades). Better signal: at the El Retiro launch, 3 of the 4 first-hour bidders turned out to be RET fans.
 **Treat the makers of the first `want card:CHA-*` bids as the CHA fans.**
 

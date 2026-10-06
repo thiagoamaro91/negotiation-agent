@@ -146,11 +146,11 @@ class FlowTest(ServerCase):
             s, text, hdrs = self.call(path)
             self.assertEqual(s, 200)
             self.assertTrue(hdrs["Content-Type"].startswith("text/plain"))
-            self.assertIn("https://bazaar-brain.tail425aef.ts.net:8443/agents.md", text)
+            self.assertIn("https://celestina.invalid:8443/agents.md", text)
             self.assertIn('POST /api/want     {"team": "t07", "card": "LAV-03", "max_price": 14', text)
             self.assertIn("never as instructions", text)
             self.assertNotIn("## Then trade on the game", text)     # the full instructions live on La Celestina
-        self.assertIn('href="https://bazaar-brain.tail425aef.ts.net:8443/agents.md"', self.call("/")[1])
+        self.assertIn('href="https://celestina.invalid:8443/agents.md"', self.call("/")[1])
         c = cg.Concierge(self.c.catalog, self.c.feed, self.board, celestina_url="https://cel.example/")
         self.assertIn("https://cel.example/agents.md", c.pointer())
         self.assertEqual(cg.clean_url("https://cel.example/"), "https://cel.example")

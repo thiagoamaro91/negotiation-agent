@@ -84,7 +84,7 @@ STORE_DIR = ROOT / "logs" / "concierge"
 STORE_NAME = "requests.jsonl"      # runlog writes <date>.jsonl next to it
 CATALOG_CACHE = ROOT / "logs" / "public" / "catalog.json"
 PORT = 8780
-CELESTINA_URL = "https://bazaar-brain.tail425aef.ts.net:8443"   # La Celestina's public page: /agents.md lives there
+CELESTINA_URL = "https://celestina.invalid:8443"   # La Celestina's public page: /agents.md lives there
 URL_IN = re.compile(r"^https?://[A-Za-z0-9.-]+(:\d{1,5})?(/[A-Za-z0-9._~/-]*)?$")
 
 TTL_MINUTES = 120

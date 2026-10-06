@@ -10,7 +10,7 @@ You are picking up the judges' pitch for Thiago (Team 3, "The Bazaar · Cromos d
 - Type: https://claude.ai/artifact/8jTsAFQMFDb2oA8MsPJ2eL. Before editing, read its format with `Artifact action=read type_url=<type>` (format.md): 1920x1080 `<section>` per slide, inline CSS only, text >= 24px, `data-build-in="rise N"` on pinned children, `hidden` = backup slide, `<aside>` = speaker notes, `<x-embed>` = sandboxed live HTML (<= 16KB, no network). Never render or verify the deck unless Thiago asks.
 - Source files (copy of v11): `~/.claude/handoffs/2026-10-04_bazaar-pitch-files/deck/project/` (deck.json + slides/*.html). To publish: (1) `Artifact action=read url=<deck url>` first (a publish to an artifact this session has not read is refused); (2) copy the `deck/` folder into YOUR scratchpad (publish sources must be under the working dir or your scratchpad); (3) `Artifact publish url=<deck url> root=<scratchpad>/deck file_path=<scratchpad>/deck/project/slides/<changed>.html files={"project/slides/x.html":"project/slides/x.html", ...}`. Only send changed files; others are kept.
 - Order (deck.json): cover, sales, lessons, split, weekend, handsoff, loops, evals (HIDDEN), negotiation, close; hidden backups: agents, loop, game, mistake.
-- Flow Thiago chose: OPEN with the live Brain outside the deck (~1 min), then cover, "I come from sales", three lessons (margin / marathon / honesty) + a spoken bonus "know your audience: before the game we researched every team in this room, and still you're only listening because the brain looked cool" (never mention LinkedIn, names or numbers), split math from words, weekend 5-second flash, hands-off timeline (23 h hands off from Sat 16:00; Sat 12:21 "our Claudes get a bus"), three improvement loops (animated x-embed on the light paper background: Play every tick / Learn after every test / Search overnight), evals, Negotiating #2 (stamp 12:13, refresh), close "Words persuade. Structure binds." ending on "Hector · a former teammate · Thiago". ~4:40 for 5 min. 3-min cut: Brain 30 s, skip weekend, evals and the know-your-audience beat.
+- [Line removed after the event.]
 - Brainstorm doc (Claude Docs, live visual for dictation): https://claude.ai/code/artifact/a5a42de3-2015-43fb-8f21-17ff5934e75b ("Now" paragraph block mnvr6h2dfj4.50 is stale at deck v8; update it if Thiago looks at it).
 
 ## Pending, in priority order
@@ -32,7 +32,7 @@ You are picking up the judges' pitch for Thiago (Team 3, "The Bazaar · Cromos d
 - Autonomy: no human approved an offer inside a negotiation since Friday night; no human yes per trade since Sat 16:00; no approvals at all Sunday. Never say "fully autonomous" or "no human in the loop from day one".
 
 ## Hard constraints
-- Never show or say: the team key, cash floors, caps / max bids, private card values, set multipliers, the 383 P organiser grant. Never name other teams; never mention the LinkedIn-sourced threat map. Duel logs never on screen; dashboard and Brain private panels cropped or masked.
+- [Line removed after the event.]
 - v3 do-not-say: "fully autonomous", "every public event", "we blocked attacks", "global kill switch".
 - No em dash character anywhere (chat or files). Links to files in chat as file:// URLs per the global CLAUDE.md.
 - Outbound / team-facing material is draft-only: Thiago sends it. Bus posts on his behalf are fine for data asks he requested.

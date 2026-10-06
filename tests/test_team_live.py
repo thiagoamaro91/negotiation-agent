@@ -160,7 +160,7 @@ class RelayTransport(unittest.TestCase):
         self.assertEqual(team_relay.check_url("https://brain.example.ts.net/"), "https://brain.example.ts.net")
         self.assertEqual(team_relay.check_url("http://127.0.0.1:8790"), "http://127.0.0.1:8790")
         self.assertEqual(team_relay.check_url("http://localhost:8790"), "http://localhost:8790")
-        for bad in ("http://brain.example.ts.net", "http://100.75.84.67:8790", "ftp://127.0.0.1", "brain"):
+        for bad in ("http://brain.example.ts.net", "http://100.64.0.1:8790", "ftp://127.0.0.1", "brain"):
             with self.assertRaises(SystemExit, msg=bad):
                 team_relay.check_url(bad)
 
