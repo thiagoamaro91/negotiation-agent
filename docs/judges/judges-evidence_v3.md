@@ -1,4 +1,4 @@
-# Judges' evidence v3 (Team 3)
+# Judges' evidence v3
 
 Companion to [`judges-story_v3.md`](judges-story_v3.md). What is on screen while Thiago talks, in script order, who drives it, and what needs Thiago's yes. Internal. Replaces [`judges-evidence_v2.md`](judges-evidence_v2.md); its safety tags and "never on screen" list carry over and grow.
 

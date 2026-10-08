@@ -8,7 +8,7 @@
 
 ## Context
 
-Board at 11:14: t12 34.87, t10 33.76, t18 32.36, t05 31.68, **us 30.47 (rank 5)**. Rank 1 is +4.4 away, rank 3 is +1.9.
+Board at 11:14: **us 30.47 (rank 5)**. Rank 1 is +4.4 away, rank 3 is +1.9.
 Cash 355 P scores nothing at 15:00. The shop bond holds another 250 P.
 
 | Wall time (live schedule, re-read after any pause) | Event |
@@ -70,7 +70,7 @@ Cash 355 P scores nothing at 15:00. The shop bond holds another 250 P.
 Hector's idea: teams privately hand in what they sell (minimum) and want (maximum); a matcher pairs every profitable cross at the midpoint on a shop owned by neither side. What our plan gives it:
 - **Our book** (the two lists above), without RET-01.
 - **The pairs we already know between other teams:** Team 6 bids for LAT-11, MAL-11, LAT-09, MAL-06, MAL-07, LAT-03, MAL-04; Team 5 for LAT-06, LAT-07, LAT-08. Holders: LAT-11 Team 16 (asks 248), Teams 4, 14, 7; MAL-11 Team 12; LAT-09 Team 1; spares of MAL-07, MAL-04, LAT-03 Team 1; spare LAT-06 Team 16; LAT-08 Teams 9, 17. **Biggest pair: Team 6 x Team 16 on LAT-11.** Holders are said in person only, never posted.
-- **One matcher rule:** every cross with no Team 3 side goes on v20, biggest first.
+- **One matcher rule:** every cross where neither side is our team goes on v20, biggest first.
 
 Recruiting pitch for Thiago and Hector in the room: zero fee against El Rastro's 5% + 1 P, both sides keep half the gain, and cash is worthless at 15:00.
 
