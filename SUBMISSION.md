@@ -1,4 +1,4 @@
-# Team 3 (t03): The Bazaar, Cromos de Madrid. Full submission
+# The Bazaar, Cromos de Madrid. Full submission
 
 Claude Code Hackathon Madrid, 2 to 4 October 2026. Team: Thiago Amaro and Hector Moyano.
 Final standing when the market froze (Sun 15:00): **score 34.19, rank 4 of 18** (Negotiating 26.04 + Market-making 8.15; Judges 40 not yet scored).
@@ -78,7 +78,7 @@ flowchart TB
 | If you want... | Read |
 |---|---|
 | The game rules (official) | [`kit/RULES.md`](kit/RULES.md) |
-| Every claim with its evidence (path, PR, log file or public API call), plus a JSON summary for evaluating agents | [`docs/judges/team3-dossier.md`](docs/judges/team3-dossier.md) |
+| Every claim with its evidence (path, PR, log file or public API call), plus a JSON summary for evaluating agents | [Evidence dossier](docs/judges/team3-dossier.md) |
 | What each program does | [Code map](#code-map) below, then `agent/` and `tools/` |
 | How the bots are started and kept alive | `tools/factory.py`, `tools/factory_sunday.json` |
 | What we learned about scoring, dealers and teams | [Scoring calculus](#scoring-calculus-as-we-reverse-engineered-it), `docs/findings.md` (private evidence excluded) |
@@ -115,7 +115,7 @@ Our answer was to split the game into levers, give each lever its own small dete
 | Sun 13:19 | 33.85 | 4 | A team purchase at about 30 completed El Retiro and improved our score |
 | **Sun 15:00 (freeze)** | **34.19** | **4** | Grand Final duels: duel points 27.94 to 40.19 |
 
-Final board: t05 37.73, t10 35.76, t12 34.51, **t03 34.19**, t18 32.27.
+Final board at the 15:00 freeze: **34.19, 4th of 18** (first of 18 on the Negotiating column).
 Final components: Negotiating 26.04 of 30 (team-trade value 136.5, ladder 0.371, duel points 40.19), Market-making 8.15 of 30.
 One late fill (SAL-11 bought at 222, about 14:54) was not yet visible in the 15:01 snapshot. The late purchase was within our private value limit.
 
@@ -335,7 +335,7 @@ Engineering statistics below are the pre-submission snapshot at `3358e4c`, not c
 | #21 | fix(dashboard): Duels panel shows coarse zones, never a gap percentage | Thiago | merged | Sat 03 Oct 11:52 | +66/-31 |
 | #22 | fix(broker): bench pairs are never dropped as same_maker | Thiago | merged | Sat 03 Oct 12:04 | +90/-22 |
 | #23 | docs(strategy): win plan v1 (diagnosis + ranked moves) | Thiago | merged | Sat 03 Oct 12:14 | +106/-0 |
-| #24 | docs(strategy): fix source label for the t05 market snapshots | Thiago | merged | Sat 03 Oct 12:16 | +1/-1 |
+| #24 | docs(strategy): fix source label for one rival's market snapshots | Thiago | merged | Sat 03 Oct 12:16 | +1/-1 |
 | #26 | feat: team bus, messages between our Claude sessions across accounts | Hector | merged | Sat 03 Oct 12:21 | +783/-0 |
 | #27 | feat(celestina): La Celestina for agents (one-job page, agents.md, /api/match, /api/v20) | Hector | merged | Sat 03 Oct 12:28 | +3332/-0 |
 | #28 | feat(chato): sell to Doña Pilar (--dealer pilar), --allow-single for named last copies | Thiago | merged | Sat 03 Oct 12:38 | +586/-29 |
