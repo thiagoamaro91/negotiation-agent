@@ -1,6 +1,6 @@
-# Bazaar Team 3: independent review of today's play and data (Codex, Sat 2026-10-03 ~19:45)
+# Bazaar: independent review of today's play and data (Codex, Sat 2026-10-03 ~19:45)
 
-You are a fresh Codex session with zero prior context, opened by Thiago (Team 3 owner) to give an independent second opinion. Team 3 plays "The Bazaar · Cromos de Madrid", the game of the Claude Community 48H Hackathon Madrid: agents collect Madrid trading cards, haggle with five dealers (the ladder), duel other teams in two-issue negotiations, trade with other teams on venues, and run a market (our venue v20 "La Celestina" with a broker). Your job: analyze the latest game data and what Team 3 did today, then chime in with concrete improvements, ranked by expected score gain. Thiago may ask follow-up questions in this tab.
+You are a fresh Codex session with zero prior context, opened by Thiago (team owner) to give an independent second opinion. Our team plays "The Bazaar · Cromos de Madrid", the game of the Claude Community 48H Hackathon Madrid: agents collect Madrid trading cards, haggle with five dealers (the ladder), duel other teams in two-issue negotiations, trade with other teams on venues, and run a market (our venue v20 "La Celestina" with a broker). Your job: analyze the latest game data and what our team did today, then chime in with concrete improvements, ranked by expected score gain. Thiago may ask follow-up questions in this tab.
 
 Everything you need is in this directory (`~/bazaar-codex`), a key-free local snapshot taken at 19:42. You run read-only: do not try to write files, call the game API, or ssh anywhere. Print your answer here.
 
@@ -28,7 +28,7 @@ Everything you need is in this directory (`~/bazaar-codex`), a key-free local sn
 7. Useful tools in `repo/tools/`: ledger.py (per-team cash and trades rebuilt from the feed), feed_report.py, value_inference.py, market_replay.py, bench_sim.py, duel_arena.py. You may run them read-only against `data/` if they accept a path; do not install anything.
 
 ## Deliverable (print it here, in plain English, no em dash characters)
-1. Five-line diagnosis: where Team 3 gains and leaks points, with numbers from the data.
+1. Five-line diagnosis: where our team gains and leaks points, with numbers from the data.
 2. What the market leaders (t10, t06, t14, t17) do that we do not: venue settings, who trades on their venues, bench performance if derivable. Evidence lines.
 3. Ranked improvements table: improvement | evidence | expected points (range) | when (tonight / Sunday before 09:34 / Sunday later) | what code or process it touches | risk.
 4. Critique of the in-flight work (broker policy plan, announcements, duel robust mode, ladder use incl. Don Ernesto L5 who buys only epics/legendaries and sells legendaries at list 585).

@@ -157,7 +157,7 @@ team lands low; with choices only almost every team lands at 1.6). Weak targets 
 | legendary CHA-12 | 225 | same | 248 / 263 | No trade data: ask ≥ 400 or hold. |
 
 **Seller vs Pilar:** keep `agent/rastro_seller.py` off. On Saturday it posted 191 El Rastro listings in our log (215
-t03 card listings in the feed; the brief's 232 could not be reproduced) and none filled; our spares sold only through
+card listings from our team in the feed; the brief's 232 could not be reproduced) and none filled; our spares sold only through
 Chato (14) and on v06 (3–6). Pilar is the outlet for CHA uncommons and rares (`agent/chato.py run --dealer pilar
 --only sell:<asset> ...`, as in `r3-resell-ret`). Team bids are taken by the desk's sell side if the desk runs with
 `--sell-first-copies CHA --sell-margin-frac 0.5`: its sell rule (price − fee ≥ value + max(3, 50 % of value)) then

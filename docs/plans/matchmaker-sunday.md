@@ -1,6 +1,6 @@
 # Open Bazaar for Sunday: bring other teams' trades to La Celestina (v20)
 
-Lane WP3, night of Sat 3 to Sun 4 Oct. Data: `logs/feed/feed.jsonl` (26,615 events, ticks 0-1445) and the live public books at tick 1445 (clock paused). Tools: `tools/matchmaker.py`, `tools/announce.py --variant missing`, La Celestina's `/api/missing`, `tools/outreach.py`. Private: nothing here names Team 3's own needs or values.
+Lane WP3, night of Sat 3 to Sun 4 Oct. Data: `logs/feed/feed.jsonl` (26,615 events, ticks 0-1445) and the live public books at tick 1445 (clock paused). Tools: `tools/matchmaker.py`, `tools/announce.py --variant missing`, La Celestina's `/api/missing`, `tools/outreach.py`. Private: nothing here names our team's own needs or values.
 
 ## 1. What the feed says about team-to-team trades
 
@@ -23,7 +23,7 @@ Lane WP3, night of Sat 3 to Sun 4 Oct. Data: `logs/feed/feed.jsonl` (26,615 even
 ## 2. What we built
 
 - `tools/matchmaker.py` (keyless, read-only; `report`, `json --out --every`, `selftest`). Explicit wants first, inferences second (Sol's review): **tier 1** a live bid or swap and a supplier we can name, **tier 2** a live want, **tier 3** a live ask and a team that *appears* to be missing that card, **tier 4** an inferred need with holders, no live offer. Tiers 1-3 carry one action: the counterparty accepts that offer (`POST /api/offers/<id>/accept`), wherever it is; only tier 4 proposes v20 orders. A missing card is inferred from `decks.py` checked against the leaderboard's album count (an exact count over which unseen cards are held); it is never stated as a fact. Offers expiring within 8 ticks, bids below what the dealers pay a holder and lopsided swaps never reach tier 1. Within a tier: v20, then El Rastro (nobody's points), then other teams' venues (their points).
-- `tools/announce.py --variant missing`: one match per post, the live offer and the one action, or "appears to be missing ... not confirmed" plus the v20 bid and ask. Never an offer that left its book, another team's venue (unless `--rival-venues`), Team 3, our excluded cards, or a match named in the last 6 posts. Swaps are "accepted directly", never "crossed". Market Test silence gate unchanged.
+- `tools/announce.py --variant missing`: one match per post, the live offer and the one action, or "appears to be missing ... not confirmed" plus the v20 bid and ask. Never an offer that left its book, another team's venue (unless `--rival-venues`), our team, our excluded cards, or a match named in the last 6 posts. Swaps are "accepted directly", never "crossed". Market Test silence gate unchanged.
 - La Celestina, under the name other teams see, **Open Bazaar · who needs which card** (Thiago's Sunday plan): the page's first section, `/api/missing?team=tNN`, the first key of `/api/match` (and OPEN BAZAAR lines in `format=text`), `/agents.md`, the concierge's `/llms.txt`. Same matches, holder map kept private (a count; a team sees its own asset ids).
 - `tools/outreach.py` (`plan` by default; `run --yes`): one thread at a time, one message, closed at once.
 
@@ -60,6 +60,6 @@ HTTP 200 on a post proves nothing. Per channel:
 - **Announcements**: every post logs the match it named (`named` event in `logs/announce/<date>.jsonl`), and its `response` 20 ticks later carries `named_outcome` (`candidate`: a settlement with the named offer's whole structure: venue, direction, card, price, and for an ask or swap the very asset and both legs; a candidate, not proof, since the feed's settlements carry no offer id; `v20_trade`) plus v20 listings and trades in the 20 ticks after vs before.
 - **La Celestina**: `--access-log` shows who read `/api/missing` and `/api/match`; success is a v20 listing or trade by that team within 40 ticks.
 - **Outreach**: `logs/outreach/<date>.jsonl` names the team, card and offer; success is that team listing, accepting or trading that card within 40 ticks.
-- **Overall**: other-team trades on v20 per hour (feed `settlement` with `venue: v20`, parties not t03), split by the channel that named that team and card last before the trade. Baseline: 0 per hour on Saturday.
+- **Overall**: other-team trades on v20 per hour (feed `settlement` with `venue: v20`, parties not our team), split by the channel that named that team and card last before the trade. Baseline: 0 per hour on Saturday.
 
 Stop rule: if 6 announcements in a row show no `named_outcome` and no v20 listing, stop the variant and report; scale outreach beyond the single 09:05 test thread only after one response or settlement.

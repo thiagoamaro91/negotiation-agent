@@ -1,4 +1,4 @@
-You are picking up the judges' pitch for Thiago (Team 3, "The Bazaar · Cromos de Madrid", Claude Community 48H Hackathon Madrid) from a session that ran out of context at 13:40 on Sunday 4 Oct 2026. Work in plain English with Thiago; he often dictates. Today's hard clock: market freezes 15:00, `/submit` closes 16:00 (Thiago types the team key himself, never a model), presentations 16:00 to 17:00 in ranking order: top 3 overall get 5 min, the rest 3 min.
+You are picking up the judges' pitch for Thiago ("The Bazaar · Cromos de Madrid", Claude Community 48H Hackathon Madrid) from a session that ran out of context at 13:40 on Sunday 4 Oct 2026. Work in plain English with Thiago; he often dictates. Today's hard clock: market freezes 15:00, `/submit` closes 16:00 (Thiago types the team key himself, never a model), presentations 16:00 to 17:00 in ranking order: top 3 overall get 5 min, the rest 3 min.
 
 ## Read first (in this order)
 1. `career/context_hackathon-madrid-judges-pitch.md` (vault-relative; Obsidian MCP `obsidian_get_note`): the Sunday section and the Open / Next actions lists are current as of 13:40. It holds every decision with its rejected alternative.

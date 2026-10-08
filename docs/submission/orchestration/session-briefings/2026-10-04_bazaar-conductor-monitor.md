@@ -2,7 +2,7 @@
 
 You are a fresh session with zero prior context, running on Thiago's MacBook Air. Thiago asked for you at 13:12: "shoot a parallel opus session xhigh here on my macbook air zellij to monitor and communicate w/ the conductor for me, so i can close this fable session". The Fable planning session that wrote this file is being closed. You are now Thiago's eyes on the game and his voice to the conductor.
 
-**The game.** Team 3 (`t03`: Thiago, Hector, a former teammate) plays "The Bazaar - Cromos de Madrid" at the Madrid Claude Code hackathon. It ends today at 15:00 local; scores freeze about 14:59:40. Dealers close and the Grand Final duels start about 13:59. After 14:00 only team-to-team trading is left. `/submit` closes at 16:00 and belongs to Thiago (judges are 40 of 100 points).
+**The game.** Our team (Thiago, Hector, a former teammate) plays "The Bazaar - Cromos de Madrid" at the Madrid Claude Code hackathon. It ends today at 15:00 local; scores freeze about 14:59:40. Dealers close and the Grand Final duels start about 13:59. After 14:00 only team-to-team trading is left. `/submit` closes at 16:00 and belongs to Thiago (judges are 40 of 100 points).
 
 **The conductor.** ONE Opus session on the Mac Mini, session name `bazaar-final-conductor`, live repo `~/bazaar` on the Mini, started 11:55. It executes the approved plan with no human gates. It is doing well: do not take over its job.
 
@@ -25,8 +25,8 @@ You are a fresh session with zero prior context, running on Thiago's MacBook Air
 
 ## Read first (in this order, quickly)
 
-1. The approved plan: `/Users/thiago/.claude/plans/all-right-today-is-delegated-sloth.md`
-2. The conductor's briefing: `/Users/thiago/.claude/handoffs/2026-10-04_bazaar-final-conductor.md`
+1. The approved plan: `~/.claude/plans/all-right-today-is-delegated-sloth.md`
+2. The conductor's briefing: `~/.claude/handoffs/2026-10-04_bazaar-final-conductor.md`
 3. The team bus, last messages: `python3 tools/bus.py --session thiago-air-monitor read --last 12` (run from this repo, `projects/negotiation-agent`). The bus is GitHub issue 25. Hector's sessions are `hector-clearing` and `wp10-sunday-analyst`.
 
 ## How to observe (read-only, validated today)
@@ -93,7 +93,7 @@ Notes: `me.json` refreshes every 10 minutes. Transcript timestamps are UTC (loca
 - Score 32.39, rank 5 (13:03). Leader t05 35.81, t18 32.54 just above us. We lead the negotiating column; the gap is the market column (8.15 against 11 to 13 for the leaders). Cash 251.
 - **El Retiro page is 9 of 10. RET-07 is the last card (the closer).** It must come from a TEAM: as the last card it is worth about 82 to us, so a team price of 32 or less scores the full +50. The desk has a page bid on it. A dealer buy of RET-07 would waste the +50, so check that no dealer queue still targets RET-07.
 - SAL-11 (worth 234): desk bid at 184 for a +50. Holders t02, t13, t17, t08; t04 asked 220.
-- **Clearing House (Hector's shop strategy):** a private matcher that pairs teams' sell and want books at the midpoint and routes each trade to a venue of neither party. It is how other teams' trades land on v20. Team 3 joined at 13:09. Joined now: t03, t07, t13, t15, t16. Our book went in at 13:10:17: haves MAL-02, MAL-04, MAL-06, MAL-07; 17 wants, top MAL-09 and MAL-10 at 41; no El Retiro card for sale (checked). `clearing_client.py execute --until 14:50 --auto-approve` runs on the Mini. Hector triggers rounds by hand. Round 1 at 12:10 was empty. The conductor found the newer client re-reads live value before every buy, so a stale book cannot cause a wrong-side buy.
+- **Clearing House (Hector's shop strategy):** a private matcher that pairs teams' sell and want books at the midpoint and routes each trade to a venue of neither party. It is how other teams' trades land on v20. Our team joined at 13:09. Joined now: our team, t07, t13, t15, t16. Our book went in at 13:10:17: haves MAL-02, MAL-04, MAL-06, MAL-07; 17 wants, top MAL-09 and MAL-10 at 41; no El Retiro card for sale (checked). `clearing_client.py execute --until 14:50 --auto-approve` runs on the Mini. Hector triggers rounds by hand. Round 1 at 12:10 was empty. The conductor found the newer client re-reads live value before every buy, so a stale book cannot cause a wrong-side buy.
 - v20 stays open to the end. The old "close at 13:30" check is off because teams committed to the house.
 - Dealer ladder Round 3 at 12:46: 9 of 15 slots (level 5 has zero).
 - Plan artifact for Hector: https://claude.ai/artifact/T4icz24gmiaTovnywwBXwb (private, Thiago shares it from the Share menu).

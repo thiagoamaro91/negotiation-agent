@@ -37,7 +37,7 @@ cash order from 13:30, last-hour listings, flag test). Board 11:14: t12 34.87, t
 
 ## Result
 
-- Final (15:01): score 34.19, rank 4 (11:14 board: 30.47, rank 5). Board: t05 37.73, t10 35.76, t12 34.51, t03 34.19, t18 32.27.
+- Final (15:01): score 34.19, rank 4 (11:14 board: 30.47, rank 5). Board: t05 37.73, t10 35.76, t12 34.51, our team 34.19, t18 32.27.
 - Components: negotiating 26.04 (neg_points 56.5 -> 136.5), market 8.15 (unchanged, v20 0 trades), ladder_points 0.165 -> 0.371,
   duel_points 27.94 -> 40.19 (Grand Final). Cash 355 -> 17.
 - RET page: complete 10/10. Closer RET-07 bought from a team on El Rastro at about 30 (live value 82.1) = +50.

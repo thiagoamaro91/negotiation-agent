@@ -1,6 +1,6 @@
 # Weekend plan: architecture and workstreams
 
-Written on the night of Friday 2 to Saturday 3 Oct 2026, after the doors closed at tick 159. It proposes how Team 3 turns what we built on Friday into points on Saturday and Sunday, split into workstreams that each of us can own. Nothing here runs by itself: every step that uses the team key or spends primas still needs a yes in the team chat ([`CLAUDE.md`](../../CLAUDE.md), rules 1-2).
+Written on the night of Friday 2 to Saturday 3 Oct 2026, after the doors closed at tick 159. It proposes how our team turns what we built on Friday into points on Saturday and Sunday, split into workstreams that each of us can own. Nothing here runs by itself: every step that uses the team key or spends primas still needs a yes in the team chat ([`CLAUDE.md`](../../CLAUDE.md), rules 1-2).
 
 It builds on Thiago's [Friday log analysis](../analysis-friday/README.md), which measured most of what these plans rely on. Where the two disagree, the measured number wins; the plans link to its sections instead of repeating them.
 
