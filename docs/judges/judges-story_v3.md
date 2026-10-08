@@ -1,4 +1,4 @@
-# Judges' story v3 (Team 3)
+# Judges' story v3
 
 Owner: Thiago (speaks). Drafted Sunday 4 Oct, 02:30 Madrid, lane WP6, from Thiago's v2 ([`judges-story_draft_v2.md`](judges-story_draft_v2.md)): the beat structure and the "do not say" list stay. Internal: this file names numbers, sources and team ids for the team; only the quoted script is meant for the judges. Companions: [`judges-evidence_v3.md`](judges-evidence_v3.md) (screens) and [`judges-rehearsal_v3.md`](judges-rehearsal_v3.md) (07:00 note).
 
@@ -141,8 +141,8 @@ All five print from `python3 tools/pitch_numbers.py --live` (read-only, keyless;
 
 | # | Number | Saturday close (tick 1445) | Source | Used where |
 |---|---|---|---|---|
-| 1 | Trades on v20 between two other teams (**the A/B fact**) | 0 | `logs/feed/feed.jsonl` settlements with `venue` v20 and two `tNN` parties other than t03; `GET /api/leaderboard` v20 row | Version choice; [NETWORK] |
-| 2 | Other teams that posted on v20, and their offers | 2 teams, 29 offers | `logs/feed/feed.jsonl` `offer.listed` on v20, makers `tNN` other than t03 | [NETWORK] B |
+| 1 | Trades on v20 between two other teams (**the A/B fact**) | 0 | `logs/feed/feed.jsonl` settlements with `venue` v20 and two `tNN` parties other than our team; `GET /api/leaderboard` v20 row | Version choice; [NETWORK] |
+| 2 | Other teams that posted on v20, and their offers | 2 teams, 29 offers | `logs/feed/feed.jsonl` `offer.listed` on v20, makers `tNN` other than our team | [NETWORK] B |
 | 3 | Public events recorded, two recorder copies merged | 28,274 (ticks 0 to 1445, deduplicated by id: 26,615 from our recorder, 1,659 more from the VM copy of Friday's lost ticks 49 to 118) | `logs/feed/feed.jsonl` + `logs/feed-vm/feed.jsonl` (`logs/feed-vm/README.md`) | "How it runs", first line |
 | 4 | Ledger readings that match our real cash | 12 of 12, ticks 33 to 1445 | `python3 tools/ledger.py --json`, `check_history` (real cash from `logs/score.jsonl` and the Mini's `/api/me` readings) | "twelve readings out of twelve" |
 | 5 | Pull requests merged | 56 (Sunday 02:30) | `gh pr list --repo thiagoamaro91/negotiation-agent --state merged` | Back pocket only ("how did three people build this?") |

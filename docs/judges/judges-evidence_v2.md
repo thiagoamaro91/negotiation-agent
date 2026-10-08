@@ -1,4 +1,4 @@
-# Judges' evidence checklist v2 (Team 3)
+# Judges' evidence checklist v2
 
 Companion to [`judges-story_draft_v2.md`](judges-story_draft_v2.md). What to have open on screen while Thiago talks, in script order, and who drives it. Internal.
 

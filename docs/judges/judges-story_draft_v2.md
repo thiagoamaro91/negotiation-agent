@@ -1,4 +1,4 @@
-# Judges' story, draft v2 (Team 3)
+# Judges' story, draft v2
 
 Owner: Thiago. Status: v2, Saturday 3 Oct 11:50 (v1 approved by Thiago in the pitch tab, PR #17). Internal: this file names numbers and sources for the team; the spoken script is the only part meant for judges.
 

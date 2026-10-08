@@ -1,4 +1,4 @@
-# Team 3 (t03) · The Bazaar · Cromos de Madrid — submission dossier
+# The Bazaar · Cromos de Madrid — submission dossier
 
 **Audience:** the judges and the agents that read for them. **Scoring category:** Judges, 40 of 100 points, "ideas and craft" (`kit/RULES.md` line 120).
 **Written:** Sunday 4 October 2026, after the 14:59 freeze. **Authors:** Hector Moyano's Claude sessions, compiled for Thiago Amaro (team lead, repo owner). Team: Thiago Amaro, Hector Moyano.
@@ -10,14 +10,12 @@
 
 ```json
 {
-  "team": "t03",
   "final_board": {
     "source": "GET https://bazaar.causaprima.ai/api/leaderboard (frozen, tick 2797) and logs/score.jsonl on branch mini/logs",
-    "negotiating": {"points": 26.04, "of": 30, "rank_among_18": 1, "runner_up": {"team": "t05", "points": 24.64}},
+    "negotiating": {"points": 26.04, "of": 30, "rank_among_18": 1},
     "market": {"points": 8.15, "of": 30},
     "overall": {"points": 34.19, "rank_among_18": 4},
     "deals_settled": 50,
-    "deals_of_top5_teams": {"t05": 74, "t10": 77, "t12": 82, "t03": 50, "t18": 57},
     "pages_complete": 4, "pages": ["La Latina", "Lavapiés", "Salamanca", "El Retiro"], "album_filled": "43/60", "dealer_level": 5, "badges": ["Sharp ear"]
   },
   "negotiation_breakdown": {"duel_points": 40.19, "neg_points_team_trades": 136.5, "ladder_points": 0.371},
@@ -53,11 +51,7 @@
 
 | Team | Negotiating /30 | Market /30 | Overall | Rank | Deals |
 |---|---|---|---|---|---|
-| **t03 (us)** | **26.04** | 8.15 | 34.19 | 4 | **50** |
-| t05 | 24.64 | 13.08 | 37.73 | 1 | 74 |
-| t10 | 23.49 | 12.26 | 35.76 | 2 | 77 |
-| t12 | 23.07 | 11.44 | 34.51 | 3 | 82 |
-| t18 | 23.27 | 9.00 | 32.27 | 5 | 57 |
+| **Our team** | **26.04** | 8.15 | 34.19 | 4 | **50** |
 
 Source: `GET /api/leaderboard`, frozen snapshot (tick 2797); our own row also in `logs/score.jsonl` (branch `mini/logs`, last rows 14:40 to 14:55).
 
@@ -69,9 +63,9 @@ The second headline is Sunday afternoon (section 1b): **a third of the market ag
 
 ## 1b. Sunday: six teams agreed to one fair mechanism in three hours
 
-**The feat.** Between 10:50 and 13:43 on the last day, with the stalls closing at 13:56, Team 3 designed, built, reviewed, deployed and ran a private clearing house, and persuaded five other teams, competitors in a game where lying is legal, to hand it their private sell minimums and buy maximums. Six of eighteen teams joined (t03, t07, t13, t14, t15, t16); five sent books. No pact, no reciprocity, no pressure: Hector's standing rule was that the mechanism had to win on merit (section 3, point 4).
+**The feat.** Between 10:50 and 13:43 on the last day, with the stalls closing at 13:56, our team designed, built, reviewed, deployed and ran a private clearing house, and persuaded five other teams, competitors in a game where lying is legal, to hand it their private sell minimums and buy maximums. Six of eighteen teams joined (our team, t07, t13, t14, t15, t16); five sent books. No pact, no reciprocity, no pressure: Hector's standing rule was that the mechanism had to win on merit (section 3, point 4).
 
-**How it was done, hour by hour** (join times and order are operator recollection; the status export proves membership and the listed book timestamps only; conversation times are also operator recollection). Hector recruited every team **in person, in the room**: a short bilingual message carrying the tunnel URL and `/agents.md` ("have your agent read it and tell you whether it is worth it"), then a per-team invite code spoken aloud or typed by him on that team's laptop. The teams' own agents read `/agents.md` and advised their humans. The explainer page went public around 12:00 and the full source went up as a public gist around 12:15 on Hector's instruction ("open-source everything except the passwords"). Idea 10:50 → PR open 11:07 → live behind a tunnel ~11:18 → first external team in at 12:23 (t13, 1 h 33 min from idea) → t07 12:52 → t16 ~13:00 → t15 13:05 (four minutes after saying yes) → t03 13:11 from the Mini through Thiago's conductor on the bus → t14 13:13 (book 13:22). A seventh team (t06) asked to join at 13:18, was accepted, and did not complete before the round. Thirteen invite codes minted; six teams in; stalls closed at 13:56.
+**How it was done, hour by hour** (join times and order are operator recollection; the status export proves membership and the listed book timestamps only; conversation times are also operator recollection). Hector recruited every team **in person, in the room**: a short bilingual message carrying the tunnel URL and `/agents.md` ("have your agent read it and tell you whether it is worth it"), then a per-team invite code spoken aloud or typed by him on that team's laptop. The teams' own agents read `/agents.md` and advised their humans. The explainer page went public around 12:00 and the full source went up as a public gist around 12:15 on Hector's instruction ("open-source everything except the passwords"). Idea 10:50 → PR open 11:07 → live behind a tunnel ~11:18 → first external team in at 12:23 (t13, 1 h 33 min from idea) → t07 12:52 → t16 ~13:00 → t15 13:05 (four minutes after saying yes) → our team 13:11 from the Mini through Thiago's conductor on the bus → t14 13:13 (book 13:22). A seventh team (t06) asked to join at 13:18, was accepted, and did not complete before the round. Thirteen invite codes minted; six teams in; stalls closed at 13:56.
 
 **Why teams said yes.** The invitation did not ask for trust; it removed the need for it. What each team was shown, in person and on a bilingual explainer page with an animated walkthrough of the five steps (private books → matching at the midpoint → one trade per venue → everyone's OK → execution by your own client):
 
@@ -91,7 +85,7 @@ The second headline is Sunday afternoon (section 1b): **a third of the market ag
 
 The system was reviewed by four parties who did not write it before it touched anyone's money: Codex (twelve rounds), two other teams' agents, and the other half of our own team. One team's security objection became the client's core guarantee within the hour.
 
-**What the mechanism did when it mattered.** Books landed at 12:55 (t07), 13:10 (t03), 13:19 (t13, t15), 13:22 (t14); t16 joined but never sent one. 13:33, five books in: **held, zero crosses**. Of 51 same-card pairs (40 in the later export, after the one approved trade consumed a copy), none had a buyer's max at or above a seller's min at the default 15 % margins. Teams re-sent their books with zero margin (t03 13:36, t13 13:41); at 13:42 a forced run found two candidates and proposed one, with zero surplus; both clients auto-approved it at 13:42:29 and 13:42:32; **the seller's own client refused to post** because the price was below the minimum it had stored locally (server record: `failed: client refused`). Hector's call at 13:4x, with stalls closing in a quarter of an hour: stop everything and tell the judges why it did not work, rather than manufacture a trade. He had already declined, on the fair-play rule, the idea of creating an artificial cross to put value on our venue. Server stopped at 13:43. Primas moved: 0. Trades executed: 0. Keys shared: 0. A disclosure we got wrong (a zero-surplus price row on the status page revealed two reservation prices by inference; the commitment hash was brute-forceable from an export) was found in review of the write-up and fixed in PR #103 the same afternoon.
+**What the mechanism did when it mattered.** Books landed at 12:55 (t07), 13:10 (our team), 13:19 (t13, t15), 13:22 (t14); t16 joined but never sent one. 13:33, five books in: **held, zero crosses**. Of 51 same-card pairs (40 in the later export, after the one approved trade consumed a copy), none had a buyer's max at or above a seller's min at the default 15 % margins. Teams re-sent their books with zero margin (our team 13:36, t13 13:41); at 13:42 a forced run found two candidates and proposed one, with zero surplus; both clients auto-approved it at 13:42:29 and 13:42:32; **the seller's own client refused to post** because the price was below the minimum it had stored locally (server record: `failed: client refused`). Hector's call at 13:4x, with stalls closing in a quarter of an hour: stop everything and tell the judges why it did not work, rather than manufacture a trade. He had already declined, on the fair-play rule, the idea of creating an artificial cross to put value on our venue. Server stopped at 13:43. Primas moved: 0. Trades executed: 0. Keys shared: 0. A disclosure we got wrong (a zero-surplus price row on the status page revealed two reservation prices by inference; the commitment hash was brute-forceable from an export) was found in review of the write-up and fixed in PR #103 the same afternoon.
 
 **Why zero is the right answer, and what it taught.** The teams that joined were the teams like us: the same spare neighbourhoods (Chamberí, Malasaña, Salamanca commons on both sides of every book), the same wants. The heterogeneous teams, the ones who value what we have and have what we want, were the leaders we chose not to invite. Liquidity needs heterogeneity. In a game whose fair-play rule voids deals that feed another team, a clearing house that answers "there is no value to share" is the correct behaviour, and it answered it twice: once in the allocator and once in the seller's own client. With one more hour: start at 10:00, invite the heterogeneous teams, add card-for-card swaps and three-way cycles, where the surplus between similar teams hides.
 
