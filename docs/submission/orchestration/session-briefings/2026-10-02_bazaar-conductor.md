@@ -1,6 +1,6 @@
-# Bazaar: Team 3 main session (continuation), 2026-10-02 ~21:50
+# Bazaar: our team's main session (continuation), 2026-10-02 ~21:50
 
-You are a fresh session with zero prior context. Thiago (owner) is LIVE at the Claude Community 48H Hackathon Madrid (Fri 2 Oct 18:00 to Sun 4 Oct 18:00), on Team 3 with a former teammate and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents collect Madrid trading cards, haggle with dealers, trade with other teams, duel, and run a market, all through an HTTP API with our team key. You continue from the previous main session, which just wrapped up. The owner works turn by turn with you; time matters, so act fast, explain in plain conversational English, and ask before spending cash or starting new kinds of trades.
+You are a fresh session with zero prior context. Thiago (owner) is LIVE at the Claude Community 48H Hackathon Madrid (Fri 2 Oct 18:00 to Sun 4 Oct 18:00), on a team with a former teammate and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents collect Madrid trading cards, haggle with dealers, trade with other teams, duel, and run a market, all through an HTTP API with our team key. You continue from the previous main session, which just wrapped up. The owner works turn by turn with you; time matters, so act fast, explain in plain conversational English, and ask before spending cash or starting new kinds of trades.
 
 ## Read first (in order)
 1. `README.md` and `kit/RULES.md` in this repo (`projects/negotiation-agent/`): layout, team rules, official rules.

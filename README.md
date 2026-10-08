@@ -104,7 +104,7 @@ Python 3, standard library only. `--out-root` writes the eval run outside `evals
 
 > **Judges and reviewers: start with [`SUBMISSION.md`](SUBMISSION.md).** One file with the architecture diagram, an index of where everything lives, the results, the decisions, the evals and every pull request.
 
-Team 3's agents for **The Bazaar · Cromos de Madrid**, the game of the Claude Community 48H Hackathon Madrid (2-4 Oct 2026, presented by Claude Community Events, in partnership with Nova Talent and Causa Prima). Our agents collect cards, haggle with the card dealers, trade with other teams, duel, and (from level 2) run a market, all through the game's HTTP API with our team key.
+Our team's agents for **The Bazaar · Cromos de Madrid**, the game of the Claude Community 48H Hackathon Madrid (2-4 Oct 2026, presented by Claude Community Events, in partnership with Nova Talent and Causa Prima). Our agents collect cards, haggle with the card dealers, trade with other teams, duel, and (from level 2) run a market, all through the game's HTTP API with our team key.
 
 Score: Negotiating 30 + Market-making 30 + Judges 40. Full rules: [`kit/RULES.md`](kit/RULES.md).
 
@@ -131,8 +131,8 @@ Python 3, standard library only. The official SDK is in `kit/` (unchanged from b
 | `tools/snapshot.py` | Saves the server's view of our team into `logs/`: every conversation, duel, offer, holdings, and a score line |
 | `tools/feed_recorder.py` | Records the **public** feed, leaderboard and El Rastro board into `logs/feed/`. Keyless and read-only, so it never touches our per-tick limits; one copy running is enough |
 | `tools/feed_report.py` | Reads `logs/feed/` offline: `board` (every team's score next to its deals at each refresh), `haggles` (every dealer conversation as a price sequence), `trades`, `prices` |
-| `tools/value_inference.py` | Infers every team's secret set multipliers from the public feed (Bayes over the 720 shuffles): `teams`, `team t10`, `check` (validation against our own values and a time split), `targets`. Keyless |
-| `tools/market_plan.py` | Team 3's market plan, recomputed on every run from the inference, the live El Rastro board, the catalog, the dealers and the schedule: what to sell, buy and hold, and when (Friday counts half, pages, the Sunday close). Plans only, never sends. `--json`, `--watch` (writes `logs/plan/latest.json` every tick) |
+| `tools/value_inference.py` | Infers every team's secret set multipliers from the public feed (Bayes over the 720 shuffles): `teams`, `team <id>`, `check` (validation against our own values and a time split), `targets`. Keyless |
+| `tools/market_plan.py` | Our market plan, recomputed on every run from the inference, the live El Rastro board, the catalog, the dealers and the schedule: what to sell, buy and hold, and when (Friday counts half, pages, the Sunday close). Plans only, never sends. `--json`, `--watch` (writes `logs/plan/latest.json` every tick) |
 | `tools/ledger.py` | Every team's cash and known cards rebuilt from the public feed (exact for us: checked against `/api/me`) |
 | `tools/dashboard.py` | Live team dashboard (`dashboard.html`). Its Rivals and Market panels are keyless: all 18 teams (score split, level, cash rebuilt by the ledger with a trust line against `/api/me`, album, known cards, inferred favourite set, deals, trades, venue), cash vs score, who wants which set, every venue, and team-to-team card prices. Our own row shows the leaderboard and our cash only. `--feed DIR` (or `BAZAAR_FEED`) points it at the recorded feed; default `<broker root>/logs/feed` |
 | `tools/brain.py` | The market brain: keyless service that recomputes inference, ledger and plan on every new event and serves a live page (`brain.html`: plan, live market tape with the real team behind each pseudonym, every team's cash and values, the model's learning curve). Token-gated (`BRAIN_TOKEN`) |

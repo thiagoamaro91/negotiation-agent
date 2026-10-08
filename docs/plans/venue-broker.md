@@ -21,7 +21,7 @@
 
 `tools/open_venue.py` with `plan` and `run` modes:
 
-- `plan` prints the request: name (≤ 40 chars, e.g. `Team 3 · zero fee`), `fee_bps: 0`, `fee_per_card: 0`, `rules: {"mechanism": "board"}`, no rarity, set or level restriction (they only cut traffic), a one-line description.
+- `plan` prints the request: name (≤ 40 chars, e.g. `Our team · zero fee`), `fee_bps: 0`, `fee_per_card: 0`, `rules: {"mechanism": "board"}`, no rarity, set or level restriction (they only cut traffic), a one-line description.
 - `run` sends `POST /api/venues` and writes the returned broker key to `~/.bazaar/broker.env` (mode 600) **without printing it**; it prints the venue id only. The key holder then copies that file to the VM (`~/bazaar/broker.env`, 600). The broker key never passes through a chat or a model.
 - Fee 0 %: fees never score, and any fee shrinks the set of pairs that cross (`price + fee <= bid`).
 

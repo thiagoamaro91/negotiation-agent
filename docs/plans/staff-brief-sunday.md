@@ -2,7 +2,7 @@
 
 Source: "The Bazaar - Sunday.pdf", 11 slides from the organisers (host: Luis Morales, AI Engineer, Causa Prima), received 09:54 Madrid. Transcribed in full below; our takeaways first.
 
-## What it means for us (Team 3)
+## What it means for us
 
 1. **Cash held at 15:00 scores nothing.** Spend it on value-creating deals before the freeze. The 40 P reserve and the dealer cash floors only protect the next deal; they are not worth keeping at the end.
 2. **The Grand Final (about 14:15) is market-making time.** Dealers close their stalls; every trade after that is between teams, and "this is the hour a good market matters most". Keep La Celestina (v20) open, the broker running, and the v20 pitch out before then.

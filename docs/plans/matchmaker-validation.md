@@ -4,7 +4,7 @@ Private. This file names our cards; nothing here goes into an announcement, a pa
 
 Question: when `tools/matchmaker.py` says "team X appears to be missing card Y", how often is that true? A wrong
 claim wastes a 12-minute announcement slot and credibility; a right one is worth 2.8 to 5 board points for the first
-other-team trade on v20. The one deck we know exactly is ours, so we ran the matchmaker's inference on Team 3 and
+other-team trade on v20. The one deck we know exactly is ours, so we ran the matchmaker's inference on our team and
 compared it with what we really held.
 
 ## Ground truth: which source
@@ -28,7 +28,7 @@ python3 tools/matchmaker.py report --live --feed logs/feed      # the board (key
 ```
 
 `validate` runs exactly the matchmaker's functions (`decks.build` up to the snapshot's tick, `holdings`,
-`missing_odds`, `near_pages`) on Team 3, with our own album counts standing in for the leaderboard's.
+`missing_odds`, `near_pages`) on our team, with our own album counts standing in for the leaderboard's.
 
 ## Results
 
@@ -126,7 +126,7 @@ RET-02/06, and the 10 CHA cards).
 New flag on `matchmaker.py` and `announce.py`: `--exclude-from logs/state/me_live.json,logs/state/me.json`. A
 directory stands for its `me*.json` files.
 
-- **Trusted holdings.** Only a valid snapshot of OUR account counts: `id` equal to `t03`, an integer `tick`, a finite
+- **Trusted holdings.** Only a valid snapshot of OUR account counts: `id` equal to our team's id, an integer `tick`, a finite
   positive `tick_seconds`, and well-formed assets. Among valid snapshots, the highest game tick wins; file times are
   never used.
 - **Age.** A snapshot is aged in game time against the feed's tick, using its own tick length. It must be at most

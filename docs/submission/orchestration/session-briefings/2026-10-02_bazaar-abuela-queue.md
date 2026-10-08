@@ -1,6 +1,6 @@
-# Bazaar: own the Abuela queue (Team 3), 2026-10-02 evening
+# Bazaar: own the Abuela queue, 2026-10-02 evening
 
-You are a fresh session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, on Team 3 with a former teammate and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents trade Madrid trading cards over an HTTP API with our team key. The owner asked for this parallel session to **take over and keep processing the Abuela Carmen queue** while the parent session works on other things. He wants to **understand what is happening**: after every deal, explain it in plain conversational English (no jargon).
+You are a fresh session with zero prior context. Thiago (owner) is at the Claude Community 48H Hackathon Madrid, on a team with a former teammate and Héctor. The game is **The Bazaar · Cromos de Madrid** (hosted by Causa Prima): our agents trade Madrid trading cards over an HTTP API with our team key. The owner asked for this parallel session to **take over and keep processing the Abuela Carmen queue** while the parent session works on other things. He wants to **understand what is happening**: after every deal, explain it in plain conversational English (no jargon).
 
 Owner decision trail so far (all approved by him):
 - Welcome deal used: bought LAV-06 at her fixed welcome price 17 P (thread 49).
